@@ -45,9 +45,7 @@ impl ListableResource for () {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ListResourceQuery<
 	R: ListableResource,
-	Q: Preprocessable<
-			Processed: Debug + Clone + Serialize + DeserializeOwned + PartialEq,
-		> = (),
+	Q: Preprocessable<Processed: Debug + Clone + Serialize + DeserializeOwned + PartialEq> = (),
 > {
 	/// Sort order of the items.
 	#[serde(flatten, default = "None", skip_serializing_if = "Option::is_none")]

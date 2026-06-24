@@ -34,11 +34,12 @@ pub async fn get_deployment_logs(
 					workspace_id,
 					deployment_id,
 				},
-				query: GetDeploymentLogsQueryProcessed {
-					end_time,
-					limit,
-					search,
-				},
+				query:
+					GetDeploymentLogsQueryProcessed {
+						end_time,
+						limit,
+						search,
+					},
 				headers:
 					GetDeploymentLogsRequestHeaders {
 						authorization: _,

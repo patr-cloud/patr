@@ -160,6 +160,10 @@ pub async fn list_repository_manifests(
 	})
 	.collect();
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListContainerRepositoryManifestsResponse { manifests })
 		.headers(ListContainerRepositoryManifestsResponseHeaders {

@@ -1324,36 +1324,38 @@ async fn forgot_password_rate_limit() {
 	// IP per call which would defeat rate-limit accumulation.
 	let ip = std::net::IpAddr::V4(rand::rng().random::<u32>().into());
 
-	// Per-IP unauth bucket is 20/sec. Use unknown user_ids — the handler
-	// returns a silent 202 without doing the Argon2 work, so 25 calls land
-	// well inside a single 1-second window. Rate limit should still kick
-	// in on the 21st+.
-	let mut throttled_at: Option<usize> = None;
-	for i in 0..25 {
-		let resp = setup
-			.make_web_dashboard_call_from_ip(
-				ApiRequest::<ForgotPasswordRequest>::builder()
-					.headers(ForgotPasswordRequestHeaders {
-						user_agent: TEST_USER_AGENT,
-					})
-					.body(ForgotPasswordRequest {
-						user_id: format!("nonexistent-{}", i),
-						preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
-						cf_turnstile_token: "1x00000000000000000000AA".to_string(),
-					})
-					.build(),
-				ip,
-			)
-			.await;
-		if resp.status_code() == StatusCode::TOO_MANY_REQUESTS {
-			throttled_at = Some(i);
-			break;
-		}
-	}
+	// The per-IP unauth window is 20 requests/second (sliding window log — see
+	// `models::rate_limiter`). Unknown user_ids get a silent 202 without the
+	// Argon2 work, so they're cheap. Fire well above the limit *concurrently*
+	// from the same IP: a sequential loop is flaky because under parallel test
+	// load each round-trip can take long enough that earlier requests slide out
+	// of the 1-second window before the count ever reaches 21. Concurrent
+	// dispatch lands the burst inside a single window regardless of per-request
+	// latency.
+	let requests = (0..50).map(|i| {
+		setup.make_web_dashboard_call_from_ip(
+			ApiRequest::<ForgotPasswordRequest>::builder()
+				.headers(ForgotPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ForgotPasswordRequest {
+					user_id: format!("nonexistent-{i}"),
+					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+			ip,
+		)
+	});
+	let responses = futures::future::join_all(requests).await;
+	let throttled = responses
+		.iter()
+		.filter(|r| r.status_code() == StatusCode::TOO_MANY_REQUESTS)
+		.count();
 
 	assert!(
-		throttled_at.is_some(),
-		"expected at least one 429 from 25 sequential forgot_password calls"
+		throttled > 0,
+		"expected at least one 429 from 50 concurrent forgot_password calls, got none"
 	);
 }
 

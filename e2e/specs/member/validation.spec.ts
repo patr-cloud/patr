@@ -65,15 +65,6 @@ test.describe('member > validation', () => {
     });
   });
 
-  test('rejects an add-member API call with a nonexistent userId', async ({ api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    const fakeUser = crypto.randomUUID().replace(/-/g, '');
-    await expect(
-      api.request('POST', `/workspace/${owner.workspaceId}/rbac/user/${fakeUser}`, {
-        token: owner.accessToken,
-        clientIp: owner.clientIp,
-        body: { roles: [] },
-      }),
-    ).rejects.toThrow(/400/);
-  });
+  // Add-member with a nonexistent userId is covered in the Rust API suite
+  // (api/tests/api/workspace/rbac/mod.rs::update_user_roles_nonexistent_user).
 });

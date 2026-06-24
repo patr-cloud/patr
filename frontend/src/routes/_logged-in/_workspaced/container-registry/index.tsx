@@ -13,7 +13,7 @@ import {
 	Pagination,
 	Table,
 } from "~/components";
-import { createPaginationState, useIsAllowed } from "~/hooks";
+import { createPaginationState, recoverFromOutOfBounds, useIsAllowed } from "~/hooks";
 import { WithId, ContainerRepository } from "~/bindings";
 import { useContainerRegistriesQuery } from "~/hooks/fetch";
 import { formatRelativeTime, formatSize } from "~/utils/func";
@@ -69,6 +69,12 @@ const ListContainerRepositories = () => {
 			pagination.setTotalCount(totalCount);
 		}
 	});
+
+	recoverFromOutOfBounds(
+		() => repositoriesQuery.isError,
+		() => repositoriesQuery.error?.message,
+		pagination
+	);
 
 	return (
 		<>

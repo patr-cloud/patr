@@ -24,6 +24,7 @@ const UserSettingsInfoSection = () => {
 	const [lastName, setLastName] = createSignal<string | undefined>();
 	const [firstNameError, setFirstNameError] = createSignal<string | undefined>(undefined);
 	const [lastNameError, setLastNameError] = createSignal<string | undefined>(undefined);
+	const [submitting, setSubmitting] = createSignal(false);
 
 	createEffect(() => {
 		const info = userInfoQuery.data;
@@ -49,6 +50,11 @@ const UserSettingsInfoSection = () => {
 		setLastNameError(lnErr);
 		if (fnErr || lnErr) return;
 
+		// Prevent overlapping submits: a second submit while one is in flight
+		// would fire two concurrent PATCHes with no commit-ordering guarantee.
+		if (submitting()) return;
+		setSubmitting(true);
+
 		try {
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 				method: "PATCH",
@@ -69,6 +75,8 @@ const UserSettingsInfoSection = () => {
 		} catch (error) {
 			console.error("Failed to update user info:", error);
 			toast("Failed to update user info", "error");
+		} finally {
+			setSubmitting(false);
 		}
 	};
 	return (
@@ -102,7 +110,7 @@ const UserSettingsInfoSection = () => {
 								setLastNameError(undefined);
 							}}
 						/>
-						<Button type="submit" variant={ButtonVariant.Contained}>
+						<Button type="submit" variant={ButtonVariant.Contained} disabled={submitting()}>
 							Update
 						</Button>
 					</div>

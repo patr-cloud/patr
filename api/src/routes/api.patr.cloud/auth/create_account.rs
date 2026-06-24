@@ -242,7 +242,10 @@ pub async fn create_account(
 		otp_expiry,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.inspect_err(|err| {
+		error!("Error inserting into user_to_sign_up: `{}`", err);
+	})?;
 
 	trace!("User to sign up inserted into the database");
 
@@ -258,7 +261,10 @@ pub async fn create_account(
 				otp_expiry: constants::OTP_VALIDITY.to_string(),
 			},
 		)
-		.await?;
+		.await
+		.inspect_err(|err| {
+			error!("Error enqueuing sign-up email: `{}`", err);
+		})?;
 
 	AppResponse::builder()
 		.body(CreateAccountResponse)

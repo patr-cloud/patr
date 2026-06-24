@@ -6,7 +6,6 @@ import {
   createUserWithWorkspace,
   addMemberToWorkspace,
   listRolesAPI,
-  setUserRolesAPI,
   getOwnUserId,
   loginAs,
   sql,
@@ -20,6 +19,10 @@ import {
   cancelMemberRolesEdit,
   expectToast,
 } from '@/helpers/ui/member';
+
+// Member role-assignment at the API layer (set roles, empty→remove, nonexistent
+// roleId, cross-workspace role) lives in the Rust API suite
+// (api/tests/api/workspace/rbac/mod.rs). Here we cover the member roles editor UI.
 
 async function withUI(
   browser: import('@playwright/test').Browser,
@@ -37,7 +40,7 @@ async function withUI(
   }
 }
 
-test.describe('member > roles', () => {
+test.describe('member > roles [UI]', () => {
   test('adds a role via the chip dropdown and persists it', async ({ browser, api }) => {
     await using owner = await createUserWithWorkspace(api);
     await using invitee = await createUserAccount(api);
@@ -46,7 +49,6 @@ test.describe('member > roles', () => {
     const r2 = roles.find((r) => /Deployment: Viewer/i.test(r.name))!;
     await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
     await withUI(browser, owner, async (page) => {
-      // Owner row is auto-selected; click the invitee row first.
       await page.getByText(`@${invitee.username}`).click();
       await clickEditRoles(page);
       await addRoleViaChipDropdown(page, r2.name);
@@ -69,7 +71,6 @@ test.describe('member > roles', () => {
     const r2 = roles.find((r) => /Deployment: Viewer/i.test(r.name))!;
     await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id, r2.id]);
     await withUI(browser, owner, async (page) => {
-      // Owner row is auto-selected; click the invitee row first.
       await page.getByText(`@${invitee.username}`).click();
       await clickEditRoles(page);
       await removeRoleChip(page, r2.name);
@@ -91,7 +92,6 @@ test.describe('member > roles', () => {
     const r1 = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
     await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
     await withUI(browser, owner, async (page) => {
-      // Owner row is auto-selected; click the invitee row first.
       await page.getByText(`@${invitee.username}`).click();
       await clickEditRoles(page);
       await removeRoleChip(page, r1.name);
@@ -112,49 +112,10 @@ test.describe('member > roles', () => {
     const r1 = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
     await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
     await withUI(browser, owner, async (page) => {
-      // Owner row is auto-selected; click the invitee row first.
       await page.getByText(`@${invitee.username}`).click();
       await clickEditRoles(page);
       const link = page.getByRole('link', { name: /create a new role/i });
       await expect(link).toHaveAttribute('href', '/workspace/roles/new');
     });
-  });
-
-  test('removes the member from the workspace when their roles are emptied', async ({ api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    await using invitee = await createUserAccount(api);
-    const roles = await listRolesAPI(api, owner, owner.workspaceId);
-    const r1 = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
-    await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
-    const inviteeId = await getOwnUserId(api, invitee);
-    await setUserRolesAPI(api, owner, owner.workspaceId, inviteeId, []);
-    const rows = await sql(
-      `SELECT 1 FROM workspace_user WHERE workspace_id = $1 AND user_id = $2`,
-      [owner.workspaceId, inviteeId],
-    );
-    expect(rows.length).toBe(0);
-  });
-
-  test('rejects POST user roles with a non-existent roleId (4xx)', async ({ api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    await using invitee = await createUserAccount(api);
-    const inviteeId = await getOwnUserId(api, invitee);
-    await expect(
-      setUserRolesAPI(api, owner, owner.workspaceId, inviteeId, [
-        crypto.randomUUID().replace(/-/g, ''),
-      ]),
-    ).rejects.toThrow(/4\d\d/);
-  });
-
-  test('rejects POST user roles with a role from a different workspace', async ({ api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    await using otherOwner = await createUserWithWorkspace(api);
-    await using invitee = await createUserAccount(api);
-    const otherRoles = await listRolesAPI(api, otherOwner, otherOwner.workspaceId);
-    const otherRoleId = otherRoles[0].id;
-    const inviteeId = await getOwnUserId(api, invitee);
-    await expect(
-      setUserRolesAPI(api, owner, owner.workspaceId, inviteeId, [otherRoleId]),
-    ).rejects.toThrow(/4\d\d/);
   });
 });

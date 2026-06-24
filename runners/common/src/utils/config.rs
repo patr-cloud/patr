@@ -70,7 +70,12 @@ where
 		.add_source(
 			Environment::with_prefix("PATR")
 				.separator("__")
-				.convert_case(Case::Camel),
+				.convert_case(Case::Camel)
+				// Coerce env-var strings to bool/number so typed fields (e.g.
+				// the u32 `connection_limit`, the u16 `ingress_http_listen_port`)
+				// deserialize from environment overrides. Without this, a value
+				// like "5" fails with "invalid type: string, expected u32".
+				.try_parsing(true),
 		)
 		.build()?
 		.try_deserialize()

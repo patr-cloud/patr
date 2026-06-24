@@ -98,6 +98,10 @@ pub async fn list_deploy_history(
 	})
 	.collect();
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListDeploymentDeployHistoryResponse { deploys })
 		.headers(ListDeploymentDeployHistoryResponseHeaders {

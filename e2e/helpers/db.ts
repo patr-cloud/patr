@@ -95,3 +95,31 @@ export async function backdateWebLoginExpiry(loginId: string, age: string): Prom
 export async function deleteWebLogin(loginId: string): Promise<void> {
   await pool.query(`DELETE FROM web_login WHERE login_id = $1`, [loginId]);
 }
+
+// The machine type the deployment create form hardcodes (frontend new.tsx,
+// `b3cf3771-fa39-4281-bfdf-eb2e65a061b6`). UUIDs are non-hyphenated everywhere
+// in this system (the API's Uuid type rejects the hyphenated form), so this is
+// the 32-hex form — used both as the API body value and the seed (Postgres
+// accepts non-hyphenated uuid input). The e2e database ships with an empty
+// deployment_machine_type table, so any deployment create FK-fails until this
+// row exists. Seed it (idempotent).
+export const DEFAULT_MACHINE_TYPE_ID = 'b3cf3771fa394281bfdfeb2e65a061b6';
+
+export async function seedMachineType(): Promise<void> {
+  await pool.query(
+    `INSERT INTO deployment_machine_type (id, cpu_count, memory_count)
+     VALUES ($1, 1, 1024)
+     ON CONFLICT (id) DO NOTHING`,
+    [DEFAULT_MACHINE_TYPE_ID],
+  );
+}
+
+// Domain verification does a real public DNS TXT lookup which can't succeed in
+// e2e, so mark a domain verified directly (mirrors api tests'
+// mark_test_domain_verified). Required before managed URLs can be created on it.
+export async function markDomainVerified(domainId: string): Promise<void> {
+  await pool.query(
+    `UPDATE workspace_domain SET is_verified = TRUE, last_verified = NOW() WHERE id = $1`,
+    [domainId],
+  );
+}

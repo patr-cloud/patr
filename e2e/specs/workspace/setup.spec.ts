@@ -13,6 +13,7 @@ import {
   openOnboardPage,
   fillOnboardName,
   submitOnboard,
+  onboardSubmitButton,
   expectToast,
   getLastWorkspaceIdCookie,
 } from '@/helpers/ui/workspace';
@@ -260,20 +261,32 @@ test.describe('workspace setup > concurrency & UX', () => {
     await using user = await createUserAccount(api);
     await onboardWith(browser, user, async (page) => {
       await fillOnboardName(page, VALID());
-      let count = 0;
-      page.on('request', (req) => {
-        if (req.url().endsWith('/api/workspace') && req.method() === 'POST') {
-          count++;
+      let postCount = 0;
+      // Hold the create POST so its success-navigation doesn't fire during the
+      // test: the page stays on /onboard, so the suppressed second click still
+      // has a button and teardown isn't racing a navigation. fallback() keeps
+      // the context's x-real-ip route.
+      await page.route('**/api/workspace', async (route) => {
+        if (route.request().method() === 'POST') {
+          postCount += 1;
+          await new Promise((r) => setTimeout(r, 2000));
         }
+        await route.fallback();
       });
-      const respPromise = page.waitForResponse(
-        (r) => r.url().endsWith('/api/workspace') && r.request().method() === 'POST',
-        { timeout: 30_000 },
-      );
-      await Promise.all([submitOnboard(page), submitOnboard(page).catch(() => undefined)]);
-      await respPromise;
-      await page.waitForTimeout(500);
-      expect(count).toBe(1);
+
+      // First submit fires POST #1 (held) and disables the button via isLoading.
+      await submitOnboard(page);
+      // The second submit is suppressed by the isLoading guard; force the click
+      // so Playwright doesn't auto-wait for the disabled button.
+      await onboardSubmitButton(page)
+        .click({ force: true })
+        .catch(() => undefined);
+
+      // Give a stray second POST a chance to surface, then assert exactly one
+      // fired — the rapid double-submit was debounced. (The POST is still held,
+      // so the page is on /onboard and teardown is clean.)
+      await page.waitForTimeout(700);
+      expect(postCount).toBe(1);
     });
   });
 

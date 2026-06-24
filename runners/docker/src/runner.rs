@@ -46,7 +46,9 @@ impl RunnerExecutor for DockerRunner {
 	async fn initialize(
 		settings: &RunnerSettings<Self::Settings>,
 	) -> Result<Self::InitializedState, RunnerError> {
-		let docker = Docker::connect_with_local_defaults()
+		// Honors the DOCKER_HOST env var, falling back to the platform-default
+		// local socket when unset.
+		let docker = Docker::connect_with_defaults()
 			.map_err(RunnerError::host)?
 			.negotiate_version()
 			.await
@@ -83,7 +85,7 @@ impl RunnerExecutor for DockerRunner {
 					ingress: Some(false),
 					config_only: Some(false),
 					enable_ipv4: Some(true),
-					enable_ipv6: Some(true),
+					enable_ipv6: Some(settings.data.enable_ipv6),
 					labels: Some(HashMap::from([
 						("managed-by".to_string(), "patr".to_string()),
 						(

@@ -46,6 +46,10 @@ pub enum ErrorType {
 	/// The parameters sent with the request is invalid. This would ideally not
 	/// happen unless there is a bug in the client
 	WrongParameters,
+	/// A paginated list was requested with a page past the end of the result
+	/// set (a non-zero page that resolves to zero rows). The client should step
+	/// back a page.
+	PageOutOfBounds,
 	/// The API token provided is invalid
 	MalformedApiToken,
 	/// The API token provided is not allowed to access the API from the IP
@@ -143,6 +147,7 @@ impl ErrorType {
 			Self::MfaAlreadyInactive => StatusCode::CONFLICT,
 			Self::TagNotFound => StatusCode::BAD_REQUEST,
 			Self::WrongParameters => StatusCode::BAD_REQUEST,
+			Self::PageOutOfBounds => StatusCode::BAD_REQUEST,
 			Self::MalformedApiToken => StatusCode::BAD_REQUEST,
 			Self::DisallowedIpAddressForApiToken => StatusCode::UNAUTHORIZED,
 			Self::MalformedAccessToken => StatusCode::BAD_REQUEST,
@@ -195,6 +200,7 @@ impl ErrorType {
 			Self::MfaAlreadyInactive => "Two factor authentication is not enabled on your account",
 			Self::TagNotFound => "No tag exists",
 			Self::WrongParameters => "The parameters sent with that request is invalid",
+			Self::PageOutOfBounds => "The requested page is out of bounds",
 			Self::MalformedApiToken => "The API token provided is not a valid token",
 			Self::DisallowedIpAddressForApiToken => {
 				"The API token provided is not allowed from this IP address"

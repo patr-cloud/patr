@@ -1,6 +1,14 @@
 import { defineConfig } from '@playwright/test';
 import { DASHBOARD_URL } from './helpers/urls';
 
+// Which Docker versions the @docker (real-runner) suite runs against. Comma-
+// separated, default "26" so local runs use a single version; CI sets
+// DOCKER_VERSIONS=24 / 25 / 26 to shard one version per parallel job.
+const dockerVersions = (process.env.DOCKER_VERSIONS ?? '26')
+  .split(',')
+  .map((v) => v.trim())
+  .filter(Boolean);
+
 export default defineConfig({
   testDir: './specs',
   // Default to serial. The dev API + frontend stack handles concurrent test
@@ -14,9 +22,15 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'default', testIgnore: /@docker/ },
-    { name: 'docker-26', grep: /@docker/, metadata: { dockerVersion: '26' } },
-    { name: 'docker-25', grep: /@docker/, metadata: { dockerVersion: '25' } },
-    { name: 'docker-24', grep: /@docker/, metadata: { dockerVersion: '24' } },
+    // @docker is a test-title tag (set in `test.describe('… @docker')`), not a
+    // path — so exclude it by title with grepInvert (symmetric with the docker
+    // projects' title-based `grep`). testIgnore would only match file paths and
+    // would let DinD-backed tests run in the default (non-docker) shard.
+    { name: 'default', grepInvert: /@docker/ },
+    ...dockerVersions.map((v) => ({
+      name: `docker-${v}`,
+      grep: /@docker/,
+      metadata: { dockerVersion: v },
+    })),
   ],
 });

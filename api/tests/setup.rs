@@ -268,6 +268,30 @@ impl TestSetup {
 		}
 	}
 
+	/// Make a raw HTTP call to the registry TestServer (no typed endpoint).
+	///
+	/// Mirrors [`make_loki_call`] for the registry server. Used for raw-OCI
+	/// behaviors the typed `make_registry_call` can't express — an anonymous
+	/// request (no Authorization header), a native manifest DELETE, etc.
+	pub async fn make_registry_raw_call(
+		&self,
+		method: http::Method,
+		path: &str,
+		headers: Vec<(http::HeaderName, &str)>,
+		body: Vec<u8>,
+	) -> TestResponse {
+		let mut req = self.registry.method(method, path);
+		req = req.add_header(header::USER_AGENT, "cargo-test");
+		for (name, value) in headers {
+			req = req.add_header(name, value);
+		}
+		if body.is_empty() {
+			req.await
+		} else {
+			req.bytes(axum::body::Bytes::from(body)).await
+		}
+	}
+
 	/// Get the direct URL to the upstream Loki container (for querying logs).
 	pub fn upstream_loki_url(&self) -> &str {
 		&self.state.config.opentelemetry.logs.endpoint

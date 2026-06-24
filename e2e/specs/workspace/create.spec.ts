@@ -130,10 +130,14 @@ test.describe('workspace create > happy path', () => {
       await fillCreateName(page, newName);
       await submitCreateWorkspace(page);
       await expectToast(page, /Workspace created successfully/i);
-      // Navigated to /workspace; switcher should now list both.
+      // Navigated to /workspace; switcher should now list both. Creating the
+      // workspace invalidates the workspaces query, so the switcher refetches
+      // asynchronously — poll until the new workspace appears rather than reading
+      // a single (possibly pre-refetch) snapshot.
       await openWorkspaceSwitcher(page);
-      const names = await listSwitcherWorkspaceNames(page);
-      expect(names).toEqual(expect.arrayContaining([`wks-${user.username}`, newName]));
+      await expect
+        .poll(() => listSwitcherWorkspaceNames(page), { timeout: 10_000 })
+        .toEqual(expect.arrayContaining([`wks-${user.username}`, newName]));
     });
   });
 

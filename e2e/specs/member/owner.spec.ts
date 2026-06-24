@@ -1,12 +1,4 @@
-import {
-  test,
-  expect,
-  newContext,
-  createUserWithWorkspace,
-  getOwnUserId,
-  loginAs,
-  sql,
-} from '@/prelude';
+import { test, expect, newContext, createUserWithWorkspace, loginAs } from '@/prelude';
 import { openMembersPage } from '@/helpers/ui/member';
 
 test.describe('member > owner', () => {
@@ -28,17 +20,8 @@ test.describe('member > owner', () => {
     }
   });
 
-  test('records the creator as super_admin_id on the workspace row', async ({ api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    const ownerId = await getOwnUserId(api, owner);
-    const rows = await sql<{ super_admin_id: string }>(
-      `SELECT super_admin_id FROM workspace WHERE id = $1`,
-      [owner.workspaceId],
-    );
-    // node-postgres returns UUID type as hyphenated; API returns it without
-    // hyphens. Strip hyphens before comparing.
-    expect(rows[0].super_admin_id.replace(/-/g, '')).toBe(ownerId);
-  });
+  // The creator being recorded as the workspace super-admin is covered in the
+  // Rust API suite (api/tests/api/workspace/rbac/mod.rs::get_current_permissions_super_admin).
 
   test('hides the remove control on the owner row', async ({ browser, api }) => {
     // Frontend-only guard: backend currently allows DELETE on the owner

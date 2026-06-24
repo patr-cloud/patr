@@ -12,6 +12,24 @@ export async function disposeRedis(): Promise<void> {
   redis.disconnect();
 }
 
+// Helpers for the runner connection lock: `runnerConnectionLock:{runnerId}`
+// (runnerId is the non-hyphenated UUID, matching the API's id form). The value
+// is the per-connection UUID held by the connected runner; debug TTL is 5s.
+const runnerLockKey = (runnerId: string) => `runnerConnectionLock:${runnerId}`;
+
+export async function runnerLockValue(runnerId: string): Promise<string | null> {
+  return redis.get(runnerLockKey(runnerId));
+}
+
+// Remaining TTL in ms: -2 = no key, -1 = no expiry.
+export async function runnerLockPttl(runnerId: string): Promise<number> {
+  return redis.pttl(runnerLockKey(runnerId));
+}
+
+export async function deleteRunnerLock(runnerId: string): Promise<void> {
+  await redis.del(runnerLockKey(runnerId));
+}
+
 // The unhashed MFA secret lives in Redis for 5 minutes during the enable flow
 // (see api/src/routes/api.patr.cloud/user/mfa/get_mfa_secret.rs — keyed by
 // user_id via redis::user_mfa_secret). We read it so we can compute the TOTP

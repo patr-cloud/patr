@@ -1,4 +1,4 @@
-use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+use crate::{prelude::*, utils::constants::CONTAINER_REGISTRY_REPOSITORY_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Creates a new container repository in the workspace.
@@ -22,7 +22,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the repository to create.
-		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
+		#[preprocess(trim, length(min = 4, max = 255), regex = CONTAINER_REGISTRY_REPOSITORY_NAME_REGEX)]
 		pub name: String,
 	},
 	response = {

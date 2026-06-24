@@ -10,6 +10,40 @@ use models::{
 use super::helpers::*;
 use crate::prelude::*;
 
+/// An anonymous `GET /v2/` (no Authorization header) is rejected with 401, a
+/// `Bearer realm=` challenge, and the OCI `UNAUTHORIZED` error code.
+#[tokio::test]
+async fn registry_v2_anonymous_unauthorized() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup
+		.make_registry_raw_call(http::Method::GET, "/v2/", vec![], vec![])
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::UNAUTHORIZED,
+		"anonymous GET /v2/ should be 401"
+	);
+	let challenge = response
+		.maybe_header("www-authenticate")
+		.expect("expected a WWW-Authenticate header on the anonymous request");
+	assert!(
+		challenge
+			.to_str()
+			.unwrap()
+			.to_lowercase()
+			.contains("bearer realm="),
+		"expected a Bearer challenge, got {challenge:?}"
+	);
+	let body = response.json::<serde_json::Value>();
+	assert_eq!(
+		body["errors"][0]["code"].as_str(),
+		Some("UNAUTHORIZED"),
+		"expected the OCI UNAUTHORIZED error code"
+	);
+}
+
 #[tokio::test]
 async fn registry_push_without_permission() {
 	let setup = setup().await.expect("failed to setup test server");

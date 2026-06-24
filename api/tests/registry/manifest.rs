@@ -6,6 +6,114 @@ use models::rbac::WorkspacePermission;
 use super::helpers::*;
 use crate::prelude::*;
 
+/// Native OCI manifest deletion is refused — deletion goes through the Patr
+/// API, so a raw `DELETE /v2/.../manifests/{ref}` is a client error.
+#[tokio::test]
+async fn native_manifest_delete_refused() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let auth = format!("Bearer {}", api_token.token);
+	let path = format!(
+		"/v2/{}/{}/manifests/sha256:{}",
+		workspace.id,
+		repo.name,
+		"0".repeat(64)
+	);
+	let response = setup
+		.make_registry_raw_call(
+			http::Method::DELETE,
+			&path,
+			vec![(http::header::AUTHORIZATION, auth.as_str())],
+			vec![],
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"native OCI manifest DELETE should be refused, got {}",
+		response.status_code()
+	);
+}
+
+/// A supported content-type with an unparseable manifest body is rejected with
+/// 400 (the body fails to deserialize into an OCI image manifest).
+#[tokio::test]
+async fn push_manifest_malformed_body() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let response = setup
+		.push_manifest(
+			&api_token.token,
+			&workspace.id,
+			&repo.name,
+			"sometag",
+			br#"{"not":"a valid manifest"}"#,
+		)
+		.await;
+
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a malformed manifest body should be rejected with 400"
+	);
+}
+
+/// Pushing a manifest to a nonexistent repo is 404 with the OCI `NAME_UNKNOWN`
+/// error code (no auto-create).
+#[tokio::test]
+async fn push_manifest_to_nonexistent_repo() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let image = build_minimal_oci_image(0);
+	let response = setup
+		.push_manifest(
+			&api_token.token,
+			&workspace.id,
+			"does-not-exist",
+			"v1",
+			&image.manifest_bytes,
+		)
+		.await;
+
+	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+	let body = response.json::<serde_json::Value>();
+	assert_eq!(
+		body["errors"][0]["code"].as_str(),
+		Some("NAME_UNKNOWN"),
+		"expected the OCI NAME_UNKNOWN error code"
+	);
+}
+
 #[tokio::test]
 async fn push_manifest_with_tag() {
 	let setup = setup().await.expect("failed to setup test server");

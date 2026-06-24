@@ -9,15 +9,9 @@ use models::{
 	ApiSuccessResponseBody,
 	api::{
 		user::*,
-		workspace::deployment::{
-			CreateDeploymentPath,
-			CreateDeploymentRequest,
-			CreateDeploymentRequestHeaders,
-			DeploymentRegistry,
-			DeploymentRunningDetails,
-			GetDeploymentInfoPath,
-			GetDeploymentInfoRequest,
-			GetDeploymentInfoRequestHeaders,
+		workspace::{
+			deployment::*,
+			rbac::{role::*, user::*},
 		},
 	},
 	rbac::{DeploymentPermission, Permission, ResourcePermissionType, WorkspacePermission},
@@ -25,6 +19,910 @@ use models::{
 };
 
 use crate::prelude::*;
+
+/// Probe a ModifyRoles-gated action (create a role) using a raw API token.
+/// Returns the raw response so callers can assert the authz outcome.
+async fn probe_modify_roles(
+	setup: &TestSetup,
+	token: &str,
+	workspace_id: Uuid,
+	view_perm: Uuid,
+) -> axum_test::TestResponse {
+	setup
+		.make_api_call(
+			ApiRequest::<CreateNewRoleRequest>::builder()
+				.path(CreateNewRolePath { workspace_id })
+				.headers(CreateNewRoleRequestHeaders {
+					authorization: BearerToken::from_str(token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateNewRoleRequest {
+					name: random_name(8),
+					description: "cascade probe".to_string(),
+					permissions: BTreeMap::from([(
+						view_perm,
+						ResourcePermissionType::Exclude(BTreeSet::new()),
+					)]),
+				})
+				.build(),
+		)
+		.await
+}
+
+/// Call the API-token entrypoint with the given raw token (lists workspaces).
+/// Returns the raw response so callers can assert the auth outcome.
+async fn call_with_token(setup: &TestSetup, token: &str) -> axum_test::TestResponse {
+	setup
+		.make_api_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: BearerToken::from_str(token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+}
+
+/// Mint an API token via the web dashboard, returning the raw response.
+async fn mint_token_raw(
+	setup: &TestSetup,
+	token: &BearerToken,
+	permissions: BTreeMap<Uuid, WorkspacePermission>,
+	token_nbf: Option<time::OffsetDateTime>,
+	token_exp: Option<time::OffsetDateTime>,
+	allowed_ips: Option<Vec<ipnetwork::IpNetwork>>,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateApiTokenRequest>::builder()
+				.headers(CreateApiTokenRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateApiTokenRequest {
+					token: UserApiToken {
+						name: random_name(8),
+						permissions,
+						token_nbf,
+						token_exp,
+						allowed_ips,
+						created: time::OffsetDateTime::now_utc(),
+					},
+				})
+				.build(),
+		)
+		.await
+}
+
+/// A permission grant over all resources (Exclude of the empty set).
+fn all_resources() -> ResourcePermissionType {
+	ResourcePermissionType::Exclude(BTreeSet::new())
+}
+
+/// A token used after its `token_exp` is rejected at auth time (401).
+#[tokio::test]
+async fn api_token_expired_is_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let token = mint_token_raw(
+		&setup,
+		&user.access_token,
+		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		None,
+		Some(time::OffsetDateTime::now_utc() - time::Duration::minutes(1)),
+		None,
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
+	.response
+	.token;
+
+	assert_eq!(
+		401,
+		call_with_token(&setup, &token).await.status_code().as_u16(),
+		"an expired token should be rejected with 401"
+	);
+}
+
+/// A token used before its `token_nbf` is rejected at auth time (401).
+#[tokio::test]
+async fn api_token_before_nbf_is_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let token = mint_token_raw(
+		&setup,
+		&user.access_token,
+		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		Some(time::OffsetDateTime::now_utc() + time::Duration::hours(1)),
+		None,
+		None,
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
+	.response
+	.token;
+
+	assert_eq!(
+		401,
+		call_with_token(&setup, &token).await.status_code().as_u16(),
+		"a token used before its NBF should be rejected with 401"
+	);
+}
+
+/// A token whose NBF is now and EXP is far in the future is accepted.
+#[tokio::test]
+async fn api_token_valid_nbf_exp_accepted() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let token = mint_token_raw(
+		&setup,
+		&user.access_token,
+		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		Some(time::OffsetDateTime::now_utc() - time::Duration::minutes(1)),
+		Some(time::OffsetDateTime::now_utc() + time::Duration::days(7)),
+		None,
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
+	.response
+	.token;
+
+	assert!(
+		call_with_token(&setup, &token)
+			.await
+			.status_code()
+			.is_success(),
+		"a token within its NBF..EXP window should be accepted"
+	);
+}
+
+/// Minting a token with NBF later than EXP is rejected (400).
+#[tokio::test]
+async fn api_token_nbf_after_exp_rejected_on_create() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let resp = mint_token_raw(
+		&setup,
+		&user.access_token,
+		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		Some(time::OffsetDateTime::now_utc() + time::Duration::days(7)),
+		Some(time::OffsetDateTime::now_utc() + time::Duration::days(1)),
+		None,
+	)
+	.await;
+	assert_eq!(
+		400,
+		resp.status_code().as_u16(),
+		"minting a token with NBF > EXP should be 400"
+	);
+}
+
+/// A PATCH that lands the token in NBF > EXP is rejected (400).
+#[tokio::test]
+async fn api_token_nbf_after_exp_rejected_on_patch() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let id = mint_token_raw(
+		&setup,
+		&user.access_token,
+		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		None,
+		Some(time::OffsetDateTime::now_utc() + time::Duration::days(1)),
+		None,
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
+	.response
+	.id;
+
+	let resp = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateApiTokenRequest>::builder()
+				.path(UpdateApiTokenPath { token_id: id })
+				.headers(UpdateApiTokenRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateApiTokenRequest {
+					name: None,
+					permissions: None,
+					token_nbf: Some(Some(
+						time::OffsetDateTime::now_utc() + time::Duration::days(7),
+					)),
+					token_exp: None,
+					allowed_ips: None,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		resp.status_code().as_u16(),
+		"a PATCH landing NBF > EXP should be 400"
+	);
+}
+
+/// A token created with an empty `allowed_ips` list is callable (empty list is
+/// normalized to "no whitelist", not "block all").
+#[tokio::test]
+async fn api_token_empty_allowed_ips_callable() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let token = mint_token_raw(
+		&setup,
+		&user.access_token,
+		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		None,
+		None,
+		Some(vec![]),
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
+	.response
+	.token;
+
+	assert!(
+		call_with_token(&setup, &token)
+			.await
+			.status_code()
+			.is_success(),
+		"empty allowed_ips should not block the token"
+	);
+}
+
+/// A malformed token is rejected with 400.
+#[tokio::test]
+async fn api_token_malformed_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	assert_eq!(
+		400,
+		call_with_token(&setup, "patrv1.garbage")
+			.await
+			.status_code()
+			.as_u16(),
+		"a malformed token should be 400"
+	);
+}
+
+/// A well-formed but unknown token is rejected with 401.
+#[tokio::test]
+async fn api_token_unknown_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let fake = format!("patrv1.{}.{}", Uuid::nil(), Uuid::nil());
+	assert_eq!(
+		401,
+		call_with_token(&setup, &fake).await.status_code().as_u16(),
+		"a well-formed but unknown token should be 401"
+	);
+}
+
+/// A non-super-admin member cannot mint a super-admin token.
+#[tokio::test]
+async fn api_token_non_superadmin_cannot_mint_superadmin() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+
+	let perms = BTreeMap::from([(
+		setup.get_permission_id(Permission::ViewRoles),
+		all_resources(),
+	)]);
+	let role = setup
+		.create_role_with_permissions(&owner.access_token, workspace.id, perms)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
+		.await;
+
+	let resp = mint_token_raw(
+		&setup,
+		&member.access_token,
+		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		None,
+		None,
+		None,
+	)
+	.await;
+	assert!(
+		resp.status_code().is_client_error(),
+		"a member must not be able to mint a superAdmin token, got {}",
+		resp.status_code()
+	);
+}
+
+/// A member cannot mint a token granting a permission they don't hold.
+#[tokio::test]
+async fn api_token_member_cannot_exceed_creator() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+
+	// Member has only deployment::view.
+	let perms = BTreeMap::from([(
+		setup.get_permission_id(Permission::Deployment(DeploymentPermission::View)),
+		all_resources(),
+	)]);
+	let role = setup
+		.create_role_with_permissions(&owner.access_token, workspace.id, perms)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
+		.await;
+
+	// Member tries to mint a token granting deployment::delete (they lack it).
+	let delete_id = setup.get_permission_id(Permission::Deployment(DeploymentPermission::Delete));
+	let resp = mint_token_raw(
+		&setup,
+		&member.access_token,
+		BTreeMap::from([(
+			workspace.id,
+			WorkspacePermission::Member {
+				permissions: BTreeMap::from([(delete_id, all_resources())]),
+			},
+		)]),
+		None,
+		None,
+		None,
+	)
+	.await;
+	assert!(
+		resp.status_code().is_client_error(),
+		"a member token must not exceed the creator's own permissions, got {}",
+		resp.status_code()
+	);
+}
+
+/// A PATCH with an empty permissions object is rejected (400).
+#[tokio::test]
+async fn api_token_patch_empty_permissions_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let token = setup
+		.create_test_api_token(
+			&owner.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let resp = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateApiTokenRequest>::builder()
+				.path(UpdateApiTokenPath { token_id: token.id })
+				.headers(UpdateApiTokenRequestHeaders {
+					authorization: owner.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateApiTokenRequest {
+					name: None,
+					permissions: Some(BTreeMap::new()),
+					token_nbf: None,
+					token_exp: None,
+					allowed_ips: None,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		resp.status_code().as_u16(),
+		"a PATCH with empty permissions should be 400"
+	);
+}
+
+/// One user cannot delete another user's token (404), and the victim's token
+/// keeps working.
+#[tokio::test]
+async fn api_token_cross_user_delete_404() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user_a = setup.create_test_user().await;
+	let ws_a = setup.create_test_workspace(&user_a.access_token).await;
+	let user_b = setup.create_test_user().await;
+	let token_a = setup
+		.create_test_api_token(
+			&user_a.access_token,
+			BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let resp = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RevokeApiTokenRequest>::builder()
+				.path(RevokeApiTokenPath {
+					token_id: token_a.id,
+				})
+				.headers(RevokeApiTokenRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		404,
+		resp.status_code().as_u16(),
+		"deleting another user's token should be 404"
+	);
+
+	assert!(
+		call_with_token(&setup, &token_a.token)
+			.await
+			.status_code()
+			.is_success(),
+		"the victim's token should still work"
+	);
+}
+
+/// One user cannot regenerate another user's token (404).
+#[tokio::test]
+async fn api_token_cross_user_regenerate_404() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user_a = setup.create_test_user().await;
+	let ws_a = setup.create_test_workspace(&user_a.access_token).await;
+	let user_b = setup.create_test_user().await;
+	let token_a = setup
+		.create_test_api_token(
+			&user_a.access_token,
+			BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let resp = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RegenerateApiTokenRequest>::builder()
+				.path(RegenerateApiTokenPath {
+					token_id: token_a.id,
+				})
+				.headers(RegenerateApiTokenRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		404,
+		resp.status_code().as_u16(),
+		"regenerating another user's token should be 404"
+	);
+}
+
+/// A PATCH targeting another user's token (IDOR) is 404 and does not wipe the
+/// victim's permissions.
+#[tokio::test]
+async fn api_token_cross_user_patch_idor_404() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user_a = setup.create_test_user().await;
+	let ws_a = setup.create_test_workspace(&user_a.access_token).await;
+	let user_b = setup.create_test_user().await;
+	let token_a = setup
+		.create_test_api_token(
+			&user_a.access_token,
+			BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let resp = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateApiTokenRequest>::builder()
+				.path(UpdateApiTokenPath {
+					token_id: token_a.id,
+				})
+				.headers(UpdateApiTokenRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateApiTokenRequest {
+					name: None,
+					permissions: Some(BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)])),
+					token_nbf: None,
+					token_exp: None,
+					allowed_ips: None,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		404,
+		resp.status_code().as_u16(),
+		"PATCHing another user's token (IDOR) should be 404"
+	);
+
+	assert!(
+		call_with_token(&setup, &token_a.token)
+			.await
+			.status_code()
+			.is_success(),
+		"the victim's token should still work after the IDOR attempt"
+	);
+}
+
+/// A token scoped to workspace A cannot access workspace B.
+#[tokio::test]
+async fn api_token_cannot_access_other_workspace() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user_a = setup.create_test_user().await;
+	let ws_a = setup.create_test_workspace(&user_a.access_token).await;
+	let user_b = setup.create_test_user().await;
+	let ws_b = setup.create_test_workspace(&user_b.access_token).await;
+	let token_a = setup
+		.create_test_api_token(
+			&user_a.access_token,
+			BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let resp = setup
+		.make_api_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: ws_b.id,
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: BearerToken::from_str(&token_a.token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		resp.status_code().is_client_error(),
+		"a token scoped to workspace A must not access workspace B, got {}",
+		resp.status_code()
+	);
+}
+
+/// A token's permissions are trimmed when the holder's workspace roles are
+/// stripped: a ModifyRoles probe goes from success to 401.
+#[tokio::test]
+async fn api_token_perm_trimmed_on_user_role_change() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let modify = setup.get_permission_id(Permission::ModifyRoles);
+	let view = setup.get_permission_id(Permission::ViewRoles);
+
+	let role = setup
+		.create_role_with_permissions(
+			&owner.access_token,
+			workspace.id,
+			BTreeMap::from([(modify, all_resources())]),
+		)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
+		.await;
+	let token = setup
+		.create_test_api_token(
+			&member.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(modify, all_resources())]),
+				},
+			)]),
+		)
+		.await;
+
+	assert!(
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.is_success(),
+		"token should be able to modify roles before the trim"
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: member.user_id,
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: owner.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest { roles: vec![] })
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(
+			UpdateUserRolesInWorkspaceResponse,
+		));
+
+	assert_eq!(
+		401,
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.as_u16(),
+		"after the role is stripped the token should lose ModifyRoles"
+	);
+}
+
+/// Deleting the role (remove_users=true) that was a token holder's sole source
+/// of a permission trims the token on its next use.
+#[tokio::test]
+async fn api_token_perm_trimmed_on_role_delete() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let modify = setup.get_permission_id(Permission::ModifyRoles);
+	let view = setup.get_permission_id(Permission::ViewRoles);
+
+	let role = setup
+		.create_role_with_permissions(
+			&owner.access_token,
+			workspace.id,
+			BTreeMap::from([(modify, all_resources())]),
+		)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
+		.await;
+	let token = setup
+		.create_test_api_token(
+			&member.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(modify, all_resources())]),
+				},
+			)]),
+		)
+		.await;
+
+	assert!(
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.is_success()
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteRoleRequest>::builder()
+				.path(DeleteRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.query(DeleteRoleQuery { remove_users: true })
+				.headers(DeleteRoleRequestHeaders {
+					authorization: owner.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(DeleteRoleResponse));
+
+	assert_eq!(
+		401,
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.as_u16(),
+		"deleting the role with remove_users should trim the token"
+	);
+}
+
+/// Monotonic shrink: promoting a member does NOT widen an existing token.
+#[tokio::test]
+async fn api_token_does_not_widen_on_promotion() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let modify = setup.get_permission_id(Permission::ModifyRoles);
+	let view = setup.get_permission_id(Permission::ViewRoles);
+
+	let read_only = setup
+		.create_role_with_permissions(
+			&owner.access_token,
+			workspace.id,
+			BTreeMap::from([(view, all_resources())]),
+		)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, read_only.id)
+		.await;
+	let token = setup
+		.create_test_api_token(
+			&member.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(view, all_resources())]),
+				},
+			)]),
+		)
+		.await;
+
+	let write_role = setup
+		.create_role_with_permissions(
+			&owner.access_token,
+			workspace.id,
+			BTreeMap::from([(view, all_resources()), (modify, all_resources())]),
+		)
+		.await;
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: member.user_id,
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: owner.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest {
+					roles: vec![write_role.id],
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(
+			UpdateUserRolesInWorkspaceResponse,
+		));
+
+	assert_eq!(
+		401,
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.as_u16(),
+		"promoting the member must not widen the existing token"
+	);
+}
+
+/// PATCHing a token to a narrower permission set revokes the dropped action.
+#[tokio::test]
+async fn api_token_patch_revokes_access() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let modify = setup.get_permission_id(Permission::ModifyRoles);
+	let view = setup.get_permission_id(Permission::ViewRoles);
+
+	let token = setup
+		.create_test_api_token(
+			&owner.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(modify, all_resources())]),
+				},
+			)]),
+		)
+		.await;
+
+	assert!(
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.is_success()
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateApiTokenRequest>::builder()
+				.path(UpdateApiTokenPath { token_id: token.id })
+				.headers(UpdateApiTokenRequestHeaders {
+					authorization: owner.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateApiTokenRequest {
+					name: None,
+					permissions: Some(BTreeMap::from([(
+						workspace.id,
+						WorkspacePermission::Member {
+							permissions: BTreeMap::from([(view, all_resources())]),
+						},
+					)])),
+					token_nbf: None,
+					token_exp: None,
+					allowed_ips: None,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateApiTokenResponse));
+
+	assert_eq!(
+		401,
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.as_u16(),
+		"after the PATCH narrows perms the token should lose ModifyRoles"
+	);
+}
+
+/// A token name frees up once the token is revoked and can be reused.
+#[tokio::test]
+async fn api_token_name_reusable_after_revoke() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let name = random_name(8);
+	let perms = BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]);
+
+	let first = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateApiTokenRequest>::builder()
+				.headers(CreateApiTokenRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateApiTokenRequest {
+					token: UserApiToken {
+						name: name.clone(),
+						permissions: perms.clone(),
+						token_nbf: None,
+						token_exp: None,
+						allowed_ips: None,
+						created: time::OffsetDateTime::now_utc(),
+					},
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
+		.response;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<RevokeApiTokenRequest>::builder()
+				.path(RevokeApiTokenPath { token_id: first.id })
+				.headers(RevokeApiTokenRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(RevokeApiTokenResponse));
+
+	let second = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateApiTokenRequest>::builder()
+				.headers(CreateApiTokenRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateApiTokenRequest {
+					token: UserApiToken {
+						name,
+						permissions: perms,
+						token_nbf: None,
+						token_exp: None,
+						allowed_ips: None,
+						created: time::OffsetDateTime::now_utc(),
+					},
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		second.status_code().is_success(),
+		"a token name should be reusable after the previous token is revoked, got {}",
+		second.status_code()
+	);
+}
 
 #[tokio::test]
 async fn create_api_token_works() {

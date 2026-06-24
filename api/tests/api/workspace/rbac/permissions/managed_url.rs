@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use models::{
+	ApiSuccessResponseBody,
 	api::workspace::managed_url::*,
 	rbac::{ManagedURLPermission, Permission},
 };
@@ -283,6 +284,130 @@ async fn managed_url_delete_exclude_denies_only_listed_resource() {
 		)
 		.await;
 	assert!(r1.status_code().is_success(), "url1 should be deletable");
+}
+
+/// View does not imply Verify: a view-only member cannot verify a managed URL.
+#[tokio::test]
+async fn managed_url_view_does_not_grant_verify() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	setup.mark_test_domain_verified(domain.id).await;
+	let url_id = setup
+		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(
+		setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::View)),
+		all(),
+	);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<VerifyManagedURLConfigurationRequest>::builder()
+				.path(VerifyManagedURLConfigurationPath {
+					workspace_id: workspace.id,
+					managed_url_id: url_id,
+				})
+				.headers(VerifyManagedURLConfigurationRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"view-only member should not be able to verify (requires managedURL::verify)"
+	);
+}
+
+/// A member with no managedURL permission gets a membership-gated list that
+/// succeeds but is View-filtered to empty — not a 403.
+#[tokio::test]
+async fn managed_url_no_permission_list_returns_empty() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	setup.mark_test_domain_verified(domain.id).await;
+	let _url_id = setup
+		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
+		.await;
+
+	let mut perms = BTreeMap::new();
+	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListManagedURLRequest>::builder()
+				.path(ListManagedURLPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListManagedURLRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListManagedURLResponse>>();
+	assert!(
+		response.response.urls.is_empty(),
+		"a member without managedURL View should see an empty list, not a 403"
+	);
+}
+
+/// A non-member cannot reach another workspace's managed URLs at all.
+#[tokio::test]
+async fn managed_url_non_member_denied() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	setup.mark_test_domain_verified(domain.id).await;
+	let _url_id = setup
+		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
+		.await;
+	let outsider = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListManagedURLRequest>::builder()
+				.path(ListManagedURLPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListManagedURLRequestHeaders {
+					authorization: outsider.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"a non-member should be denied access to the workspace's managed URLs"
+	);
 }
 
 #[tokio::test]

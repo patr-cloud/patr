@@ -1,4 +1,11 @@
-use models::{ApiSuccessResponseBody, api::workspace::deployment::deploy_history::*, utils::Uuid};
+use std::collections::{BTreeMap, BTreeSet};
+
+use models::{
+	ApiSuccessResponseBody,
+	api::workspace::deployment::{deploy_history::*, *},
+	rbac::{DeploymentPermission, Permission, ResourcePermissionType},
+	utils::{ListResourceQuery, Uuid},
+};
 
 use crate::prelude::*;
 
@@ -263,6 +270,285 @@ async fn revert_deployment_nonexistent_digest() {
 	assert!(
 		response.status_code().is_client_error(),
 		"reverting to an unknown digest should fail"
+	);
+}
+
+#[tokio::test]
+async fn list_deploy_history_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	seed_deploy_history(
+		&setup,
+		deployment.id,
+		repo.id,
+		"sha256:1111111111111111111111111111111111111111111111111111111111111111",
+		"1 hour",
+	)
+	.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentDeployHistoryRequest>::builder()
+				.path(ListDeploymentDeployHistoryPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListDeploymentDeployHistoryRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
+	);
+}
+
+#[tokio::test]
+async fn revert_deployment_sets_current_live_digest() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let digest = "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+	seed_deploy_history(&setup, deployment.id, repo.id, digest, "30 minutes").await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<RevertDeploymentRequest>::builder()
+				.path(RevertDeploymentPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+					image_digest: digest.to_string(),
+				})
+				.headers(RevertDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(RevertDeploymentResponse));
+
+	let info = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>();
+	assert_eq!(
+		info.response.deployment.current_live_digest.as_deref(),
+		Some(digest),
+		"revert should set current_live_digest"
+	);
+}
+
+#[tokio::test]
+async fn delete_current_live_digest_entry_fk_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let digest = "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+	seed_deploy_history(&setup, deployment.id, repo.id, digest, "10 minutes").await;
+
+	// Make this digest the current live one.
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<RevertDeploymentRequest>::builder()
+				.path(RevertDeploymentPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+					image_digest: digest.to_string(),
+				})
+				.headers(RevertDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(RevertDeploymentResponse));
+
+	// deployment.current_live_digest FKs the history row → delete hits the FK.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteDeploymentDeployHistoryRequest>::builder()
+				.path(DeleteDeploymentDeployHistoryPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+					image_digest: digest.to_string(),
+				})
+				.headers(DeleteDeploymentDeployHistoryRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_server_error(),
+		"deleting the current-live-digest entry should hit the FK → 500, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn deploy_history_list_requires_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
+		.await;
+
+	// A member with deployment::create (but not view) cannot list history.
+	let perms = BTreeMap::from([(
+		setup.get_permission_id(Permission::Deployment(DeploymentPermission::Create)),
+		ResourcePermissionType::Exclude(BTreeSet::new()),
+	)]);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentDeployHistoryRequest>::builder()
+				.path(ListDeploymentDeployHistoryPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+				})
+				.headers(ListDeploymentDeployHistoryRequestHeaders {
+					authorization: member.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"listing deploy-history requires deployment::view"
+	);
+}
+
+#[tokio::test]
+async fn deploy_history_revert_delete_require_edit() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&admin.access_token, workspace.id)
+		.await;
+	let digest = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+	seed_deploy_history(&setup, deployment.id, repo.id, digest, "10 minutes").await;
+
+	// A view-only member cannot revert or delete history (both need edit).
+	let perms = BTreeMap::from([(
+		setup.get_permission_id(Permission::Deployment(DeploymentPermission::View)),
+		ResourcePermissionType::Exclude(BTreeSet::new()),
+	)]);
+	let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let revert = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RevertDeploymentRequest>::builder()
+				.path(RevertDeploymentPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+					image_digest: digest.to_string(),
+				})
+				.headers(RevertDeploymentRequestHeaders {
+					authorization: member.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		revert.status_code().is_client_error(),
+		"revert requires deployment::edit"
+	);
+
+	let delete = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteDeploymentDeployHistoryRequest>::builder()
+				.path(DeleteDeploymentDeployHistoryPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+					image_digest: digest.to_string(),
+				})
+				.headers(DeleteDeploymentDeployHistoryRequestHeaders {
+					authorization: member.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		delete.status_code().is_client_error(),
+		"delete history requires deployment::edit"
 	);
 }
 

@@ -149,7 +149,7 @@ pub async fn add_domain_to_workspace(
 			let zone = client
 				.request(&ListZones {
 					params: ListZonesParams {
-						name: Some(domain.clone()),
+						name: Some(domain.to_string()),
 						search_match: Some(SearchMatch::Any),
 						..Default::default()
 					},
@@ -175,7 +175,7 @@ pub async fn add_domain_to_workspace(
 			let zone_identifier = client
 				.request(&ListZones {
 					params: ListZonesParams {
-						name: Some(domain.clone()),
+						name: Some(domain.to_string()),
 						search_match: Some(SearchMatch::Any),
 						..Default::default()
 					},

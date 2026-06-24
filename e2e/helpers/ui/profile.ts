@@ -122,7 +122,7 @@ export async function getRecoveryEmailValue(page: Page): Promise<string> {
 
 // The Update button on /profile is also used by other forms ("Update Password",
 // 2FA modal). Scope to the form that contains #first-name.
-function nameUpdateButton(page: Page) {
+export function nameUpdateButton(page: Page) {
   return page
     .locator('form')
     .filter({ has: page.locator('#first-name') })

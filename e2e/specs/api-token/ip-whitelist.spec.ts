@@ -1,13 +1,4 @@
-import {
-  test,
-  expect,
-  newContext,
-  createUserWithWorkspace,
-  createApiTokenAPI,
-  callWithApiToken,
-  loginAs,
-  sql,
-} from '@/prelude';
+import { test, expect, newContext, createUserWithWorkspace, loginAs, sql } from '@/prelude';
 import {
   openNewTokenPage,
   fillTokenName,
@@ -16,6 +7,10 @@ import {
   selectSuperAdminRadio,
   clickCreateToken,
 } from '@/helpers/ui/api-token';
+
+// IP-whitelist enforcement at the API layer (/32 match, mismatch → 401, CIDR
+// block, empty list normalization) lives in the Rust API suite
+// (api/tests/api/user/api_token.rs). Here we cover the IP/CIDR chip editor UI.
 
 async function withCreate(
   browser: import('@playwright/test').Browser,
@@ -32,41 +27,6 @@ async function withCreate(
     await context.close();
   }
 }
-
-test.describe('api token > IP whitelist enforcement', () => {
-  test('allows the request when the client IP matches a /32 allowed entry', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    const t = await createApiTokenAPI(api, user, {
-      permissions: { [user.workspaceId]: { type: 'superAdmin' } },
-      allowedIps: ['10.0.0.5/32'],
-    });
-    const r = await callWithApiToken(api, t.token, { clientIp: '10.0.0.5' });
-    expect(r.status).toBe(200);
-  });
-
-  test('rejects the request when the client IP is outside the /32 allowed entry', async ({
-    api,
-  }) => {
-    await using user = await createUserWithWorkspace(api);
-    const t = await createApiTokenAPI(api, user, {
-      permissions: { [user.workspaceId]: { type: 'superAdmin' } },
-      allowedIps: ['10.0.0.5/32'],
-    });
-    const r = await callWithApiToken(api, t.token, { clientIp: '10.0.0.6' });
-    expect(r.status).toBe(401);
-    expect(JSON.stringify(r.body).toLowerCase()).toMatch(/disallowed|ip address/);
-  });
-
-  test('allows any IP within an allowed CIDR block', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    const t = await createApiTokenAPI(api, user, {
-      permissions: { [user.workspaceId]: { type: 'superAdmin' } },
-      allowedIps: ['10.0.0.0/24'],
-    });
-    const r = await callWithApiToken(api, t.token, { clientIp: '10.0.0.99' });
-    expect(r.status).toBe(200);
-  });
-});
 
 test.describe('api token > IP/CIDR client validation', () => {
   test('commits an IP chip on Enter', async ({ browser, api }) => {

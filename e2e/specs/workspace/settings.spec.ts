@@ -280,22 +280,8 @@ test.describe('workspace settings > rename', () => {
     });
   });
 
-  test('rejects PATCH from a member without editWorkspace permission', async ({ api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    await using member = await createUserAccount(api);
-    const roles = await listRolesAPI(api, owner, owner.workspaceId);
-    const viewerRole = roles.find((r) => /Workspace: Viewer/i.test(r.name));
-    expect(viewerRole).toBeTruthy();
-    await addMemberToWorkspace(api, owner, owner.workspaceId, member, [viewerRole!.id]);
-
-    await expect(
-      api.request('PATCH', `/workspace/${owner.workspaceId}`, {
-        token: member.accessToken,
-        clientIp: member.clientIp,
-        body: { name: VALID() },
-      }),
-    ).rejects.toThrow(/401|403/);
-  });
+  // PATCH-without-editWorkspace gating is covered in the Rust API suite
+  // (api/tests/api/workspace/mod.rs::update_workspace_denied_without_edit_permission).
 
   test('fires exactly one PATCH on a rapid double-click of Update', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);

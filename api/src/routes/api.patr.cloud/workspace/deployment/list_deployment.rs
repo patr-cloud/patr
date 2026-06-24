@@ -121,6 +121,10 @@ pub async fn list_deployment(
 	})
 	.collect();
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListDeploymentResponse { deployments })
 		.headers(ListDeploymentResponseHeaders {

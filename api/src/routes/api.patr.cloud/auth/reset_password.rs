@@ -11,11 +11,7 @@ use models::api::auth::*;
 use rustis::commands::StringCommands as _;
 use time::OffsetDateTime;
 
-use crate::{
-	prelude::*,
-	redis::keys as redis,
-	utils::cloudflare::validate_turnstile_token,
-};
+use crate::{prelude::*, redis::keys as redis, utils::cloudflare::validate_turnstile_token};
 
 pub async fn reset_password(
 	AppRequest {

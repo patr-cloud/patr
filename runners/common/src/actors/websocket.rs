@@ -515,7 +515,7 @@ where
 	let mut page: usize = 0;
 
 	loop {
-		let response = client::make_request(
+		let response = match client::make_request(
 			ApiRequest::<ListDeploymentRequest>::builder()
 				.path(ListDeploymentPath { workspace_id })
 				.query(ListResourceQuery {
@@ -533,7 +533,13 @@ where
 				.build(),
 		)
 		.await
-		.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?;
+		{
+			Ok(response) => response,
+			// Paginating past the last page returns PageOutOfBounds — that's the
+			// normal end-of-list signal during resync, not a failure.
+			Err(err) if matches!(err.body.error, ErrorType::PageOutOfBounds) => break,
+			Err(err) => return Err(RunnerError::UpstreamServerError(err.body.error).into()),
+		};
 
 		if page * ListResourceQuery::DEFAULT_PAGE_SIZE >= response.headers.total_count.0 as usize {
 			break;

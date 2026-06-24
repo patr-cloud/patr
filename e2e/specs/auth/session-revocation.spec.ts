@@ -11,12 +11,7 @@ import {
   readMfaSetupSecret,
   computeTotp,
 } from '@/prelude';
-import {
-  openLoginPage,
-  fillLoginForm,
-  submitLogin,
-  waitForLoggedIn,
-} from '@/helpers/ui/login';
+import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 import {
   openProfile,
   openMfaModal,
@@ -113,9 +108,9 @@ test.describe('credential change revokes other sessions', () => {
       const secret = await readMfaSetupSecret(owner.username);
       await fillMfaModalOtp(pageA, computeTotp(secret));
       await submitMfaModal(pageA);
-      await expect(
-        pageA.getByText(/Two-Factor Authentication enabled/i),
-      ).toBeVisible({ timeout: 10_000 });
+      await expect(pageA.getByText(/Two-Factor Authentication enabled/i)).toBeVisible({
+        timeout: 10_000,
+      });
 
       // MFA toggles never revoke tokens — the helper only touches web logins.
       const tokenResp = await callWithApiToken(api, token.token, {

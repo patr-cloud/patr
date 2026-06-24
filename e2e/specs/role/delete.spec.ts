@@ -5,7 +5,6 @@ import {
   createUserAccount,
   createUserWithWorkspace,
   createRoleAPI,
-  deleteRoleAPI,
   getPermissionId,
   addMemberToWorkspace,
   loginAs,
@@ -17,6 +16,10 @@ import {
   confirmDeleteRoleModal,
   expectToast,
 } from '@/helpers/ui/role';
+
+// Role delete at the API layer (remove_users=true cascade, in-use → 409,
+// nonexistent) lives in the Rust API suite (api/tests/api/workspace/rbac/mod.rs).
+// Here we cover the delete-via-dashboard flow.
 
 async function withUI(
   browser: import('@playwright/test').Browser,
@@ -51,7 +54,7 @@ async function makeRole(
   });
 }
 
-test.describe('role > delete', () => {
+test.describe('role > delete [UI]', () => {
   test('deletes an unused role via UI and removes the DB row', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);
     const name = `del-${Date.now().toString(36)}`;
@@ -83,26 +86,6 @@ test.describe('role > delete', () => {
     });
     const rows = await sql<{ id: string }>(`SELECT id FROM role WHERE id = $1`, [role.id]);
     expect(rows.length).toBe(1);
-  });
-
-  test('removes assigned users when deleted via API with remove_users=true', async ({ api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    const role = await makeRole(api, owner, `rm-${Date.now().toString(36)}`);
-    await using member = await createUserAccount(api);
-    await addMemberToWorkspace(api, owner, owner.workspaceId, member, [role.id]);
-    await deleteRoleAPI(api, owner, owner.workspaceId, role.id, { removeUsers: true });
-    const wuRows = await sql(`SELECT 1 FROM workspace_user WHERE role_id = $1`, [role.id]);
-    expect(wuRows.length).toBe(0);
-    const roleRows = await sql(`SELECT id FROM role WHERE id = $1`, [role.id]);
-    expect(roleRows.length).toBe(0);
-  });
-
-  test('rejects an in-use role delete via API without remove_users with 409', async ({ api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    const role = await makeRole(api, owner, `inUseApi-${Date.now().toString(36)}`);
-    await using member = await createUserAccount(api);
-    await addMemberToWorkspace(api, owner, owner.workspaceId, member, [role.id]);
-    await expect(deleteRoleAPI(api, owner, owner.workspaceId, role.id)).rejects.toThrow(/409/);
   });
 
   test('keeps the role intact when the delete modal is dismissed', async ({ browser, api }) => {

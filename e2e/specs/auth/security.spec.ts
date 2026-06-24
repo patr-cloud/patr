@@ -12,70 +12,9 @@ import { openConfirmSignup, fillOtp, submitConfirm } from '@/helpers/ui/confirm'
 import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 import { openProfile } from '@/helpers/ui/profile';
 
-test.describe('security — XSS payloads in name fields rejected at ingest', () => {
-  test('signup rejects a script-tag firstName with 400', async ({ api }) => {
-    const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
-    const username = `xssuser${suffix}`;
-    const clientIp = (await import('@/helpers/ip')).randomIPv4();
-    await expect(
-      api.request('POST', '/auth/sign-up', {
-        clientIp,
-        body: {
-          username,
-          password: 'E2eTest!1Password',
-          firstName: `<script>window.__pwned=true</script>`,
-          lastName: 'User',
-          recoveryMethod: { recoveryEmail: `${username}@example.com` },
-          cfTurnstileToken: TURNSTILE_TOKEN,
-        },
-      }),
-    ).rejects.toThrow(/400/);
-  });
-
-  test('signup rejects an HTML-bracket lastName with 400', async ({ api }) => {
-    const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
-    const username = `xssuser${suffix}`;
-    const clientIp = (await import('@/helpers/ip')).randomIPv4();
-    await expect(
-      api.request('POST', '/auth/sign-up', {
-        clientIp,
-        body: {
-          username,
-          password: 'E2eTest!1Password',
-          firstName: 'Ada',
-          lastName: '<img onerror=foo()>',
-          recoveryMethod: { recoveryEmail: `${username}@example.com` },
-          cfTurnstileToken: TURNSTILE_TOKEN,
-        },
-      }),
-    ).rejects.toThrow(/400/);
-  });
-});
-
-test.describe('security — SQLi payloads handled as opaque strings', () => {
-  test('SQLi in login userId does not crash the server', async ({ api }) => {
-    // Frontend pattern rejects this shape before it leaves the browser, so
-    // drive the API directly to verify the backend backstop. Whatever the
-    // status code (400 from validator or 401 from handler), the server must
-    // not 5xx.
-    let status = 0;
-    try {
-      await api.request('POST', '/auth/sign-in', {
-        clientIp: (await import('@/helpers/ip')).randomIPv4(),
-        body: {
-          userId: '\'; DROP TABLE "user"; --',
-          password: 'E2eTest!1Password',
-          cfTurnstileToken: TURNSTILE_TOKEN,
-        },
-      });
-    } catch (err) {
-      const match = String((err as Error).message).match(/(\d{3})/);
-      status = match ? Number(match[1]) : 0;
-    }
-    expect(status).toBeGreaterThanOrEqual(400);
-    expect(status).toBeLessThan(500);
-  });
-});
+// XSS-in-name and SQLi-in-userId ingest rejection are API-contract behaviors
+// covered in the Rust API suite (api/tests/api/auth.rs). The dashboard-side
+// security surface (cookie tampering, autocomplete attributes) stays here.
 
 test.describe('security — cookie tampering', () => {
   test('garbage authState cookie → SPA treats as logged out', async ({ browser, api }) => {

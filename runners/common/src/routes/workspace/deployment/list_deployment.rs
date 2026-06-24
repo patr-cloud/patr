@@ -1,5 +1,8 @@
 use http::StatusCode;
-use models::{api::workspace::deployment::*, utils::Uuid};
+use models::{
+	api::workspace::deployment::*,
+	utils::{ListResourceQueryProcessed, Uuid},
+};
 
 use crate::prelude::*;
 
@@ -11,7 +14,7 @@ pub async fn list_deployment(
 			ProcessedApiRequest {
 				path: ListDeploymentPath { workspace_id: _ },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search: filter,
 						count,

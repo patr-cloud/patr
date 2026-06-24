@@ -150,7 +150,10 @@ where
 					};
 
 					// Additionally, check that the resource actually exists in the (right)
-					// workspace.
+					// workspace. Soft-deleted resources are treated as non-existent so
+					// that operations on a deleted id are denied (401) exactly like a
+					// never-created id — i.e. the API never leaks whether an id once
+					// existed.
 					let resource = query!(
 						r#"
 						SELECT
@@ -159,7 +162,8 @@ where
 						FROM
 							resource
 						WHERE
-							id = $1;
+							id = $1 AND
+							deleted IS NULL;
 						"#,
 						resource_id as _
 					)

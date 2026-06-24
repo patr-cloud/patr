@@ -92,6 +92,23 @@ pub async fn delete_repository(
 	.execute(&mut **database)
 	.await?;
 
+	// Mark the resource as deleted so any subsequent access to this id is denied
+	// (401) like a never-created id — matching every other delete handler and
+	// keeping the audit-log FK intact (the resource row is kept, not removed).
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			deleted = NOW()
+		WHERE
+			id = $1;
+		"#,
+		repository_id as _
+	)
+	.execute(&mut **database)
+	.await?;
+
 	AppResponse::builder()
 		.body(DeleteContainerRepositoryResponse)
 		.headers(())

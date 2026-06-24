@@ -14,8 +14,9 @@ macros::declare_api_endpoint!(
 		pub user_agent: UserAgent,
 	},
 	query = {
-		/// The domain that has to be verified
-		#[preprocess(trim, domain)]
+		/// The domain that has to be verified. Lowercased so validity matches what
+		/// add_domain will store (domains are case-insensitive).
+		#[preprocess(trim, lowercase, domain)]
 		pub domain: String,
 	},
 	authentication = {

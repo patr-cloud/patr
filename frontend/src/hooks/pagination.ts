@@ -1,4 +1,4 @@
-import { createSignal, type Accessor } from "solid-js";
+import { createEffect, createSignal, type Accessor } from "solid-js";
 
 export interface PaginationState {
 	/** The current 0-indexed page number */
@@ -96,6 +96,30 @@ const createPaginationState = (opts: {
 	};
 
 	return { page, count, totalCount, totalPages, canPrev, canNext, setPage, setCount, setTotalCount };
+};
+
+/**
+ * When a list query lands on an out-of-bounds page (the API returns
+ * `pageOutOfBounds` — e.g. items were deleted while we were on a later page),
+ * step back one page instead of surfacing an error. Stepping back re-queries;
+ * if that page is also out of bounds it steps back again, converging on the
+ * last page that has rows (or page 0, which never reports out-of-bounds).
+ *
+ * @param isError       the list query's `isError` accessor
+ * @param errorMessage  the list query's `error?.message` accessor (the API
+ *                      error code thrown by the fetch hook)
+ * @param pagination    the pagination state to step back
+ */
+export const recoverFromOutOfBounds = (
+	isError: () => boolean,
+	errorMessage: () => string | undefined,
+	pagination: PaginationState
+): void => {
+	createEffect(() => {
+		if (isError() && errorMessage() === "pageOutOfBounds" && pagination.page() > 0) {
+			pagination.setPage(pagination.page() - 1);
+		}
+	});
 };
 
 export default createPaginationState;

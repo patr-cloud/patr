@@ -120,37 +120,8 @@ test.describe('login — server-side rejection', () => {
     });
   });
 
-  test('SQLi attempt in user_id is rejected by the API (400 from validator)', async ({ api }) => {
-    // The frontend's validateUsernameOrEmail gates this before submit, so we
-    // drive the API directly to verify the backend backstop.
-    await expect(
-      api.request('POST', '/auth/sign-in', {
-        clientIp: (await import('@/helpers/ip')).randomIPv4(),
-        body: {
-          userId: "admin' OR 1=1--",
-          password: 'E2eTest!1Password',
-          cfTurnstileToken: TURNSTILE_TOKEN,
-        },
-      }),
-    ).rejects.toThrow(/4\d\d/);
-  });
-});
-
-test.describe('login — case sensitivity', () => {
-  test('uppercase username is rejected by the API (case-sensitive)', async ({ api }) => {
-    await using user = await createUserAccount(api);
-    // Frontend pattern rejects uppercase too, so drive API directly.
-    await expect(
-      api.request('POST', '/auth/sign-in', {
-        clientIp: user.clientIp,
-        body: {
-          userId: user.username.toUpperCase(),
-          password: user.password,
-          cfTurnstileToken: TURNSTILE_TOKEN,
-        },
-      }),
-    ).rejects.toThrow(/4\d\d/);
-  });
+  // SQLi-in-userId and case-sensitive-username rejection are API-contract
+  // behaviors covered in the Rust API suite (api/tests/api/auth.rs).
 });
 
 test.describe('login — concurrency & state', () => {

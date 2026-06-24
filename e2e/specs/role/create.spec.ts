@@ -3,8 +3,6 @@ import {
   expect,
   newContext,
   createUserWithWorkspace,
-  createRoleAPI,
-  getPermissionId,
   getRoleAPI,
   listRolesAPI,
   loginAs,
@@ -18,6 +16,10 @@ import {
   submitCreateRole,
   expectToast,
 } from '@/helpers/ui/role';
+
+// Role create at the API layer (include/exclude scope, multiple permissions,
+// name/duplicate/length validation) lives in the Rust API suite
+// (api/tests/api/workspace/rbac/mod.rs). Here we cover the create form.
 
 async function withUI(
   browser: import('@playwright/test').Browser,
@@ -55,44 +57,6 @@ test.describe('role > create', () => {
     expect(Object.keys(detail.permissions).length).toBeGreaterThanOrEqual(1);
   });
 
-  test('creates a role with an include-specific scope (API)', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    const deployId = await getPermissionId(
-      api,
-      user.accessToken,
-      user.workspaceId,
-      user.clientIp,
-      'deployment::view',
-    );
-    // The workspace itself is a resource row, so its id satisfies the
-    // resource FK without needing to spin up a real deployment.
-    const role = await createRoleAPI(api, user, user.workspaceId, {
-      name: `inc-${Date.now().toString(36)}`,
-      permissions: {
-        [deployId]: { permissionType: 'include', resources: [user.workspaceId] },
-      },
-    });
-    const detail = await getRoleAPI(api, user, user.workspaceId, role.id);
-    expect(detail.permissions[deployId].permissionType).toBe('include');
-  });
-
-  test('creates a role with an exclude-specific scope (API)', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    const id = await getPermissionId(
-      api,
-      user.accessToken,
-      user.workspaceId,
-      user.clientIp,
-      'deployment::view',
-    );
-    const role = await createRoleAPI(api, user, user.workspaceId, {
-      name: `exc-${Date.now().toString(36)}`,
-      permissions: { [id]: { permissionType: 'exclude', resources: [] } },
-    });
-    const detail = await getRoleAPI(api, user, user.workspaceId, role.id);
-    expect(detail.permissions[id]).toBeTruthy();
-  });
-
   test('creates a workspace-level modifyRoles role via UI', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);
     const roleName = `ws-${Date.now().toString(36)}`;
@@ -105,33 +69,6 @@ test.describe('role > create', () => {
     });
     const roles = await listRolesAPI(api, user, user.workspaceId);
     expect(roles.find((r) => r.name === roleName)).toBeTruthy();
-  });
-
-  test('creates a role with multiple permissions (API)', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    const viewId = await getPermissionId(
-      api,
-      user.accessToken,
-      user.workspaceId,
-      user.clientIp,
-      'deployment::view',
-    );
-    const editId = await getPermissionId(
-      api,
-      user.accessToken,
-      user.workspaceId,
-      user.clientIp,
-      'deployment::edit',
-    );
-    const role = await createRoleAPI(api, user, user.workspaceId, {
-      name: `multi-${Date.now().toString(36)}`,
-      permissions: {
-        [viewId]: { permissionType: 'exclude', resources: [] },
-        [editId]: { permissionType: 'exclude', resources: [] },
-      },
-    });
-    const detail = await getRoleAPI(api, user, user.workspaceId, role.id);
-    expect(Object.keys(detail.permissions).length).toBe(2);
   });
 
   test('routes to the new-role page from the header link', async ({ browser, api }) => {

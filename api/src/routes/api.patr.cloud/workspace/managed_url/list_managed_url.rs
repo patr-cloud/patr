@@ -153,6 +153,10 @@ pub async fn list_managed_url(
 	})
 	.collect::<Result<_, ErrorType>>()?;
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListManagedURLResponse { urls })
 		.headers(ListManagedURLResponseHeaders {

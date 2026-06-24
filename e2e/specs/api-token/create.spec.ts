@@ -69,56 +69,8 @@ test.describe('api token > create', () => {
     expect(r.status).toBe(200);
   });
 
-  test('authenticates with a member-scoped token created via API', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    // Resolve a single permission id (deployment::view) for a member token.
-    const perms = await api.request<{ permissions: { id: string; name: string }[] }>(
-      'GET',
-      `/workspace/${user.workspaceId}/rbac/permission`,
-      { token: user.accessToken, clientIp: user.clientIp },
-    );
-    const viewPermId = perms.permissions.find((p) => p.name === 'deployment::view')?.id;
-    expect(viewPermId).toBeTruthy();
-    // For test 8 we use the API directly (UI's PermissionSelector is rich and
-    // out of scope here; test 6/7 cover the super-admin UI path). The goal is
-    // to prove a member token created via API also works.
-    const token = await createApiTokenAPI(api, user, {
-      permissions: {
-        [user.workspaceId]: {
-          type: 'member',
-          [viewPermId!]: { permissionType: 'exclude', resources: [] },
-        } as any,
-      },
-    });
-    const r = await callWithApiToken(api, token.token, { clientIp: user.clientIp });
-    expect(r.status).toBe(200);
-  });
-
-  test('denies an action that the member token does not have permission for', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    const perms = await api.request<{ permissions: { id: string; name: string }[] }>(
-      'GET',
-      `/workspace/${user.workspaceId}/rbac/permission`,
-      { token: user.accessToken, clientIp: user.clientIp },
-    );
-    const viewId = perms.permissions.find((p) => p.name === 'deployment::view')!.id;
-    const token = await createApiTokenAPI(api, user, {
-      permissions: {
-        [user.workspaceId]: {
-          type: 'member',
-          [viewId]: { permissionType: 'exclude', resources: [] },
-        } as any,
-      },
-    });
-    // Try to call an endpoint requiring deployment::create — POST a deployment.
-    const r = await callWithApiToken(api, token.token, {
-      clientIp: user.clientIp,
-      method: 'POST',
-      path: `/workspace/${user.workspaceId}/deployment`,
-    });
-    expect(r.status).toBeGreaterThanOrEqual(400);
-    expect(r.status).not.toBe(200);
-  });
+  // Member-scoped token auth + permission-denial are covered in the Rust API
+  // suite (api/tests/api/user/api_token.rs).
 
   test('disables the Create Token button until at least one workspace is enabled', async ({
     browser,
@@ -244,24 +196,8 @@ test.describe('api token > create', () => {
     });
   });
 
-  test('allows a token name to be reused after the previous token is revoked', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    const name = `reuse-${Date.now().toString(36)}`;
-    const t = await createApiTokenAPI(api, user, {
-      name,
-      permissions: { [user.workspaceId]: { type: 'superAdmin' } },
-    });
-    await api.request('DELETE', `/user/api-token/${t.id}`, {
-      token: user.accessToken,
-      clientIp: user.clientIp,
-    });
-    // Should now succeed.
-    const t2 = await createApiTokenAPI(api, user, {
-      name,
-      permissions: { [user.workspaceId]: { type: 'superAdmin' } },
-    });
-    expect(t2.id).toBeTruthy();
-  });
+  // Name-reuse-after-revoke is covered in the Rust API suite
+  // (api/tests/api/user/api_token.rs::api_token_name_reusable_after_revoke).
 
   test('rejects a token name shorter than 4 characters with an error toast', async ({
     browser,

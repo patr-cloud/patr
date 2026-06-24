@@ -44,5 +44,23 @@ export async function newContext(
     await route.continue({ headers });
   });
 
+  // Bound context.close() (as the comment above promises). Under Vinxi dev the
+  // SolidStart HMR websocket and React-Query background polls keep a dashboard
+  // page busy, so the native close can stall indefinitely and eat the 60s test
+  // timeout — e.g. after a successful onboard navigates to the dashboard.
+  // Closing the pages first stops that activity so the native close returns
+  // immediately; the race is a backstop, and since the pages are already closed
+  // a timed-out context is inert (no polls/socket left to leak).
+  const nativeClose = context.close.bind(context);
+  context.close = (async () => {
+    await Promise.race([
+      (async () => {
+        await Promise.all(context.pages().map((page) => page.close().catch(() => {})));
+        await nativeClose();
+      })(),
+      new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
+    ]);
+  }) as typeof context.close;
+
   return context;
 }

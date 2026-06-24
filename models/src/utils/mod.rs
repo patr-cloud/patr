@@ -189,9 +189,7 @@ pub fn validate_password(value: Cow<'_, str>) -> Result<Cow<'_, str>, preprocess
 /// - `None` when the JSON omits the key (keep existing),
 /// - `Some(None)` when the JSON sends `null` (clear the value),
 /// - `Some(Some(v))` when the JSON sends a concrete value.
-pub fn deserialize_double_option<'de, T, D>(
-	deserializer: D,
-) -> Result<Option<Option<T>>, D::Error>
+pub fn deserialize_double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
 	T: serde::Deserialize<'de>,
 	D: serde::Deserializer<'de>,
@@ -246,6 +244,15 @@ pub mod constants {
 	/// Matches a string that is between 4 and 255 characters long and can have
 	/// digits, letters, hyphens, underscores, spaces and dots.
 	pub const RESOURCE_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_ \.]{4,255}$");
+
+	/// The Regex to validate a container registry repository name. Unlike a
+	/// generic resource name, this must satisfy the registry's storage
+	/// constraint: lowercase alphanumerics in dot/underscore/dash-separated
+	/// segments (the shape Docker/OCI accepts). Validating it at the edge keeps
+	/// invalid names (uppercase, spaces, leading/trailing punctuation) a clean
+	/// 400 instead of letting them reach the DB CHECK and surface as a 500.
+	pub const CONTAINER_REGISTRY_REPOSITORY_NAME_REGEX: &str =
+		macros::verify_regex!(r"^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*$");
 
 	/// The Regex to validate a person's first or last name.
 	///

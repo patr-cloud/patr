@@ -15,5 +15,5 @@ export {
 };
 export { createAsyncAction, createAuthenticatedAction, createFormAction, createLoggedInAction } from "./actions";
 export type { AuthenticatedActionContext, LoggedInActionContext } from "./actions";
-export { default as createPaginationState } from "./pagination";
+export { default as createPaginationState, recoverFromOutOfBounds } from "./pagination";
 export type { PaginationState } from "./pagination";

@@ -29,8 +29,12 @@ export async function fillOnboardName(page: Page, name: string): Promise<void> {
   await page.locator('#workspace-name').fill(name);
 }
 
+export function onboardSubmitButton(page: Page) {
+  return page.getByRole('button', { name: /^(Create Workspace|Creating\.\.\.)$/ });
+}
+
 export async function submitOnboard(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /^(Create Workspace|Creating\.\.\.)$/ }).click();
+  await onboardSubmitButton(page).click();
 }
 
 // ---------- /workspace/new ----------

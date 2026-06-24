@@ -1,0 +1,18 @@
+# Config for the faux edge — the e2e stand-in for the Cloudflare edge +
+# cloudflared tunnel (see helpers/faux-edge.ts). It terminates TLS with a
+# throwaway self-signed cert (generated at deploy time) and forwards plain HTTP
+# to the ingress, preserving the original Host so Caddy still routes by virtual
+# host — the same `http://patr-ingress:80` target cloudflared uses in prod.
+#
+# A static cert (not `tls internal`) is deliberate: `tls internal` only mints
+# certs for names Caddy is configured to serve, so a port-only `:443` site has
+# none and the TLS handshake fails for arbitrary deployment hostnames. A static
+# cert is presented for every connection; the test client doesn't verify it.
+{
+	auto_https off
+	admin off
+}
+:443 {
+	tls /etc/caddy/edge.crt /etc/caddy/edge.key
+	reverse_proxy http://patr-ingress:80
+}

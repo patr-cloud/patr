@@ -4,7 +4,10 @@ set shell := ["bash", "-uc"]
 # env-var segments against the camelCase serde field names. `__` separates
 # nested keys; `_` is the word boundary inside one key. So
 # PATR__DATABASE__CONNECTION_LIMIT → database.connectionLimit.
-export PATR__SERVER__BIND_ADDRESS              := "127.0.0.1:3000"
+# Bind on all interfaces (not just loopback) so a Docker-in-Docker runner can
+# reach the host's registry listener (port+2) via host.docker.internal for the
+# full-fidelity @docker suite. Loopback (localhost:3000/3001) still works.
+export PATR__SERVER__BIND_ADDRESS              := "0.0.0.0:3000"
 export PATR__SERVER__API_BASE_PATH             := "/"
 export PATR__PASSWORD_PEPPER                   := "keyboard cat"
 export PATR__JWT_SECRET                        := "keyboard cat"
@@ -35,9 +38,20 @@ export PATR__CLOUDFLARE__ACCOUNT_ID            := "e2e-disabled"
 export PATR__CLOUDFLARE__WORKER_NAMESPACE_ID   := "e2e-disabled"
 export PATR__CLOUDFLARE__TURNSTILE_SECRET      := "1x0000000000000000000000000000000AA"
 export PATR__CLOUDFLARE__PRIMARY_HOSTED_ZONE_ID := "e2e-disabled"
+# Point the Cloudflare client at our local mock (mocks/cloudflare.mjs) so
+# tunnel / custom-hostname / zone / KV / DNS calls succeed deterministically
+# instead of hitting the real api.cloudflare.com with disabled creds.
+export CF_MOCK_PORT := "18888"
+export PATR__CLOUDFLARE__BASE_URL := "http://localhost:" + CF_MOCK_PORT + "/client/v4/"
 export PATR__OPENTELEMETRY__TRACING__ENDPOINT  := "http://127.0.0.1:4317/v1/traces"
-export PATR__OPENTELEMETRY__LOGS__ENDPOINT     := "http://127.0.0.1:13100"
-export PATR__OPENTELEMETRY__METRICS__ENDPOINT  := "http://127.0.0.1:18080"
+# Point logs/metrics reads at the Loki/Mimir stub (mocks/observability.mjs) so
+# logs/metrics specs can serve deterministic data, exercise parse-error paths,
+# and assert the LogQL/PromQL + x-scope-orgid. The stub proxies unconfigured
+# workspaces (and OTLP export / proxy upstreams) to the real Loki (:13100) /
+# Mimir (:18080) compose services, so the real path still works.
+export OBS_MOCK_PORT                           := "13900"
+export PATR__OPENTELEMETRY__LOGS__ENDPOINT     := "http://127.0.0.1:" + OBS_MOCK_PORT
+export PATR__OPENTELEMETRY__METRICS__ENDPOINT  := "http://127.0.0.1:" + OBS_MOCK_PORT
 export PATR__OPENTELEMETRY__METRICS__USERNAME  := "admin"
 export PATR__OPENTELEMETRY__METRICS__PASSWORD  := "password"
 export PATR__IPINFO__TOKEN                     := ""
@@ -87,12 +101,18 @@ test *args:
     set -muo pipefail
     mkdir -p .pids .logs
     cleanup() {
-        for f in .pids/api.pid .pids/frontend.pid; do
+        for f in .pids/api.pid .pids/frontend.pid .pids/cloudflare.pid .pids/observability.pid; do
             [ -f "$f" ] && kill -TERM -$(cat "$f") 2>/dev/null || true
         done
         rm -rf .pids
     }
     trap cleanup EXIT
+    nohup node mocks/cloudflare.mjs > .logs/cloudflare.log 2>&1 &
+    echo $! > .pids/cloudflare.pid
+    until nc -z localhost $CF_MOCK_PORT; do sleep 0.2; done
+    nohup node mocks/observability.mjs > .logs/observability.log 2>&1 &
+    echo $! > .pids/observability.pid
+    until nc -z localhost $OBS_MOCK_PORT; do sleep 0.2; done
     nohup cargo run --manifest-path ../Cargo.toml -p api > .logs/api.log 2>&1 &
     echo $! > .pids/api.pid
     until nc -z localhost 3000; do sleep 0.2; done
@@ -101,6 +121,35 @@ test *args:
     echo $! > .pids/frontend.pid
     until nc -z localhost $VINXI_PORT; do sleep 0.2; done
     pnpm exec playwright test {{args}}
+
+# Spawn the API + frontend in the background and leave them running, for
+# iterative dev / debugging the runner harness without re-spawning per test.
+# Inherits all the PATR__ exports above. Use `just stop` to kill them.
+serve:
+    #!/usr/bin/env bash
+    set -muo pipefail
+    mkdir -p .pids .logs
+    nohup node mocks/cloudflare.mjs > .logs/cloudflare.log 2>&1 &
+    echo $! > .pids/cloudflare.pid
+    until nc -z localhost $CF_MOCK_PORT; do sleep 0.2; done
+    nohup node mocks/observability.mjs > .logs/observability.log 2>&1 &
+    echo $! > .pids/observability.pid
+    until nc -z localhost $OBS_MOCK_PORT; do sleep 0.2; done
+    nohup cargo run --manifest-path ../Cargo.toml -p api > .logs/api.log 2>&1 &
+    echo $! > .pids/api.pid
+    until nc -z localhost 3000; do sleep 0.2; done
+    PORT=$VINXI_PORT nohup pnpm --dir ../frontend run dev > .logs/frontend.log 2>&1 &
+    echo $! > .pids/frontend.pid
+    until nc -z localhost $VINXI_PORT; do sleep 0.2; done
+    echo "api on :3000-3005 (registry :3002), frontend (vinxi) on :$VINXI_PORT"
+
+# Kill the background API + frontend started by `just serve`.
+stop:
+    #!/usr/bin/env bash
+    for f in .pids/api.pid .pids/frontend.pid .pids/cloudflare.pid .pids/observability.pid; do
+        [ -f "$f" ] && kill -TERM -$(cat "$f") 2>/dev/null || true
+    done
+    rm -rf .pids
 
 # Tear down external deps and prune any leaked dind containers.
 down:

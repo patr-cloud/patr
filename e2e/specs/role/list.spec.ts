@@ -6,9 +6,11 @@ import {
   createRoleAPI,
   getPermissionId,
   loginAs,
-  sql,
 } from '@/prelude';
 import { openRolesList } from '@/helpers/ui/role';
+
+// The default-roles seeding count is asserted in the Rust API suite
+// (api/tests/api/workspace/rbac/mod.rs). Here we cover the roles list UI.
 
 async function withUI(
   browser: import('@playwright/test').Browser,
@@ -25,7 +27,7 @@ async function withUI(
   }
 }
 
-test.describe('role > list', () => {
+test.describe('role > list [UI]', () => {
   test('lists a newly-created role with its name and description', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);
     const name = `list-${Date.now().toString(36)}`;
@@ -49,14 +51,5 @@ test.describe('role > list', () => {
       });
       await expect(page.getByText('my desc')).toBeVisible();
     });
-  });
-
-  test('seeds 36 default roles when a workspace is created', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    const rows = await sql<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM role WHERE owner_id = $1`,
-      [user.workspaceId],
-    );
-    expect(Number(rows[0].count)).toBe(36);
   });
 });

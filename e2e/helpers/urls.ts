@@ -26,3 +26,16 @@
 export const DASHBOARD_URL = 'http://localhost:3001';
 export const API_DIRECT_URL = 'http://localhost:3000';
 export const VINXI_DEV_URL = 'http://localhost:13030';
+
+// The runner pulls Patr-registry images from the hardcoded `registry.patr.cloud`
+// (no code override). Inside the DinD we make that name resolve to the host's
+// API registry via a port-bridge (see dind.ts): `--add-host registry.patr.cloud
+// :127.0.0.1` plus a socat forward `:443 → host.docker.internal:3002`. Pushes go
+// through the same DinD daemon, so this one host value is used everywhere.
+export const REGISTRY_HOST = 'registry.patr.cloud';
+
+// The host API listener ports the in-DinD socat bridges forward to (reached via
+// host.docker.internal): the OCI registry (API port + 2) and the API itself
+// (for the docker-login token realm, http://localhost:3000/auth/docker-login).
+export const HOST_REGISTRY_PORT = 3002;
+export const HOST_API_PORT = 3000;

@@ -6,7 +6,12 @@ import {
   submitNameUpdateAndWaitResponse,
   expectUserInfoUpdateToast,
   reloadProfileAndWaitForUserInfo,
+  nameUpdateButton,
 } from '@/helpers/ui/profile';
+
+// Name validation at the API layer (empty/whitespace/over-100/5000-char/HTML/
+// newline rejection, trim) lives in the Rust API suite (api/tests/api/user/mod.rs).
+// Here we cover the profile name form end-to-end through the dashboard.
 
 async function withProfile(
   browser: import('@playwright/test').Browser,
@@ -18,7 +23,6 @@ async function withProfile(
   const page = await context.newPage();
   try {
     await openProfile(page);
-    // Wait for first/last name to populate from GET /user.
     await expect(page.locator('#first-name')).toHaveValue(user.firstName, {
       timeout: 10_000,
     });
@@ -36,7 +40,7 @@ async function dbNames(username: string): Promise<{ first: string; last: string 
   return { first: rows[0].first_name, last: rows[0].last_name };
 }
 
-test.describe('profile update > happy paths', () => {
+test.describe('profile update > happy paths [UI]', () => {
   test('updates first name only, shows success toast, persists across reload', async ({
     browser,
     api,
@@ -85,69 +89,7 @@ test.describe('profile update > happy paths', () => {
   });
 });
 
-test.describe('profile update > validation', () => {
-  test('trims surrounding whitespace before persisting', async ({ browser, api }) => {
-    await using user = await createUserWithWorkspace(api);
-    await withProfile(browser, user, async (page) => {
-      // HTML input.value strips surrounding whitespace on its own for
-      // type="text" inputs, but the API side trims regardless. Drive via
-      // API to exercise the trim behavior end-to-end.
-      const resp = await api.request<unknown>('PATCH', '/user', {
-        token: user.accessToken,
-        clientIp: user.clientIp,
-        body: { firstName: ' Ada ', lastName: user.lastName },
-      });
-      expect(resp).toBeDefined();
-      await page.goto('/profile', { waitUntil: 'domcontentloaded' });
-    });
-    const db = await dbNames(user.username);
-    expect(db.first).toBe('Ada');
-  });
-
-  test('rejects an empty first name with 400', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    await expect(
-      api.request('PATCH', '/user', {
-        token: user.accessToken,
-        clientIp: user.clientIp,
-        body: { firstName: '', lastName: user.lastName },
-      }),
-    ).rejects.toThrow(/400/);
-  });
-
-  test('rejects an empty last name with 400', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    await expect(
-      api.request('PATCH', '/user', {
-        token: user.accessToken,
-        clientIp: user.clientIp,
-        body: { firstName: user.firstName, lastName: '' },
-      }),
-    ).rejects.toThrow(/400/);
-  });
-
-  test('rejects clearing both names with 400', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    await expect(
-      api.request('PATCH', '/user', {
-        token: user.accessToken,
-        clientIp: user.clientIp,
-        body: { firstName: '', lastName: '' },
-      }),
-    ).rejects.toThrow(/400/);
-  });
-
-  test('rejects a whitespace-only first name with 400 (trimmed to empty)', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    await expect(
-      api.request('PATCH', '/user', {
-        token: user.accessToken,
-        clientIp: user.clientIp,
-        body: { firstName: '   ', lastName: user.lastName },
-      }),
-    ).rejects.toThrow(/400/);
-  });
-
+test.describe('profile update > form round-trips [UI]', () => {
   test('round-trips a unicode name', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);
     await withProfile(browser, user, async (page) => {
@@ -197,59 +139,6 @@ test.describe('profile update > validation', () => {
     expect(db.first).toBe(name);
   });
 
-  test('rejects a first name over the 100-character limit with 400', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    await expect(
-      api.request('PATCH', '/user', {
-        token: user.accessToken,
-        clientIp: user.clientIp,
-        body: { firstName: 'a'.repeat(101), lastName: user.lastName },
-      }),
-    ).rejects.toThrow(/400/);
-    // DB row unchanged.
-    const db = await dbNames(user.username);
-    expect(db.first).toBe(user.firstName);
-  });
-
-  test('rejects a 5000-character last name with 400 (no partial writes)', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    await expect(
-      api.request('PATCH', '/user', {
-        token: user.accessToken,
-        clientIp: user.clientIp,
-        body: { firstName: user.firstName, lastName: 'b'.repeat(5000) },
-      }),
-    ).rejects.toThrow(/400/);
-    const db = await dbNames(user.username);
-    expect(db.first).toBe(user.firstName);
-    expect(db.last).toBe(user.lastName);
-  });
-
-  test('rejects an HTML-containing first name with 400', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    await expect(
-      api.request('PATCH', '/user', {
-        token: user.accessToken,
-        clientIp: user.clientIp,
-        body: {
-          firstName: '<script>window.__pwned=true</script>X',
-          lastName: user.lastName,
-        },
-      }),
-    ).rejects.toThrow(/400/);
-  });
-
-  test('rejects a newline-containing first name with 400', async ({ api }) => {
-    await using user = await createUserWithWorkspace(api);
-    await expect(
-      api.request('PATCH', '/user', {
-        token: user.accessToken,
-        clientIp: user.clientIp,
-        body: { firstName: 'Ada\nMore', lastName: user.lastName },
-      }),
-    ).rejects.toThrow(/400/);
-  });
-
   test('round-trips an update through GET /user', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);
     const newFirst = `Echo${Math.random().toString(36).slice(2, 6)}`;
@@ -265,21 +154,41 @@ test.describe('profile update > validation', () => {
     expect(got.firstName).toBe(newFirst);
   });
 
-  test('stores the second value on a rapid double submit', async ({ browser, api }) => {
+  test('debounces a rapid double submit to a single PATCH', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);
     const first1 = `Alpha${Math.random().toString(36).slice(2, 5)}`;
     const first2 = `Beta${Math.random().toString(36).slice(2, 5)}`;
     await withProfile(browser, user, async (page) => {
-      // First submit
+      let patchCount = 0;
+      // Hold the first PATCH in flight so the disabled-while-pending window is
+      // deterministic, instead of racing a fast local API. fallback() lets the
+      // context's x-real-ip route still run.
+      await page.route('**/api/user', async (route) => {
+        if (route.request().method() === 'PATCH') {
+          patchCount += 1;
+          if (patchCount === 1) await new Promise((r) => setTimeout(r, 1500));
+        }
+        await route.fallback();
+      });
+
+      // First submit fires PATCH #1, which is held → the button disables.
       await fillNameForm(page, { firstName: first1 });
       await submitNameUpdate(page);
-      // Immediately change value and re-submit (sequentially, but back-to-back).
+      await expect(nameUpdateButton(page)).toBeDisabled();
+
+      // A second submit while #1 is pending is suppressed by the disabled button
+      // (force the click so Playwright doesn't auto-wait for it to re-enable).
       await fillNameForm(page, { firstName: first2 });
-      const { ok } = await submitNameUpdateAndWaitResponse(page);
-      expect(ok).toBe(true);
+      await nameUpdateButton(page)
+        .click({ force: true })
+        .catch(() => undefined);
+
+      // Once PATCH #1 completes the button re-enables; only one request went out.
+      await expect(nameUpdateButton(page)).toBeEnabled({ timeout: 10_000 });
       await expectUserInfoUpdateToast(page, 'success');
+      expect(patchCount).toBe(1);
     });
     const db = await dbNames(user.username);
-    expect(db.first).toBe(first2);
+    expect(db.first).toBe(first1);
   });
 });
