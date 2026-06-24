@@ -234,7 +234,7 @@ impl TestSetup {
 			headers:
 				api::routes::registry_patr_cloud::handlers::blob::UploadBlobChunkRequestHeaders {
 					authorization: BearerToken::from_str(api_token).unwrap(),
-					content_type: ContentType::octet_stream(),
+					content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 					content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 					content_range: OptionalHeader::new(None),
 				},
