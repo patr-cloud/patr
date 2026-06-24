@@ -113,7 +113,14 @@ test *args:
     nohup node mocks/observability.mjs > .logs/observability.log 2>&1 &
     echo $! > .pids/observability.pid
     until nc -z localhost $OBS_MOCK_PORT; do sleep 0.2; done
-    nohup cargo run --manifest-path ../Cargo.toml -p api > .logs/api.log 2>&1 &
+    # Run a prebuilt binary when API_BIN is set (CI downloads it as an artifact
+    # so the api is compiled once, not once per e2e job); fall back to a local
+    # `cargo run` for plain `just test` on a dev machine.
+    if [ -n "${API_BIN:-}" ]; then
+        nohup "$API_BIN" > .logs/api.log 2>&1 &
+    else
+        nohup cargo run --manifest-path ../Cargo.toml -p api > .logs/api.log 2>&1 &
+    fi
     echo $! > .pids/api.pid
     until nc -z localhost 3000; do sleep 0.2; done
     until nc -z localhost 3001; do sleep 0.2; done

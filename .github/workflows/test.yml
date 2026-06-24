@@ -13,6 +13,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # ----- Stage 1: static checks (gate) -----
   format-check:
     name: Format & Static Checks
     runs-on: ubuntu-latest
@@ -25,11 +26,7 @@ jobs:
         with:
           components: rustfmt
 
-      - uses: actions/cache@v5
-        with:
-          path: target
-          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: rust-target-${{ runner.os }}-
+      - uses: Swatinem/rust-cache@v2
 
       - run: cargo fmt --all -- --check
 
@@ -64,6 +61,7 @@ jobs:
       - run: pnpm format:check
         working-directory: frontend
 
+  # ----- Stage 2: nextest unit tests (gate) -----
   unit-tests:
     name: Unit Tests (common)
     needs: format-check
@@ -75,11 +73,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@nightly
 
-      - uses: actions/cache@v5
-        with:
-          path: target
-          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: rust-target-${{ runner.os }}-
+      - uses: Swatinem/rust-cache@v2
 
       - name: Setup frontend public folder
         run: mkdir -p frontend/.output/public
@@ -91,8 +85,9 @@ jobs:
 
       - run: cargo nextest run --package common
 
-  integration-tests:
-    name: Integration Tests (api)
+  # ----- Build the api binary + TS bindings ONCE, fan them out as artifacts -----
+  build:
+    name: Build API + bindings
     needs: unit-tests
     runs-on: ubuntu-latest
     env:
@@ -102,11 +97,58 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@nightly
 
-      - uses: actions/cache@v5
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build api binary
+        run: cargo build --package api
+
+      # Built in a separate cargo invocation from `api`: compiling both in one
+      # invocation unifies `common`'s features and fails to compile. The @docker
+      # e2e suite spawns this binary (target/debug/docker) as the real runner.
+      - name: Build docker runner binary
+        run: cargo build --package docker
+
+      - name: Generate TS bindings
+        run: cargo bindings
+
+      - name: Upload api binary
+        uses: actions/upload-artifact@v4
         with:
-          path: target
-          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: rust-target-${{ runner.os }}-
+          name: api-binary
+          path: target/debug/api
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload docker runner binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-binary
+          path: target/debug/docker
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Upload TS bindings
+        uses: actions/upload-artifact@v4
+        with:
+          name: ts-bindings
+          path: frontend/src/bindings
+          retention-days: 1
+          if-no-files-found: error
+
+  # ----- Stage 3: integration + UI + docker suites, all in parallel -----
+  integration-tests:
+    name: Integration Tests (api)
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Setup frontend public folder
         run: mkdir -p frontend/.output/public
@@ -120,23 +162,28 @@ jobs:
 
   ui-tests:
     name: UI Tests (e2e)
-    needs: unit-tests
+    needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
-      SQLX_OFFLINE: "true"
+      API_BIN: ${{ github.workspace }}/target/debug/api
     steps:
       - uses: actions/checkout@v6
 
-      - uses: dtolnay/rust-toolchain@nightly
-
-      - uses: actions/cache@v5
+      - name: Download api binary
+        uses: actions/download-artifact@v4
         with:
-          path: target
-          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: rust-target-${{ runner.os }}-
+          name: api-binary
+          path: target/debug
 
-      - name: Generate TS bindings
-        run: cargo bindings
+      - name: Download TS bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: ts-bindings
+          path: frontend/src/bindings
+
+      - name: Make api binary executable
+        run: chmod +x "$API_BIN"
 
       - uses: pnpm/action-setup@v5
         with:
@@ -172,6 +219,10 @@ jobs:
         run: just test --project=default
         working-directory: e2e
 
+      - name: Dump service logs
+        if: failure()
+        run: cat e2e/.logs/*.log 2>/dev/null || true
+
       - name: Tear down
         if: always()
         run: just down
@@ -187,28 +238,39 @@ jobs:
 
   docker-tests:
     name: Docker Tests
-    needs: unit-tests
+    needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         docker: ["24", "25", "26"]
     env:
-      SQLX_OFFLINE: "true"
       DOCKER_VERSIONS: ${{ matrix.docker }}
+      API_BIN: ${{ github.workspace }}/target/debug/api
     steps:
       - uses: actions/checkout@v6
 
-      - uses: dtolnay/rust-toolchain@nightly
-
-      - uses: actions/cache@v5
+      - name: Download api binary
+        uses: actions/download-artifact@v4
         with:
-          path: target
-          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: rust-target-${{ runner.os }}-
+          name: api-binary
+          path: target/debug
 
-      - name: Generate TS bindings
-        run: cargo bindings
+      - name: Download docker runner binary
+        uses: actions/download-artifact@v4
+        with:
+          name: runner-binary
+          path: target/debug
+
+      - name: Download TS bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: ts-bindings
+          path: frontend/src/bindings
+
+      - name: Make binaries executable
+        run: chmod +x "$API_BIN" "${{ github.workspace }}/target/debug/docker"
 
       - uses: pnpm/action-setup@v5
         with:
@@ -244,6 +306,10 @@ jobs:
         run: just test --project=docker-${{ matrix.docker }}
         working-directory: e2e
 
+      - name: Dump service logs
+        if: failure()
+        run: cat e2e/.logs/*.log 2>/dev/null || true
+
       - name: Tear down
         if: always()
         run: just down
@@ -257,6 +323,7 @@ jobs:
           path: e2e/playwright-report
           retention-days: 7
 
+  # ----- Final gate: green only when all three suites pass -----
   ci-green:
     name: CI Green
     needs: [integration-tests, ui-tests, docker-tests]
@@ -308,11 +375,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@nightly
 
-      - uses: actions/cache@v5
-        with:
-          path: target
-          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: rust-target-${{ runner.os }}-
+      - uses: Swatinem/rust-cache@v2
 
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features postgres
