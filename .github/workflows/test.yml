@@ -155,6 +155,11 @@ jobs:
           key: pnpm-e2e-${{ runner.os }}-${{ hashFiles('e2e/pnpm-lock.yaml', 'frontend/pnpm-lock.yaml') }}
           restore-keys: pnpm-e2e-${{ runner.os }}-
 
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
       - name: Install e2e + frontend deps and browsers
         run: just install
         working-directory: e2e
@@ -221,6 +226,11 @@ jobs:
             ~/.local/share/pnpm/store
           key: pnpm-e2e-${{ runner.os }}-${{ hashFiles('e2e/pnpm-lock.yaml', 'frontend/pnpm-lock.yaml') }}
           restore-keys: pnpm-e2e-${{ runner.os }}-
+
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
 
       - name: Install e2e + frontend deps and browsers
         run: just install
