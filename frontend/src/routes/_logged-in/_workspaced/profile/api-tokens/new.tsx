@@ -55,6 +55,11 @@ const CreateApiTokens = () => {
 			if (cidr !== undefined && (Number(cidr) < 0 || Number(cidr) > 32)) {
 				return "Invalid CIDR: must be 0-32 for IPv4";
 			}
+		} else {
+			const cidr = value.split("/")[1];
+			if (cidr !== undefined && (Number(cidr) < 0 || Number(cidr) > 128)) {
+				return "Invalid CIDR: must be 0-128 for IPv6";
+			}
 		}
 		return undefined;
 	};
