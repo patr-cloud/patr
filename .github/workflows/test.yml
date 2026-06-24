@@ -99,6 +99,11 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # `common` embeds this folder via #[derive(RustEmbed)]; the build fails if
+      # it doesn't exist.
+      - name: Setup frontend public folder
+        run: mkdir -p frontend/.output/public
+
       - name: Build api binary
         run: cargo build --package api
 
