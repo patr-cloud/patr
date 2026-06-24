@@ -877,6 +877,20 @@ async fn mount_cloudflare_mocks(server: &MockServer) {
 		.mount(server)
 		.await;
 
+	// DELETE /accounts/*/cfd_tunnel/* — DeleteTunnel (called on runner removal)
+	Mock::given(method("DELETE"))
+		.and(path_regex(r"^/client/v4/accounts/[^/]+/cfd_tunnel/[^/]+$"))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "00000000-0000-0000-0000-000000000000",
+			"name": "mock-tunnel",
+			"created_at": "2024-01-01T00:00:00Z",
+			"deleted_at": "2024-01-01T00:00:00Z",
+			"connections": [],
+			"metadata": {}
+		})))
+		.mount(server)
+		.await;
+
 	// PUT /accounts/*/cfd_tunnel/*/configurations — UpdateTunnelConfig
 	Mock::given(method("PUT"))
 		.and(path_regex(

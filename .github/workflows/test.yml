@@ -13,8 +13,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  rust-checks:
-    name: Rust Checks
+  format-check:
+    name: Format & Static Checks
     runs-on: ubuntu-latest
     env:
       SQLX_OFFLINE: "true"
@@ -33,6 +33,81 @@ jobs:
 
       - run: cargo fmt --all -- --check
 
+      - name: Generate TS bindings
+        run: cargo bindings
+
+      - uses: pnpm/action-setup@v5
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            frontend/node_modules
+            ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: frontend
+
+      - run: pnpm typecheck
+        working-directory: frontend
+
+      - run: pnpm lint:check
+        working-directory: frontend
+
+      - run: pnpm format:check
+        working-directory: frontend
+
+  unit-tests:
+    name: Unit Tests (common)
+    needs: format-check
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: actions/cache@v5
+        with:
+          path: target
+          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: rust-target-${{ runner.os }}-
+
+      - name: Setup frontend public folder
+        run: mkdir -p frontend/.output/public
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - run: cargo nextest run --package common
+
+  integration-tests:
+    name: Integration Tests (api)
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: actions/cache@v5
+        with:
+          path: target
+          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: rust-target-${{ runner.os }}-
+
       - name: Setup frontend public folder
         run: mkdir -p frontend/.output/public
 
@@ -43,8 +118,155 @@ jobs:
 
       - run: just --justfile api/tests/Justfile test
 
-      - run: cargo nextest run --package common
+  ui-tests:
+    name: UI Tests (e2e)
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v6
 
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: actions/cache@v5
+        with:
+          path: target
+          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: rust-target-${{ runner.os }}-
+
+      - name: Generate TS bindings
+        run: cargo bindings
+
+      - uses: pnpm/action-setup@v5
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            e2e/node_modules
+            frontend/node_modules
+            ~/.local/share/pnpm/store
+          key: pnpm-e2e-${{ runner.os }}-${{ hashFiles('e2e/pnpm-lock.yaml', 'frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-e2e-${{ runner.os }}-
+
+      - name: Install e2e + frontend deps and browsers
+        run: just install
+        working-directory: e2e
+
+      - name: Bring up external deps
+        run: just up
+        working-directory: e2e
+
+      - name: Run UI suite
+        run: just test --project=default
+        working-directory: e2e
+
+      - name: Tear down
+        if: always()
+        run: just down
+        working-directory: e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-ui
+          path: e2e/playwright-report
+          retention-days: 7
+
+  docker-tests:
+    name: Docker Tests
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        docker: ["24", "25", "26"]
+    env:
+      SQLX_OFFLINE: "true"
+      DOCKER_VERSIONS: ${{ matrix.docker }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: actions/cache@v5
+        with:
+          path: target
+          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: rust-target-${{ runner.os }}-
+
+      - name: Generate TS bindings
+        run: cargo bindings
+
+      - uses: pnpm/action-setup@v5
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            e2e/node_modules
+            frontend/node_modules
+            ~/.local/share/pnpm/store
+          key: pnpm-e2e-${{ runner.os }}-${{ hashFiles('e2e/pnpm-lock.yaml', 'frontend/pnpm-lock.yaml') }}
+          restore-keys: pnpm-e2e-${{ runner.os }}-
+
+      - name: Install e2e + frontend deps and browsers
+        run: just install
+        working-directory: e2e
+
+      - name: Bring up external deps
+        run: just up
+        working-directory: e2e
+
+      - name: Run @docker suite (Docker ${{ matrix.docker }})
+        run: just test --project=docker-${{ matrix.docker }}
+        working-directory: e2e
+
+      - name: Tear down
+        if: always()
+        run: just down
+        working-directory: e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-docker-${{ matrix.docker }}
+          path: e2e/playwright-report
+          retention-days: 7
+
+  ci-green:
+    name: CI Green
+    needs: [integration-tests, ui-tests, docker-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all suites passed
+        run: |
+          if [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.ui-tests.result }}" != "success" ] || \
+             [ "${{ needs.docker-tests.result }}" != "success" ]; then
+            echo "integration-tests: ${{ needs.integration-tests.result }}"
+            echo "ui-tests:          ${{ needs.ui-tests.result }}"
+            echo "docker-tests:      ${{ needs.docker-tests.result }}"
+            echo "One or more test suites did not pass."
+            exit 1
+          fi
+          echo "All test suites passed."
+
+  # SQLx offline data stays verified on staging/master PRs only.
   sqlx-check:
     name: SQLx Offline Check
     runs-on: ubuntu-latest
@@ -100,50 +322,3 @@ jobs:
         run: cargo sqlx prepare --check --workspace
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/api
-
-  frontend-checks:
-    name: Frontend Checks
-    runs-on: ubuntu-latest
-    env:
-      SQLX_OFFLINE: "true"
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: dtolnay/rust-toolchain@nightly
-
-      - uses: actions/cache@v5
-        with:
-          path: target
-          key: rust-target-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-          restore-keys: rust-target-${{ runner.os }}-
-
-      - name: Generate TS bindings
-        run: cargo bindings
-
-      - uses: pnpm/action-setup@v5
-        with:
-          package_json_file: frontend/package.json
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - uses: actions/cache@v5
-        with:
-          path: |
-            frontend/node_modules
-            ~/.local/share/pnpm/store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
-          restore-keys: pnpm-${{ runner.os }}-
-
-      - run: pnpm install --frozen-lockfile
-        working-directory: frontend
-
-      - run: pnpm typecheck
-        working-directory: frontend
-
-      - run: pnpm lint:check
-        working-directory: frontend
-
-      - run: pnpm format:check
-        working-directory: frontend
