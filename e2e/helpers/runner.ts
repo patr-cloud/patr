@@ -1,5 +1,5 @@
 import { ChildProcess, spawn } from 'node:child_process';
-import { openSync, mkdtempSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { ApiClient } from '@/helpers/api';
@@ -39,7 +39,6 @@ export class RunnerHandle implements AsyncDisposable {
     public readonly workspaceId: string,
     public readonly apiToken: string,
     public readonly bindPort: number,
-    private readonly logDir: string,
   ) {}
 
   // The DinD daemon backing this runner — exposes dockerHost (for push/build)
@@ -55,8 +54,8 @@ export class RunnerHandle implements AsyncDisposable {
       const { runnerId, apiToken } = await provisionRunner(opts);
 
       const bindPort = allocateBindPort();
-      const logDir = mkdtempSync(join(tmpdir(), 'patr-e2e-runner-'));
-      const dbPath = join(logDir, 'runner.db');
+      const workDir = mkdtempSync(join(tmpdir(), 'patr-e2e-runner-'));
+      const dbPath = join(workDir, 'runner.db');
 
       const proc = spawn(RUNNER_BINARY, [], {
         cwd: REPO_ROOT,
@@ -82,16 +81,14 @@ export class RunnerHandle implements AsyncDisposable {
           // rejects every task; disable it on the deployment overlay here.
           PATR__ENABLE_IPV6: 'false',
         },
-        stdio: [
-          'ignore',
-          openSync(join(logDir, 'stdout.log'), 'w'),
-          openSync(join(logDir, 'stderr.log'), 'w'),
-        ],
+        // Inherit stdout/stderr so the runner's logs stream straight to the test
+        // output (and CI), never to a file.
+        stdio: ['ignore', 'inherit', 'inherit'],
       });
 
       proc.once('exit', (code) => {
         if (code !== null && code !== 0) {
-          console.error(`runner ${runnerId} exited early with code ${code}; logs at ${logDir}`);
+          console.error(`runner ${runnerId} exited early with code ${code}`);
         }
       });
 
@@ -100,7 +97,7 @@ export class RunnerHandle implements AsyncDisposable {
           async () => isRunnerConnected(opts.api, opts.user, opts.workspaceId, runnerId),
           {
             timeoutMs: 60_000,
-            label: `runner ${runnerId} connected (logs at ${logDir})`,
+            label: `runner ${runnerId} connected`,
           },
         );
       } catch (err) {
@@ -126,7 +123,6 @@ export class RunnerHandle implements AsyncDisposable {
         opts.workspaceId,
         apiToken,
         bindPort,
-        logDir,
       );
     } catch (err) {
       await dind[Symbol.asyncDispose]();

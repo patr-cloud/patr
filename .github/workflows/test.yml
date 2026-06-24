@@ -224,10 +224,6 @@ jobs:
         run: just test --project=default
         working-directory: e2e
 
-      - name: Dump service logs
-        if: failure()
-        run: cat e2e/.logs/*.log 2>/dev/null || true
-
       - name: Tear down
         if: always()
         run: just down
@@ -310,10 +306,6 @@ jobs:
       - name: Run @docker suite (Docker ${{ matrix.docker }})
         run: just test --project=docker-${{ matrix.docker }}
         working-directory: e2e
-
-      - name: Dump service logs
-        if: failure()
-        run: cat e2e/.logs/*.log 2>/dev/null || true
 
       - name: Tear down
         if: always()

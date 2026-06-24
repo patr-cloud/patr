@@ -99,7 +99,7 @@ test *args:
     # them on cleanup. Without it, `cargo run`'s child api binary survives
     # `kill $cargo_pid` and leaks.
     set -muo pipefail
-    mkdir -p .pids .logs
+    mkdir -p .pids
     cleanup() {
         for f in .pids/api.pid .pids/frontend.pid .pids/cloudflare.pid .pids/observability.pid; do
             [ -f "$f" ] && kill -TERM -$(cat "$f") 2>/dev/null || true
@@ -107,24 +107,27 @@ test *args:
         rm -rf .pids
     }
     trap cleanup EXIT
-    nohup node mocks/cloudflare.mjs > .logs/cloudflare.log 2>&1 &
+    # Every service logs to this shell's stdout/stderr — never to a file — so the
+    # output is visible live and captured by CI. `set -m` keeps each background
+    # job in its own process group for clean teardown.
+    node mocks/cloudflare.mjs &
     echo $! > .pids/cloudflare.pid
     until nc -z localhost $CF_MOCK_PORT; do sleep 0.2; done
-    nohup node mocks/observability.mjs > .logs/observability.log 2>&1 &
+    node mocks/observability.mjs &
     echo $! > .pids/observability.pid
     until nc -z localhost $OBS_MOCK_PORT; do sleep 0.2; done
     # Run a prebuilt binary when API_BIN is set (CI downloads it as an artifact
     # so the api is compiled once, not once per e2e job); fall back to a local
     # `cargo run` for plain `just test` on a dev machine.
     if [ -n "${API_BIN:-}" ]; then
-        nohup "$API_BIN" > .logs/api.log 2>&1 &
+        "$API_BIN" &
     else
-        nohup cargo run --manifest-path ../Cargo.toml -p api > .logs/api.log 2>&1 &
+        cargo run --manifest-path ../Cargo.toml -p api &
     fi
     echo $! > .pids/api.pid
     until nc -z localhost 3000; do sleep 0.2; done
     until nc -z localhost 3001; do sleep 0.2; done
-    PORT=$VINXI_PORT nohup pnpm --dir ../frontend run dev > .logs/frontend.log 2>&1 &
+    PORT=$VINXI_PORT pnpm --dir ../frontend run dev &
     echo $! > .pids/frontend.pid
     until nc -z localhost $VINXI_PORT; do sleep 0.2; done
     pnpm exec playwright test {{args}}
@@ -135,17 +138,20 @@ test *args:
 serve:
     #!/usr/bin/env bash
     set -muo pipefail
-    mkdir -p .pids .logs
-    nohup node mocks/cloudflare.mjs > .logs/cloudflare.log 2>&1 &
+    mkdir -p .pids
+    # Services log to this shell's stdout/stderr (never a file). They keep
+    # running after `just serve` returns (bash doesn't SIGHUP background jobs on
+    # exit); use `just stop` to kill them.
+    node mocks/cloudflare.mjs &
     echo $! > .pids/cloudflare.pid
     until nc -z localhost $CF_MOCK_PORT; do sleep 0.2; done
-    nohup node mocks/observability.mjs > .logs/observability.log 2>&1 &
+    node mocks/observability.mjs &
     echo $! > .pids/observability.pid
     until nc -z localhost $OBS_MOCK_PORT; do sleep 0.2; done
-    nohup cargo run --manifest-path ../Cargo.toml -p api > .logs/api.log 2>&1 &
+    cargo run --manifest-path ../Cargo.toml -p api &
     echo $! > .pids/api.pid
     until nc -z localhost 3000; do sleep 0.2; done
-    PORT=$VINXI_PORT nohup pnpm --dir ../frontend run dev > .logs/frontend.log 2>&1 &
+    PORT=$VINXI_PORT pnpm --dir ../frontend run dev &
     echo $! > .pids/frontend.pid
     until nc -z localhost $VINXI_PORT; do sleep 0.2; done
     echo "api on :3000-3005 (registry :3002), frontend (vinxi) on :$VINXI_PORT"
