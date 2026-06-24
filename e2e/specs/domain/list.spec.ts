@@ -54,7 +54,9 @@ test.describe('domain > list [UI]', () => {
     await addDomainAPI(api, user, user.workspaceId, domain, 'internal');
     await withList(browser, user, async (page) => {
       await expect(domainRow(page, domain)).toBeVisible();
-      await expect(page.getByText('External').first()).toBeVisible();
+      // Scope to the table: the mobile card grid (md:hidden) also renders the
+      // type and its element comes first in the DOM but is hidden at 1280.
+      await expect(page.getByRole('table').getByText('External').first()).toBeVisible();
       await expect(page.getByText('Patr Managed')).toHaveCount(0);
     });
   });
