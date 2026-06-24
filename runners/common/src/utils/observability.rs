@@ -104,13 +104,22 @@ where
 							.with_target("models", LevelFilter::TRACE)
 							.with_target("frontend", LevelFilter::TRACE),
 					)
-					.with_filter(LevelFilter::from_level(
-						if config.environment == RunningEnvironment::Development {
-							Level::TRACE
-						} else {
-							Level::DEBUG
-						},
-					)),
+					.with_filter(
+						// PATR_LOG_LEVEL (e.g. "info") dials down the console
+						// firehose; falls back to the per-environment default.
+						std::env::var("PATR_LOG_LEVEL")
+							.ok()
+							.and_then(|level| level.parse::<LevelFilter>().ok())
+							.unwrap_or_else(|| {
+								LevelFilter::from_level(
+									if config.environment == RunningEnvironment::Development {
+										Level::TRACE
+									} else {
+										Level::DEBUG
+									},
+								)
+							}),
+					),
 			)
 			.with(logger_provider.as_ref().map(|provider| {
 				OpenTelemetryTracingBridge::new(provider)

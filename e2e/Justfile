@@ -71,6 +71,10 @@ export VITE_BASE_URL := "http://localhost:3001"
 # Cloudflare's always-passes test site key (public; matches the test secret
 # used in PATR__CLOUDFLARE__TURNSTILE_SECRET above).
 export VITE_TURNSTILE_SITE_KEY := "1x00000000000000000000AA"
+# Quiet the api/runner console logs (default is per-request TRACE, a firehose
+# that floods the live/CI output and can throttle the stack). The runner
+# inherits this via the harness's process env.
+export PATR_LOG_LEVEL := "info"
 
 # Full pipeline (install → up → test → down).
 default: install up test down

@@ -115,13 +115,22 @@ pub fn setup_tracing(
 						.with_target("frontend", LevelFilter::TRACE)
 						.with_target("models", LevelFilter::TRACE),
 				)
-				.with_filter(LevelFilter::from_level(
-					if config.environment == RunningEnvironment::Development {
-						Level::TRACE
-					} else {
-						Level::DEBUG
-					},
-				)),
+				.with_filter(
+					// PATR_LOG_LEVEL (e.g. "info") dials down the console firehose;
+					// falls back to the per-environment default when unset.
+					std::env::var("PATR_LOG_LEVEL")
+						.ok()
+						.and_then(|level| level.parse::<LevelFilter>().ok())
+						.unwrap_or_else(|| {
+							LevelFilter::from_level(
+								if config.environment == RunningEnvironment::Development {
+									Level::TRACE
+								} else {
+									Level::DEBUG
+								},
+							)
+						}),
+				),
 		)
 		.with(
 			OpenTelemetryLayer::new(tracer_provider.tracer("Patr API")).with_filter(
