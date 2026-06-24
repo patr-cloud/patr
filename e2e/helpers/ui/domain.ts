@@ -26,7 +26,9 @@ export function addDomainLink(page: Page) {
 }
 
 export function domainRow(page: Page, domain: string) {
-  return page.getByText(domain, { exact: true });
+  // List renders a mobile card grid and a desktop table (both in the DOM);
+  // scope to the table so the name matches a single element at 1280 viewport.
+  return page.getByRole('table').getByText(domain, { exact: true });
 }
 
 // ---------- Create (/domains/new) ----------

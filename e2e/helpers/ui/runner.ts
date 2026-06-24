@@ -26,7 +26,9 @@ export function addRunnerLink(page: Page) {
 }
 
 export function runnerRow(page: Page, name: string) {
-  return page.getByText(name, { exact: true });
+  // List renders a mobile card grid and a desktop table (both in the DOM);
+  // scope to the table so the name matches a single element at 1280 viewport.
+  return page.getByRole('table').getByText(name, { exact: true });
 }
 
 // ---------- Create (/runners/new) ----------

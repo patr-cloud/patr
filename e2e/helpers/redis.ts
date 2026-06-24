@@ -41,12 +41,19 @@ export async function readMfaSetupSecret(username: string): Promise<string> {
   const user = await queryUser(username);
   if (!user) throw new Error(`No such user: ${username}`);
   const userIdHex = user.id.replace(/-/g, '');
-  const secret = await redis.get(`mfa:${userIdHex}`);
-  if (!secret) {
-    throw new Error(
-      `No MFA secret in Redis for user ${username} (${user.id}); ` +
-        `was GET /user/mfa called and within the 5-min TTL?`,
-    );
+  // The secret is written when the API handles GET /user/mfa, which the caller
+  // races after opening the 2FA modal (the request is still in flight). Poll
+  // briefly until it lands rather than relying on every caller to await it.
+  const deadline = Date.now() + 5_000;
+  for (;;) {
+    const secret = await redis.get(`mfa:${userIdHex}`);
+    if (secret) return secret;
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `No MFA secret in Redis for user ${username} (${user.id}); ` +
+          `was GET /user/mfa called and within the 5-min TTL?`,
+      );
+    }
+    await new Promise((r) => setTimeout(r, 100));
   }
-  return secret;
 }

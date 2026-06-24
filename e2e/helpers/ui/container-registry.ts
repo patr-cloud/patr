@@ -32,7 +32,10 @@ export function createRepoLink(page: Page) {
 }
 
 export function repoRow(page: Page, name: string) {
-  return page.getByText(name, { exact: true });
+  // The list renders a mobile card grid (md:hidden) AND a desktop table
+  // (hidden md:block) — both in the DOM. Scope to the table (the view shown at
+  // Playwright's default 1280 viewport) so the name matches a single element.
+  return page.getByRole('table').getByText(name, { exact: true });
 }
 
 // ---------- Create (/container-registry/new) ----------
