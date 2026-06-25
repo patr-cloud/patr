@@ -1,0 +1,193 @@
+set shell := ["bash", "-uc"]
+
+# All API config goes through env vars. `convert_case(Camel)` matches snake_case
+# env-var segments against the camelCase serde field names. `__` separates
+# nested keys; `_` is the word boundary inside one key. So
+# PATR__DATABASE__CONNECTION_LIMIT → database.connectionLimit.
+# Bind on all interfaces (not just loopback) so a Docker-in-Docker runner can
+# reach the host's registry listener (port+2) via host.docker.internal for the
+# full-fidelity @docker suite. Loopback (localhost:3000/3001) still works.
+export PATR__SERVER__BIND_ADDRESS              := "0.0.0.0:3000"
+export PATR__SERVER__API_BASE_PATH             := "/"
+export PATR__PASSWORD_PEPPER                   := "keyboard cat"
+export PATR__JWT_SECRET                        := "keyboard cat"
+export PATR__PRIMARY_HOSTED_DOMAIN             := "onpatr.cloud"
+export PATR__EMAIL__HOST                       := "smtp.invalid"
+export PATR__EMAIL__PORT                       := "587"
+export PATR__EMAIL__SECURE                     := "true"
+export PATR__EMAIL__USERNAME                   := "no-reply@example.com"
+export PATR__EMAIL__FROM                       := "no-reply@example.com"
+export PATR__EMAIL__PASSWORD                   := "password"
+export PATR__S3__ENDPOINT                      := "http://127.0.0.1:19000"
+export PATR__S3__REGION                        := "us-east-1"
+export PATR__S3__BUCKET                        := "patr-e2e"
+export PATR__S3__KEY                           := "minioadmin"
+export PATR__S3__SECRET                        := "minioadmin"
+export PATR__S3__FORCE_PATH_STYLE              := "true"
+export PATR__DATABASE__HOST                    := "127.0.0.1"
+export PATR__DATABASE__PORT                    := "15432"
+export PATR__DATABASE__USER                    := "postgres"
+export PATR__DATABASE__PASSWORD                := "postgres"
+export PATR__DATABASE__DATABASE                := "api"
+# Sized for parallel Playwright workers (TEST_THREADS): each worker drives
+# multi-query flows and the API's background job-queue worker also draws from
+# this pool, so a too-small limit times out under concurrency ("Failed to push
+# task: pool timed out"). 25 comfortably covers 4 workers; postgres caps at 100.
+export PATR__DATABASE__CONNECTION_LIMIT        := "25"
+export PATR__REDIS__HOST                       := "127.0.0.1"
+export PATR__REDIS__PORT                       := "16379"
+export PATR__REDIS__SECURE                     := "false"
+export PATR__CLOUDFLARE__API_KEY               := "e2e-disabled"
+export PATR__CLOUDFLARE__ACCOUNT_ID            := "e2e-disabled"
+export PATR__CLOUDFLARE__WORKER_NAMESPACE_ID   := "e2e-disabled"
+export PATR__CLOUDFLARE__TURNSTILE_SECRET      := "1x0000000000000000000000000000000AA"
+export PATR__CLOUDFLARE__PRIMARY_HOSTED_ZONE_ID := "e2e-disabled"
+# Point the Cloudflare client at our local mock (mocks/cloudflare.mjs) so
+# tunnel / custom-hostname / zone / KV / DNS calls succeed deterministically
+# instead of hitting the real api.cloudflare.com with disabled creds.
+export CF_MOCK_PORT := "18888"
+export PATR__CLOUDFLARE__BASE_URL := "http://localhost:" + CF_MOCK_PORT + "/client/v4/"
+export PATR__OPENTELEMETRY__TRACING__ENDPOINT  := "http://127.0.0.1:4317/v1/traces"
+# Point logs/metrics reads at the Loki/Mimir stub (mocks/observability.mjs) so
+# logs/metrics specs can serve deterministic data, exercise parse-error paths,
+# and assert the LogQL/PromQL + x-scope-orgid. The stub proxies unconfigured
+# workspaces (and OTLP export / proxy upstreams) to the real Loki (:13100) /
+# Mimir (:18080) compose services, so the real path still works.
+export OBS_MOCK_PORT                           := "13900"
+export PATR__OPENTELEMETRY__LOGS__ENDPOINT     := "http://127.0.0.1:" + OBS_MOCK_PORT
+export PATR__OPENTELEMETRY__METRICS__ENDPOINT  := "http://127.0.0.1:" + OBS_MOCK_PORT
+export PATR__OPENTELEMETRY__METRICS__USERNAME  := "admin"
+export PATR__OPENTELEMETRY__METRICS__PASSWORD  := "password"
+export PATR__IPINFO__TOKEN                     := ""
+export PATR__SOCIAL_LOGIN__GITHUB__CLIENT_ID   := "e2e-disabled"
+export PATR__SOCIAL_LOGIN__GITHUB__CLIENT_SECRET := "e2e-disabled"
+export PATR__SOCIAL_LOGIN__GITHUB__CALLBACK_URL := "http://localhost:3001/login/github"
+export PATR__SOCIAL_LOGIN__GITHUB__CONNECT_CALLBACK_URL := "http://localhost:3001/profile/github/callback"
+
+# Vinxi defaults to port 3030, but that often collides with VS Code helpers
+# on developer machines. Use 13030 (matches the +10000 offset used for the
+# compose services). The frontend `dev` script reads PORT; we inline
+# PORT=$VINXI_PORT at spawn time so `pnpm run dev` works unchanged elsewhere.
+# The API proxies non-/api routes here via FRONTEND_URL.
+export VINXI_PORT := "13030"
+export FRONTEND_URL := "http://localhost:13030"
+export VITE_BASE_URL := "http://localhost:3001"
+# Cloudflare's always-passes test site key (public; matches the test secret
+# used in PATR__CLOUDFLARE__TURNSTILE_SECRET above).
+export VITE_TURNSTILE_SITE_KEY := "1x00000000000000000000AA"
+# Quiet the api/runner console logs. The default (TRACE in dev) is a firehose —
+# even INFO logs every SQL query (tens of thousands of lines), which floods the
+# live/CI output and throttles the stack. Default to warn; override for
+# debugging, e.g. `PATR_LOG_LEVEL=debug just test`. The runner inherits this via
+# the harness's process env.
+export PATR_LOG_LEVEL := env_var_or_default("PATR_LOG_LEVEL", "warn")
+
+# Full pipeline (install → up → test → down).
+default: install up test down
+
+# One-time install of pnpm packages and the Playwright browser binary, plus a
+# production build of the frontend.
+#
+# `test` serves this built (Nitro SSR) output instead of the Vinxi dev server:
+# the dev server's on-demand route compilation + HMR can't keep up with parallel
+# Playwright workers on CI's smaller runners, so some page loads stall past the
+# test timeout. The built server is deterministic and fast under concurrency.
+# (`serve` still uses the dev server for iterative debugging with HMR.)
+install:
+    pnpm install
+    pnpm exec playwright install --with-deps chromium
+    pnpm --dir ../frontend install
+    pnpm --dir ../frontend build
+
+# Bring up external deps only — postgres, redis, minio, loki, mimir, dind images.
+# API + frontend are spawned per `test` invocation so each session exercises a
+# fresh build of the code under test.
+up:
+    docker compose -f docker-compose.yml up -d --wait
+    docker run --rm --network e2e_default --entrypoint sh minio/mc -c 'mc alias set local http://minio:9000 minioadmin minioadmin && mc mb --ignore-existing local/patr-e2e'
+    docker pull docker:24-dind
+    docker pull docker:25-dind
+    docker pull docker:26-dind
+
+# Spawn the API and frontend, run the Playwright suite, then tear them down.
+# Args pass through, e.g. `just e2e::test specs/auth/login.spec.ts`.
+test *args:
+    #!/usr/bin/env bash
+    # set -m puts each bg job in its own process group so we can group-kill
+    # them on cleanup. Without it, `cargo run`'s child api binary survives
+    # `kill $cargo_pid` and leaks.
+    set -muo pipefail
+    mkdir -p .pids
+    # The docker runner requires config/runner.docker.* to exist (the harness's
+    # PATR__* env vars layer on top of it). It's gitignored, so seed it from the
+    # committed sample on a fresh checkout / in CI.
+    [ -f ../config/runner.docker.json ] || cp ../config/runner.docker.sample.json ../config/runner.docker.json
+    cleanup() {
+        for f in .pids/api.pid .pids/frontend.pid .pids/cloudflare.pid .pids/observability.pid; do
+            [ -f "$f" ] && kill -TERM -$(cat "$f") 2>/dev/null || true
+        done
+        rm -rf .pids
+    }
+    trap cleanup EXIT
+    # Every service logs to this shell's stdout/stderr — never to a file — so the
+    # output is visible live and captured by CI. `set -m` keeps each background
+    # job in its own process group for clean teardown.
+    node mocks/cloudflare.mjs &
+    echo $! > .pids/cloudflare.pid
+    until nc -z localhost $CF_MOCK_PORT; do sleep 0.2; done
+    node mocks/observability.mjs &
+    echo $! > .pids/observability.pid
+    until nc -z localhost $OBS_MOCK_PORT; do sleep 0.2; done
+    # Run a prebuilt binary when API_BIN is set (CI downloads it as an artifact
+    # so the api is compiled once, not once per e2e job); fall back to a local
+    # `cargo run` for plain `just test` on a dev machine.
+    if [ -n "${API_BIN:-}" ]; then
+        "$API_BIN" &
+    else
+        cargo run --manifest-path ../Cargo.toml -p api &
+    fi
+    echo $! > .pids/api.pid
+    until nc -z localhost 3000; do sleep 0.2; done
+    until nc -z localhost 3001; do sleep 0.2; done
+    # Serve the prebuilt frontend (see `install`), not the dev server.
+    PORT=$VINXI_PORT pnpm --dir ../frontend run start &
+    echo $! > .pids/frontend.pid
+    until nc -z localhost $VINXI_PORT; do sleep 0.2; done
+    pnpm exec playwright test {{args}}
+
+# Spawn the API + frontend in the background and leave them running, for
+# iterative dev / debugging the runner harness without re-spawning per test.
+# Inherits all the PATR__ exports above. Use `just stop` to kill them.
+serve:
+    #!/usr/bin/env bash
+    set -muo pipefail
+    mkdir -p .pids
+    # Services log to this shell's stdout/stderr (never a file). They keep
+    # running after `just serve` returns (bash doesn't SIGHUP background jobs on
+    # exit); use `just stop` to kill them.
+    node mocks/cloudflare.mjs &
+    echo $! > .pids/cloudflare.pid
+    until nc -z localhost $CF_MOCK_PORT; do sleep 0.2; done
+    node mocks/observability.mjs &
+    echo $! > .pids/observability.pid
+    until nc -z localhost $OBS_MOCK_PORT; do sleep 0.2; done
+    cargo run --manifest-path ../Cargo.toml -p api &
+    echo $! > .pids/api.pid
+    until nc -z localhost 3000; do sleep 0.2; done
+    PORT=$VINXI_PORT pnpm --dir ../frontend run dev &
+    echo $! > .pids/frontend.pid
+    until nc -z localhost $VINXI_PORT; do sleep 0.2; done
+    echo "api on :3000-3005 (registry :3002), frontend (vinxi) on :$VINXI_PORT"
+
+# Kill the background API + frontend started by `just serve`.
+stop:
+    #!/usr/bin/env bash
+    for f in .pids/api.pid .pids/frontend.pid .pids/cloudflare.pid .pids/observability.pid; do
+        [ -f "$f" ] && kill -TERM -$(cat "$f") 2>/dev/null || true
+    done
+    rm -rf .pids
+
+# Tear down external deps and prune any leaked dind containers.
+down:
+    docker compose -f docker-compose.yml down -v
+    -docker ps -aq -f name=e2e-dind- | xargs -r docker rm -f

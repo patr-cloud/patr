@@ -1,11 +1,220 @@
 use std::collections::BTreeMap;
 
-use models::{ApiSuccessResponseBody, api::workspace::deployment::*, utils::Uuid};
+use models::{
+	ApiSuccessResponseBody,
+	api::workspace::deployment::{deploy_history::*, *},
+	utils::{Base64String, ListResourceQuery, StringifiedU16, Uuid},
+};
 use prost::Message;
 
 use crate::prelude::*;
 
 pub mod deploy_history;
+
+/// Fetch the first available deployment machine type for a workspace.
+async fn first_machine_type(setup: &TestSetup, workspace_id: Uuid) -> Uuid {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
+				.path(ListAllDeploymentMachineTypePath { workspace_id })
+				.headers(ListAllDeploymentMachineTypeRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListAllDeploymentMachineTypeResponse>>()
+		.response
+		.machine_types[0]
+		.id
+}
+
+/// A minimal valid Patr-registry deployment body (random name, no ports/env,
+/// scale 1, not deployed on create). Tests mutate the fields they care about.
+fn patr_body(repo: Uuid, runner: Uuid, machine_type: Uuid) -> CreateDeploymentRequest {
+	CreateDeploymentRequest {
+		name: random_name(8),
+		registry: DeploymentRegistry::PatrRegistry {
+			registry: PatrRegistry,
+			repository_id: repo,
+		},
+		image_tag: "latest".to_string(),
+		runner,
+		machine_type,
+		running_details: DeploymentRunningDetails {
+			deploy_on_push: false,
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 1,
+			ports: BTreeMap::new(),
+			environment_variables: BTreeMap::new(),
+			startup_probe: None,
+			liveness_probe: None,
+			config_mounts: BTreeMap::new(),
+			volumes: BTreeMap::new(),
+		},
+		deploy_on_create: false,
+	}
+}
+
+/// Send a create-deployment request and return the raw response.
+async fn send_create(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	body: CreateDeploymentRequest,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateDeploymentRequest>::builder()
+				.path(CreateDeploymentPath { workspace_id })
+				.headers(CreateDeploymentRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(body)
+				.build(),
+		)
+		.await
+}
+
+/// An all-`None` update body. Tests set the single field they exercise.
+fn empty_update() -> UpdateDeploymentRequest {
+	UpdateDeploymentRequest {
+		name: None,
+		runner: None,
+		machine_type: None,
+		deploy_on_push: None,
+		min_horizontal_scale: None,
+		max_horizontal_scale: None,
+		ports: None,
+		environment_variables: None,
+		startup_probe: None,
+		liveness_probe: None,
+		config_mounts: None,
+		volumes: None,
+	}
+}
+
+/// Send an update-deployment request and return the raw response.
+async fn send_update(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+	body: UpdateDeploymentRequest,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateDeploymentRequest>::builder()
+				.path(UpdateDeploymentPath {
+					workspace_id,
+					deployment_id,
+				})
+				.headers(UpdateDeploymentRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(body)
+				.build(),
+		)
+		.await
+}
+
+/// Fetch a deployment's get-info response.
+async fn get_info(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+) -> GetDeploymentInfoResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id,
+					deployment_id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>()
+		.response
+}
+
+/// Send a start-deployment request (with the given `force_restart`).
+async fn send_start(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+	force_restart: bool,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<StartDeploymentRequest>::builder()
+				.path(StartDeploymentPath {
+					workspace_id,
+					deployment_id,
+				})
+				.query(StartDeploymentQuery { force_restart })
+				.headers(StartDeploymentRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+}
+
+/// Send a stop-deployment request.
+async fn send_stop(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<StopDeploymentRequest>::builder()
+				.path(StopDeploymentPath {
+					workspace_id,
+					deployment_id,
+				})
+				.headers(StopDeploymentRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+}
+
+/// Send a delete-deployment request.
+async fn send_delete(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteDeploymentRequest>::builder()
+				.path(DeleteDeploymentPath {
+					workspace_id,
+					deployment_id,
+				})
+				.headers(DeleteDeploymentRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+}
 
 #[tokio::test]
 async fn list_machine_types_works() {
@@ -1402,5 +1611,1332 @@ async fn deployment_wrong_workspace() {
 	assert!(
 		response.status_code().is_client_error(),
 		"user without workspace access should be denied"
+	);
+}
+
+#[tokio::test]
+async fn create_patr_deployment_stopped_shape() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details
+		.ports
+		.insert(StringifiedU16::new(80), ExposedPortType::Http);
+	let created = send_create(&setup, &user.access_token, workspace.id, body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response;
+
+	let info = get_info(&setup, &user.access_token, workspace.id, created.id.id).await;
+	assert_eq!(info.deployment.status.to_string(), "stopped");
+	assert!(info.deployment.registry.is_patr_registry());
+	assert_eq!(info.deployment.registry.repository_id(), Some(repo.id));
+	assert_eq!(info.deployment.image_tag, "latest");
+	assert!(info.deployment.current_live_digest.is_none());
+	assert_eq!(info.running_details.min_horizontal_scale, 1);
+	assert_eq!(info.running_details.max_horizontal_scale, 1);
+	assert_eq!(
+		info.running_details.ports,
+		BTreeMap::from([(StringifiedU16::new(80), ExposedPortType::Http)])
+	);
+}
+
+#[tokio::test]
+async fn deploy_on_create_sets_deploying() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.deploy_on_create = true;
+	let created = send_create(&setup, &user.access_token, workspace.id, body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response;
+
+	let info = get_info(&setup, &user.access_token, workspace.id, created.id.id).await;
+	assert_eq!(info.deployment.status.to_string(), "deploying");
+}
+
+#[tokio::test]
+async fn create_deployment_image_tag_lowercased() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.image_tag = "Latest-V2".to_string();
+	let created = send_create(&setup, &user.access_token, workspace.id, body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response;
+
+	let info = get_info(&setup, &user.access_token, workspace.id, created.id.id).await;
+	assert_eq!(info.deployment.image_tag, "latest-v2");
+}
+
+#[tokio::test]
+async fn create_deployment_reusable_after_delete() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+	let name = random_name(8);
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.name = name.clone();
+	let created = send_create(&setup, &user.access_token, workspace.id, body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response;
+
+	let mut dup = patr_body(repo.id, runner.id, mt);
+	dup.name = name.clone();
+	let dup_resp = send_create(&setup, &user.access_token, workspace.id, dup).await;
+	assert_eq!(
+		409,
+		dup_resp.status_code().as_u16(),
+		"duplicate deployment name should be 409"
+	);
+
+	send_delete(&setup, &user.access_token, workspace.id, created.id.id)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(DeleteDeploymentResponse));
+
+	let mut readd = patr_body(repo.id, runner.id, mt);
+	readd.name = name;
+	let readd_resp = send_create(&setup, &user.access_token, workspace.id, readd).await;
+	assert!(
+		readd_resp.status_code().is_success(),
+		"name should be reusable after delete, got {}",
+		readd_resp.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_tcp_port_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	// The DB `exposed_port_type` enum only has `http`; a TCP port hits the enum
+	// and 500s instead of being stored or cleanly rejected. Pinned gap.
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details
+		.ports
+		.insert(StringifiedU16::new(5432), ExposedPortType::Tcp);
+	let resp = send_create(&setup, &user.access_token, workspace.id, body).await;
+	assert!(
+		resp.status_code().is_server_error(),
+		"a TCP port should hit the DB enum gap → 500, got {}",
+		resp.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_startup_probe_roundtrip() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details
+		.ports
+		.insert(StringifiedU16::new(8080), ExposedPortType::Http);
+	body.running_details.startup_probe = Some(DeploymentProbe {
+		port: 8080,
+		path: "/healthz".to_string(),
+	});
+	let created = send_create(&setup, &user.access_token, workspace.id, body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response;
+
+	let info = get_info(&setup, &user.access_token, workspace.id, created.id.id).await;
+	assert_eq!(
+		info.running_details.startup_probe,
+		Some(DeploymentProbe {
+			port: 8080,
+			path: "/healthz".to_string(),
+		})
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_config_mount_roundtrip() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details.config_mounts.insert(
+		"/etc/app/conf".to_string(),
+		Base64String::from(b"hello config\n".to_vec()),
+	);
+	let created = send_create(&setup, &user.access_token, workspace.id, body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response;
+
+	let info = get_info(&setup, &user.access_token, workspace.id, created.id.id).await;
+	let mount = info
+		.running_details
+		.config_mounts
+		.get("/etc/app/conf")
+		.expect("config mount should round-trip");
+	assert_eq!(&mount[..], b"hello config\n");
+}
+
+// ---------- create: name / fk / scale validation ----------
+
+#[tokio::test]
+async fn create_deployment_name_length_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	for (name, expect_ok) in [
+		("abc".to_string(), false),
+		("abcd".to_string(), true),
+		("a".repeat(255), true),
+		("a".repeat(256), false),
+	] {
+		let mut body = patr_body(repo.id, runner.id, mt);
+		body.name = name.clone();
+		let resp = send_create(&setup, &user.access_token, workspace.id, body).await;
+		if expect_ok {
+			assert!(
+				resp.status_code().is_success(),
+				"name len {} should be accepted, got {}",
+				name.len(),
+				resp.status_code()
+			);
+		} else {
+			assert_eq!(
+				400,
+				resp.status_code().as_u16(),
+				"name len {} should be rejected with 400",
+				name.len()
+			);
+		}
+	}
+}
+
+#[tokio::test]
+async fn create_deployment_name_charset() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut bad = patr_body(repo.id, runner.id, mt);
+	bad.name = "a/b/c".to_string();
+	assert_eq!(
+		400,
+		send_create(&setup, &user.access_token, workspace.id, bad)
+			.await
+			.status_code()
+			.as_u16(),
+		"a slash in the name should be rejected"
+	);
+
+	let mut ok = patr_body(repo.id, runner.id, mt);
+	ok.name = "My App-1_v.2".to_string();
+	assert!(
+		send_create(&setup, &user.access_token, workspace.id, ok)
+			.await
+			.status_code()
+			.is_success(),
+		"allowed punctuation should be accepted"
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_name_trimmed() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+	let name = random_name(8);
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.name = format!("  {name}  ");
+	let created = send_create(&setup, &user.access_token, workspace.id, body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response;
+
+	let info = get_info(&setup, &user.access_token, workspace.id, created.id.id).await;
+	assert_eq!(info.deployment.name, name, "name should be trimmed");
+}
+
+#[tokio::test]
+async fn create_deployment_nonexistent_repo_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let resp = send_create(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		patr_body(Uuid::nil(), runner.id, mt),
+	)
+	.await;
+	assert!(
+		resp.status_code().is_server_error(),
+		"a nonexistent repository should fail the FK → 500, got {}",
+		resp.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_cross_workspace_repo_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let other = setup.create_test_user().await;
+	let other_ws = setup.create_test_workspace(&other.access_token).await;
+	let other_repo = setup
+		.create_test_container_repo(&other.access_token, other_ws.id)
+		.await;
+
+	let resp = send_create(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		patr_body(other_repo.id, runner.id, mt),
+	)
+	.await;
+	assert!(
+		resp.status_code().is_server_error(),
+		"a cross-workspace repository should fail the workspace-scoped FK → 500, got {}",
+		resp.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_nonexistent_runner_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let resp = send_create(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		patr_body(repo.id, Uuid::nil(), mt),
+	)
+	.await;
+	assert!(
+		resp.status_code().is_server_error(),
+		"a nonexistent runner should fail the FK → 500, got {}",
+		resp.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_cross_workspace_runner_accepted() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	// The runner FK references runner(id) only (NOT workspace-scoped), so a
+	// runner from another workspace is accepted. Pin this isolation gap.
+	let other = setup.create_test_user().await;
+	let other_ws = setup.create_test_workspace(&other.access_token).await;
+	let other_runner = setup
+		.create_test_runner(&other.access_token, other_ws.id)
+		.await;
+
+	let resp = send_create(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		patr_body(repo.id, other_runner.id, mt),
+	)
+	.await;
+	assert!(
+		resp.status_code().is_success(),
+		"a cross-workspace runner is accepted (FK not workspace-scoped), got {}",
+		resp.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_nonexistent_machine_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+
+	let resp = send_create(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		patr_body(repo.id, runner.id, Uuid::nil()),
+	)
+	.await;
+	assert!(
+		resp.status_code().is_server_error(),
+		"a nonexistent machine type should fail the FK → 500, got {}",
+		resp.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_min_scale_zero_accepted() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	// Create has no scale validation; the DB CHECK allows 0 <= max.
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details.min_horizontal_scale = 0;
+	assert!(
+		send_create(&setup, &user.access_token, workspace.id, body)
+			.await
+			.status_code()
+			.is_success(),
+		"create should accept minHorizontalScale=0"
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_max_less_than_min_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details.min_horizontal_scale = 5;
+	body.running_details.max_horizontal_scale = 2;
+	assert!(
+		send_create(&setup, &user.access_token, workspace.id, body)
+			.await
+			.status_code()
+			.is_server_error(),
+		"max < min should hit the DB CHECK → 500"
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_unexposed_probe_port_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details
+		.ports
+		.insert(StringifiedU16::new(80), ExposedPortType::Http);
+	body.running_details.startup_probe = Some(DeploymentProbe {
+		port: 9999,
+		path: "/healthz".to_string(),
+	});
+	assert!(
+		send_create(&setup, &user.access_token, workspace.id, body)
+			.await
+			.status_code()
+			.is_server_error(),
+		"a startup-probe port that isn't exposed should fail the FK → 500"
+	);
+}
+
+// ---------- list: ordering / pagination / bounds ----------
+
+#[tokio::test]
+async fn list_deployments_ordered_created_desc() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let mut names = Vec::new();
+	for _ in 0..3 {
+		names.push(
+			setup
+				.create_test_deployment(&user.access_token, workspace.id, runner.id)
+				.await
+				.name,
+		);
+	}
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 100,
+					page: 0,
+					additional_query: (),
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListDeploymentResponse>>();
+
+	let listed: Vec<String> = response
+		.response
+		.deployments
+		.iter()
+		.map(|d| d.name.clone())
+		.collect();
+	names.reverse();
+	assert_eq!(names, listed, "deployments should be ordered created DESC");
+}
+
+#[tokio::test]
+async fn list_deployments_pagination() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	for _ in 0..5 {
+		setup
+			.create_test_deployment(&user.access_token, workspace.id, runner.id)
+			.await;
+	}
+
+	let mut pages = Vec::new();
+	for page in 0..2usize {
+		pages.push(
+			setup
+				.make_web_dashboard_call(
+					ApiRequest::<ListDeploymentRequest>::builder()
+						.path(ListDeploymentPath {
+							workspace_id: workspace.id,
+						})
+						.query(ListResourceQuery {
+							sort: None,
+							search: Default::default(),
+							count: 2,
+							page,
+							additional_query: (),
+						})
+						.headers(ListDeploymentRequestHeaders {
+							authorization: user.access_token.clone(),
+							user_agent: TEST_USER_AGENT,
+						})
+						.build(),
+				)
+				.await
+				.json::<ApiSuccessResponseBody<ListDeploymentResponse>>(),
+		);
+	}
+	assert_eq!(2, pages[0].response.deployments.len());
+	assert_eq!(2, pages[1].response.deployments.len());
+	let ids: std::collections::BTreeSet<Uuid> = pages[0]
+		.response
+		.deployments
+		.iter()
+		.chain(pages[1].response.deployments.iter())
+		.map(|d| d.id)
+		.collect();
+	assert_eq!(4, ids.len(), "the two pages should not overlap");
+}
+
+#[tokio::test]
+async fn list_deployments_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
+	);
+}
+
+#[tokio::test]
+async fn list_deployments_page_zero_empty_allowed() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 0,
+					additional_query: (),
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListDeploymentResponse>>();
+	assert!(
+		response.response.deployments.is_empty(),
+		"page 0 of an empty result set is a legitimately empty list"
+	);
+}
+
+// ---------- lifecycle ----------
+
+#[tokio::test]
+async fn start_deployment_sets_deploying() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	send_start(&setup, &user.access_token, workspace.id, dep.id, false).await;
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(info.deployment.status.to_string(), "deploying");
+}
+
+#[tokio::test]
+async fn stop_deployment_sets_stopped() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	setup
+		.execute_sql(&format!(
+			"UPDATE deployment SET status = 'deploying' WHERE id = '{}'",
+			dep.id
+		))
+		.await;
+
+	send_stop(&setup, &user.access_token, workspace.id, dep.id).await;
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(info.deployment.status.to_string(), "stopped");
+}
+
+#[tokio::test]
+async fn start_deployment_force_restart_is_noop() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	// force_restart is destructured but ignored — start still sets Deploying.
+	send_start(&setup, &user.access_token, workspace.id, dep.id, true).await;
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(info.deployment.status.to_string(), "deploying");
+}
+
+#[tokio::test]
+async fn start_running_deployment_sets_deploying() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	setup
+		.execute_sql(&format!(
+			"UPDATE deployment SET status = 'running' WHERE id = '{}'",
+			dep.id
+		))
+		.await;
+
+	// Start has no status guard — a running deployment is still set to Deploying.
+	send_start(&setup, &user.access_token, workspace.id, dep.id, false).await;
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(info.deployment.status.to_string(), "deploying");
+}
+
+#[tokio::test]
+async fn stop_running_deployment_sets_stopped() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	setup
+		.execute_sql(&format!(
+			"UPDATE deployment SET status = 'running' WHERE id = '{}'",
+			dep.id
+		))
+		.await;
+
+	send_stop(&setup, &user.access_token, workspace.id, dep.id).await;
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(info.deployment.status.to_string(), "stopped");
+}
+
+#[tokio::test]
+async fn repeat_delete_deployment_401() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	send_delete(&setup, &user.access_token, workspace.id, dep.id)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(DeleteDeploymentResponse));
+	let second = send_delete(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(
+		401,
+		second.status_code().as_u16(),
+		"repeat delete should 401 (anti-enumeration)"
+	);
+}
+
+#[tokio::test]
+async fn delete_deployment_from_each_state() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	for state in ["stopped", "deploying", "running", "errored"] {
+		let dep = setup
+			.create_test_deployment(&user.access_token, workspace.id, runner.id)
+			.await;
+		setup
+			.execute_sql(&format!(
+				"UPDATE deployment SET status = '{state}'::DEPLOYMENT_STATUS WHERE id = '{}'",
+				dep.id
+			))
+			.await;
+		send_delete(&setup, &user.access_token, workspace.id, dep.id)
+			.await
+			.assert_json(&ApiSuccessResponseBody::new(DeleteDeploymentResponse));
+	}
+}
+
+#[tokio::test]
+async fn get_info_pushed_status_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	// `pushed` is a valid DB enum value but the Rust model can't deserialize it.
+	setup
+		.execute_sql(&format!(
+			"UPDATE deployment SET status = 'pushed'::DEPLOYMENT_STATUS WHERE id = '{}'",
+			dep.id
+		))
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id: workspace.id,
+					deployment_id: dep.id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_server_error(),
+		"get-info on a `pushed` status row should 500 (model cannot deserialize)"
+	);
+}
+
+#[tokio::test]
+async fn start_stop_nonexistent_deployment_401() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	assert_eq!(
+		401,
+		send_start(&setup, &user.access_token, workspace.id, Uuid::nil(), false)
+			.await
+			.status_code()
+			.as_u16()
+	);
+	assert_eq!(
+		401,
+		send_stop(&setup, &user.access_token, workspace.id, Uuid::nil())
+			.await
+			.status_code()
+			.as_u16()
+	);
+}
+
+// ---------- update ----------
+
+#[tokio::test]
+async fn update_deployment_invalid_name_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut body = empty_update();
+	body.name = Some("a/b".to_string());
+	assert_eq!(
+		400,
+		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+			.await
+			.status_code()
+			.as_u16()
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_change_runner() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let runner2 = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let mut body = empty_update();
+	body.runner = Some(runner2.id);
+	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(info.deployment.runner, runner2.id);
+}
+
+#[tokio::test]
+async fn update_deployment_deploy_on_push() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut body = empty_update();
+	body.deploy_on_push = Some(true);
+	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert!(info.running_details.deploy_on_push);
+}
+
+#[tokio::test]
+async fn update_deployment_min_scale_zero_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	// Update enforces range(min=1) per scale field, unlike create.
+	let mut body = empty_update();
+	body.min_horizontal_scale = Some(0);
+	assert_eq!(
+		400,
+		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+			.await
+			.status_code()
+			.as_u16()
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_max_less_than_min_500() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut body = empty_update();
+	body.min_horizontal_scale = Some(5);
+	body.max_horizontal_scale = Some(2);
+	assert!(
+		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+			.await
+			.status_code()
+			.is_server_error(),
+		"max < min on update should hit the DB CHECK → 500"
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_ports_replaced() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut first = empty_update();
+	first.ports = Some(BTreeMap::from([(
+		StringifiedU16::new(80),
+		ExposedPortType::Http,
+	)]));
+	send_update(&setup, &user.access_token, workspace.id, dep.id, first)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+
+	let mut second = empty_update();
+	second.ports = Some(BTreeMap::from([
+		(StringifiedU16::new(8080), ExposedPortType::Http),
+		(StringifiedU16::new(9090), ExposedPortType::Http),
+	]));
+	send_update(&setup, &user.access_token, workspace.id, dep.id, second)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(
+		info.running_details.ports,
+		BTreeMap::from([
+			(StringifiedU16::new(8080), ExposedPortType::Http),
+			(StringifiedU16::new(9090), ExposedPortType::Http),
+		]),
+		"ports should be replaced wholesale when provided"
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_ports_omitted_kept() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut set_ports = empty_update();
+	set_ports.ports = Some(BTreeMap::from([
+		(StringifiedU16::new(80), ExposedPortType::Http),
+		(StringifiedU16::new(8080), ExposedPortType::Http),
+	]));
+	send_update(&setup, &user.access_token, workspace.id, dep.id, set_ports)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+
+	let mut name_only = empty_update();
+	name_only.name = Some(random_name(8));
+	send_update(&setup, &user.access_token, workspace.id, dep.id, name_only)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(
+		info.running_details.ports,
+		BTreeMap::from([
+			(StringifiedU16::new(80), ExposedPortType::Http),
+			(StringifiedU16::new(8080), ExposedPortType::Http),
+		]),
+		"omitting ports should keep the existing ones"
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_env_replaced_and_kept() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut set_env = empty_update();
+	set_env.environment_variables = Some(BTreeMap::from([
+		(
+			"B".to_string(),
+			EnvironmentVariableValue::String("2".to_string()),
+		),
+		(
+			"C".to_string(),
+			EnvironmentVariableValue::String("3".to_string()),
+		),
+	]));
+	send_update(&setup, &user.access_token, workspace.id, dep.id, set_env)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(info.running_details.environment_variables.len(), 2);
+
+	let mut name_only = empty_update();
+	name_only.name = Some(random_name(8));
+	send_update(&setup, &user.access_token, workspace.id, dep.id, name_only)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(
+		info.running_details.environment_variables.len(),
+		2,
+		"omitting env should keep the existing vars"
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_startup_probe_set_then_cleared() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	// Need an exposed port for the probe FK.
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details
+		.ports
+		.insert(StringifiedU16::new(8080), ExposedPortType::Http);
+	let created = send_create(&setup, &user.access_token, workspace.id, body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response;
+	let dep_id = created.id.id;
+
+	let mut set_probe = empty_update();
+	set_probe.startup_probe = Some(DeploymentProbe {
+		port: 8080,
+		path: "/healthz".to_string(),
+	});
+	send_update(&setup, &user.access_token, workspace.id, dep_id, set_probe)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+	assert_eq!(
+		get_info(&setup, &user.access_token, workspace.id, dep_id)
+			.await
+			.running_details
+			.startup_probe,
+		Some(DeploymentProbe {
+			port: 8080,
+			path: "/healthz".to_string(),
+		})
+	);
+
+	// port=0 is the sentinel that clears the probe.
+	let mut clear_probe = empty_update();
+	clear_probe.startup_probe = Some(DeploymentProbe {
+		port: 0,
+		path: String::new(),
+	});
+	send_update(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		dep_id,
+		clear_probe,
+	)
+	.await
+	.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+	assert!(
+		get_info(&setup, &user.access_token, workspace.id, dep_id)
+			.await
+			.running_details
+			.startup_probe
+			.is_none(),
+		"port=0 should clear the startup probe"
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_empty_patch_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	assert_eq!(
+		400,
+		send_update(
+			&setup,
+			&user.access_token,
+			workspace.id,
+			dep.id,
+			empty_update()
+		)
+		.await
+		.status_code()
+		.as_u16(),
+		"an empty PATCH should be WrongParameters (400)"
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_nonexistent_401() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let mut body = empty_update();
+	body.name = Some("x-y-z".to_string());
+	assert_eq!(
+		401,
+		send_update(&setup, &user.access_token, workspace.id, Uuid::nil(), body)
+			.await
+			.status_code()
+			.as_u16()
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_writes_no_deploy_history() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut body = empty_update();
+	body.name = Some(random_name(8));
+	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+
+	let history = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentDeployHistoryRequest>::builder()
+				.path(ListDeploymentDeployHistoryPath {
+					workspace_id: workspace.id,
+					deployment_id: dep.id,
+				})
+				.headers(ListDeploymentDeployHistoryRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListDeploymentDeployHistoryResponse>>();
+	assert!(
+		history.response.deploys.is_empty(),
+		"update should not write a deploy-history row"
 	);
 }

@@ -9,7 +9,7 @@ pub async fn list_repositories(
 			ProcessedApiRequest {
 				path: ListContainerRepositoriesPath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							ContainerRepositorySearchParams {
@@ -201,6 +201,10 @@ pub async fn list_repositories(
 		)
 	})
 	.collect();
+
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
 
 	AppResponse::builder()
 		.body(ListContainerRepositoriesResponse { repositories })

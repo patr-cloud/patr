@@ -19,7 +19,7 @@ import {
 	Table,
 } from "~/components";
 import { useDeploymentsQuery, useRunnersQuery } from "~/hooks/fetch";
-import { useIsAllowed, createPaginationState } from "~/hooks";
+import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
 import DeploymentImageName from "~/components/deployment-image-name";
 
 const DeploymentCard = (props: { item: WithId<Deployment>; runnerName: string }) => {
@@ -128,6 +128,13 @@ const ListDeploymentsPage = () => {
 			pagination.setTotalCount(totalCount);
 		}
 	});
+
+	// An out-of-bounds page (items deleted while on a later page) steps back.
+	recoverFromOutOfBounds(
+		() => deploymentsQuery.isError,
+		() => deploymentsQuery.error?.message,
+		pagination
+	);
 
 	const runnerNameMap = createMemo(() => new Map((runnersQuery.data?.runners || []).map((r) => [r.id, r.name])));
 

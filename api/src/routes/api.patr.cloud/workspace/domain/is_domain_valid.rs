@@ -8,7 +8,7 @@ pub async fn is_domain_valid(
 		request:
 			ProcessedApiRequest {
 				path: IsDomainValidPath { workspace_id },
-				query: IsDomainValidQuery { domain },
+				query: IsDomainValidQueryProcessed { domain },
 				headers:
 					IsDomainValidRequestHeaders {
 						authorization: _,

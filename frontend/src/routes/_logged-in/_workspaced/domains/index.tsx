@@ -24,7 +24,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { GetDomainInfoInWorkspaceResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
-import { useIsAllowed, createPaginationState } from "~/hooks";
+import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
 import { useDomainsQuery } from "~/hooks/fetch";
 import type { WorkspaceDomain } from "~/hooks/fetch/domains";
 
@@ -209,6 +209,12 @@ const ListDomainsPage = () => {
 			pagination.setTotalCount(totalCount);
 		}
 	});
+
+	recoverFromOutOfBounds(
+		() => domainsQuery.isError,
+		() => domainsQuery.error?.message,
+		pagination
+	);
 
 	return (
 		<>

@@ -38,8 +38,8 @@ pub async fn update_user_info(
 		WHERE
 			id = $3;
 		"#,
-		first_name,
-		last_name,
+		first_name.as_deref(),
+		last_name.as_deref(),
 		user_data.id as _,
 	)
 	.execute(&mut **database)

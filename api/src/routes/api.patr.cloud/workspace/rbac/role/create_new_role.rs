@@ -41,6 +41,12 @@ pub async fn create_new_role(
 		return Err(ErrorType::WrongParameters);
 	}
 
+	let description = if description.is_empty() {
+		"No description provided".into()
+	} else {
+		description
+	};
+
 	let now = OffsetDateTime::now_utc();
 
 	let role_id = query!(
@@ -97,7 +103,11 @@ pub async fn create_new_role(
 		description as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::RoleAlreadyExists,
+		err => ErrorType::server_error(err),
+	})?;
 
 	trace!("Role created. Inserting permissions.");
 
@@ -148,7 +158,13 @@ pub async fn create_new_role(
 					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
 				)
 				.execute(&mut **database)
-				.await?;
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						ErrorType::ResourceDoesNotExist
+					}
+					other => ErrorType::server_error(other),
+				})?;
 			}
 			ResourcePermissionType::Exclude(resources) => {
 				query!(
@@ -173,7 +189,13 @@ pub async fn create_new_role(
 					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
 				)
 				.execute(&mut **database)
-				.await?;
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						ErrorType::ResourceDoesNotExist
+					}
+					other => ErrorType::server_error(other),
+				})?;
 			}
 		};
 	}

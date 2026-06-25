@@ -1,4 +1,11 @@
-use models::{ApiSuccessResponseBody, api::workspace::*, utils::Uuid};
+use std::collections::BTreeMap;
+
+use models::{
+	ApiSuccessResponseBody,
+	api::workspace::*,
+	rbac::{Permission, ResourcePermissionType},
+	utils::Uuid,
+};
 
 use crate::prelude::*;
 
@@ -322,6 +329,50 @@ async fn update_workspace_unauthorized() {
 	assert!(
 		response.status_code().is_client_error(),
 		"non-member should not be able to update workspace"
+	);
+}
+
+#[tokio::test]
+async fn update_workspace_denied_without_edit_permission() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+
+	// A member with only ViewRoles — no EditWorkspace.
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			BTreeMap::from([(
+				setup.get_permission_id(Permission::ViewRoles),
+				ResourcePermissionType::Exclude(Default::default()),
+			)]),
+		)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateWorkspaceInfoRequest>::builder()
+				.path(UpdateWorkspaceInfoPath {
+					workspace_id: workspace.id,
+				})
+				.headers(UpdateWorkspaceInfoRequestHeaders {
+					authorization: member.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateWorkspaceInfoRequest {
+					name: Some(random_name(8)),
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"a member without editWorkspace should not be able to rename the workspace, got {}",
+		response.status_code()
 	);
 }
 

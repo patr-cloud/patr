@@ -13,7 +13,7 @@ pub async fn list_repository_tags(
 						repository_id,
 					},
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							ContainerRepositoryTagAndDigestInfoSearchParams {
@@ -82,6 +82,10 @@ pub async fn list_repository_tags(
 		}
 	})
 	.collect();
+
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
 
 	AppResponse::builder()
 		.body(ListContainerRepositoryTagsResponse { tags })

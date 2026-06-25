@@ -16,7 +16,7 @@ pub async fn list_users_in_workspace(
 			ProcessedApiRequest {
 				path: ListUsersInWorkspacePath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							BasicUserInfoSearchParams {

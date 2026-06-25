@@ -87,12 +87,14 @@ pub async fn initialize_workspace_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	// LOWER(name) so workspaces named `Acme` and `acme` collide. Sidebar and
+	// switcher both display the original-case name; only uniqueness is folded.
 	query!(
 		r#"
 		CREATE UNIQUE INDEX
 			workspace_uq_name
 		ON
-			workspace(name)
+			workspace(LOWER(name))
 		WHERE
 			deleted IS NULL;
 		"#

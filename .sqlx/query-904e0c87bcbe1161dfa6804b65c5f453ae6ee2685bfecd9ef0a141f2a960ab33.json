@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_to_sign_up SET sign_up_attempts = sign_up_attempts + 1 WHERE username = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "904e0c87bcbe1161dfa6804b65c5f453ae6ee2685bfecd9ef0a141f2a960ab33"
+}

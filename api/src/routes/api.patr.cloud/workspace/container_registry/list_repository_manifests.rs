@@ -13,7 +13,7 @@ pub async fn list_repository_manifests(
 						repository_id,
 					},
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: _,
 						search:
 							ContainerRepositoryManifestInfoSearchParams {
@@ -159,6 +159,10 @@ pub async fn list_repository_manifests(
 		}
 	})
 	.collect();
+
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
 
 	AppResponse::builder()
 		.body(ListContainerRepositoryManifestsResponse { manifests })

@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use cloudflare::{
-	endpoints::workerskv::delete_key,
+	endpoints::{cfd_tunnel::delete_tunnel, workerskv::delete_key},
 	framework::{
 		Environment,
 		auth::Credentials,
@@ -37,6 +37,23 @@ pub async fn remove_runner_from_workspace(
 ) -> Result<AppResponse<DeleteRunnerRequest>, ErrorType> {
 	info!("Deleting runner `{}`", runner_id);
 
+	// Grab the tunnel id before the row is gone so we can tear it down on
+	// Cloudflare afterwards.
+	let tunnel_id = query!(
+		r#"
+		SELECT
+			cloudflare_tunnel_id
+		FROM
+			runner
+		WHERE
+			id = $1;
+		"#,
+		&runner_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.map(|runner| runner.cloudflare_tunnel_id);
+
 	query!(
 		r#"
 		DELETE FROM
@@ -72,19 +89,33 @@ pub async fn remove_runner_from_workspace(
 		.del(redis::keys::workspace_id_for_runner(&runner_id))
 		.await?;
 
-	CloudflareClient::new(
+	let cloudflare = CloudflareClient::new(
 		Credentials::UserAuthToken {
 			token: state.config.cloudflare.api_key.clone(),
 		},
 		ClientConfig::default(),
 		Environment::Custom(state.config.cloudflare.base_url.clone()),
-	)?
-	.request(&delete_key::DeleteKey {
-		account_identifier: &state.config.cloudflare.account_id,
-		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-		key: &runner_id.to_string(),
-	})
-	.await?;
+	)?;
+
+	cloudflare
+		.request(&delete_key::DeleteKey {
+			account_identifier: &state.config.cloudflare.account_id,
+			namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+			key: &runner_id.to_string(),
+		})
+		.await?;
+
+	// Delete the runner's Cloudflare tunnel too — otherwise it lingers on the
+	// account forever. `cascade` tears down any active connections first.
+	if let Some(tunnel_id) = tunnel_id {
+		cloudflare
+			.request(&delete_tunnel::DeleteTunnel {
+				account_identifier: &state.config.cloudflare.account_id,
+				tunnel_id: &tunnel_id,
+				params: delete_tunnel::Params { cascade: true },
+			})
+			.await?;
+	}
 
 	AppResponse::builder()
 		.body(DeleteRunnerResponse)

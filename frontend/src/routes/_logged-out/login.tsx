@@ -16,7 +16,7 @@ import { createSignal, Show } from "solid-js";
 import { SocialLoginInitiateResponse, LoginRequest, LoginResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
-import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
+import { USERNAME_OR_EMAIL_PATTERN, validateUsernameOrEmail } from "~/utils/validation";
 
 interface InputFields {
 	userId: string;
@@ -54,16 +54,13 @@ const Login = () => {
 	};
 
 	const validateInputs = (): boolean => {
-		const { password } = inputs();
+		const { userId, password } = inputs();
 
-		// FIXME: Poor regex, improve this
-		// if (!USERNAME_VALIDITY_REGEX.test(userId)) {
-		//   setInputError((prev) => ({
-		//     ...prev,
-		//     userId: "Invalid Username format.",
-		//   }));
-		//   return false;
-		// }
+		const userIdError = validateUsernameOrEmail(userId);
+		if (userIdError) {
+			setInputError((prev) => ({ ...prev, userId: userIdError }));
+			return false;
+		}
 
 		if (password.length === 0) {
 			setInputError((prev) => ({
@@ -191,10 +188,10 @@ const Login = () => {
 					<Input
 						required={true}
 						type={InputType.Text}
-						placeholder="Username"
+						placeholder="Username or Email"
 						autocomplete="username"
-						pattern={USERNAME_VALIDITY_PATTERN}
-						title="Username must start and end with an alphanumeric character and can contain underscores, dots, or hyphens in between."
+						pattern={USERNAME_OR_EMAIL_PATTERN}
+						title="Enter your username or the email you signed up with."
 						id="userId"
 						name="userId"
 						class="mt-4"
@@ -256,6 +253,7 @@ const Login = () => {
 							type="submit"
 							loading={isLoading}
 							loadingContent={() => <span>Logging in...</span>}
+							disabled={!turnstileToken()}
 						>
 							Login
 						</Button>

@@ -3,7 +3,7 @@
 	"name": "patr-frontend",
 	"type": "module",
 	"scripts": {
-		"dev": "vinxi dev --port 3030",
+		"dev": "vinxi dev --port ${PORT:-3030}",
 		"build": "tsr generate && tsc --noEmit && vinxi build",
 		"typecheck": "tsr generate && tsc --noEmit",
 		"start": "vinxi start",

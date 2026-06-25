@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use models::{
+	ApiSuccessResponseBody,
 	api::workspace::domain::*,
 	rbac::{DomainPermission, Permission},
 };
@@ -342,5 +343,178 @@ async fn domain_view_does_not_grant_delete() {
 	assert!(
 		r_delete.status_code().is_client_error(),
 		"view permission should not grant delete"
+	);
+}
+
+/// Add does not imply View: an add-only member can create a domain but cannot
+/// read it back.
+#[tokio::test]
+async fn domain_add_does_not_grant_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (_admin, ws_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(Permission::Domain(DomainPermission::Add), all())],
+	)
+	.await;
+
+	let created = setup
+		.make_web_dashboard_call(
+			ApiRequest::<AddDomainToWorkspaceRequest>::builder()
+				.path(AddDomainToWorkspacePath {
+					workspace_id: ws_id,
+				})
+				.headers(AddDomainToWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(AddDomainToWorkspaceRequest {
+					domain: format!("{}.com", random_name(8)),
+					nameserver_type: DomainNameserverType::External,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<AddDomainToWorkspaceResponse>>();
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDomainInfoInWorkspaceRequest>::builder()
+				.path(GetDomainInfoInWorkspacePath {
+					workspace_id: ws_id,
+					domain_id: created.response.id.id,
+				})
+				.headers(GetDomainInfoInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"add-only member should not be able to view the domain"
+	);
+}
+
+/// View does not imply Add: a view-only member cannot add a domain.
+#[tokio::test]
+async fn domain_view_does_not_grant_add() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (_admin, ws_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(Permission::Domain(DomainPermission::View), all())],
+	)
+	.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<AddDomainToWorkspaceRequest>::builder()
+				.path(AddDomainToWorkspacePath {
+					workspace_id: ws_id,
+				})
+				.headers(AddDomainToWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(AddDomainToWorkspaceRequest {
+					domain: format!("{}.com", random_name(8)),
+					nameserver_type: DomainNameserverType::External,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"view-only member should not be able to add a domain"
+	);
+}
+
+/// View does not imply Verify: a view-only member cannot verify a domain.
+#[tokio::test]
+async fn domain_view_does_not_grant_verify() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, ws_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(Permission::Domain(DomainPermission::View), all())],
+	)
+	.await;
+	let domain = setup.create_test_domain(&admin.access_token, ws_id).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<VerifyDomainInWorkspaceRequest>::builder()
+				.path(VerifyDomainInWorkspacePath {
+					workspace_id: ws_id,
+					domain_id: domain.id,
+				})
+				.headers(VerifyDomainInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"view-only member should not be able to verify a domain"
+	);
+}
+
+/// A member with no domain permission gets a membership-gated list that
+/// succeeds but is View-filtered to empty — not a 403.
+#[tokio::test]
+async fn domain_no_permission_list_returns_empty() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, ws_id, user_b) =
+		setup_permission_test(&setup, vec![(Permission::ViewRoles, all())]).await;
+	let _domain = setup.create_test_domain(&admin.access_token, ws_id).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
+				.path(ListDomainsInWorkspacePath {
+					workspace_id: ws_id,
+				})
+				.headers(ListDomainsInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListDomainsInWorkspaceResponse>>();
+	assert!(
+		response.response.domains.is_empty(),
+		"a member without domain View should see an empty list, not a 403"
+	);
+}
+
+/// A non-member cannot reach another workspace's domains at all.
+#[tokio::test]
+async fn domain_non_member_denied() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let _domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	let outsider = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
+				.path(ListDomainsInWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListDomainsInWorkspaceRequestHeaders {
+					authorization: outsider.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"a non-member should be denied access to the workspace's domains"
 	);
 }

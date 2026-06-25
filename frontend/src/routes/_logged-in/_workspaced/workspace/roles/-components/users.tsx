@@ -26,7 +26,7 @@ const UsersAssignedToRole = () => {
 						<tr class="table-row">
 							<td class="flex-1 flex items-center justify-center gap-2">
 								<Initials firstName={item.firstName} lastName={item.lastName} size="xs" />
-								<span class="truncate font-mono">{item.username}</span>
+								<span class="truncate font-mono">@{item.username}</span>
 							</td>
 						</tr>
 					)}

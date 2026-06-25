@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_user.workspace_id AS \"workspace_id!\", role_resource_permissions_type.permission_id AS \"permission_id!\", role_resource_permissions_exclude.resource_id AS \"resource_id?\" FROM workspace_user INNER JOIN role_resource_permissions_type ON role_resource_permissions_type.role_id = workspace_user.role_id AND role_resource_permissions_type.permission_type = 'exclude' LEFT JOIN role_resource_permissions_exclude ON role_resource_permissions_exclude.role_id = workspace_user.role_id WHERE workspace_user.user_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "permission_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "resource_id?",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e46b68b7b0d3f66e0813577d95c8b013b3cb9c96a6df7ee961da53151da9a564"
+}

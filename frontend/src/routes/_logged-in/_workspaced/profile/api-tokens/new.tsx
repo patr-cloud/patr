@@ -55,6 +55,11 @@ const CreateApiTokens = () => {
 			if (cidr !== undefined && (Number(cidr) < 0 || Number(cidr) > 32)) {
 				return "Invalid CIDR: must be 0-32 for IPv4";
 			}
+		} else {
+			const cidr = value.split("/")[1];
+			if (cidr !== undefined && (Number(cidr) < 0 || Number(cidr) > 128)) {
+				return "Invalid CIDR: must be 0-128 for IPv6";
+			}
 		}
 		return undefined;
 	};
@@ -180,7 +185,7 @@ const CreateApiTokens = () => {
 											onInput={(e) => {
 												setFromDate(e.currentTarget.valueAsDate);
 											}}
-											name="token-validity"
+											name="token-nbf"
 											placeholder="Enter Token Validity in days"
 											type={InputType.Date}
 										/>
@@ -192,7 +197,7 @@ const CreateApiTokens = () => {
 												setToDate(e.currentTarget.valueAsDate);
 											}}
 											value={toDate() ? toDate()!.toISOString().split("T")[0] : ""}
-											name="token-validity"
+											name="token-exp"
 											placeholder="Enter Token Validity in days"
 											type={InputType.Date}
 										/>

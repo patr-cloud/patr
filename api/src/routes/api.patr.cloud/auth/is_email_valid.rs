@@ -8,7 +8,7 @@ pub async fn is_email_valid(
 		request:
 			ProcessedApiRequest {
 				path: IsEmailValidPath,
-				query: IsEmailValidQuery { email },
+				query: IsEmailValidQueryProcessed { email },
 				headers: IsEmailValidRequestHeaders { user_agent: _ },
 				body: IsEmailValidRequestProcessed,
 			},
@@ -32,7 +32,7 @@ pub async fn is_email_valid(
 		WHERE
 			email = $1;
 		"#,
-		email,
+		&email,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -50,7 +50,7 @@ pub async fn is_email_valid(
 			email = $1 AND
 			verification_token_expiry > NOW();
 		"#,
-		email,
+		&email,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -68,7 +68,7 @@ pub async fn is_email_valid(
 			recovery_email = $1 AND
 			otp_expiry > NOW();
 		"#,
-		email,
+		&email,
 	)
 	.fetch_optional(&mut **database)
 	.await?

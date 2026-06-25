@@ -8,7 +8,7 @@ pub async fn is_username_valid(
 		request:
 			ProcessedApiRequest {
 				path: IsUsernameValidPath,
-				query: IsUsernameValidQuery { username },
+				query: IsUsernameValidQueryProcessed { username },
 				headers: IsUsernameValidRequestHeaders { user_agent: _ },
 				body: IsUsernameValidRequestProcessed,
 			},
@@ -32,7 +32,7 @@ pub async fn is_username_valid(
 		WHERE
 			username = $1;
 		"#,
-		username,
+		&username,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -50,7 +50,7 @@ pub async fn is_username_valid(
 			username = $1 AND
 			otp_expiry > NOW();
 		"#,
-		username,
+		&username,
 	)
 	.fetch_optional(&mut **database)
 	.await?

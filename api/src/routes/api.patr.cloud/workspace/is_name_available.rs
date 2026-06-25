@@ -10,7 +10,7 @@ pub async fn is_name_available(
 		request:
 			ProcessedApiRequest {
 				path: IsWorkspaceNameAvailablePath,
-				query: IsWorkspaceNameAvailableQuery { name },
+				query: IsWorkspaceNameAvailableQueryProcessed { name },
 				headers:
 					IsWorkspaceNameAvailableRequestHeaders {
 						authorization: _,

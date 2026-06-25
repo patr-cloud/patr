@@ -44,8 +44,10 @@ macros::declare_registry_endpoint!(
 	request_headers = {
 		/// The authorization header
 		pub authorization: BearerToken,
-		/// The content type header
-		pub content_type: ContentType,
+		/// The content type header. Optional: Docker 24 and earlier send a
+		/// chunked PATCH (Transfer-Encoding: chunked) with no Content-Type, which
+		/// is spec-compliant — a missing value is treated as octet-stream below.
+		pub content_type: OptionalHeader<ContentType>,
 		/// The content length header
 		pub content_length: OptionalHeader<ContentLength>,
 		/// The content range header
@@ -181,17 +183,21 @@ pub async fn upload_chunk(
 
 	debug!("Retrieved upload session");
 
-	if content_type != ContentType::octet_stream() {
-		warn!(
-			"Invalid Content-Type for blob chunk upload: {}",
-			content_type
-		);
-		return RegistryError::builder()
-			.code(ErrorCode::BlobUploadInvalid)
-			.message("Content-Type must be application/octet-stream for blob chunk upload")
-			.status(StatusCode::BAD_REQUEST)
-			.build()
-			.into_result();
+	// Only validate when a Content-Type is actually present; an absent one (as
+	// Docker 24's chunked PATCH sends) defaults to application/octet-stream.
+	if let Some(content_type) = content_type.into_option() {
+		if content_type != ContentType::octet_stream() {
+			warn!(
+				"Invalid Content-Type for blob chunk upload: {}",
+				content_type
+			);
+			return RegistryError::builder()
+				.code(ErrorCode::BlobUploadInvalid)
+				.message("Content-Type must be application/octet-stream for blob chunk upload")
+				.status(StatusCode::BAD_REQUEST)
+				.build()
+				.into_result();
+		}
 	}
 
 	if body.is_end_stream() {

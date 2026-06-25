@@ -17,7 +17,7 @@ pub async fn delete_role(
 					workspace_id,
 					role_id,
 				},
-				query: DeleteRoleQuery { remove_users },
+				query: DeleteRoleQueryProcessed { remove_users },
 				headers: DeleteRoleRequestHeaders {
 					authorization: _,
 					user_agent: _,
@@ -33,10 +33,36 @@ pub async fn delete_role(
 ) -> Result<AppResponse<DeleteRoleRequest>, ErrorType> {
 	info!("Deleting role: {} in workspace: {}", role_id, workspace_id);
 
-	// Remove the role from all the users. If the role is still in use, an error
-	// will be thrown, causing the transaction to be rolled back and the role not
-	// to be deleted
-	let users_with_role = query!(
+	// Only count when the caller might want to abort. With `remove_users=true`
+	// we'd delete regardless, so paying for a COUNT round-trip is wasted work.
+	// The handler runs in a transaction, so we *could* rely on the DELETE
+	// rolling back on Err — but reading "abort if in use" up front is clearer
+	// than "delete, then conditionally return Err to undo the delete via the
+	// outer rollback."
+	if !remove_users {
+		let users_with_role = query!(
+			r#"
+			SELECT
+				COUNT(*) AS "count!: i64"
+			FROM
+				workspace_user
+			WHERE
+				workspace_id = $1 AND
+				role_id = $2;
+			"#,
+			workspace_id as _,
+			role_id as _,
+		)
+		.fetch_one(&mut **database)
+		.await?
+		.count;
+
+		if users_with_role > 0 {
+			return Err(ErrorType::RoleInUse);
+		}
+	}
+
+	let users_removed = query!(
 		r#"
 		DELETE FROM
 			workspace_user
@@ -45,18 +71,13 @@ pub async fn delete_role(
 			role_id = $2;
 		"#,
 		workspace_id as _,
-		role_id as _
+		role_id as _,
 	)
 	.execute(&mut **database)
 	.await?
 	.rows_affected();
 
-	info!("Removed role from {} users", users_with_role);
-
-	if !remove_users && users_with_role > 0 {
-		// The role is still in use
-		return Err(ErrorType::RoleInUse);
-	}
+	info!("Removed role from {} users", users_removed);
 
 	query!(
 		r#"
@@ -105,9 +126,11 @@ pub async fn delete_role(
 		DELETE FROM
 			role
 		WHERE
-			id = $1;
+			id = $1 AND
+			owner_id = $2;
 		"#,
-		role_id as _
+		role_id as _,
+		workspace_id as _,
 	)
 	.execute(&mut **database)
 	.await?

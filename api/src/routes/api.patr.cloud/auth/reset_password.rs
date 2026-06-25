@@ -8,9 +8,10 @@ use argon2::{
 };
 use axum::http::StatusCode;
 use models::api::auth::*;
+use rustis::commands::StringCommands as _;
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{prelude::*, redis::keys as redis, utils::cloudflare::validate_turnstile_token};
 
 pub async fn reset_password(
 	AppRequest {
@@ -24,14 +25,34 @@ pub async fn reset_password(
 						user_id,
 						verification_token,
 						password,
+						cf_turnstile_token,
 					},
 			},
 		database,
-		redis: _,
-		client_ip: _,
+		redis,
+		client_ip,
 		state,
 	}: AppRequest<'_, ResetPasswordRequest>,
 ) -> Result<AppResponse<ResetPasswordRequest>, ErrorType> {
+	trace!("Validating Cloudflare Turnstile token");
+	let cf_turnstile_response = validate_turnstile_token(
+		&state.config.cloudflare.turnstile_secret,
+		&cf_turnstile_token,
+		Some(client_ip),
+	)
+	.await
+	.inspect_err(|err| {
+		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+	})?;
+
+	if !cf_turnstile_response.success {
+		return Err(ErrorType::TurnstileVerificationFailed);
+	}
+
+	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "reset-password" {
+		return Err(ErrorType::TurnstileVerificationActionMismatch);
+	}
+
 	info!("Resetting password for user: `{user_id}`");
 
 	let user_data = query!(
@@ -81,7 +102,7 @@ pub async fn reset_password(
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
 
-	if user_data.password_reset_attempts.unwrap_or(0) > constants::MAX_PASSWORD_RESET_ATTEMPTS {
+	if user_data.password_reset_attempts.unwrap_or(0) >= constants::MAX_PASSWORD_RESET_ATTEMPTS {
 		debug!("Password reset attempts exceeded");
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
@@ -145,12 +166,17 @@ pub async fn reset_password(
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
+	// Update the password and consume the reset token in one statement so the
+	// same OTP can't be replayed within its TTL.
 	query!(
 		r#"
 		UPDATE
 			"user"
 		SET
-			password = $1
+			password = $1,
+			password_reset_token = NULL,
+			password_reset_token_expiry = NULL,
+			password_reset_attempts = NULL
 		WHERE
 			id = $2;
 		"#,
@@ -159,6 +185,32 @@ pub async fn reset_password(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// Reset has no caller session, so drop every web login the user had.
+	query!(
+		r#"
+		DELETE FROM
+			web_login
+		WHERE
+			user_id = $1;
+		"#,
+		user_data.id,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	redis
+		.setex(
+			redis::user_id_revocation_timestamp(&user_data.id.into()),
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs(),
+			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+		)
+		.await
+		.inspect_err(|err| {
+			error!("Error setting user_id_revocation_timestamp: `{}`", err);
+		})?;
 
 	AppResponse::builder()
 		.body(ResetPasswordResponse)

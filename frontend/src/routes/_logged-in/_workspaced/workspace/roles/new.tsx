@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createMemo, createSignal, Show } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
-import { Button, ButtonVariant, Input, PageContainer, PageContainerBody, Table, useToast } from "~/components";
+import { Alert, Button, ButtonVariant, Input, PageContainer, PageContainerBody, Table, useToast } from "~/components";
 import { createAuthenticatedAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { CreateNewRoleRequest } from "~/bindings/CreateNewRoleRequest";
@@ -13,6 +13,7 @@ import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-componen
 import PermissionSelector from "./-components/permission-selector";
 import { usePermissionsQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";
+import { validateNameField, validateRoleDescription } from "~/utils/validation";
 import { FiTrash2 } from "solid-icons/fi";
 
 const CreateRoles = () => {
@@ -22,6 +23,8 @@ const CreateRoles = () => {
 
 	const [roleName, setRoleName] = createSignal("");
 	const [roleDescription, setRoleDescription] = createSignal("");
+	const [roleNameError, setRoleNameError] = createSignal<string | undefined>(undefined);
+	const [roleDescriptionError, setRoleDescriptionError] = createSignal<string | undefined>(undefined);
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
 
 	const allPermissionsQuery = usePermissionsQuery(() => workspaceId()!);
@@ -53,10 +56,12 @@ const CreateRoles = () => {
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
 
 	const { execute: handleSubmit, isLoading: isSubmitting } = createAuthenticatedAction(async ({ workspaceId }) => {
-		if (!roleName().trim()) {
-			toast("Please enter a role name", "error");
-			return;
-		}
+		const nameError =
+			validateNameField(roleName()) === "Required" ? "Please enter a role name" : validateNameField(roleName());
+		const descriptionError = validateRoleDescription(roleDescription());
+		setRoleNameError(nameError);
+		setRoleDescriptionError(descriptionError);
+		if (nameError || descriptionError) return;
 
 		if (Object.keys(permissionsData()).length === 0) {
 			toast("Please select at least one permission", "error");
@@ -102,8 +107,14 @@ const CreateRoles = () => {
 								type="text"
 								placeholder="Enter Name"
 								value={roleName()}
-								onInput={(e) => setRoleName(e.currentTarget.value)}
+								onInput={(e) => {
+									setRoleName(e.currentTarget.value);
+									setRoleNameError(undefined);
+								}}
 							/>
+							<Show when={roleNameError()}>
+								<Alert message={roleNameError()!} type="error" />
+							</Show>
 						</div>
 
 						<div class="flex flex-col gap-2">
@@ -112,8 +123,14 @@ const CreateRoles = () => {
 								type="text"
 								placeholder="Enter Description (optional)"
 								value={roleDescription()}
-								onInput={(e) => setRoleDescription(e.currentTarget.value)}
+								onInput={(e) => {
+									setRoleDescription(e.currentTarget.value);
+									setRoleDescriptionError(undefined);
+								}}
 							/>
+							<Show when={roleDescriptionError()}>
+								<Alert message={roleDescriptionError()!} type="error" />
+							</Show>
 						</div>
 
 						<div class="flex flex-col gap-4">

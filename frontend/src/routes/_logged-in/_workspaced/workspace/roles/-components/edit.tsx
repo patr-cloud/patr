@@ -1,4 +1,4 @@
-import { Button, ButtonVariant, Table, useToast } from "~/components";
+import { Alert, Button, ButtonVariant, Input, Table, useToast } from "~/components";
 import PermissionSelector from "./permission-selector";
 import { createEffect, createMemo, createSignal, Show, Suspense } from "solid-js";
 import { useParams } from "@tanstack/solid-router";
@@ -12,9 +12,14 @@ import { roleKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { FiTrash2 } from "solid-icons/fi";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";
+import { validateNameField, validateRoleDescription } from "~/utils/validation";
 
 const EditPermissions = () => {
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
+	const [roleName, setRoleName] = createSignal("");
+	const [roleDescription, setRoleDescription] = createSignal("");
+	const [roleNameError, setRoleNameError] = createSignal<string | undefined>(undefined);
+	const [roleDescriptionError, setRoleDescriptionError] = createSignal<string | undefined>(undefined);
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const queryClient = useQueryClient();
@@ -27,6 +32,8 @@ const EditPermissions = () => {
 		const role = roleInfoQuery.data;
 		if (role) {
 			setPermissionsData(role.permissions as { [key: string]: ResourcePermissionType });
+			setRoleName(role.name);
+			setRoleDescription(role.description ?? "");
 		}
 	});
 
@@ -59,7 +66,19 @@ const EditPermissions = () => {
 	});
 
 	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async () => {
+		const nameError = validateNameField(roleName());
+		const descError = validateRoleDescription(roleDescription());
+		setRoleNameError(nameError);
+		setRoleDescriptionError(descError);
+		if (nameError || descError) return;
+
+		const role = roleInfoQuery.data;
 		const requestBody: UpdateRoleRequest = {
+			name: roleName().trim() !== role?.name ? roleName().trim() : undefined,
+			description:
+				roleDescription().trim() !== (role?.description ?? "")
+					? roleDescription().trim() || undefined
+					: undefined,
 			permissions: permissionsData(),
 		};
 
@@ -88,7 +107,7 @@ const EditPermissions = () => {
 		<Suspense fallback={<div class="text-gray-400 text-center py-8">Loading role information...</div>}>
 			<div class="flex flex-col gap-4">
 				<div class="flex justify-between items-center">
-					<h3 class="text-lg text-white">Edit Permissions</h3>
+					<h3 class="text-lg text-white">Edit Role</h3>
 
 					<div class="flex justify-end gap-4">
 						<Button
@@ -99,6 +118,38 @@ const EditPermissions = () => {
 							{isUpdating() ? "Saving Changes..." : "Save Changes"}
 						</Button>
 					</div>
+				</div>
+
+				<div class="flex flex-col gap-2">
+					<label class="text-white text-sm">Role Name</label>
+					<Input
+						type="text"
+						placeholder="Enter Name"
+						value={roleName()}
+						onInput={(e) => {
+							setRoleName(e.currentTarget.value);
+							setRoleNameError(undefined);
+						}}
+					/>
+					<Show when={roleNameError()}>
+						<Alert message={roleNameError()!} type="error" />
+					</Show>
+				</div>
+
+				<div class="flex flex-col gap-2">
+					<label class="text-white text-sm">Description</label>
+					<Input
+						type="text"
+						placeholder="Enter Description (optional)"
+						value={roleDescription()}
+						onInput={(e) => {
+							setRoleDescription(e.currentTarget.value);
+							setRoleDescriptionError(undefined);
+						}}
+					/>
+					<Show when={roleDescriptionError()}>
+						<Alert message={roleDescriptionError()!} type="error" />
+					</Show>
 				</div>
 
 				<div class="flex items-center gap-2">

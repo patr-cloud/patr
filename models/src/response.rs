@@ -17,6 +17,7 @@ pub struct AppResponse<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	/// The status code of the response
 	pub status_code: StatusCode,
@@ -30,6 +31,7 @@ impl<E> AppResponse<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	/// Convert the response into a Result
 	///
@@ -46,6 +48,7 @@ impl<E> IntoResponse for AppResponse<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	fn into_response(self) -> axum::response::Response {
 		(

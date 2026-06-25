@@ -9,7 +9,7 @@ use crate::utils::assets::email_images as filters;
 #[derive(Debug, Clone, Serialize, Deserialize, EmailTemplate)]
 #[template(path = "forgot-password", subject = "Your password reset code")]
 #[serde(rename_all = "camelCase")]
-pub struct _ForgotPasswordEmail {
+pub struct ForgotPasswordEmail {
 	/// The username of the user who requested the password reset.
 	pub username: String,
 	/// The email address of the user who requested the password reset.

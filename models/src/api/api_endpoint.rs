@@ -27,8 +27,16 @@ where
 	Self: Sized + Clone + Send + 'static,
 	Self::RequestPath:
 		TypedPath + ResponseHeaders + Serialize + DeserializeOwned + Clone + Send + Sync + 'static,
-	Self::RequestQuery:
-		ResponseHeaders + Serialize + DeserializeOwned + Default + Clone + Send + Sync + 'static,
+	Self::RequestQuery: ResponseHeaders
+		+ Serialize
+		+ DeserializeOwned
+		+ Default
+		+ Clone
+		+ Preprocessable
+		+ Send
+		+ Sync
+		+ 'static,
+	<Self::RequestQuery as Preprocessable>::Processed: Send,
 	Self::RequestHeaders: Headers
 		+ ResponseHeaders
 		+ HasHeaders<<Self::ResponseBody as RequestHeaders>::RequiredRequestHeaders>

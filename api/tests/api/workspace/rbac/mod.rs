@@ -855,3 +855,467 @@ async fn remove_user_from_workspace_not_member() {
 		response.status_code()
 	);
 }
+
+/// Helper: attempt CreateNewRole with a given `description`, return the
+/// response.
+async fn create_role_with_description(
+	setup: &TestSetup,
+	user: &TestUser,
+	workspace_id: Uuid,
+	description: &str,
+) -> ::axum_test::TestResponse {
+	let mut permissions = BTreeMap::new();
+	permissions.insert(
+		setup.get_permission_id(Permission::ViewRoles),
+		ResourcePermissionType::Include(Default::default()),
+	);
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateNewRoleRequest>::builder()
+				.path(CreateNewRolePath { workspace_id })
+				.headers(CreateNewRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateNewRoleRequest {
+					name: random_name(8),
+					description: description.to_string(),
+					permissions,
+				})
+				.build(),
+		)
+		.await
+}
+
+#[tokio::test]
+async fn create_role_rejects_xss_in_description() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response =
+		create_role_with_description(&setup, &user, workspace.id, "<script>alert(1)</script>")
+			.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx for HTML in description, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_role_rejects_over_500_char_description() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response =
+		create_role_with_description(&setup, &user, workspace.id, &"a".repeat(501)).await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx for over-length description, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_role_substitutes_default_text_for_empty_description() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	// Empty description should NOT 4xx — the handler substitutes a default.
+	let response = create_role_with_description(&setup, &user, workspace.id, "").await;
+	assert!(
+		response.status_code().is_success(),
+		"empty description should be accepted (default substituted), got {}",
+		response.status_code()
+	);
+
+	// Fetch the role and confirm the default was stored.
+	let role_id = response
+		.json::<ApiSuccessResponseBody<CreateNewRoleResponse>>()
+		.response
+		.id
+		.id;
+
+	let role = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetRoleInfoRequest>::builder()
+				.path(GetRoleInfoPath {
+					workspace_id: workspace.id,
+					role_id,
+				})
+				.headers(GetRoleInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetRoleInfoResponse>>();
+
+	assert_eq!("No description provided", role.response.role.description);
+}
+
+#[tokio::test]
+async fn update_role_rejects_xss_in_description() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let role = setup
+		.create_test_role(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRoleRequest>::builder()
+				.path(UpdateRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.headers(UpdateRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRoleRequest {
+					name: None,
+					description: Some("<script>alert(1)</script>".to_string()),
+					permissions: None,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx for HTML in updated description, got {}",
+		response.status_code()
+	);
+}
+
+/// A role in workspace A cannot be read via workspace B's URL by B's owner.
+#[tokio::test]
+async fn role_cross_workspace_get_denied() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner_a = setup.create_test_user().await;
+	let ws_a = setup.create_test_workspace(&owner_a.access_token).await;
+	let role_a = setup.create_test_role(&owner_a.access_token, ws_a.id).await;
+
+	let owner_b = setup.create_test_user().await;
+	let ws_b = setup.create_test_workspace(&owner_b.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetRoleInfoRequest>::builder()
+				.path(GetRoleInfoPath {
+					workspace_id: ws_b.id,
+					role_id: role_a.id,
+				})
+				.headers(GetRoleInfoRequestHeaders {
+					authorization: owner_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"reading workspace A's role via workspace B's URL should be denied"
+	);
+}
+
+/// A role in workspace A cannot be updated via workspace B's URL by B's owner.
+#[tokio::test]
+async fn role_cross_workspace_update_denied() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner_a = setup.create_test_user().await;
+	let ws_a = setup.create_test_workspace(&owner_a.access_token).await;
+	let role_a = setup.create_test_role(&owner_a.access_token, ws_a.id).await;
+
+	let owner_b = setup.create_test_user().await;
+	let ws_b = setup.create_test_workspace(&owner_b.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRoleRequest>::builder()
+				.path(UpdateRolePath {
+					workspace_id: ws_b.id,
+					role_id: role_a.id,
+				})
+				.headers(UpdateRoleRequestHeaders {
+					authorization: owner_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRoleRequest {
+					name: None,
+					description: Some("x".to_string()),
+					permissions: None,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"updating workspace A's role via workspace B's URL should be denied"
+	);
+}
+
+/// A role in workspace A cannot be deleted via workspace B's URL by B's owner.
+#[tokio::test]
+async fn role_cross_workspace_delete_denied() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner_a = setup.create_test_user().await;
+	let ws_a = setup.create_test_workspace(&owner_a.access_token).await;
+	let role_a = setup.create_test_role(&owner_a.access_token, ws_a.id).await;
+
+	let owner_b = setup.create_test_user().await;
+	let ws_b = setup.create_test_workspace(&owner_b.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteRoleRequest>::builder()
+				.path(DeleteRolePath {
+					workspace_id: ws_b.id,
+					role_id: role_a.id,
+				})
+				.query(DeleteRoleQuery {
+					remove_users: false,
+				})
+				.headers(DeleteRoleRequestHeaders {
+					authorization: owner_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"deleting workspace A's role via workspace B's URL should be denied"
+	);
+}
+
+/// A user cannot add a member to a workspace they don't own/administer.
+#[tokio::test]
+async fn add_member_to_unowned_workspace_denied() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner_a = setup.create_test_user().await;
+	let ws_a = setup.create_test_workspace(&owner_a.access_token).await;
+	let owner_b = setup.create_test_user().await;
+	let _ws_b = setup.create_test_workspace(&owner_b.access_token).await;
+	let outsider = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: ws_a.id,
+					user_id: outsider.user_id,
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: owner_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest { roles: vec![] })
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"adding a member to a workspace you don't own should be denied"
+	);
+}
+
+/// Creating a workspace seeds the default set of 36 roles (owner_id = the
+/// workspace id).
+#[tokio::test]
+async fn default_roles_seeded_on_workspace_create() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let count: i64 = sqlx::query_scalar(&format!(
+		"SELECT COUNT(*) FROM role WHERE owner_id = '{}'",
+		workspace.id
+	))
+	.fetch_one(setup.database())
+	.await
+	.expect("count query");
+	assert_eq!(36, count, "a new workspace should seed 36 default roles");
+}
+
+#[tokio::test]
+async fn create_role_name_too_short() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateNewRoleRequest>::builder()
+				.path(CreateNewRolePath {
+					workspace_id: workspace.id,
+				})
+				.headers(CreateNewRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateNewRoleRequest {
+					name: "ab".to_string(),
+					description: "too short".to_string(),
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						ResourcePermissionType::Exclude(Default::default()),
+					)]),
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"a role name shorter than 4 chars should be rejected, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_role_same_name_across_workspaces() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace_a = setup.create_test_workspace(&user.access_token).await;
+	let workspace_b = setup.create_test_workspace(&user.access_token).await;
+	let name = random_name(8);
+
+	for ws in [workspace_a.id, workspace_b.id] {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<CreateNewRoleRequest>::builder()
+					.path(CreateNewRolePath { workspace_id: ws })
+					.headers(CreateNewRoleRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(CreateNewRoleRequest {
+						name: name.clone(),
+						description: "shared name".to_string(),
+						permissions: BTreeMap::from([(
+							setup.get_permission_id(Permission::ViewRoles),
+							ResourcePermissionType::Exclude(Default::default()),
+						)]),
+					})
+					.build(),
+			)
+			.await;
+		assert!(
+			response.status_code().is_success(),
+			"the same role name should be allowed in each workspace, got {}",
+			response.status_code()
+		);
+	}
+}
+
+#[tokio::test]
+async fn update_role_empty_permissions_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let role = setup
+		.create_test_role(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRoleRequest>::builder()
+				.path(UpdateRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.headers(UpdateRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRoleRequest {
+					name: None,
+					description: None,
+					permissions: Some(BTreeMap::new()),
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a PATCH that empties the permissions map should be 400"
+	);
+}
+
+#[tokio::test]
+async fn update_role_empty_body_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let role = setup
+		.create_test_role(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRoleRequest>::builder()
+				.path(UpdateRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.headers(UpdateRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRoleRequest {
+					name: None,
+					description: None,
+					permissions: None,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"an empty PATCH body should be 400 (WrongParameters)"
+	);
+}
+
+#[tokio::test]
+async fn update_user_roles_cross_workspace_role() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace_a = setup.create_test_workspace(&admin.access_token).await;
+	let workspace_b = setup.create_test_workspace(&admin.access_token).await;
+	// A role that belongs to workspace B.
+	let role_b = setup
+		.create_test_role(&admin.access_token, workspace_b.id)
+		.await;
+	let user_b = setup.create_test_user().await;
+
+	// Try to grant a workspace-B role to a user in workspace A.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: workspace_a.id,
+					user_id: user_b.user_id,
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest {
+					roles: vec![role_b.id],
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"granting a role from another workspace should be rejected, got {}",
+		response.status_code()
+	);
+}

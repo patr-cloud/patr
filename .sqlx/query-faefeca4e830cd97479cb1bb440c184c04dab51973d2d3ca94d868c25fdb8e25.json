@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM web_login WHERE user_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "faefeca4e830cd97479cb1bb440c184c04dab51973d2d3ca94d868c25fdb8e25"
+}

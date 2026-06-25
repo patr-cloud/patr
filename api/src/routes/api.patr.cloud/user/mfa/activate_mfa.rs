@@ -1,6 +1,7 @@
 use axum::http::StatusCode;
 use models::api::user::*;
 use rustis::commands::StringCommands;
+use time::OffsetDateTime;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
 use crate::{prelude::*, redis::keys as redis};
@@ -98,6 +99,35 @@ pub async fn activate_mfa(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// Drop every other web login the user has so a hijacked session can't
+	// stick around past the MFA toggle. Keep the caller's session.
+	query!(
+		r#"
+		DELETE FROM
+			web_login
+		WHERE
+			user_id = $1 AND
+			login_id != $2;
+		"#,
+		user_data.id as _,
+		user_data.login_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	redis
+		.setex(
+			redis::user_id_revocation_timestamp(&user_data.id.into()),
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs(),
+			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+		)
+		.await
+		.inspect_err(|err| {
+			error!("Error setting user_id_revocation_timestamp: `{}`", err);
+		})?;
 
 	AppResponse::builder()
 		.body(ActivateMfaResponse)

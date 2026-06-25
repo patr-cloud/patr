@@ -38,7 +38,7 @@ pub async fn get_runner_metrics(
 					runner_id,
 					metric,
 				},
-				query: GetRunnerMetricsQuery { interval },
+				query: GetRunnerMetricsQueryProcessed { interval },
 				headers:
 					GetRunnerMetricsRequestHeaders {
 						authorization: _,

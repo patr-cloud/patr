@@ -14,7 +14,7 @@ import {
 } from "~/components";
 import { FiCheck, FiChevronRight, FiEdit2, FiPlus, FiTrash, FiX } from "solid-icons/fi";
 import { useNavigate } from "@tanstack/solid-router";
-import { createAuthenticatedAction, createFormAction, createPaginationState } from "~/hooks";
+import { createAuthenticatedAction, createFormAction, createPaginationState, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
 import { RemoveUserFromWorkspaceResponse } from "~/bindings/RemoveUserFromWorkspaceResponse";
@@ -22,7 +22,7 @@ import { WithId } from "~/bindings/WithId";
 import { BasicUserInfo } from "~/bindings/BasicUserInfo";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
-import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery } from "~/hooks/fetch";
+import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery, useWorkspaceOwnerQuery } from "~/hooks/fetch";
 import { useQueryClient } from "@tanstack/solid-query";
 import { memberKeys } from "~/hooks/query-keys";
 
@@ -38,11 +38,31 @@ const ManageWorkspace = () => {
 	const queryClient = useQueryClient();
 
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
-	const rolesQuery = useAllRolesQuery();
+	// The Add-Member role picker is a single-page checkbox list, so it needs
+	// every role in one shot — passing the largest allowed page size avoids a
+	// second round trip for workspaces with the typical 30-50 roles. If your
+	// workspace exceeds 100 roles, swap this for a paginated dropdown.
+	const rolesQuery = useAllRolesQuery(
+		() => undefined,
+		() => "100"
+	);
 	const membersQuery = useMembersQuery(
 		() => search().page,
 		() => search().count
 	);
+	const ownerQuery = useWorkspaceOwnerQuery(() => workspaceInfoQuery.data?.superAdminId);
+	const canModifyMembers = useIsAllowed("modifyRoles", "edit");
+
+	// Prepend the synthesised owner row (pinned first) on page 0 only.
+	// Skip on later pages so pagination stays clean.
+	const displayedMembers = createMemo(() => {
+		const raw = membersQuery.data?.members ?? [];
+		const isFirstPage = !search().page || search().page === "0";
+		const owner = ownerQuery.data;
+		if (!isFirstPage || !owner) return raw;
+		if (raw.some((m) => m.userId === owner.userId)) return raw;
+		return [owner, ...raw];
+	});
 
 	createEffect(() => {
 		const totalCount = membersQuery.data?.totalCount;
@@ -66,8 +86,8 @@ const ManageWorkspace = () => {
 	const [pendingDeleteUserId, setPendingDeleteUserId] = createSignal<string | null>(null);
 
 	createEffect(() => {
-		const members = membersQuery.data?.members;
-		if (!members || members.length === 0) return;
+		const members = displayedMembers();
+		if (members.length === 0) return;
 		if (selectedMemberId() === null || !members.some((m) => m.userId === selectedMemberId())) {
 			setSelectedMemberId(members[0].userId);
 		}
@@ -136,7 +156,7 @@ const ManageWorkspace = () => {
 	const selectedMember = createMemo(() => {
 		const id = selectedMemberId();
 		if (!id) return null;
-		return membersQuery.data?.members.find((m) => m.userId === id) ?? null;
+		return displayedMembers().find((m) => m.userId === id) ?? null;
 	});
 
 	const handleUserSelect = (user: WithId<BasicUserInfo>) => {
@@ -188,49 +208,53 @@ const ManageWorkspace = () => {
 				<WorkspaceHeader workspaceName={workspaceInfoQuery.data?.name} activeTab="members" />
 				<PageContainerBody class="flex flex-col justify-between gap-4">
 					<div class="flex flex-col gap-6 flex-1">
-						<form class="p-lg bg-secondary-light rounded-xs" onSubmit={handleAddMember}>
-							<h1 class="text-lg mb-3">Add Someone to {workspaceInfoQuery.data?.name}</h1>
+						<Show when={canModifyMembers()}>
+							<form class="p-lg bg-secondary-light rounded-xs" onSubmit={handleAddMember}>
+								<h1 class="text-lg mb-3">Add Someone to {workspaceInfoQuery.data?.name}</h1>
 
-							<div class="flex items-center justify-center gap-3 w-full">
-								<UserSearchInput
-									placeholder="Search for user by name or username..."
-									class="flex-2"
-									onUserSelect={handleUserSelect}
-								/>
-								<InputDropdownCheckBox
-									placeholder={
-										currentRoleIds().length > 0
-											? `${currentRoleIds().length} role${currentRoleIds().length === 1 ? "" : "s"} selected`
-											: "Add roles..."
-									}
-									styleVariant="medium"
-									class="flex-1"
-									options={
-										rolesQuery.data?.roles.map((role) => ({
-											label: role.name,
-											value: role.id,
-										})) || []
-									}
-									checked={currentRoleIds()}
-									onToggle={(value) =>
-										setCurrentRoleIds((prev) =>
-											prev.includes(value) ? prev.filter((id) => id !== value) : [...prev, value]
-										)
-									}
-								/>
-								<Button
-									type="submit"
-									variant={ButtonVariant.Contained}
-									class="h-full flex items-center gap-2"
-									disabled={isSubmitting()}
-									loading={isSubmitting()}
-									loadingContent={() => <span>Adding...</span>}
-								>
-									<FiPlus size={16} />
-									Add Member
-								</Button>
-							</div>
-						</form>
+								<div class="flex items-center justify-center gap-3 w-full">
+									<UserSearchInput
+										placeholder="Search for user by name or username..."
+										class="flex-2"
+										onUserSelect={handleUserSelect}
+									/>
+									<InputDropdownCheckBox
+										placeholder={
+											currentRoleIds().length > 0
+												? `${currentRoleIds().length} role${currentRoleIds().length === 1 ? "" : "s"} selected`
+												: "Add roles..."
+										}
+										styleVariant="medium"
+										class="flex-1"
+										options={
+											rolesQuery.data?.roles.map((role) => ({
+												label: role.name,
+												value: role.id,
+											})) || []
+										}
+										checked={currentRoleIds()}
+										onToggle={(value) =>
+											setCurrentRoleIds((prev) =>
+												prev.includes(value)
+													? prev.filter((id) => id !== value)
+													: [...prev, value]
+											)
+										}
+									/>
+									<Button
+										type="submit"
+										variant={ButtonVariant.Contained}
+										class="h-full flex items-center gap-2"
+										disabled={isSubmitting()}
+										loading={isSubmitting()}
+										loadingContent={() => <span>Adding...</span>}
+									>
+										<FiPlus size={16} />
+										Add Member
+									</Button>
+								</div>
+							</form>
+						</Show>
 
 						<Suspense
 							fallback={
@@ -246,7 +270,7 @@ const ManageWorkspace = () => {
 									}`}
 								>
 									<Show
-										when={(membersQuery.data?.members?.length ?? 0) > 0}
+										when={displayedMembers().length > 0}
 										fallback={
 											<div class="flex items-center justify-center py-16 text-grey">
 												<span class="text-sm">No members found.</span>
@@ -254,7 +278,7 @@ const ManageWorkspace = () => {
 										}
 									>
 										<ul class="flex flex-col gap-2 p-2">
-											<For each={membersQuery.data?.members || []}>
+											<For each={displayedMembers()}>
 												{(member) => {
 													const isSelected = () => selectedMemberId() === member.userId;
 													return (
@@ -293,10 +317,19 @@ const ManageWorkspace = () => {
 																	@{member.username}
 																</span>
 															</div>
-															<div class="px-3 py-1 border border-border-color rounded-xs text-xs text-grey">
-																{member.roleIds.length}&nbsp;
-																{member.roleIds.length === 1 ? "role" : "roles"}
-															</div>
+															<Show
+																when={!member.isOwner}
+																fallback={
+																	<div class="px-3 py-1 border border-primary rounded-xs text-xs text-primary">
+																		Owner
+																	</div>
+																}
+															>
+																<div class="px-3 py-1 border border-border-color rounded-xs text-xs text-grey">
+																	{member.roleIds.length}&nbsp;
+																	{member.roleIds.length === 1 ? "role" : "roles"}
+																</div>
+															</Show>
 															<FiChevronRight size={18} class="text-grey shrink-0" />
 														</li>
 													);
@@ -358,7 +391,14 @@ const ManageWorkspace = () => {
 															firstName={member().firstName}
 															lastName={member().lastName}
 														/>
-														<Show when={!isEditingRoles() && !isPendingDelete()}>
+														<Show
+															when={
+																!isEditingRoles() &&
+																!isPendingDelete() &&
+																!member().isOwner &&
+																canModifyMembers()
+															}
+														>
 															<div class="flex items-center gap-2">
 																<Button
 																	variant={ButtonVariant.Outlined}

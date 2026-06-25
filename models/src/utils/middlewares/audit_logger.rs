@@ -48,6 +48,7 @@ pub enum ResourceIdExtractor<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	/// The resource ID is extracted from the request using the provided
 	/// function.
@@ -80,6 +81,7 @@ pub enum AuditLogger<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	/// This variant is used to specify that an API endpoint does not require
 	/// auditing. It does not log any actions performed on this endpoint.
@@ -107,6 +109,7 @@ impl<E> RequiresRequestHeaders for AuditLogger<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	type RequiredRequestHeaders = (BearerToken,);
 }
@@ -115,6 +118,7 @@ impl<E> Debug for AuditLogger<E>
 where
 	E: ApiEndpoint,
 	<E::RequestBody as Preprocessable>::Processed: Send,
+	<E::RequestQuery as Preprocessable>::Processed: Send,
 {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {

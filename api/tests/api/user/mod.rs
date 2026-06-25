@@ -562,3 +562,136 @@ async fn change_password_new_invalid() {
 		"expected client error for weak new password"
 	);
 }
+
+/// Helper: PATCH /user with a given first_name; assert client error.
+async fn assert_update_first_name_rejected(setup: &TestSetup, user: &TestUser, bad: &str) {
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: Some(bad.to_string()),
+					last_name: None,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx for first_name `{bad:?}`, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn update_user_info_rejects_xss_in_first_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	assert_update_first_name_rejected(&setup, &user, "<script>x</script>").await;
+}
+
+#[tokio::test]
+async fn update_user_info_rejects_xss_in_last_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: None,
+					last_name: Some("<img onerror=x>".to_string()),
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn update_user_info_rejects_empty_first_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	assert_update_first_name_rejected(&setup, &user, "").await;
+}
+
+#[tokio::test]
+async fn update_user_info_rejects_whitespace_only_first_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	assert_update_first_name_rejected(&setup, &user, "   ").await;
+}
+
+#[tokio::test]
+async fn update_user_info_rejects_over_100_char_first_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	assert_update_first_name_rejected(&setup, &user, &"a".repeat(101)).await;
+}
+
+#[tokio::test]
+async fn update_user_info_accepts_unicode_first_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: Some("山田".to_string()),
+					last_name: Some("José".to_string()),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateUserInfoResponse));
+}
+
+#[tokio::test]
+async fn update_user_info_trims_surrounding_whitespace() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: Some("  Ada  ".to_string()),
+					last_name: None,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateUserInfoResponse));
+
+	let info = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+
+	assert_eq!("Ada", info.response.basic_user_info.first_name);
+}

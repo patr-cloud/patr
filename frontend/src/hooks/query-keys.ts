@@ -33,7 +33,8 @@ export const roleKeys = {
 	all: (workspaceId: string) => ["roles", workspaceId] as const,
 	list: (workspaceId: string, page: string | undefined, count: string | undefined) =>
 		[...roleKeys.all(workspaceId), "list", page, count] as const,
-	allRoles: (workspaceId: string) => [...roleKeys.all(workspaceId), "allRoles"] as const,
+	allRoles: (workspaceId: string, page: string | undefined, count: string | undefined) =>
+		[...roleKeys.all(workspaceId), "allRoles", page, count] as const,
 	detail: (workspaceId: string, roleId: string) => [...roleKeys.all(workspaceId), "detail", roleId] as const,
 	users: (workspaceId: string, roleId: string) => [...roleKeys.all(workspaceId), "users", roleId] as const,
 };
@@ -90,6 +91,7 @@ export const userInfoKeys = {
 	all: () => ["userInfo"] as const,
 	current: () => [...userInfoKeys.all(), "current"] as const,
 	search: (query: string) => [...userInfoKeys.all(), "search", query] as const,
+	byId: (userId: string) => [...userInfoKeys.all(), "byId", userId] as const,
 };
 
 export const mfaKeys = {

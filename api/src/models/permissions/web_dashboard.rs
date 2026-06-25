@@ -1,11 +1,22 @@
-use std::{net::IpAddr, ops::Sub};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	net::IpAddr,
+	ops::Sub,
+};
 
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
-use models::RequestUserData;
-use rustis::client::Client as RedisClient;
+use models::{
+	RequestUserData,
+	rbac::{ResourcePermissionType, WorkspacePermission},
+};
+use rustis::{client::Client as RedisClient, commands::StringCommands as _};
 use time::OffsetDateTime;
 
-use crate::{models::access_token_data::AccessTokenData, prelude::*, utils::config::AppConfig};
+use crate::{
+	models::{access_token_data::AccessTokenData, redis::UserPermissionCache},
+	prelude::*,
+	utils::config::AppConfig,
+};
 
 pub(crate) async fn get_permissions(
 	database: &mut DatabaseConnection,
@@ -78,8 +89,7 @@ pub(crate) async fn get_permissions(
 	let Some(user) = query! {
 		r#"
 		SELECT
-			"user".*,
-			web_login.token_expiry
+			"user".*
 		FROM
 			"user"
 		INNER JOIN
@@ -106,10 +116,12 @@ pub(crate) async fn get_permissions(
 	};
 	trace!("Web login exists in the database");
 
-	if OffsetDateTime::now_utc() > user.token_expiry {
-		warn!("Web login has expired");
-		return Err(ErrorType::AuthorizationTokenInvalid);
-	}
+	// Note: `web_login.token_expiry` is the refresh token's lifetime, not the
+	// access token's. Access token validity is gated by the JWT's own `exp`
+	// claim (checked above). Re-checking `token_expiry` here would prevent a
+	// fresh JWT (post-refresh) from authenticating until the entire session
+	// is renewed, and would also keep an old, expired JWT alive as long as
+	// the session itself was still fresh. Both are wrong.
 
 	if !aud
 		.clone()
@@ -127,7 +139,7 @@ pub(crate) async fn get_permissions(
 	}
 
 	let permissions =
-		super::get_permissions_for_login_id(&mut *database, redis, &sub, &user.id.into()).await?;
+		get_permissions_for_web_login(&mut *database, redis, &sub, &user.id.into()).await?;
 
 	Ok(RequestUserData::builder()
 		.id(user.id)
@@ -138,4 +150,180 @@ pub(crate) async fn get_permissions(
 		.login_id(sub)
 		.permissions(permissions)
 		.build())
+}
+
+/// Compute the permission map for a web-login session. On a valid cache hit
+/// the cached map is returned directly; otherwise the user's current
+/// role-derived permissions are read from the database (workspace ownership
+/// + per-role includes/excludes for the workspaces they're a member of) and
+/// written to the cache before being returned.
+#[tracing::instrument(skip(db_connection, redis_connection))]
+pub async fn get_permissions_for_web_login(
+	db_connection: &mut DatabaseConnection,
+	redis_connection: &mut RedisClient,
+	login_id: &Uuid,
+	user_id: &Uuid,
+) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
+	if let Some(cached) = super::get_cached_permissions(redis_connection, login_id, user_id).await?
+	{
+		return Ok(cached);
+	}
+
+	let mut user_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
+
+	query!(
+		r#"
+		SELECT
+			id AS "workspace_id!"
+		FROM
+			workspace
+		WHERE
+			super_admin_id = $1;
+		"#,
+		user_id as _,
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.map(|row| row.workspace_id)
+	.for_each(|workspace_id| {
+		user_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
+	});
+
+	query!(
+		r#"
+		SELECT
+			workspace_user.workspace_id AS "workspace_id!",
+			role_resource_permissions_type.permission_id AS "permission_id!",
+			role_resource_permissions_exclude.resource_id AS "resource_id?"
+		FROM
+			workspace_user
+		INNER JOIN
+			role_resource_permissions_type
+		ON
+			role_resource_permissions_type.role_id = workspace_user.role_id AND
+			role_resource_permissions_type.permission_type = 'exclude'
+		LEFT JOIN
+			role_resource_permissions_exclude
+		ON
+			role_resource_permissions_exclude.role_id = workspace_user.role_id
+		WHERE
+			workspace_user.user_id = $1;
+		"#,
+		user_id as _,
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
+	.for_each(|(workspace_id, permission_id, resource_id)| {
+		let permissions = user_permissions
+			.entry(workspace_id.into())
+			.or_insert_with(|| WorkspacePermission::Member {
+				permissions: BTreeMap::new(),
+			});
+
+		match permissions {
+			WorkspacePermission::SuperAdmin => {
+				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
+			}
+			WorkspacePermission::Member { permissions } => {
+				let permission_type = permissions
+					.entry(permission_id.into())
+					.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
+				match permission_type {
+					ResourcePermissionType::Include(_) => {
+						error!(
+							"Found include permissions before include is even called. This should be possible!"
+						);
+					}
+					ResourcePermissionType::Exclude(resources) => {
+						let Some(resource_id) = resource_id else {
+							return;
+						};
+
+						resources.insert(resource_id.into());
+					}
+				}
+			}
+		}
+	});
+
+	query!(
+		r#"
+		SELECT
+			workspace_user.workspace_id AS "workspace_id!",
+			role_resource_permissions_type.permission_id AS "permission_id!",
+			role_resource_permissions_include.resource_id AS "resource_id?"
+		FROM
+			workspace_user
+		INNER JOIN
+			role_resource_permissions_type
+		ON
+			role_resource_permissions_type.role_id = workspace_user.role_id AND
+			role_resource_permissions_type.permission_type = 'include'
+		LEFT JOIN
+			role_resource_permissions_include
+		ON
+			role_resource_permissions_include.role_id = workspace_user.role_id
+		WHERE
+			workspace_user.user_id = $1;
+		"#,
+		user_id as _,
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
+	.for_each(|(workspace_id, permission_id, resource_id)| {
+		let permissions = user_permissions
+			.entry(workspace_id.into())
+			.or_insert_with(|| WorkspacePermission::Member {
+				permissions: BTreeMap::new(),
+			});
+
+		let Some(resource_id) = resource_id else {
+			return;
+		};
+
+		match permissions {
+			WorkspacePermission::SuperAdmin => {
+				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
+			}
+			WorkspacePermission::Member { permissions } => {
+				let permission_type = permissions
+					.entry(permission_id.into())
+					.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
+				match permission_type {
+					ResourcePermissionType::Include(resources) => {
+						resources.insert(resource_id.into());
+					}
+					ResourcePermissionType::Exclude(resources) => {
+						resources.remove(&resource_id.into());
+					}
+				}
+			}
+		}
+	});
+
+	redis_connection
+		.setex(
+			redis::keys::permission_for_login_id(login_id),
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs(),
+			serde_json::to_string(&UserPermissionCache {
+				permission: user_permissions.clone(),
+				creation_time: OffsetDateTime::now_utc(),
+			})?,
+		)
+		.await
+		.inspect_err(|err| {
+			error!(
+				"Error setting the permissions for the loginId `{login_id}`: `{}`",
+				err
+			);
+		})?;
+
+	Ok(user_permissions)
 }

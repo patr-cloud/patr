@@ -47,6 +47,11 @@
         "ordinal": 8,
         "name": "otp_expiry",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "sign_up_attempts",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
@@ -62,6 +67,7 @@
       true,
       true,
       true,
+      false,
       false,
       false
     ]

@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use models::{
+	ApiSuccessResponseBody,
 	api::workspace::container_registry::*,
 	rbac::{ContainerRegistryRepositoryPermission, Permission},
 };
@@ -308,6 +309,119 @@ async fn container_registry_view_exclude_denies_only_listed_resource() {
 	assert!(
 		r2.status_code().is_client_error(),
 		"repo2 should be excluded"
+	);
+}
+
+/// Create does not imply View: a create-only member can create a repo but
+/// cannot read it back.
+#[tokio::test]
+async fn container_registry_create_does_not_grant_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (_admin, ws_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(
+			Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Create),
+			all(),
+		)],
+	)
+	.await;
+
+	let created = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateContainerRepositoryRequest>::builder()
+				.path(CreateContainerRepositoryPath {
+					workspace_id: ws_id,
+				})
+				.headers(CreateContainerRepositoryRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateContainerRepositoryRequest {
+					name: random_name(8),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateContainerRepositoryResponse>>();
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
+				.path(GetContainerRepositoryInfoPath {
+					workspace_id: ws_id,
+					repository_id: created.response.id.id,
+				})
+				.headers(GetContainerRepositoryInfoRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"create-only member should not be able to view the repo"
+	);
+}
+
+/// A member with no registry permission gets a membership-gated list that
+/// succeeds but is View-filtered to empty — not a 403.
+#[tokio::test]
+async fn container_registry_no_permission_list_returns_empty() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, ws_id, user_b) =
+		setup_permission_test(&setup, vec![(Permission::ViewRoles, all())]).await;
+	let _repo = setup
+		.create_test_container_repo(&admin.access_token, ws_id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListContainerRepositoriesRequest>::builder()
+				.path(ListContainerRepositoriesPath {
+					workspace_id: ws_id,
+				})
+				.headers(ListContainerRepositoriesRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListContainerRepositoriesResponse>>();
+	assert!(
+		response.response.repositories.is_empty(),
+		"a member without registry View should see an empty list, not a 403"
+	);
+}
+
+/// A non-member cannot reach another workspace's registry at all.
+#[tokio::test]
+async fn container_registry_non_member_denied() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let _repo = setup
+		.create_test_container_repo(&admin.access_token, workspace.id)
+		.await;
+	let outsider = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListContainerRepositoriesRequest>::builder()
+				.path(ListContainerRepositoriesPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListContainerRepositoriesRequestHeaders {
+					authorization: outsider.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"a non-member should be denied access to the workspace's registry"
 	);
 }
 

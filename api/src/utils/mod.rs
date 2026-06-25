@@ -46,12 +46,18 @@ pub mod constants {
 	/// The parameters that will be used to hash, using argon2 as the hashing
 	/// algorithm. This is used for all sorts of hashing, from API tokens, user
 	/// passwords, sign up tokens, etc.
-	pub const HASHING_PARAMS: argon2::Params =
-		if let Ok(params) = argon2::Params::new(8192, 4, 4, None) {
+	pub const HASHING_PARAMS: argon2::Params = {
+		let result = if cfg!(debug_assertions) {
+			argon2::Params::new(8, 1, 1, None)
+		} else {
+			argon2::Params::new(8192, 4, 4, None)
+		};
+		if let Ok(params) = result {
 			params
 		} else {
 			panic!("Failed to create hashing params");
-		};
+		}
+	};
 
 	/// How long a refresh token, once generated, is valid for without any
 	/// activity. After this duration of no activity on the refresh token, it
@@ -103,6 +109,11 @@ pub mod constants {
 	/// The maximum number of times a user can attempt to reset a password
 	/// before getting banned altogether
 	pub const MAX_PASSWORD_RESET_ATTEMPTS: i32 = 5;
+
+	/// The maximum number of OTP-verification attempts a pending sign-up may
+	/// make before the row is effectively locked. The legitimate user must
+	/// wait for the OTP to expire and re-trigger sign-up to try again.
+	pub const MAX_SIGN_UP_ATTEMPTS: i32 = 5;
 
 	/// The issuer to be used for TOTP generation
 	pub const TOTP_ISSUER: &str = "app.patr.cloud";

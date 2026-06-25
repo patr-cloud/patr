@@ -18,7 +18,7 @@ import {
 	Table,
 	StatusChip,
 } from "~/components";
-import { useIsAllowed, createPaginationState } from "~/hooks";
+import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
 import { useRunnersListQuery } from "~/hooks/fetch";
 import { formatRelativeTime } from "~/utils/func";
 
@@ -89,6 +89,12 @@ const ListRunnersPage = () => {
 			pagination.setTotalCount(totalCount);
 		}
 	});
+
+	recoverFromOutOfBounds(
+		() => runnersQuery.isError,
+		() => runnersQuery.error?.message,
+		pagination
+	);
 
 	return (
 		<>

@@ -17,7 +17,7 @@ pub async fn list_users_for_role(
 					role_id,
 				},
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							BasicUserInfoSearchParams {

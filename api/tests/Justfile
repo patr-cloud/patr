@@ -47,16 +47,16 @@ test *args:
     export PATR_TEST_MIMIR_HOST=localhost
     export PATR_TEST_MIMIR_PORT=18080
 
-    # PATR_* env vars override the sample config's database/redis sections
-    # for the --migrate run. parse_config()'s Environment source uses `_` as
-    # the nesting separator, so PATR_DATABASE_HOST → database.host etc.
-    export PATR_DATABASE_HOST=localhost
-    export PATR_DATABASE_PORT=15432
-    export PATR_DATABASE_USER=user
-    export PATR_DATABASE_PASSWORD=password
-    export PATR_DATABASE_DATABASE=api
-    export PATR_REDIS_HOST=localhost
-    export PATR_REDIS_PORT=16379
+    # PATR__* env vars override the sample config's database/redis sections
+    # for the --migrate run. parse_config()'s Environment source uses `__` as
+    # the nesting separator, so PATR__DATABASE__HOST → database.host etc.
+    export PATR__DATABASE__HOST=localhost
+    export PATR__DATABASE__PORT=15432
+    export PATR__DATABASE__USER=user
+    export PATR__DATABASE__PASSWORD=password
+    export PATR__DATABASE__DATABASE=api
+    export PATR__REDIS__HOST=localhost
+    export PATR__REDIS__PORT=16379
 
     # Seed the schema once via the api binary's --migrate flag. After this,
     # the parallel test processes' calls to db::initialize go down the

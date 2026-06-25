@@ -14,6 +14,9 @@ pub async fn initialize_web_login_tables(
 			user_id UUID NOT NULL,
 
 			refresh_token TEXT NOT NULL,
+			/* Expiry of the refresh token. Access tokens are independently
+			 * gated by their own JWT `exp` claim — do NOT use this column to
+			 * decide whether an access token is still valid. */
 			token_expiry TIMESTAMPTZ NOT NULL,
 
 			created TIMESTAMPTZ NOT NULL,

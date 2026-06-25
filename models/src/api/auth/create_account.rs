@@ -3,7 +3,12 @@ use serde::{Deserialize, Serialize};
 use crate::{
 	prelude::*,
 	utils::{
-		constants::{PHONE_NUMBER_COUNTRY_CODE_REGEX, PHONE_NUMBER_REGEX, USERNAME_VALIDITY_REGEX},
+		constants::{
+			PHONE_NUMBER_COUNTRY_CODE_REGEX,
+			PHONE_NUMBER_REGEX,
+			USER_NAME_REGEX,
+			USERNAME_VALIDITY_REGEX,
+		},
 		validate_password,
 	},
 };
@@ -60,10 +65,10 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, length(min = 8), custom = "validate_password")]
 		pub password: String,
 		/// The first name of the user
-		#[preprocess(trim, length(min = 1))]
+		#[preprocess(trim, regex = USER_NAME_REGEX)]
 		pub first_name: String,
 		/// The last name of the user
-		#[preprocess(trim, length(min = 1))]
+		#[preprocess(trim, regex = USER_NAME_REGEX)]
 		pub last_name: String,
 		/// The recovery method the user would recover their account with
 		#[serde(flatten)]

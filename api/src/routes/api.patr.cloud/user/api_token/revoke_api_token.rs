@@ -20,25 +20,32 @@ pub async fn revoke_api_token(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		user_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, RevokeApiTokenRequest>,
 ) -> Result<AppResponse<RevokeApiTokenRequest>, ErrorType> {
 	trace!("Revoke API token: {}", token_id);
 
-	query!(
+	let rows_affected = query!(
 		r#"
 		UPDATE
 			user_api_token
 		SET
 			revoked = NOW()
 		WHERE
-			token_id = $1;
+			token_id = $1 AND
+			user_id = $2;
 		"#,
 		token_id as _,
+		user_data.id as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await?
+	.rows_affected();
+
+	if rows_affected == 0 {
+		return Err(ErrorType::ApiTokenDoesNotExist);
+	}
 
 	redis
 		.del(redis::keys::permission_for_login_id(&token_id))

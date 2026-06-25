@@ -58,14 +58,14 @@ pub async fn delete_managed_url(
 				deployment_id
 		)
 		SELECT
-			deleted.sub_domain,
+			deleted.sub_domain AS "sub_domain!",
 			deleted.domain_id AS "domain_id: Uuid",
 			CONCAT(
 				workspace_domain.name,
 				'.',
 				workspace_domain.tld
 			) AS "domain!",
-			deleted.path,
+			deleted.path AS "path!",
 			deployment.runner AS "connected_deployment_runner?: Uuid"
 		FROM
 			deleted

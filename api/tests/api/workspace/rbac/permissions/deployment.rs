@@ -622,6 +622,150 @@ async fn deployment_view_does_not_grant_edit() {
 }
 
 #[tokio::test]
+async fn deployment_create_does_not_grant_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, workspace_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(Permission::Deployment(DeploymentPermission::Create), all())],
+	)
+	.await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace_id)
+		.await;
+
+	let mt_id = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
+				.path(ListAllDeploymentMachineTypePath { workspace_id })
+				.headers(ListAllDeploymentMachineTypeRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListAllDeploymentMachineTypeResponse>>()
+		.response
+		.machine_types[0]
+		.id;
+
+	let created = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateDeploymentRequest>::builder()
+				.path(CreateDeploymentPath { workspace_id })
+				.headers(CreateDeploymentRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateDeploymentRequest {
+					name: random_name(8),
+					registry: DeploymentRegistry::ExternalRegistry {
+						registry: "docker.io".to_string(),
+						image_name: "library/nginx".to_string(),
+					},
+					image_tag: "latest".to_string(),
+					runner: runner.id,
+					machine_type: mt_id,
+					running_details: DeploymentRunningDetails {
+						deploy_on_push: false,
+						min_horizontal_scale: 1,
+						max_horizontal_scale: 1,
+						ports: BTreeMap::new(),
+						environment_variables: BTreeMap::new(),
+						startup_probe: None,
+						liveness_probe: None,
+						config_mounts: BTreeMap::new(),
+						volumes: BTreeMap::new(),
+					},
+					deploy_on_create: false,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>();
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id,
+					deployment_id: created.response.id.id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"create-only member should not be able to view the deployment"
+	);
+}
+
+#[tokio::test]
+async fn deployment_no_permission_list_returns_empty() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, workspace_id, user_b) =
+		setup_permission_test(&setup, vec![(Permission::ViewRoles, all())]).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace_id)
+		.await;
+	let _dep = setup
+		.create_test_deployment(&admin.access_token, workspace_id, runner.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath { workspace_id })
+				.headers(ListDeploymentRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListDeploymentResponse>>();
+	assert!(
+		response.response.deployments.is_empty(),
+		"a member without deployment View should see an empty list, not a 403"
+	);
+}
+
+#[tokio::test]
+async fn deployment_non_member_denied() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+	let _dep = setup
+		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
+		.await;
+	let outsider = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: outsider.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"a non-member should be denied access to the workspace's deployments"
+	);
+}
+
+#[tokio::test]
 async fn deployment_view_does_not_grant_delete() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;

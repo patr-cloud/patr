@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_api_token SET revoked = NOW() WHERE token_id = $1 AND user_id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "39a3c6290c39106a5db92042a9b6b66afc32afa7f63e077d3ae50ac65eccd15a"
+}

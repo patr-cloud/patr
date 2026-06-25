@@ -11,7 +11,7 @@ pub async fn list_deployment(
 			ProcessedApiRequest {
 				path: ListDeploymentPath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							DeploymentSearchParams {
@@ -120,6 +120,10 @@ pub async fn list_deployment(
 		)
 	})
 	.collect();
+
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
 
 	AppResponse::builder()
 		.body(ListDeploymentResponse { deployments })

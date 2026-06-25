@@ -33,7 +33,7 @@ pub async fn get_runner_logs(
 					workspace_id,
 					runner_id,
 				},
-				query: GetRunnerLogsQuery {
+				query: GetRunnerLogsQueryProcessed {
 					end_time,
 					limit,
 					search,

@@ -44,7 +44,7 @@ pub async fn regenerate_api_token(
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
-	query!(
+	let rows_affected = query!(
 		r#"
 		UPDATE
 			user_api_token
@@ -59,7 +59,12 @@ pub async fn regenerate_api_token(
 		user_data.id as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await?
+	.rows_affected();
+
+	if rows_affected == 0 {
+		return Err(ErrorType::ApiTokenDoesNotExist);
+	}
 
 	AppResponse::builder()
 		.body(RegenerateApiTokenResponse {

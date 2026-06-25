@@ -14,7 +14,7 @@ import WorkspaceHeader from "./-components/workspace-header";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useWorkspaceInfoQuery } from "~/hooks/fetch";
-import { workspaceKeys } from "~/hooks/query-keys";
+import { workspaceKeys, workspacesKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import { createEffect, createSignal } from "solid-js";
@@ -31,6 +31,7 @@ const General = () => {
 
 	const [name, setName] = createSignal("");
 	const [_hasUpdated, setHasUpdated] = createSignal(false);
+	const [isUpdating, setIsUpdating] = createSignal(false);
 
 	createEffect(() => {
 		const info = workspaceInfoQuery.data;
@@ -56,6 +57,8 @@ const General = () => {
 			return;
 		}
 
+		if (isUpdating()) return;
+		setIsUpdating(true);
 		try {
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`, {
 				method: "PATCH",
@@ -73,9 +76,12 @@ const General = () => {
 			queryClient.setQueryData<GetWorkspaceInfoResponse>(workspaceKeys.info(id!), (prev) =>
 				prev ? { ...prev, name: newName } : prev
 			);
+			await queryClient.invalidateQueries({ queryKey: workspacesKeys.list() });
 		} catch (error) {
 			console.error("Failed to update workspace name:", error);
 			toast("Failed to update workspace name", "error");
+		} finally {
+			setIsUpdating(false);
 		}
 	};
 
@@ -117,7 +123,9 @@ const General = () => {
 								type="submit"
 								variant="contained"
 								disabled={
-									name().trim() === (workspaceInfoQuery.data?.name ?? "") || name().trim() === ""
+									isUpdating() ||
+									name().trim() === (workspaceInfoQuery.data?.name ?? "") ||
+									name().trim() === ""
 								}
 							>
 								Update

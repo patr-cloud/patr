@@ -30,7 +30,7 @@ pub async fn start_deployment(
 					workspace_id,
 					deployment_id,
 				},
-				query: StartDeploymentQuery { force_restart },
+				query: StartDeploymentQueryProcessed { force_restart },
 				headers:
 					StartDeploymentRequestHeaders {
 						authorization: _,

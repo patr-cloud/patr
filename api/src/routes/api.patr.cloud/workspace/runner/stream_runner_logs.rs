@@ -39,7 +39,7 @@ pub async fn stream_runner_logs(
 					workspace_id,
 					runner_id,
 				},
-				query: StreamRunnerLogsQuery { start_time },
+				query: StreamRunnerLogsQueryProcessed { start_time },
 				headers:
 					StreamRunnerLogsRequestHeaders {
 						authorization: _,

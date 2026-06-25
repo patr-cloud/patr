@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023", "dom"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

@@ -39,7 +39,7 @@ pub async fn get_deployment_metric(
 						deployment_id,
 						metric,
 					},
-				query: GetDeploymentMetricQuery { interval },
+				query: GetDeploymentMetricQueryProcessed { interval },
 				headers:
 					GetDeploymentMetricRequestHeaders {
 						authorization: _,

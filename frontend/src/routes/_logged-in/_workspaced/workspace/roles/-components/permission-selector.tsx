@@ -193,6 +193,7 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 				<Button
 					variant={ButtonVariant.Outlined}
 					type="button"
+					aria-label="Add Permission"
 					disabled={!isWorkspaceLevelSelected() && !selectedPermission()}
 					onClick={handleAdd}
 				>

@@ -16,6 +16,8 @@ export const useUserInfoQuery = () => {
 			queryKey: userInfoKeys.current(),
 			enabled: !!auth && auth.type === "LoggedIn",
 			meta: { errorMessage: "Failed to fetch user info" },
+			staleTime: Infinity,
+			gcTime: Infinity,
 			queryFn: async () => {
 				const response = await httpRequest<GetUserInfoResponse>(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 					method: "GET",

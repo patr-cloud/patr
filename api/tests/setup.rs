@@ -268,6 +268,30 @@ impl TestSetup {
 		}
 	}
 
+	/// Make a raw HTTP call to the registry TestServer (no typed endpoint).
+	///
+	/// Mirrors [`make_loki_call`] for the registry server. Used for raw-OCI
+	/// behaviors the typed `make_registry_call` can't express — an anonymous
+	/// request (no Authorization header), a native manifest DELETE, etc.
+	pub async fn make_registry_raw_call(
+		&self,
+		method: http::Method,
+		path: &str,
+		headers: Vec<(http::HeaderName, &str)>,
+		body: Vec<u8>,
+	) -> TestResponse {
+		let mut req = self.registry.method(method, path);
+		req = req.add_header(header::USER_AGENT, "cargo-test");
+		for (name, value) in headers {
+			req = req.add_header(name, value);
+		}
+		if body.is_empty() {
+			req.await
+		} else {
+			req.bytes(axum::body::Bytes::from(body)).await
+		}
+	}
+
 	/// Get the direct URL to the upstream Loki container (for querying logs).
 	pub fn upstream_loki_url(&self) -> &str {
 		&self.state.config.opentelemetry.logs.endpoint
@@ -847,6 +871,20 @@ async fn mount_cloudflare_mocks(server: &MockServer) {
 			"name": "mock-tunnel",
 			"created_at": "2024-01-01T00:00:00Z",
 			"deleted_at": null,
+			"connections": [],
+			"metadata": {}
+		})))
+		.mount(server)
+		.await;
+
+	// DELETE /accounts/*/cfd_tunnel/* — DeleteTunnel (called on runner removal)
+	Mock::given(method("DELETE"))
+		.and(path_regex(r"^/client/v4/accounts/[^/]+/cfd_tunnel/[^/]+$"))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "00000000-0000-0000-0000-000000000000",
+			"name": "mock-tunnel",
+			"created_at": "2024-01-01T00:00:00Z",
+			"deleted_at": "2024-01-01T00:00:00Z",
 			"connections": [],
 			"metadata": {}
 		})))

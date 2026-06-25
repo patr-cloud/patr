@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::USER_NAME_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Set the information of the currently authenticated user.
@@ -16,12 +16,11 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The first name of the user.
-		#[preprocess(none)]
+		#[preprocess(optional(trim, regex = USER_NAME_REGEX))]
 		pub first_name: Option<String>,
 		/// The last name of the user.
-		#[preprocess(none)]
+		#[preprocess(optional(trim, regex = USER_NAME_REGEX))]
 		pub last_name: Option<String>,
-		// TODO MFA stuff
 	},
 	audit_log = NoAuditLogger,
 );

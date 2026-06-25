@@ -46,20 +46,27 @@ export const useRolesQuery = (page: Accessor<string | undefined>, count: Accesso
 	});
 };
 
-export const useAllRolesQuery = () => {
+export const useAllRolesQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
-	return createQuery<ListAllRolesResponse>(() => {
+	return createQuery(() => {
 		const auth = authState();
 		const wsId = workspaceId();
+		const p = page();
+		const c = count();
 		return {
-			queryKey: roleKeys.allRoles(wsId ?? ""),
+			queryKey: roleKeys.allRoles(wsId ?? "", p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
 			meta: { errorMessage: "Failed to fetch roles" },
 			queryFn: async () => {
+				const params = new URLSearchParams();
+				if (p) params.set("page", p);
+				if (c) params.set("count", c);
+				const qs = params.size > 0 ? `?${params.toString()}` : "";
+
 				const response = await httpRequest<ListAllRolesResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role`,
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role${qs}`,
 					{ method: "GET" }
 				);
 
@@ -67,7 +74,10 @@ export const useAllRolesQuery = () => {
 					throw new Error(response.data.error);
 				}
 
-				return response.data;
+				return {
+					roles: response.data.roles,
+					totalCount: Number(response.headers.get("x-total-count") ?? 0),
+				};
 			},
 		};
 	});

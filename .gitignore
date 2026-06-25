@@ -52,3 +52,9 @@ dist-ssr
 CLAUDE.md
 patr-api
 .worktrees/
+
+# E2E test scaffolding
+/e2e/.pids/
+/e2e/.logs/
+/e2e/test-results/
+/e2e/playwright-report/

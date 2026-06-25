@@ -9,7 +9,7 @@ pub async fn list_volumes(
 			ProcessedApiRequest {
 				path: ListVolumesInWorkspacePath { workspace_id },
 				query:
-					ListResourceQuery {
+					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
 							DeploymentVolumeSearchParams {

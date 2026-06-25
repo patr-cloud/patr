@@ -8,9 +8,11 @@ use argon2::{
 };
 use axum::http::StatusCode;
 use models::api::user::*;
+use rustis::commands::StringCommands as _;
+use time::OffsetDateTime;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
-use crate::prelude::*;
+use crate::{prelude::*, redis::keys as redis};
 
 pub async fn change_password(
 	AuthenticatedAppRequest {
@@ -31,7 +33,7 @@ pub async fn change_password(
 					},
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
 		user_data,
 		state,
@@ -160,6 +162,36 @@ pub async fn change_password(
 	.await?;
 
 	trace!("Password updated for userId `{}`", user_data.id);
+
+	// Drop every other web login the user has — the password the attacker
+	// used to mint them is now invalid for the refresh path. Keep the
+	// caller's session so the success UX can land.
+	query!(
+		r#"
+		DELETE FROM
+			web_login
+		WHERE
+			user_id = $1 AND
+			login_id != $2;
+		"#,
+		user_data.id as _,
+		user_data.login_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	redis
+		.setex(
+			redis::user_id_revocation_timestamp(&user_data.id.into()),
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs(),
+			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+		)
+		.await
+		.inspect_err(|err| {
+			error!("Error setting user_id_revocation_timestamp: `{}`", err);
+		})?;
 
 	AppResponse::builder()
 		.body(ChangePasswordResponse)

@@ -21,6 +21,12 @@ pub struct DockerSettings {
 	/// The exposure type for the runner.
 	#[serde(default = "default_runner_exposure_type")]
 	pub runner_exposure_type: RunnerExposureType,
+	/// Whether to enable IPv6 on the deployment overlay network. Defaults to
+	/// `true`. Disable on hosts whose Docker swarm has no IPv6 address pool,
+	/// where an IPv6-enabled overlay rejects every task with "could not find an
+	/// available, non-overlapping IPv6 address pool".
+	#[serde(default = "default_enable_ipv6")]
+	pub enable_ipv6: bool,
 }
 
 /// The default Docker Swarm listen address. Defaults to `127.0.0.1:2377`.
@@ -42,4 +48,10 @@ fn default_ingress_https_listen_port() -> u16 {
 /// will not be exposed to the public internet by default.
 fn default_runner_exposure_type() -> RunnerExposureType {
 	RunnerExposureType::Private
+}
+
+/// The default for enabling IPv6 on the deployment overlay network. Defaults to
+/// `true`.
+fn default_enable_ipv6() -> bool {
+	true
 }

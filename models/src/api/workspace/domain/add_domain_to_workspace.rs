@@ -22,8 +22,10 @@ macros::declare_api_endpoint!(
 		}
 	},
 	request = {
-		/// The name of the domain
-		#[preprocess(domain)]
+		/// The name of the domain. Lowercased first (domains are case-insensitive)
+		/// so the case-sensitive PSL/`domain` validation and the lowercase DB
+		/// CHECK both see normalized input.
+		#[preprocess(lowercase, domain)]
 		pub domain: String,
 		/// The type of nameserver
 		/// It can be

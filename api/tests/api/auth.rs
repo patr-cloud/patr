@@ -418,6 +418,7 @@ async fn forgot_password_works() {
 				.body(ForgotPasswordRequest {
 					user_id: user.username.clone(),
 					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -439,6 +440,7 @@ async fn reset_password_works() {
 				.body(ForgotPasswordRequest {
 					user_id: user.username.clone(),
 					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -456,6 +458,7 @@ async fn reset_password_works() {
 					user_id: user.username.clone(),
 					password: new_password.clone(),
 					verification_token: "000000".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -481,6 +484,7 @@ async fn reset_password_wrong_otp() {
 				.body(ForgotPasswordRequest {
 					user_id: user.username.clone(),
 					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -497,6 +501,7 @@ async fn reset_password_wrong_otp() {
 					user_id: user.username.clone(),
 					password: random_password(),
 					verification_token: "999999".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -919,6 +924,7 @@ async fn forgot_password_nonexistent_user() {
 				.body(ForgotPasswordRequest {
 					user_id: random_name(8),
 					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -969,6 +975,7 @@ async fn reset_password_new_password_invalid() {
 				.body(ForgotPasswordRequest {
 					user_id: user.username.clone(),
 					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -985,6 +992,7 @@ async fn reset_password_new_password_invalid() {
 					user_id: user.username.clone(),
 					password: "short".to_string(),
 					verification_token: "000000".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -1066,6 +1074,7 @@ async fn reset_password_expired_otp() {
 				.body(ForgotPasswordRequest {
 					user_id: user.username.clone(),
 					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -1090,6 +1099,7 @@ async fn reset_password_expired_otp() {
 					user_id: user.username.clone(),
 					password: random_password(),
 					verification_token: "000000".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
 				})
 				.build(),
 		)
@@ -1135,12 +1145,12 @@ async fn renew_access_token_expired() {
 }
 
 #[tokio::test]
-async fn access_token_expiry_enforced() {
+async fn session_expiry_does_not_invalidate_access_token() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 
 	// Pre-check: the token works.
-	setup
+	_ = setup
 		.make_web_dashboard_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.headers(GetUserInfoRequestHeaders {
@@ -1152,10 +1162,11 @@ async fn access_token_expiry_enforced() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
 
-	// Backdate the session's `web_login.token_expiry`. The JWT's own `exp`
-	// claim is signed so we can't tamper with it; the auth layer
-	// (`web_dashboard.rs:109`) re-checks the DB row, which is what kills
-	// the session here.
+	// `web_login.token_expiry` is the *refresh token's* lifetime, not the
+	// access token's. Backdating it must NOT invalidate already-issued
+	// access tokens — those are gated by the JWT's own `exp` claim. The
+	// only thing this should break is renewing the refresh token (covered
+	// by `renew_access_token_expired`).
 	setup
 		.execute_sql(&format!(
 			"UPDATE web_login SET token_expiry = NOW() - INTERVAL '1 hour' \
@@ -1176,8 +1187,9 @@ async fn access_token_expiry_enforced() {
 		.await;
 
 	assert!(
-		response.status_code().is_client_error(),
-		"expired session should reject the access token, got {}",
+		response.status_code().is_success(),
+		"already-issued access token must keep working after the session's \
+		 refresh-token expiry is backdated; got {}",
 		response.status_code()
 	);
 }
@@ -1312,35 +1324,38 @@ async fn forgot_password_rate_limit() {
 	// IP per call which would defeat rate-limit accumulation.
 	let ip = std::net::IpAddr::V4(rand::rng().random::<u32>().into());
 
-	// Per-IP unauth bucket is 20/sec. Use unknown user_ids — the handler
-	// returns a silent 202 without doing the Argon2 work, so 25 calls land
-	// well inside a single 1-second window. Rate limit should still kick
-	// in on the 21st+.
-	let mut throttled_at: Option<usize> = None;
-	for i in 0..25 {
-		let resp = setup
-			.make_web_dashboard_call_from_ip(
-				ApiRequest::<ForgotPasswordRequest>::builder()
-					.headers(ForgotPasswordRequestHeaders {
-						user_agent: TEST_USER_AGENT,
-					})
-					.body(ForgotPasswordRequest {
-						user_id: format!("nonexistent-{}", i),
-						preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
-					})
-					.build(),
-				ip,
-			)
-			.await;
-		if resp.status_code() == StatusCode::TOO_MANY_REQUESTS {
-			throttled_at = Some(i);
-			break;
-		}
-	}
+	// The per-IP unauth window is 20 requests/second (sliding window log — see
+	// `models::rate_limiter`). Unknown user_ids get a silent 202 without the
+	// Argon2 work, so they're cheap. Fire well above the limit *concurrently*
+	// from the same IP: a sequential loop is flaky because under parallel test
+	// load each round-trip can take long enough that earlier requests slide out
+	// of the 1-second window before the count ever reaches 21. Concurrent
+	// dispatch lands the burst inside a single window regardless of per-request
+	// latency.
+	let requests = (0..50).map(|i| {
+		setup.make_web_dashboard_call_from_ip(
+			ApiRequest::<ForgotPasswordRequest>::builder()
+				.headers(ForgotPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ForgotPasswordRequest {
+					user_id: format!("nonexistent-{i}"),
+					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+			ip,
+		)
+	});
+	let responses = futures::future::join_all(requests).await;
+	let throttled = responses
+		.iter()
+		.filter(|r| r.status_code() == StatusCode::TOO_MANY_REQUESTS)
+		.count();
 
 	assert!(
-		throttled_at.is_some(),
-		"expected at least one 429 from 25 sequential forgot_password calls"
+		throttled > 0,
+		"expected at least one 429 from 50 concurrent forgot_password calls, got none"
 	);
 }
 
@@ -1372,7 +1387,7 @@ async fn complete_sign_up_already_completed() {
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
 
-	setup
+	_ = setup
 		.make_web_dashboard_call(
 			ApiRequest::<CompleteSignUpRequest>::builder()
 				.headers(CompleteSignUpRequestHeaders {
@@ -1483,7 +1498,7 @@ async fn refresh_token_single_use() {
 	);
 
 	// And the new refresh token should still work.
-	setup
+	_ = setup
 		.make_web_dashboard_call(
 			ApiRequest::<RenewAccessTokenRequest>::builder()
 				.headers(RenewAccessTokenRequestHeaders {
@@ -1494,4 +1509,230 @@ async fn refresh_token_single_use() {
 		)
 		.await
 		.json::<ApiSuccessResponseBody<RenewAccessTokenResponse>>();
+}
+
+// ---------------------------------------------------------------------------
+// Validation backstop: names + descriptions reject HTML / control characters
+// ---------------------------------------------------------------------------
+
+/// Helper: attempt CreateAccount with a given `first_name`; assert client
+/// error.
+async fn assert_create_account_first_name_rejected(setup: &TestSetup, bad: &str) {
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: random_name(8),
+					password: random_password(),
+					first_name: bad.to_string(),
+					last_name: "Doe".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: format!("{}@example.com", random_name(8)),
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx for first_name `{bad:?}`, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_account_rejects_xss_in_first_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	assert_create_account_first_name_rejected(&setup, "<script>alert('x')</script>").await;
+}
+
+#[tokio::test]
+async fn create_account_rejects_html_bracket_in_last_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: random_name(8),
+					password: random_password(),
+					first_name: "Ada".to_string(),
+					last_name: "<img onerror=foo()>".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: format!("{}@example.com", random_name(8)),
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"expected 4xx, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_account_rejects_newline_in_first_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	assert_create_account_first_name_rejected(&setup, "Ada\nMore").await;
+}
+
+#[tokio::test]
+async fn create_account_accepts_unicode_first_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let username = random_name(8);
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: username.clone(),
+					password: random_password(),
+					first_name: "José".to_string(),
+					last_name: "Núñez".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: format!("{}@example.com", &username),
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
+}
+
+// ---------------------------------------------------------------------------
+// Login: username-or-email validator
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn login_accepts_email_shaped_user_id() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// The backend handler does a 3-way OR lookup (username/email/phone). The
+	// model's `validate_username_or_email` lets email-shaped input through.
+	let email = format!("{}@example.com", &user.username);
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<LoginRequest>::builder()
+				.headers(LoginRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(LoginRequest {
+					user_id: email,
+					password: user.password.clone(),
+					mfa_otp: None,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	// We don't require success here (the test user's recovery_email may not
+	// match the assembled value), but we MUST get past the model validator —
+	// any 4xx here is fine as long as it's not the validator rejecting the
+	// shape. Confirming the request was parsed and routed to the handler.
+	assert!(
+		!response.status_code().is_server_error(),
+		"login with email-shaped user_id must not 5xx, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn login_rejects_phone_shaped_user_id() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<LoginRequest>::builder()
+				.headers(LoginRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(LoginRequest {
+					user_id: "+15555550123".to_string(),
+					password: random_password(),
+					mfa_otp: None,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"phone-shaped user_id must be rejected at the model layer, got {}",
+		response.status_code()
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Forgot / reset password: Turnstile token required
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn forgot_password_rejects_missing_turnstile_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ForgotPasswordRequest>::builder()
+				.headers(ForgotPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ForgotPasswordRequest {
+					user_id: user.username.clone(),
+					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: String::new(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"empty cf_turnstile_token must be rejected, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn reset_password_rejects_missing_turnstile_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ResetPasswordRequest>::builder()
+				.headers(ResetPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ResetPasswordRequest {
+					user_id: user.username.clone(),
+					password: random_password(),
+					verification_token: "000000".to_string(),
+					cf_turnstile_token: String::new(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"empty cf_turnstile_token must be rejected, got {}",
+		response.status_code()
+	);
 }

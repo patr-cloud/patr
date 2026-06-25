@@ -10,7 +10,7 @@ pub async fn search_for_user(
 		request:
 			ProcessedApiRequest {
 				path: SearchForUserPath,
-				query: SearchForUserQuery { query: user_id },
+				query: SearchForUserQueryProcessed { query: user_id },
 				headers:
 					SearchForUserRequestHeaders {
 						authorization: _,

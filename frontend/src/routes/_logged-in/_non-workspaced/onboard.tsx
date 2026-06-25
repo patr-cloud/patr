@@ -34,19 +34,26 @@ const WorkspaceOnboard = () => {
 	const onCreateWorkspace = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
 		e.preventDefault();
 
+		// Set loading synchronously up front so a second click that fires before
+		// the first reaches its async hop sees the flag and bails. Setting it
+		// only after the early-returns means two near-simultaneous clicks both
+		// pass the `isLoading()` check.
+		if (isLoading()) return;
+		setIsLoading(true);
+
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to create a workspace", "error");
+			setIsLoading(false);
 			return;
 		}
 
 		const name = workspaceName().trim();
 		if (!name) {
 			setNameError("Workspace name is required.");
+			setIsLoading(false);
 			return;
 		}
-
-		setIsLoading(true);
 		try {
 			const response = await httpRequest<CreateWorkspaceResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace`,
