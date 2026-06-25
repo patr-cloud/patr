@@ -85,11 +85,19 @@ export PATR_LOG_LEVEL := env_var_or_default("PATR_LOG_LEVEL", "warn")
 # Full pipeline (install → up → test → down).
 default: install up test down
 
-# One-time install of pnpm packages and the Playwright browser binary.
+# One-time install of pnpm packages and the Playwright browser binary, plus a
+# production build of the frontend.
+#
+# `test` serves this built (Nitro SSR) output instead of the Vinxi dev server:
+# the dev server's on-demand route compilation + HMR can't keep up with parallel
+# Playwright workers on CI's smaller runners, so some page loads stall past the
+# test timeout. The built server is deterministic and fast under concurrency.
+# (`serve` still uses the dev server for iterative debugging with HMR.)
 install:
     pnpm install
     pnpm exec playwright install --with-deps chromium
     pnpm --dir ../frontend install
+    pnpm --dir ../frontend build
 
 # Bring up external deps only — postgres, redis, minio, loki, mimir, dind images.
 # API + frontend are spawned per `test` invocation so each session exercises a
@@ -141,7 +149,8 @@ test *args:
     echo $! > .pids/api.pid
     until nc -z localhost 3000; do sleep 0.2; done
     until nc -z localhost 3001; do sleep 0.2; done
-    PORT=$VINXI_PORT pnpm --dir ../frontend run dev &
+    # Serve the prebuilt frontend (see `install`), not the dev server.
+    PORT=$VINXI_PORT pnpm --dir ../frontend run start &
     echo $! > .pids/frontend.pid
     until nc -z localhost $VINXI_PORT; do sleep 0.2; done
     pnpm exec playwright test {{args}}
