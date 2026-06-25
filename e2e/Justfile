@@ -29,7 +29,11 @@ export PATR__DATABASE__PORT                    := "15432"
 export PATR__DATABASE__USER                    := "postgres"
 export PATR__DATABASE__PASSWORD                := "postgres"
 export PATR__DATABASE__DATABASE                := "api"
-export PATR__DATABASE__CONNECTION_LIMIT        := "10"
+# Sized for parallel Playwright workers (TEST_THREADS): each worker drives
+# multi-query flows and the API's background job-queue worker also draws from
+# this pool, so a too-small limit times out under concurrency ("Failed to push
+# task: pool timed out"). 25 comfortably covers 4 workers; postgres caps at 100.
+export PATR__DATABASE__CONNECTION_LIMIT        := "25"
 export PATR__REDIS__HOST                       := "127.0.0.1"
 export PATR__REDIS__PORT                       := "16379"
 export PATR__REDIS__SECURE                     := "false"

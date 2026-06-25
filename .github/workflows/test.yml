@@ -172,6 +172,7 @@ jobs:
     timeout-minutes: 45
     env:
       API_BIN: ${{ github.workspace }}/target/debug/api
+      TEST_THREADS: "4"
     steps:
       - uses: actions/checkout@v6
 

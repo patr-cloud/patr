@@ -46,12 +46,18 @@ pub mod constants {
 	/// The parameters that will be used to hash, using argon2 as the hashing
 	/// algorithm. This is used for all sorts of hashing, from API tokens, user
 	/// passwords, sign up tokens, etc.
-	pub const HASHING_PARAMS: argon2::Params =
-		if let Ok(params) = argon2::Params::new(8192, 4, 4, None) {
+	pub const HASHING_PARAMS: argon2::Params = {
+		let result = if cfg!(debug_assertions) {
+			argon2::Params::new(8, 1, 1, None)
+		} else {
+			argon2::Params::new(8192, 4, 4, None)
+		};
+		if let Ok(params) = result {
 			params
 		} else {
 			panic!("Failed to create hashing params");
-		};
+		}
+	};
 
 	/// How long a refresh token, once generated, is valid for without any
 	/// activity. After this duration of no activity on the refresh token, it
