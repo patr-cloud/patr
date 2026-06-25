@@ -172,11 +172,6 @@ jobs:
     timeout-minutes: 45
     env:
       API_BIN: ${{ github.workspace }}/target/debug/api
-      # Run the Playwright suite in parallel. Workers share one API/frontend
-      # stack (DB pool sized in e2e/Justfile). Kept at 2, not the runner's 4
-      # cores: 4 browsers + the Nitro SSR server + api + postgres oversubscribe
-      # 4 vCPUs and some tests stall past the 60s timeout. The docker suites are
-      # the wall-clock tail, so a slower-but-stable UI run here is free.
       TEST_THREADS: "2"
     steps:
       - uses: actions/checkout@v6
