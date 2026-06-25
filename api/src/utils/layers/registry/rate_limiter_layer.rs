@@ -16,11 +16,27 @@ use crate::{models::rate_limiter::check_rate_limit, routes::registry_patr_cloud:
 /// `docker pull` or `docker push` generates many parallel HTTP requests
 /// (manifest + config + layer blobs). These limits are roughly 2x Docker Hub's
 /// effective HTTP request rate for authenticated free-tier users.
-const RATE_LIMITS: [(u32, Duration); 3] = [
-	(30, Duration::from_secs(1)),
-	(300, Duration::from_secs(60)),
-	(1000, Duration::from_secs(3600)),
-];
+///
+/// In production these limits are paced by argon2 token verification (~30ms per
+/// request, see `HASHING_PARAMS`), which keeps a real `docker push`'s parallel
+/// blob uploads under the per-second cap. Debug builds (the e2e @docker suite)
+/// use cheap argon2, so that natural throttle is gone and a single legitimate
+/// push bursts past the cap — so the limiter is effectively disabled in debug.
+/// The limiter algorithm itself stays covered by `api/tests/api/rate_limit.rs`
+/// (the general limiter exercises the same `check_rate_limit`).
+const RATE_LIMITS: [(u32, Duration); 3] = if cfg!(debug_assertions) {
+	[
+		(u32::MAX, Duration::from_secs(1)),
+		(u32::MAX, Duration::from_secs(60)),
+		(u32::MAX, Duration::from_secs(3600)),
+	]
+} else {
+	[
+		(30, Duration::from_secs(1)),
+		(300, Duration::from_secs(60)),
+		(1000, Duration::from_secs(3600)),
+	]
+};
 
 /// Tower layer that applies both per-IP and per-login rate limiting to
 /// registry endpoints. Operates on [`AuthenticatedRegistryAppRequest`] after
