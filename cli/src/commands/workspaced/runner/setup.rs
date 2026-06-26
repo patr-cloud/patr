@@ -345,6 +345,7 @@ pub async fn execute(
 			ingress_http_listen_port,
 			ingress_https_listen_port,
 			runner_exposure_type,
+			enable_ipv6: true,
 		},
 	};
 
