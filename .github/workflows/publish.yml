@@ -474,7 +474,7 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Install worker-build
-        run: cargo install --locked worker-build
+        run: cargo install --locked worker-build --version 0.8.3
 
       - name: Deploy to Cloudflare
         uses: cloudflare/wrangler-action@v3
