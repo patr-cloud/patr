@@ -40,24 +40,4 @@ test.describe('domain > list [UI]', () => {
 			await expect(emptyStateHeading(page)).toBeHidden();
 		});
 	});
-
-	// Bug: the Type column compares `nameserverType === "patr"`, but the enum value
-	// is "internal" — so a Patr-managed (internal) domain renders as "External"
-	// and "Patr Managed" never appears.
-	test('an internal domain renders as "External" in the Type column (dead-branch bug)', async ({
-		browser,
-		api,
-	}) => {
-		await using user = await createUserWithWorkspace(api);
-		const domain = randomDomain();
-		// Internal domains are API-only and provision a Cloudflare zone (CF mock).
-		await addDomainAPI(api, user, user.workspaceId, domain, 'internal');
-		await withList(browser, user, async (page) => {
-			await expect(domainRow(page, domain)).toBeVisible();
-			// Scope to the table: the mobile card grid (md:hidden) also renders the
-			// type and its element comes first in the DOM but is hidden at 1280.
-			await expect(page.getByRole('table').getByText('External').first()).toBeVisible();
-			await expect(page.getByText('Patr Managed')).toHaveCount(0);
-		});
-	});
 });

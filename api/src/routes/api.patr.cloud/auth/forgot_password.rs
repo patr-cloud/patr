@@ -6,7 +6,7 @@ use models::api::auth::*;
 use rand::RngExt;
 use time::OffsetDateTime;
 
-use crate::{prelude::*, utils::cloudflare::validate_turnstile_token};
+use crate::prelude::*;
 
 pub async fn forgot_password(
 	AppRequest {
@@ -28,23 +28,32 @@ pub async fn forgot_password(
 		mut state,
 	}: AppRequest<'_, ForgotPasswordRequest>,
 ) -> Result<AppResponse<ForgotPasswordRequest>, ErrorType> {
-	trace!("Validating Cloudflare Turnstile token");
-	let cf_turnstile_response = validate_turnstile_token(
-		&state.config.cloudflare.turnstile_secret,
-		&cf_turnstile_token,
-		Some(client_ip),
-	)
-	.await
-	.inspect_err(|err| {
-		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
-	})?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			use crate::utils::cloudflare::validate_turnstile_token;
 
-	if !cf_turnstile_response.success {
-		return Err(ErrorType::TurnstileVerificationFailed);
-	}
+			trace!("Validating Cloudflare Turnstile token");
+			let cf_turnstile_response = validate_turnstile_token(
+				&state.config.cloudflare.turnstile_secret,
+				&cf_turnstile_token,
+				client_ip,
+			)
+			.await
+			.inspect_err(|err| {
+				error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+			})?;
 
-	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "forgot-password" {
-		return Err(ErrorType::TurnstileVerificationActionMismatch);
+			if !cf_turnstile_response.success {
+				return Err(ErrorType::TurnstileVerificationFailed);
+			}
+
+			if !cfg!(debug_assertions) && &cf_turnstile_response.action != "forgot-password" {
+				return Err(ErrorType::TurnstileVerificationActionMismatch);
+			}
+		} else {
+			// No cloudflare turnstile token in non-cloud environment
+			let _ = (cf_turnstile_token, client_ip);
+		}
 	}
 
 	info!("Initiating forgot password request for user: `{user_id}`");

@@ -4,7 +4,7 @@ import { createSignal, onMount, Show } from "solid-js";
 import { CompleteSignUpRequest } from "~/bindings";
 import { Alert, Button, ButtonVariant, Input, InputType, OtpInput, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
-import { IS_CLOUD } from "~/utils/env";
+import { cloudOnly, IS_CLOUD } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 
 const ConfirmSignUp = () => {
@@ -183,10 +183,12 @@ const ConfirmSignUp = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/confirm-signup")({
-	validateSearch: (search: Record<string, unknown>): { username?: string; otp?: string } => ({
-		username: (search.username as string) || undefined,
-		otp: (search.otp as string) || undefined,
-	}),
-	component: ConfirmSignUp,
-});
+export const Route = createFileRoute("/_logged-out/confirm-signup")(
+	cloudOnly({
+		validateSearch: (search: Record<string, unknown>): { username?: string; otp?: string } => ({
+			username: (search.username as string) || undefined,
+			otp: (search.otp as string) || undefined,
+		}),
+		component: ConfirmSignUp,
+	})
+);

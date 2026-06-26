@@ -2,6 +2,7 @@ set shell := ["bash", "-uc"]
 
 export PATR__SERVER__BIND_ADDRESS              := "0.0.0.0:3000"
 export PATR__SERVER__API_BASE_PATH             := "/"
+export PATR__SERVER__BASE_DOMAIN               := "patr.cloud"
 export PATR__PASSWORD_PEPPER                   := "keyboard cat"
 export PATR__JWT_SECRET                        := "keyboard cat"
 export PATR__PRIMARY_HOSTED_DOMAIN             := "onpatr.cloud"
@@ -44,10 +45,22 @@ export PATR__SOCIAL_LOGIN__GITHUB__CLIENT_ID   := "e2e-disabled"
 export PATR__SOCIAL_LOGIN__GITHUB__CLIENT_SECRET := "e2e-disabled"
 export PATR__SOCIAL_LOGIN__GITHUB__CALLBACK_URL := "http://localhost:3001/login/github"
 export PATR__SOCIAL_LOGIN__GITHUB__CONNECT_CALLBACK_URL := "http://localhost:3001/profile/github/callback"
+# OCI registry Bearer challenge — the docker-login realm + service the registry
+# endpoints advertise in WWW-Authenticate. Match the values the suite's docker
+# flow expects (the realm must be reachable from the docker client).
+export PATR__REGISTRY__SERVICE                  := "registry.patr.cloud"
+export PATR__REGISTRY__REALM                    := "http://localhost:3000/auth/docker-login"
 
 export VINXI_PORT := "13030"
 export FRONTEND_URL := "http://localhost:13030"
 export VITE_BASE_URL := "http://localhost:3001"
+# Build the frontend in cloud mode so it matches the cloud-feature API the suite
+# spawns. Without this IS_CLOUD is false (self-hosted) and the cloud-only routes
+# the suite drives — sign-up, confirm-signup, workspace creation, the workspace
+# switcher — 404 / tree-shake out.
+export VITE_CLOUD_MODE := "true"
+# Cloudflare's always-passes test site key (public; matches the test secret
+# used in PATR__CLOUDFLARE__TURNSTILE_SECRET above).
 export VITE_TURNSTILE_SITE_KEY := "1x00000000000000000000AA"
 export PATR_LOG_LEVEL := env_var_or_default("PATR_LOG_LEVEL", "warn")
 
