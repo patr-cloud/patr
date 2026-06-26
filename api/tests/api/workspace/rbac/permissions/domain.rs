@@ -368,7 +368,6 @@ async fn domain_add_does_not_grant_view() {
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: format!("{}.com", random_name(8)),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)
@@ -417,7 +416,6 @@ async fn domain_view_does_not_grant_add() {
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: format!("{}.com", random_name(8)),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)

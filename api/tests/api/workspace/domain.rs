@@ -434,7 +434,6 @@ async fn get_domain_info_full_shape() {
 
 	let wd = response.response.workspace_domain;
 	assert_eq!(domain.domain, wd.name, "full domain name should round-trip");
-	assert_eq!(DomainNameserverType::External, wd.nameserver_type);
 	assert!(!wd.is_verified, "a freshly added domain is unverified");
 	assert!(
 		wd.last_verified.is_none(),
@@ -462,7 +461,6 @@ async fn add_domain_idn_not_punycoded() {
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: format!("münchen{}.com", random_name(8)),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)
@@ -497,7 +495,6 @@ async fn add_domain_globally_unique_across_workspaces() {
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: domain.clone(),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)
@@ -520,7 +517,6 @@ async fn add_domain_globally_unique_across_workspaces() {
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: domain.clone(),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)
@@ -573,7 +569,6 @@ async fn add_domain_readdable_after_delete() {
 				})
 				.body(AddDomainToWorkspaceRequest {
 					domain: domain.domain.clone(),
-					nameserver_type: DomainNameserverType::External,
 				})
 				.build(),
 		)
@@ -608,7 +603,6 @@ async fn list_domains_ordered_created_desc() {
 					})
 					.body(AddDomainToWorkspaceRequest {
 						domain: name.clone(),
-						nameserver_type: DomainNameserverType::External,
 					})
 					.build(),
 			)

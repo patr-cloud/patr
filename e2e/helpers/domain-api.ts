@@ -6,12 +6,11 @@ import { USER_AGENT } from '@/helpers/config';
 //
 // Domains are stored split into name + tld but the API returns the full domain
 // (CONCAT(name,'.',tld)). They are GLOBALLY unique by (name, tld) among
-// non-deleted rows — so the same domain cannot exist in two workspaces. The
-// frontend only ever creates `external` domains; `internal` (Patr-managed, hits
-// Cloudflare) is API-only.
+// non-deleted rows — so the same domain cannot exist in two workspaces. Domain
+// handling is unified — every domain is externally managed; the old
+// Patr-controlled vs user-controlled split (and its nameserver type) is gone.
 
 type Creds = { accessToken: string; clientIp: string };
-export type NameserverType = 'external' | 'internal';
 
 const base = (ws: string) => `/workspace/${ws}/domain`;
 
@@ -26,13 +25,12 @@ export async function addDomainAPI(
 	user: Creds,
 	workspaceId: string,
 	domain?: string,
-	nameserverType: NameserverType = 'external',
 ): Promise<{ id: string; domain: string }> {
 	const name = domain ?? randomDomain();
 	const resp = await api.request<{ id: string }>('POST', base(workspaceId), {
 		token: user.accessToken,
 		clientIp: user.clientIp,
-		body: { domain: name, nameserverType },
+		body: { domain: name },
 	});
 	return { id: resp.id, domain: name };
 }
@@ -40,7 +38,6 @@ export async function addDomainAPI(
 export type DomainInfo = {
 	id: string;
 	name: string;
-	nameserverType: NameserverType;
 	isVerified: boolean;
 	lastVerified: string | null;
 };
@@ -52,7 +49,7 @@ export async function getDomainInfoAPI(
 	domainId: string,
 ): Promise<DomainInfo> {
 	// The response flattens WithId<WorkspaceDomain> at the top level
-	// ({ id, name, nameserverType, isVerified, lastVerified }).
+	// ({ id, name, isVerified, lastVerified }).
 	return api.request<DomainInfo>('GET', `${base(workspaceId)}/${domainId}`, {
 		token: user.accessToken,
 		clientIp: user.clientIp,

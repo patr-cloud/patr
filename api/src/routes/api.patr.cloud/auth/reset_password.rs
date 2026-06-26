@@ -11,7 +11,7 @@ use models::api::auth::*;
 use rustis::commands::StringCommands as _;
 use time::OffsetDateTime;
 
-use crate::{prelude::*, redis::keys as redis, utils::cloudflare::validate_turnstile_token};
+use crate::{prelude::*, redis::keys as redis};
 
 pub async fn reset_password(
 	AppRequest {
@@ -34,23 +34,32 @@ pub async fn reset_password(
 		state,
 	}: AppRequest<'_, ResetPasswordRequest>,
 ) -> Result<AppResponse<ResetPasswordRequest>, ErrorType> {
-	trace!("Validating Cloudflare Turnstile token");
-	let cf_turnstile_response = validate_turnstile_token(
-		&state.config.cloudflare.turnstile_secret,
-		&cf_turnstile_token,
-		Some(client_ip),
-	)
-	.await
-	.inspect_err(|err| {
-		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
-	})?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			use crate::utils::cloudflare::validate_turnstile_token;
 
-	if !cf_turnstile_response.success {
-		return Err(ErrorType::TurnstileVerificationFailed);
-	}
+			trace!("Validating Cloudflare Turnstile token");
+			let cf_turnstile_response = validate_turnstile_token(
+				&state.config.cloudflare.turnstile_secret,
+				&cf_turnstile_token,
+				client_ip,
+			)
+			.await
+			.inspect_err(|err| {
+				error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+			})?;
 
-	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "reset-password" {
-		return Err(ErrorType::TurnstileVerificationActionMismatch);
+			if !cf_turnstile_response.success {
+				return Err(ErrorType::TurnstileVerificationFailed);
+			}
+
+			if !cfg!(debug_assertions) && &cf_turnstile_response.action != "reset-password" {
+				return Err(ErrorType::TurnstileVerificationActionMismatch);
+			}
+		} else {
+			// No cloudflare turnstile token in non-cloud environment
+			let _ = (cf_turnstile_token, client_ip);
+		}
 	}
 
 	info!("Resetting password for user: `{user_id}`");

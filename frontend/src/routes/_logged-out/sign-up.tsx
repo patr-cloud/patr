@@ -5,7 +5,7 @@ import { CreateAccountRequest, SocialLoginInitiateResponse } from "~/bindings";
 import { Alert, Button, Input, InputType, PasswordInput, PasswordStrength, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
-import { IS_CLOUD } from "~/utils/env";
+import { cloudOnly, IS_CLOUD } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import { validateNameField, validatePassword } from "~/utils/validation";
 
@@ -390,6 +390,8 @@ const SignUp = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/sign-up")({
-	component: SignUp,
-});
+export const Route = createFileRoute("/_logged-out/sign-up")(
+	cloudOnly({
+		component: SignUp,
+	})
+);

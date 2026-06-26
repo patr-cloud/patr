@@ -178,12 +178,14 @@ const Login = () => {
 				{/* Header */}
 				<div class="mb-10 items-center justify-between flex flex-row">
 					<h1 class="font-bold text-2xl text-white">Login</h1>
-					<div class="flex flex-row items-end">
-						<div class="text-gray-400 font-extralight text-sm mr-2">New User?</div>
-						<Link class="text-primary font-thin text-sm hover:underline" to="/sign-up">
-							Sign Up
-						</Link>
-					</div>
+					<Show when={IS_CLOUD}>
+						<div class="flex flex-row items-end">
+							<div class="text-gray-400 font-extralight text-sm mr-2">New User?</div>
+							<Link class="text-primary font-thin text-sm hover:underline" to="/sign-up">
+								Sign Up
+							</Link>
+						</div>
+					</Show>
 				</div>
 
 				{/* Form */}
