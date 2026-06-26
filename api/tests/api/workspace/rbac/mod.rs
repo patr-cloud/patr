@@ -249,6 +249,47 @@ async fn list_users_for_role_works() {
 }
 
 #[tokio::test]
+async fn list_users_for_role_filters_by_role() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role_a = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+	let role_b = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+
+	let user_a = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role_a.id)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role_b.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListUsersForRoleRequest>::builder()
+				.path(ListUsersForRolePath {
+					workspace_id: workspace.id,
+					role_id: role_a.id,
+				})
+				.headers(ListUsersForRoleRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListUsersForRoleResponse>>();
+
+	// Must return only role_a's user, not role_b's — the query has to filter
+	// by role_id, not just workspace_id.
+	assert_eq!(response.response.users, vec![user_a.user_id]);
+	assert!(!response.response.users.contains(&user_b.user_id));
+}
+
+#[tokio::test]
 async fn list_users_in_workspace_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

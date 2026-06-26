@@ -59,15 +59,17 @@ pub async fn list_users_for_role(
 			workspace_user.user_id = "user".id
 		WHERE
 			workspace_id = $1 AND
-			($2::TEXT IS NULL OR "user".username ILIKE '%' || $2::TEXT || '%') AND
-			($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
-			($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
+			role_id = $2 AND
+			($3::TEXT IS NULL OR "user".username ILIKE '%' || $3::TEXT || '%') AND
+			($4::TEXT IS NULL OR "user".first_name ILIKE '%' || $4::TEXT || '%') AND
+			($5::TEXT IS NULL OR "user".last_name ILIKE '%' || $5::TEXT || '%')
 		ORDER BY
 			workspace_user.user_id
-		LIMIT $5
-		OFFSET $6;
+		LIMIT $6
+		OFFSET $7;
 		"#,
 		workspace_id as _,
+		role_id as _,
 		username_filter,
 		first_name_filter,
 		last_name_filter,

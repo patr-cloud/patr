@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT workspace_user.*, COUNT(*) OVER() AS \"total_count!\" FROM workspace_user INNER JOIN \"user\" ON workspace_user.user_id = \"user\".id WHERE workspace_id = $1 AND ($2::TEXT IS NULL OR \"user\".username ILIKE '%' || $2::TEXT || '%') AND ($3::TEXT IS NULL OR \"user\".first_name ILIKE '%' || $3::TEXT || '%') AND ($4::TEXT IS NULL OR \"user\".last_name ILIKE '%' || $4::TEXT || '%') ORDER BY workspace_user.user_id LIMIT $5 OFFSET $6;",
+  "query": "SELECT workspace_user.*, COUNT(*) OVER() AS \"total_count!\" FROM workspace_user INNER JOIN \"user\" ON workspace_user.user_id = \"user\".id WHERE workspace_id = $1 AND role_id = $2 AND ($3::TEXT IS NULL OR \"user\".username ILIKE '%' || $3::TEXT || '%') AND ($4::TEXT IS NULL OR \"user\".first_name ILIKE '%' || $4::TEXT || '%') AND ($5::TEXT IS NULL OR \"user\".last_name ILIKE '%' || $5::TEXT || '%') ORDER BY workspace_user.user_id LIMIT $6 OFFSET $7;",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,7 @@
     "parameters": {
       "Left": [
         "Uuid",
+        "Uuid",
         "Text",
         "Text",
         "Text",
@@ -41,5 +42,5 @@
       null
     ]
   },
-  "hash": "f22dbacac65cf058bfdc5040167ab8dabe807f19744e05f59847f80c6552ffc0"
+  "hash": "b239b9fc28cda7df5cde0553cbf38baa97de78c3b86f3f7c6ca329e51815e340"
 }
