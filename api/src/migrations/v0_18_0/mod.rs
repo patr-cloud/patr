@@ -7,3 +7,4 @@ mod m004_sign_up_attempts;
 mod m005_allow_null_manifest_config_and_platform;
 mod m006_normalize_registry_schema;
 mod m007_unify_domains;
+mod m008_simplify_workspace_name_index;

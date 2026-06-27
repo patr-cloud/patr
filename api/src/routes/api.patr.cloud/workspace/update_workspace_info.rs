@@ -50,7 +50,7 @@ pub async fn update_workspace_info(
 			request: ProcessedApiRequest {
 				path: IsWorkspaceNameAvailablePath,
 				query: IsWorkspaceNameAvailableQueryProcessed {
-					name: name.to_string(),
+					name: name.to_string().into(),
 				},
 				headers: IsWorkspaceNameAvailableRequestHeaders {
 					authorization,

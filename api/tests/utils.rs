@@ -123,7 +123,13 @@ impl TestSetup {
 	/// Create a new test user account (CreateAccount + CompleteSignUp),
 	/// returning the user's credentials and tokens.
 	pub async fn create_test_user(&self) -> TestUser {
-		let username = random_name(8);
+		self.create_test_user_with_username(&random_name(8)).await
+	}
+
+	/// Like [`create_test_user`] but with a caller-chosen username. Useful for
+	/// search/listing tests that need usernames sharing a known substring.
+	pub async fn create_test_user_with_username(&self, username: &str) -> TestUser {
+		let username = username.to_string();
 		let password = random_password();
 
 		self.make_web_dashboard_call(
