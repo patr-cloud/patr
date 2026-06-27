@@ -34,7 +34,8 @@ pub async fn is_name_available(
 		FROM
 			workspace
 		WHERE
-			name = $1;
+			name = $1 AND
+			deleted IS NULL;
 		"#,
 		&name,
 	)

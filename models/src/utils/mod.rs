@@ -265,15 +265,6 @@ pub mod constants {
 	/// default string when the description is empty.
 	pub const ROLE_DESCRIPTION_REGEX: &str =
 		macros::verify_regex!(r"^[^<>&\n\r\t\x00-\x1f]{0,500}$");
-
-	/// The Regex to validate a DNS record name.
-	///
-	/// The DNS record name must be in the format `@`, `www`, `subdomain`, etc.
-	/// The DNS record name can have alphanumeric characters and hyphens, but
-	/// must not start or end with a hyphen.
-	pub const DNS_RECORD_NAME_REGEX: &str = macros::verify_regex!(
-		r"^((([a-z0-9].)([a-z0-9\-]*){0,63}([a-z0-9].).)(\.([a-z0-9].)([a-z0-9\-_]*){0,63}([a-z0-9]*)))|\@$"
-	);
 }
 
 #[cfg(test)]
