@@ -26,7 +26,10 @@ function accessTokenExp(token: string): number | null {
 	const payload = token.split(".")[1];
 	if (!payload) return null;
 	try {
-		const b64 = payload.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(payload.length / 4) * 4, "=");
+		const b64 = payload
+			.replace(/-/g, "+")
+			.replace(/_/g, "/")
+			.padEnd(Math.ceil(payload.length / 4) * 4, "=");
 		const claims = JSON.parse(atob(b64)) as { exp?: number };
 		return typeof claims.exp === "number" ? claims.exp : null;
 	} catch {
