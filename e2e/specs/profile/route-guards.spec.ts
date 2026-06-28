@@ -80,4 +80,26 @@ test.describe('profile > route guards', () => {
 			await context.close();
 		}
 	});
+
+	test('a dead session (expired access + unusable refresh) is redirected to /login in SSR', async ({
+		browser,
+		api,
+	}) => {
+		await using user = await createUserWithWorkspace(api);
+		// Expired access token AND a refresh token that can't be redeemed: the SSR
+		// middleware should refresh, fail, clear the cookie, and 302 to /login —
+		// before the stream flushes, so there's no logged-out flash and no
+		// ERR_HTTP_HEADERS_SENT from a late Set-Cookie.
+		user.accessToken = expireAccessTokenJwt(user.accessToken);
+		user.refreshToken = 'deadbeef.invalidrefreshtoken';
+		const context = await newContext(browser, user.clientIp);
+		await loginAs(context, user, { workspaceId: user.workspaceId });
+		const page = await context.newPage();
+		try {
+			await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+			await expectUrl(page, /\/login/, { timeout: 10_000 });
+		} finally {
+			await context.close();
+		}
+	});
 });

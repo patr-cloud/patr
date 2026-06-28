@@ -10,6 +10,7 @@ const isCSR = process.env.VITE_BUILD_TARGET === "csr";
 
 export default defineConfig({
 	ssr: !isCSR,
+	middleware: isCSR ? undefined : "./src/middleware.ts",
 	publicDir: resolve(__dirname, "../assets/frontend/public"),
 	server: isCSR
 		? {

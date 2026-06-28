@@ -120,8 +120,12 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 
 		if (errorData.error === "malformedAccessToken") {
 			console.log("Access token malformed, redirecting to login...", data);
-			cookieStorage.removeItem("authState");
+			// Never mutate cookies during SSR: cookieStorage.removeItem emits a
+			// Set-Cookie response header, which throws ERR_HTTP_HEADERS_SENT once
+			// the SSR stream has flushed and corrupts the page response. The
+			// client re-runs this same path on hydration and clears it there.
 			if (!isServer) {
+				cookieStorage.removeItem("authState");
 				window.location.href = "/login";
 			}
 			return defaultErrorReturn;
@@ -130,8 +134,8 @@ const httpRequest = async <T>(url: string, options?: RequestInit): Promise<Fetch
 		if (errorData.error === "authorizationTokenInvalid") {
 			const refreshData = await refreshAccessToken();
 			if (!refreshData) {
-				cookieStorage.removeItem("authState");
 				if (!isServer) {
+					cookieStorage.removeItem("authState");
 					window.location.href = "/login";
 				}
 				return defaultErrorReturn;
