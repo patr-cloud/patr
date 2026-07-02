@@ -182,7 +182,20 @@ where
 				}
 			}
 			WebSocketMessage::FullResync => {
-				handle_full_resync(myself, state).await?;
+				// A resync failure (rate-limit, transient upstream error, network
+				// blip) must NOT tear down the live WebSocket.
+				//
+				// The local DB is untouched on failure: handle_full_resync does all
+				// its writes in a transaction that rolls back if it returns early.
+				if let Err(err) = handle_full_resync(myself.clone(), state).await {
+					error!(
+						?err,
+						"Full resync failed; keeping connection alive, will retry on timer"
+					);
+					// handle_full_resync only re-arms the periodic timer on success,
+					// so re-arm it here to guarantee the next attempt is scheduled.
+					myself.send_after(full_resync_interval(), || WebSocketMessage::FullResync);
+				}
 			}
 		}
 		Ok(())
