@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 use headers::authorization::Authorization;
 use models::{
 	ApiSuccessResponseBody,
 	api::{auth::*, user::*},
+	rbac::WorkspacePermission,
 };
 
 use crate::prelude::*;
@@ -702,12 +705,21 @@ async fn list_recovery_options_works() {
 async fn docker_login_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	// docker login is for API tokens, not web-dashboard sessions — the handler
+	// validates the password as a `patrv1.` token.
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
 
 	let response = setup
 		.make_web_dashboard_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
-					authorization: Authorization::basic("patr", user.access_token.0.token()),
+					authorization: Authorization::basic("patr", &api_token.token),
 					user_agent: TEST_USER_AGENT,
 				})
 				.query(DockerLoginQuery {
@@ -746,6 +758,39 @@ async fn docker_login_wrong_credentials() {
 	assert!(
 		response.status_code().is_client_error(),
 		"expected client error for wrong docker credentials"
+	);
+}
+
+#[tokio::test]
+async fn docker_login_invalid_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let _user = setup.create_test_user().await;
+
+	// Username is `patr` but the password is a well-formed-but-nonexistent API
+	// token. The handler now validates it, so this must be rejected instead of
+	// echoed back as a bearer credential.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DockerLoginRequest>::builder()
+				.headers(DockerLoginRequestHeaders {
+					authorization: Authorization::basic(
+						"patr",
+						"patrv1.deadbeefdeadbeefdeadbeefdeadbeef.\
+						 deadbeefdeadbeefdeadbeefdeadbeef",
+					),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(DockerLoginQuery {
+					service: "registry".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected client error for invalid docker token, got {}",
+		response.status_code()
 	);
 }
 
