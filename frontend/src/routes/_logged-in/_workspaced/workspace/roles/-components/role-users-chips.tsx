@@ -115,12 +115,17 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 						<For each={usersQuery.data ?? []}>
 							{(user) => (
 								<div class="flex items-center gap-1.5 bg-secondary rounded-full pl-1 pr-1 py-0.5 text-xs text-white">
-									<Initials bgColor={Color.Secondary} firstName={user.firstName} lastName={user.lastName} size="xs" />
+									<Initials
+										bgColor={Color.Secondary}
+										firstName={user.firstName}
+										lastName={user.lastName}
+										size="xs"
+									/>
 									<span class="font-mono truncate max-w-40">{user.username}</span>
 									<button
 										type="button"
 										aria-label={`Remove ${user.username} from role`}
-										onClick={() => removeUser(user.id, user.username).catch(() => { })}
+										onClick={() => removeUser(user.id, user.username).catch(() => {})}
 										disabled={!canMutate()}
 										class="text-grey hover:text-error transition-colors p-0.5 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
 									>
@@ -142,7 +147,7 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 				/>
 				<Button
 					variant={ButtonVariant.Outlined}
-					onClick={() => addUser().catch(() => { })}
+					onClick={() => addUser().catch(() => {})}
 					disabled={!pickedUser() || !canMutate()}
 					loading={isMutating()}
 					class="flex items-center gap-2"
