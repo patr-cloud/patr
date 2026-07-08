@@ -13,6 +13,13 @@ const WorkspacedLayout = () => {
 	const location = useLocation();
 	const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
 	const [isMobileOpen, setMobileOpen] = createSignal(false);
+	// Fire the /onboard redirect at most once per empty-state entry. `navigate`
+	// re-triggers the workspaces query (router invalidation), which re-runs this
+	// effect, which would call `navigate` again — a microtask-rate storm that
+	// pins the main thread before the transition can even commit (so a
+	// location-based guard never clears). A plain, non-reactive flag breaks the
+	// feedback regardless of transition timing; it resets if workspaces appear.
+	let hasRedirected = false;
 
 	createEffect(() => {
 		// Wait until the query has actually settled — `isPending` only covers
@@ -31,10 +38,12 @@ const WorkspacedLayout = () => {
 				// On self-hosted there is no onboarding flow — the singleton
 				// workspace is seeded out-of-band. Render an inline error
 				// instead of redirecting into a 404 loop.
-				if (IS_CLOUD) {
+				if (IS_CLOUD && !hasRedirected) {
+					hasRedirected = true;
 					navigate({ to: "/onboard", replace: true });
 				}
 			} else {
+				hasRedirected = false;
 				const current = workspaceId();
 				if (!current || !ws.some((w) => w.id === current)) {
 					setWorkspaceId(ws[0].id);
