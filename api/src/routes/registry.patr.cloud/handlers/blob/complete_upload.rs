@@ -252,15 +252,9 @@ pub async fn complete_upload(
 					None::<JoinHandle<Result<UploadPartOutput, SdkError<UploadPartError>>>>,
 				),
 				async |(mut session, mut hasher, inflight_task), chunk| {
-					let part_number = session.uploaded_parts_etags.len() as i32 + 1;
 					let chunk_size = chunk.len();
 					let chunk_size_string =
 						format!("{:.2}MB", chunk_size as f64 / (1024.0 * 1024.0));
-
-					info!(
-						"Uploading part {part_number} to S3 (buffered, {})",
-						chunk_size_string
-					);
 
 					if let Some(task) = inflight_task {
 						let response = task.await.expect("push task panicked")?;
@@ -276,6 +270,19 @@ pub async fn complete_upload(
 
 						session.total_bytes_uploaded += CHUNK_FLUSH_THRESHOLD;
 					}
+
+					// Part numbers must be computed AFTER recording the in-flight
+					// part's etag above. Uploads are pipelined — part N is spawned
+					// here and awaited on the next iteration — so computing this
+					// before the push left every pipelined 5 MB part colliding on
+					// part 1 and the completion list referencing a part S3 never
+					// received (InvalidPart, HTTP 500).
+					let part_number = session.uploaded_parts_etags.len() as i32 + 1;
+
+					info!(
+						"Uploading part {part_number} to S3 (buffered, {})",
+						chunk_size_string
+					);
 
 					let inflight_task = match chunk_size as u64 {
 						CHUNK_FLUSH_THRESHOLD => {
