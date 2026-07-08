@@ -18,6 +18,11 @@ export default defineConfig({
   timeout: 60_000,
   use: {
     baseURL: DASHBOARD_URL,
+    // Unset, actions retry forever: a click on an element removed by a
+    // navigation silently eats the whole 60s test timeout and the failure is
+    // reported from teardown instead of the hung action. Bound it so hangs
+    // fail fast at the offending line.
+    actionTimeout: 15_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

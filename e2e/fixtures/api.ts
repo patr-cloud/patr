@@ -77,7 +77,11 @@ export async function newContext(
     await Promise.race([
       (async () => {
         await Promise.all(context.pages().map((page) => page.close().catch(() => {})));
-        await nativeClose();
+        // Swallow "already closed": after a test timeout Playwright disposes
+        // the context itself, and a throwing double-close from a finally block
+        // would REPLACE the real failure in the report with a teardown stack
+        // pointing here.
+        await nativeClose().catch(() => {});
       })(),
       new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
     ]);
