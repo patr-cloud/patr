@@ -37,8 +37,8 @@ pub async fn initialize_container_registry_tables(
 			digest TEXT NOT NULL,
 			content_type TEXT NOT NULL,
 			size BIGINT NOT NULL,
-			config_blob_digest TEXT NOT NULL,
-			platform TEXT NOT NULL
+			config_blob_digest TEXT,
+			platform TEXT
 		);
 		"#
 	)

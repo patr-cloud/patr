@@ -138,7 +138,7 @@ pub async fn get_repository_manifest_details(
 		r#"
 		SELECT
 			referenced_manifest.digest AS "digest",
-			referenced_manifest.platform AS "platform",
+			COALESCE(referenced_manifest.platform, 'unknown') AS "platform!",
 			(
 				referenced_manifest.size +
 				COALESCE(config_blob.size, 0) +
