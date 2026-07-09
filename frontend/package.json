@@ -21,6 +21,8 @@
 		"@tanstack/router-plugin": "^1.167.35",
 		"@tanstack/solid-query": "^5.100.10",
 		"@tanstack/solid-router": "^1.169.2",
+		"@zxcvbn-ts/core": "^4.1.2",
+		"@zxcvbn-ts/language-common": "^4.1.2",
 		"chart.js": "^4.5.1",
 		"js-cookie": "^3.0.5",
 		"p-limit": "^7.3.0",

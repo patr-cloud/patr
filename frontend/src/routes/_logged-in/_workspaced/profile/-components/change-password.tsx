@@ -1,9 +1,19 @@
 import { createSignal, Show } from "solid-js";
-import { Alert, Button, ButtonVariant, InputWithLabel, OtpInput, PasswordInput, useToast } from "~/components";
+import {
+	Alert,
+	Button,
+	ButtonVariant,
+	InputWithLabel,
+	OtpInput,
+	PasswordInput,
+	PasswordStrength,
+	useToast,
+} from "~/components";
 import { EventT } from "~/utils/types";
 import { ChangePasswordRequest, ChangePasswordResponse } from "~/bindings";
 import { useAuthState } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
+import { validatePassword } from "~/utils/validation";
 
 const ChangePasswordSection = () => {
 	const [authState] = useAuthState();
@@ -15,6 +25,9 @@ const ChangePasswordSection = () => {
 
 	const [showMfa, setShowMfa] = createSignal(false);
 	const [mfaOtp, setMfaOtp] = createSignal("");
+
+	const [showPasswordStrength, setShowPasswordStrength] = createSignal(false);
+	const [passwordAnchor, setPasswordAnchor] = createSignal<HTMLDivElement>();
 
 	const [inputError, setInputError] = createSignal({
 		oldPassword: "",
@@ -30,6 +43,12 @@ const ChangePasswordSection = () => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to update your password", "error");
+			return;
+		}
+
+		const pwdCheck = validatePassword(newPassword());
+		if (!pwdCheck.valid) {
+			setInputError((prev) => ({ ...prev, newPassword: pwdCheck.error ?? "Invalid password" }));
 			return;
 		}
 
@@ -110,12 +129,28 @@ const ChangePasswordSection = () => {
 					</InputWithLabel>
 
 					<InputWithLabel for="new-password" label="New Password">
-						<div>
+						<div
+							ref={setPasswordAnchor}
+							onFocusIn={() => setShowPasswordStrength(true)}
+							onFocusOut={(e) => {
+								if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+									setShowPasswordStrength(false);
+								}
+							}}
+						>
 							<PasswordInput
 								value={newPassword()}
 								name="new-password"
 								placeholder="New Password"
-								onInput={(e) => setNewPassword(e.currentTarget.value)}
+								onInput={(e) => {
+									setNewPassword(e.currentTarget.value);
+									setInputError((prev) => ({ ...prev, newPassword: "" }));
+								}}
+							/>
+							<PasswordStrength
+								password={newPassword}
+								anchor={passwordAnchor}
+								show={showPasswordStrength}
 							/>
 							<Show when={inputError().newPassword}>
 								<div class="flex justify-start items-center mt-1">

@@ -24,6 +24,36 @@ const USERNAME_VALIDITY_PATTERN = "[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]";
 // best-effort client gate.
 const USERNAME_OR_EMAIL_PATTERN = "([a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]|[^@\\s]+@[^@\\s]+\\.[^@\\s]+)";
 
+// Special characters accepted in passwords. Mirrors the backend
+// `validate_password` set. Shared between `validatePassword` and
+// `passwordStrength` so the two never drift.
+const PASSWORD_SPECIAL_CHARS = new Set([
+	"@",
+	"!",
+	"#",
+	"$",
+	"%",
+	"^",
+	"&",
+	"*",
+	"?",
+	"/",
+	"\\",
+	"|",
+	"~",
+	"`",
+	".",
+	",",
+	";",
+	":",
+	"<",
+	">",
+	"[",
+	"]",
+	"{",
+	"}",
+]);
+
 /**
  * Validates if a password meets the following requirements:
  * - A minimum of 8 characters
@@ -39,33 +69,6 @@ export function validatePassword(value: string): {
 	valid: boolean;
 	error?: string;
 } {
-	const specialChars = new Set([
-		"@",
-		"!",
-		"#",
-		"$",
-		"%",
-		"^",
-		"&",
-		"*",
-		"?",
-		"/",
-		"\\",
-		"|",
-		"~",
-		"`",
-		".",
-		",",
-		";",
-		":",
-		"<",
-		">",
-		"[",
-		"]",
-		"{",
-		"}",
-	]);
-
 	let hasDigit = false;
 	let hasUppercase = false;
 	let hasLowercase = false;
@@ -75,7 +78,7 @@ export function validatePassword(value: string): {
 		if (/\d/.test(char)) hasDigit = true;
 		if (/[A-Z]/.test(char)) hasUppercase = true;
 		if (/[a-z]/.test(char)) hasLowercase = true;
-		if (specialChars.has(char)) hasSpecial = true;
+		if (PASSWORD_SPECIAL_CHARS.has(char)) hasSpecial = true;
 	}
 
 	if (!hasDigit) {
@@ -104,6 +107,85 @@ export function validatePassword(value: string): {
 	}
 
 	return { valid: true };
+}
+
+export interface PasswordRequirement {
+	label: string;
+	met: boolean;
+}
+
+export interface PasswordStrengthResult {
+	/** Overall tier. `weak` = fails `validatePassword`. */
+	tier: "weak" | "fair" | "good" | "strong";
+	/** Number of the 4 meter segments that should be filled. */
+	segments: number;
+	/** Theme color token for the tier. */
+	color: "error" | "warning" | "success";
+	/** Per-rule met/unmet state for the checklist. */
+	requirements: PasswordRequirement[];
+}
+
+/**
+ * Grades a password for the strength indicator. The tier is anchored to
+ * `validatePassword`: anything that fails it is `weak`. Beyond that:
+ *
+ * - When a zxcvbn `score` (0–4) is supplied, it drives the tier: 0–1 = fair,
+ *   2–3 = good, 4 = strong. This catches guessable-but-well-formed passwords
+ *   (e.g. `Password@123`) that a length check alone would rate "strong".
+ * - When `score` is omitted (the estimator hasn't lazy-loaded yet), it falls
+ *   back to a length heuristic (< 12 = good, >= 12 = strong) so the meter still
+ *   works on the first keystrokes.
+ *
+ * In both paths a password shorter than 8 characters is capped at `fair`, since
+ * the backend rejects it for length regardless of composition.
+ *
+ * The requirements list surfaces every individual rule (including the 8-char
+ * minimum, which `validatePassword` itself does not check).
+ */
+export function passwordStrength(value: string, score?: number): PasswordStrengthResult {
+	let hasDigit = false;
+	let hasUppercase = false;
+	let hasLowercase = false;
+	let hasSpecial = false;
+
+	for (const char of value) {
+		if (/\d/.test(char)) hasDigit = true;
+		if (/[A-Z]/.test(char)) hasUppercase = true;
+		if (/[a-z]/.test(char)) hasLowercase = true;
+		if (PASSWORD_SPECIAL_CHARS.has(char)) hasSpecial = true;
+	}
+
+	const requirements: PasswordRequirement[] = [
+		{ label: "At least 8 characters", met: value.length >= 8 },
+		{ label: "One uppercase letter", met: hasUppercase },
+		{ label: "One lowercase letter", met: hasLowercase },
+		{ label: "One number", met: hasDigit },
+		{ label: "One special character", met: hasSpecial },
+	];
+
+	if (!validatePassword(value).valid) {
+		return { tier: "weak", segments: 1, color: "error", requirements };
+	}
+	// Never advertise more than "fair" for a password the backend rejects for length.
+	if (value.length < 8) {
+		return { tier: "fair", segments: 2, color: "warning", requirements };
+	}
+
+	if (score !== undefined) {
+		if (score <= 1) {
+			return { tier: "fair", segments: 2, color: "warning", requirements };
+		}
+		if (score <= 3) {
+			return { tier: "good", segments: 3, color: "warning", requirements };
+		}
+		return { tier: "strong", segments: 4, color: "success", requirements };
+	}
+
+	// Estimator not loaded yet — length-based fallback.
+	if (value.length < 12) {
+		return { tier: "good", segments: 3, color: "warning", requirements };
+	}
+	return { tier: "strong", segments: 4, color: "success", requirements };
 }
 
 /**
