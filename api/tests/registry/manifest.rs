@@ -364,3 +364,89 @@ async fn push_manifest_unsupported_content_type() {
 		response.status_code()
 	);
 }
+
+/// Pushing an OCI image index (manifest list) works end to end. docker 29's
+/// containerd path pushes an index even for single-arch images; the index row
+/// stores NULL `config_blob_digest`/`platform`. Regression test for the NOT
+/// NULL constraints that used to fail every index push with a 500.
+#[tokio::test]
+async fn push_index_manifest_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	// Push a regular single-arch image first; the index references it.
+	let image = setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "amd64")
+		.await;
+
+	let index = serde_json::json!({
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.oci.image.index.v1+json",
+		"manifests": [{
+			"mediaType": "application/vnd.oci.image.manifest.v1+json",
+			"digest": image.manifest_digest,
+			"size": image.manifest_bytes.len(),
+			"platform": { "architecture": "amd64", "os": "linux" }
+		}]
+	});
+	let index_bytes = serde_json::to_vec(&index).unwrap();
+
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<PutManifestPath> {
+			path: PutManifestPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+				reference: "multi".to_string(),
+			},
+			query: (),
+			headers: PutManifestRequestHeaders {
+				authorization: BearerToken::from_str(&api_token.token).unwrap(),
+				content_type: {
+					let mut map = http::HeaderMap::new();
+					map.insert(
+						http::header::CONTENT_TYPE,
+						"application/vnd.oci.image.index.v1+json".parse().unwrap(),
+					);
+					headers::HeaderMapExt::typed_get(&map).unwrap()
+				},
+			},
+			body: Body::from(index_bytes.clone()),
+		})
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::CREATED,
+		"index manifest push failed: {}",
+		std::str::from_utf8(&response.into_bytes()).unwrap_or("<non-utf8>")
+	);
+
+	// Pull the index back by tag and confirm it round-trips.
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<GetManifestPath> {
+			path: GetManifestPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+				reference: "multi".to_string(),
+			},
+			query: (),
+			headers: GetManifestRequestHeaders {
+				authorization: BearerToken::from_str(&api_token.token).unwrap(),
+			},
+			body: Body::empty(),
+		})
+		.await;
+
+	assert_eq!(response.status_code(), StatusCode::OK);
+	assert_eq!(response.into_bytes().as_ref(), index_bytes.as_slice());
+}

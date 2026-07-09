@@ -105,7 +105,7 @@ pub async fn list_repository_manifests(
 		SELECT
 			manifests.digest AS "digest!",
 			manifests.size AS "size!",
-			manifests.platform AS "platform!",
+			COALESCE(manifests.platform, 'unknown') AS "platform!",
 			manifests.created,
 			manifests.tags AS "tags!: Vec<String>",
 			COUNT(*) OVER () AS "count!"
