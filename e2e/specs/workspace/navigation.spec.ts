@@ -15,6 +15,7 @@ import {
   openWorkspaceSwitcher,
   clickSwitcherWorkspace,
   getLastWorkspaceIdCookie,
+  waitForActiveWorkspaceCookie,
 } from '@/helpers/ui/workspace';
 
 async function withTwoWorkspaces(
@@ -61,9 +62,12 @@ test.describe('workspace > navigation @racy', () => {
         timeout: 10_000,
       });
 
-      // Switch to beta — members list should now show no invitees.
+      // Switch to beta — members list should now show no invitees. The reload
+      // reads the active workspace from the cookie, so wait for the switch to
+      // commit before navigating (the click alone doesn't guarantee it).
       await openWorkspaceSwitcher(page);
       await clickSwitcherWorkspace(page, user.workspaces[1].name);
+      await waitForActiveWorkspaceCookie(page, user.workspaces[1].id);
       await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
       await expect(page.getByText(`@${invitee.username}`).first()).toBeHidden({
         timeout: 10_000,
@@ -72,6 +76,7 @@ test.describe('workspace > navigation @racy', () => {
       // Switch back to alpha; invitee should reappear.
       await openWorkspaceSwitcher(page);
       await clickSwitcherWorkspace(page, user.workspaces[0].name);
+      await waitForActiveWorkspaceCookie(page, user.workspaces[0].id);
       await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
       await expect(page.getByText(`@${invitee.username}`).first()).toBeVisible({
         timeout: 10_000,
@@ -152,6 +157,7 @@ test.describe('workspace > navigation @racy', () => {
       await openWorkspaceSettings(page);
       await openWorkspaceSwitcher(page);
       await clickSwitcherWorkspace(page, user.workspaces[1].name);
+      await waitForActiveWorkspaceCookie(page, user.workspaces[1].id);
       await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
       await page.goBack();
       await expectUrl(page, /\/workspace$/);
@@ -170,6 +176,9 @@ test.describe('workspace > navigation @racy', () => {
       await openWorkspaceSettings(page);
       await openWorkspaceSwitcher(page);
       await clickSwitcherWorkspace(page, user.workspaces[1].name);
+      // Same race as the reload sites: the one-shot cookie read below can beat
+      // the page's cookie write. Wait for the commit first.
+      await waitForActiveWorkspaceCookie(page, user.workspaces[1].id);
       const cookieId = await getLastWorkspaceIdCookie(context);
       expect(cookieId).toBe(user.workspaces[1].id);
       const page2 = await context.newPage();
@@ -192,9 +201,11 @@ test.describe('workspace > navigation @racy', () => {
       await expect(page2.locator('#workspace-name')).toHaveValue(user.workspaces[0].name, {
         timeout: 10_000,
       });
-      // Switch on tab1.
+      // Switch on tab1 and wait for it to commit — otherwise the negative
+      // assert below could pass vacuously before the switch even happened.
       await openWorkspaceSwitcher(page);
       await clickSwitcherWorkspace(page, user.workspaces[1].name);
+      await waitForActiveWorkspaceCookie(page, user.workspaces[1].id);
       // Tab2 has not navigated/reloaded — assert it still shows alpha.
       await expect(page2.locator('#workspace-name')).toHaveValue(user.workspaces[0].name);
     });
@@ -205,6 +216,7 @@ test.describe('workspace > navigation @racy', () => {
       await openWorkspaceSettings(page);
       await openWorkspaceSwitcher(page);
       await clickSwitcherWorkspace(page, user.workspaces[1].name);
+      await waitForActiveWorkspaceCookie(page, user.workspaces[1].id);
       // page.reload() can hang against Vinxi dev (see auth specs note); use goto.
       await page.goto('/workspace', { waitUntil: 'domcontentloaded' });
       await expect(page.locator('#workspace-name')).toHaveValue(user.workspaces[1].name, {

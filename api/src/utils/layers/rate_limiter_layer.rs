@@ -12,11 +12,19 @@ use crate::{models::rate_limiter::check_rate_limit, prelude::*};
 
 /// The global rate limit windows applied to all endpoints.
 /// Each tuple is (max_requests, window_duration).
-const RATE_LIMITS: [(u32, Duration); 3] = [
-	(20, Duration::from_secs(1)),
-	(500, Duration::from_secs(60)),
-	(5000, Duration::from_secs(3600)),
-];
+const RATE_LIMITS: [(u32, Duration); 3] = if cfg!(debug_assertions) {
+	[
+		(100, Duration::from_secs(1)),
+		(2500, Duration::from_secs(60)),
+		(25000, Duration::from_secs(3600)),
+	]
+} else {
+	[
+		(20, Duration::from_secs(1)),
+		(500, Duration::from_secs(60)),
+		(5000, Duration::from_secs(3600)),
+	]
+};
 
 /// Tower layer that applies per-IP rate limiting to unauthenticated API
 /// endpoints. Operates on [`UnprocessedAppRequest`] after the database

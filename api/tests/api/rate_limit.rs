@@ -1,9 +1,16 @@
 use std::net::IpAddr;
 
+use futures::StreamExt as _;
 use models::api::user::*;
 use rand::RngExt as _;
 
 use crate::prelude::*;
+
+/// The debug-build per-second window from the API rate limiter
+/// (`api/src/utils/layers/rate_limiter_layer.rs`). Debug limits are looser
+/// than production (SPA page-load bursts tripped 20/s in the e2e suite), so
+/// the tests exhaust this value instead.
+const DEBUG_PER_SECOND_LIMIT: usize = 100;
 
 /// Each rate-limit test pins requests to its own randomly-chosen IPv4 so the
 /// per-IP bucket accumulates predictably even when Redis is shared across
@@ -12,13 +19,38 @@ fn fixed_test_ip() -> IpAddr {
 	IpAddr::V4(rand::rng().random::<u32>().into())
 }
 
+/// Exhausts the per-second window for the given session + IP by firing
+/// `DEBUG_PER_SECOND_LIMIT` requests. Concurrency (bounded to keep DB pool
+/// pressure sane) is required for correctness, not just speed: sequential
+/// debug-build requests wouldn't reliably all land inside the 1-second
+/// sliding window.
+async fn exhaust_per_second_limit(setup: &TestSetup, token: &BearerToken, ip: IpAddr) {
+	futures::stream::iter(0..DEBUG_PER_SECOND_LIMIT)
+		.map(|_| async {
+			setup
+				.make_web_dashboard_call_from_ip(
+					ApiRequest::<GetUserInfoRequest>::builder()
+						.headers(GetUserInfoRequestHeaders {
+							authorization: token.clone(),
+							user_agent: TEST_USER_AGENT,
+						})
+						.build(),
+					ip,
+				)
+				.await;
+		})
+		.buffer_unordered(25)
+		.collect::<Vec<_>>()
+		.await;
+}
+
 #[tokio::test]
 async fn test_rate_limit_allows_requests_under_limit() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let ip = fixed_test_ip();
 
-	// Make 2 requests (under the 20/sec limit). Both should succeed.
+	// Make 2 requests (well under the per-second limit). Both should succeed.
 	for _ in 0..2 {
 		let response = setup
 			.make_web_dashboard_call_from_ip(
@@ -46,22 +78,10 @@ async fn test_rate_limit_blocks_after_exceeding_per_second_limit() {
 	let user = setup.create_test_user().await;
 	let ip = fixed_test_ip();
 
-	// The per-second limit is 20. Send 21 rapid requests.
-	for _ in 0..20 {
-		setup
-			.make_web_dashboard_call_from_ip(
-				ApiRequest::<GetUserInfoRequest>::builder()
-					.headers(GetUserInfoRequestHeaders {
-						authorization: user.access_token.clone(),
-						user_agent: TEST_USER_AGENT,
-					})
-					.build(),
-				ip,
-			)
-			.await;
-	}
+	// Exhaust the per-second window, then send one more.
+	exhaust_per_second_limit(&setup, &user.access_token, ip).await;
 
-	// The 21st request should be rate-limited
+	// The next request should be rate-limited
 	let response = setup
 		.make_web_dashboard_call_from_ip(
 			ApiRequest::<GetUserInfoRequest>::builder()
@@ -87,20 +107,8 @@ async fn test_rate_limit_window_slides() {
 	let user = setup.create_test_user().await;
 	let ip = fixed_test_ip();
 
-	// Exhaust the per-second limit (20 requests)
-	for _ in 0..20 {
-		setup
-			.make_web_dashboard_call_from_ip(
-				ApiRequest::<GetUserInfoRequest>::builder()
-					.headers(GetUserInfoRequestHeaders {
-						authorization: user.access_token.clone(),
-						user_agent: TEST_USER_AGENT,
-					})
-					.build(),
-				ip,
-			)
-			.await;
-	}
+	// Exhaust the per-second window
+	exhaust_per_second_limit(&setup, &user.access_token, ip).await;
 
 	// Confirm we're rate-limited
 	let response = setup
@@ -145,20 +153,8 @@ async fn test_rate_limit_rejected_requests_count() {
 	let user = setup.create_test_user().await;
 	let ip = fixed_test_ip();
 
-	// Exhaust the per-second limit (20 requests)
-	for _ in 0..20 {
-		setup
-			.make_web_dashboard_call_from_ip(
-				ApiRequest::<GetUserInfoRequest>::builder()
-					.headers(GetUserInfoRequestHeaders {
-						authorization: user.access_token.clone(),
-						user_agent: TEST_USER_AGENT,
-					})
-					.build(),
-				ip,
-			)
-			.await;
-	}
+	// Exhaust the per-second window
+	exhaust_per_second_limit(&setup, &user.access_token, ip).await;
 
 	// Send more requests — they should all be 429 because rejected requests
 	// also consume a slot in the sorted set (optimistic add)
@@ -193,20 +189,8 @@ async fn test_rate_limit_authenticated_per_login() {
 	let (session_b_token, _) = setup.login_test_user(&user.username, &user.password).await;
 	let session_b_bearer = BearerToken::from_str(&session_b_token).unwrap();
 
-	// Exhaust the per-second limit using the first session (20 requests)
-	for _ in 0..20 {
-		setup
-			.make_web_dashboard_call_from_ip(
-				ApiRequest::<GetUserInfoRequest>::builder()
-					.headers(GetUserInfoRequestHeaders {
-						authorization: user.access_token.clone(),
-						user_agent: TEST_USER_AGENT,
-					})
-					.build(),
-				ip,
-			)
-			.await;
-	}
+	// Exhaust the per-second window using the first session
+	exhaust_per_second_limit(&setup, &user.access_token, ip).await;
 
 	// First session should be rate-limited
 	let response = setup

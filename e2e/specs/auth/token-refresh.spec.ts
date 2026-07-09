@@ -20,14 +20,17 @@ async function readAuthFromBrowser(page: import('@playwright/test').Page): Promi
   refreshToken: string;
   loginId: string;
 }> {
-  const auth = await page.evaluate(() => {
-    const m = document.cookie.match(/authState=([^;]+)/);
-    if (!m) throw new Error('no authState cookie');
-    return JSON.parse(decodeURIComponent(m[1])) as {
-      accessToken: string;
-      refreshToken: string;
-    };
-  });
+  // Read the cookie via CDP, NOT page.evaluate. A trace of the flaky 60s
+  // timeout showed the evaluate call starting and never returning under
+  // parallel load — the same evaluate hang the module comment above documents
+  // for the refresh calls. context.cookies() runs no JS in the page.
+  const cookies = await page.context().cookies();
+  const cookie = cookies.find((c) => c.name === 'authState');
+  if (!cookie) throw new Error('no authState cookie');
+  const auth = JSON.parse(decodeURIComponent(cookie.value)) as {
+    accessToken: string;
+    refreshToken: string;
+  };
   const [loginId] = auth.refreshToken.split('.');
   return { ...auth, loginId };
 }
@@ -36,6 +39,10 @@ async function refreshAccessToken(refreshToken: string): Promise<number> {
   const r = await fetch(`${DASHBOARD_URL}/api/auth/access-token`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${refreshToken}` },
+    // Bound the call: under load the Nitro proxy has produced both hangs and
+    // connection failures; without a signal this await can silently eat the
+    // whole 60s test timeout.
+    signal: AbortSignal.timeout(10_000),
   });
   return r.status;
 }
