@@ -9,8 +9,9 @@ use crate::prelude::*;
 /// The debug-build per-second window from the API rate limiter
 /// (`api/src/utils/layers/rate_limiter_layer.rs`). Debug limits are looser
 /// than production (SPA page-load bursts tripped 20/s in the e2e suite), so
-/// the tests exhaust this value instead.
-const DEBUG_PER_SECOND_LIMIT: usize = 100;
+/// the tests exhaust this value instead. Kept small enough that the whole
+/// burst completes within the 1-second sliding window on a slow CI runner.
+const DEBUG_PER_SECOND_LIMIT: usize = 50;
 
 /// Each rate-limit test pins requests to its own randomly-chosen IPv4 so the
 /// per-IP bucket accumulates predictably even when Redis is shared across

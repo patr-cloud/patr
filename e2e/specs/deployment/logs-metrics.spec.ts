@@ -100,8 +100,9 @@ test.describe('deployment > logs [API]', () => {
 test.describe('deployment > metrics [API]', () => {
   test('serves each of the 26 metric names with the org header', async ({ api }) => {
     expect(DEPLOYMENT_METRIC_NAMES).toHaveLength(26);
-    // The per-second rate limit is 20 req/s per login+IP, so split the 26 names
-    // across two fresh workspaces (separate rate buckets), 13 each.
+    // The per-second rate limit is 50 req/s per login in debug builds; keep
+    // the 26 names split across two fresh workspaces (separate rate buckets)
+    // anyway for headroom.
     const half = Math.ceil(DEPLOYMENT_METRIC_NAMES.length / 2);
     const chunks = [DEPLOYMENT_METRIC_NAMES.slice(0, half), DEPLOYMENT_METRIC_NAMES.slice(half)];
     for (const names of chunks) {

@@ -13,8 +13,12 @@ use crate::{models::rate_limiter::check_rate_limit, prelude::*};
 /// The global rate limit windows applied to all endpoints.
 /// Each tuple is (max_requests, window_duration).
 const RATE_LIMITS: [(u32, Duration); 3] = if cfg!(debug_assertions) {
+	// Loose enough that SPA page-load bursts in the e2e suite (~8 parallel
+	// queries per route mount, plus retries) never trip it; tight enough that
+	// the rate-limit tests can exhaust the window within one second on a slow
+	// CI runner. Tests pin these values — update them together.
 	[
-		(100, Duration::from_secs(1)),
+		(50, Duration::from_secs(1)),
 		(2500, Duration::from_secs(60)),
 		(25000, Duration::from_secs(3600)),
 	]
