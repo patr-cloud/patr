@@ -309,7 +309,7 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
   });
 });
 
-test.describe('sign-up — concurrency', () => {
+test.describe('sign-up — concurrency @racy', () => {
   // The API's create_account handler does an UPSERT on user_to_sign_up
   // (ON CONFLICT username DO UPDATE WHERE EXCLUDED.otp_expiry > NOW()).
   // Two concurrent signups for the same username typically both succeed

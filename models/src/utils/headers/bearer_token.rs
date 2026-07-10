@@ -43,11 +43,12 @@ impl Header for BearerToken {
 	{
 		let value = values.next().ok_or_else(Error::invalid)?;
 
-		if !value
+		let has_valid_token = value
 			.to_str()
-			.map(|value| value.starts_with(Bearer::SCHEME))
-			.unwrap_or(false)
-		{
+			.ok()
+			.and_then(|value| value.strip_prefix("Bearer "))
+			.is_some_and(|token| !token.trim().is_empty());
+		if !has_valid_token {
 			return Err(Error::invalid());
 		}
 
@@ -82,5 +83,37 @@ impl<'de> Deserialize<'de> for BearerToken {
 			.map_err(serde::de::Error::custom)
 			.map(|Authorization(val)| val)
 			.map(Self)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use headers::Header;
+	use http::HeaderValue;
+
+	use super::BearerToken;
+
+	fn decode(value: &str) -> Result<BearerToken, headers::Error> {
+		let value = HeaderValue::from_str(value).unwrap();
+		BearerToken::decode(&mut std::iter::once(&value))
+	}
+
+	#[test]
+	fn rejects_malformed_bearer_without_panicking() {
+		// A bare "Bearer" (6 bytes) is the value that used to panic the process:
+		// `Bearer::token()` slices `[7..]` on it. These must all be a clean error.
+		assert!(decode("Bearer").is_err());
+		assert!(decode("Bearer ").is_err());
+		assert!(decode("Bearer    ").is_err());
+		assert!(decode("Basic abc123").is_err());
+		assert!(decode("patrv1.abc.def").is_err());
+	}
+
+	#[test]
+	fn accepts_valid_bearer_and_reads_token() {
+		let BearerToken(bearer) = decode("Bearer patrv1.abc.def").unwrap();
+		// `.token()` is the method that panics on a malformed value; a valid
+		// token round-trips without stripping into out-of-bounds territory.
+		assert_eq!(bearer.token(), "patrv1.abc.def");
 	}
 }

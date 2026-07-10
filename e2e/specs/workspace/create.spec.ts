@@ -307,7 +307,7 @@ test.describe('workspace create > validation', () => {
   });
 });
 
-test.describe('workspace create > concurrency', () => {
+test.describe('workspace create > concurrency @racy', () => {
   test('serialises concurrent same-name creates from a single user (exactly one succeeds)', async ({
     browser,
     api,

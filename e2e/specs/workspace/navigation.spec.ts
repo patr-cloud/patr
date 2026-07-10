@@ -38,7 +38,7 @@ async function withTwoWorkspaces(
   }
 }
 
-test.describe('workspace > navigation', () => {
+test.describe('workspace > navigation @racy', () => {
   test('refetches workspace-scoped queries when switching workspaces', async ({ browser, api }) => {
     await withTwoWorkspaces(browser, api, async (page, _ctx, user) => {
       // Add another member to alpha so its members list is non-empty.

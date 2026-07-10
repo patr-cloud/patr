@@ -256,7 +256,7 @@ test.describe('workspace setup > validation', () => {
   });
 });
 
-test.describe('workspace setup > concurrency & UX', () => {
+test.describe('workspace setup > concurrency & UX @racy', () => {
   test('fires exactly one POST on a rapid double-submit', async ({ browser, api }) => {
     await using user = await createUserAccount(api);
     await onboardWith(browser, user, async (page) => {

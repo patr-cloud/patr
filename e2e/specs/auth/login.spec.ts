@@ -124,7 +124,7 @@ test.describe('login — server-side rejection', () => {
   // behaviors covered in the Rust API suite (api/tests/api/auth.rs).
 });
 
-test.describe('login — concurrency & state', () => {
+test.describe('login — concurrency & state @racy', () => {
   // page.reload() hangs against Vinxi dev (HMR-related). Instead, verify
   // session persistence by navigating to a guarded route in a fresh tab that
   // shares the same context (cookies persist).
