@@ -157,4 +157,4 @@ opt-level = 0
 codegen-units = 1
 lto           = true
 opt-level     = 3
-panic         = "abort"
+panic         = "unwind"

@@ -1,11 +1,16 @@
+use std::any::Any;
+
 use axum::{
 	Router,
 	body::Body,
 	http::{Request, Response, StatusCode},
+	response::IntoResponse,
 	routing::any,
 };
 use headers::{HeaderMapExt, Host};
+use models::ApiErrorResponse;
 use tower::ServiceExt;
+use tower_http::catch_panic::CatchPanicLayer;
 
 use crate::prelude::*;
 
@@ -64,6 +69,15 @@ pub async fn setup_routes(state: &AppState) -> Router {
 					.body(Body::empty())
 					.unwrap()),
 			}
+		}))
+		.layer(CatchPanicLayer::custom(|panic: Box<dyn Any + Send>| {
+			let details = panic
+				.downcast_ref::<&str>()
+				.map(|message| (*message).to_owned())
+				.or_else(|| panic.downcast_ref::<String>().cloned())
+				.unwrap_or_else(|| "unknown panic".to_owned());
+			error!("caught panic while handling request: {details}");
+			ApiErrorResponse::error(ErrorType::InternalServerError).into_response()
 		}))
 		.with_state(state.clone())
 }

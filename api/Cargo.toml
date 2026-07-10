@@ -78,7 +78,7 @@ tokio-tungstenite              = { workspace = true, features = ["default"] }
 tokio-util                     = { workspace = true, features = ["io"] }
 totp-rs                        = { workspace = true, features = ["default", "gen_secret", "otpauth", "qr"] }
 tower                          = { workspace = true, features = ["full"] }
-tower-http                     = { workspace = true, features = ["fs"] }
+tower-http                     = { workspace = true, features = ["fs", "catch-panic"] }
 tracing                        = { workspace = true, features = ["async-await", "default"] }
 tracing-opentelemetry          = { workspace = true, features = ["default"] }
 tracing-subscriber             = { workspace = true, features = ["default"] }

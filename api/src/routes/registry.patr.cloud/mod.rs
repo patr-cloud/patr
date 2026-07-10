@@ -27,10 +27,12 @@ pub mod handlers;
 /// Utility functions for registry operations.
 pub mod utils;
 
-use std::convert::Infallible;
+use std::{any::Any, convert::Infallible};
 
 use axum::{Router, body::Body, response::IntoResponse};
 use http::{Request, StatusCode};
+use oci_spec::distribution::ErrorCode;
+use tower_http::catch_panic::CatchPanicLayer;
 
 use crate::prelude::*;
 
@@ -86,4 +88,18 @@ pub async fn setup_routes(state: &AppState) -> Router {
 			warn!("Unhandled registry request: {} {}", req.method(), req.uri());
 			Ok::<_, Infallible>((StatusCode::NOT_FOUND, "Not Found").into_response())
 		})
+		.layer(CatchPanicLayer::custom(|panic: Box<dyn Any + Send>| {
+			let details = panic
+				.downcast_ref::<&str>()
+				.map(|message| (*message).to_owned())
+				.or_else(|| panic.downcast_ref::<String>().cloned())
+				.unwrap_or_else(|| "unknown panic".to_owned());
+			error!("caught panic while handling registry request: {details}");
+			error::RegistryError::builder()
+				.code(ErrorCode::Unsupported)
+				.message("internal server error")
+				.status(StatusCode::INTERNAL_SERVER_ERROR)
+				.build()
+				.into_response()
+		}))
 }
