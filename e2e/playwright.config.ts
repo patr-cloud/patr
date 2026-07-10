@@ -3,7 +3,7 @@ import { DASHBOARD_URL } from './helpers/urls';
 
 // Which Docker versions the @docker (real-runner) suite runs against. Comma-
 // separated, default "26" so local runs use a single version; CI sets
-// DOCKER_VERSIONS=24 / 25 / 26 to shard one version per parallel job.
+// DOCKER_VERSIONS=26 / 27 / 28 / 29 to shard one version per parallel job.
 const dockerVersions = (process.env.DOCKER_VERSIONS ?? '26')
   .split(',')
   .map((v) => v.trim())

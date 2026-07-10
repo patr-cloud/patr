@@ -251,7 +251,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        docker: ["24", "25", "26"]
+        docker: ["26", "27", "28", "29"]
     env:
       DOCKER_VERSIONS: ${{ matrix.docker }}
       API_BIN: ${{ github.workspace }}/target/debug/api
