@@ -107,6 +107,19 @@ export async function clickSwitcherWorkspace(page: Page, name: string): Promise<
   await page.getByRole('button', { name }).click();
 }
 
+// Waits for the lastWorkspaceId cookie to point at the given workspace.
+// clickSwitcherWorkspace resolves when the click is DISPATCHED, not when the
+// page's handler (signal set + cookie write) has run — under CI load a
+// goto/reload issued immediately after can race the cookie write and load the
+// OLD workspace. Await this before any navigation that depends on the switch.
+// Substring match is safe: the value is the 32-hex id, JSON-stringified and
+// possibly URI-encoded, and the raw hex survives both encodings.
+export async function waitForActiveWorkspaceCookie(page: Page, workspaceId: string): Promise<void> {
+  await page.waitForFunction((id) => document.cookie.includes(id), workspaceId, {
+    timeout: 10_000,
+  });
+}
+
 export async function clickSwitcherCreateNew(page: Page): Promise<void> {
   await page.getByRole('link', { name: /^CREATE WORKSPACE$/ }).click();
 }

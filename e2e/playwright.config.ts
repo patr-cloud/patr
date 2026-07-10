@@ -16,8 +16,22 @@ export default defineConfig({
   // Tests that want parallelism opt in by running with `TEST_THREADS=N`.
   workers: process.env.TEST_THREADS ? Number(process.env.TEST_THREADS) : 1,
   timeout: 60_000,
+  // In CI, also write the HTML report: it bundles the failure traces
+  // (test-results/*/trace.zip) so the upload-artifact step actually captures
+  // them. Without this the workflow's "Upload Playwright report" step has
+  // nothing to upload — the reporter default never creates playwright-report/.
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: DASHBOARD_URL,
+    // Unset, actions retry forever: a click on an element removed by a
+    // navigation silently eats the whole 60s test timeout and the failure is
+    // reported from teardown instead of the hung action. Bound it so hangs
+    // fail fast at the offending line.
+    actionTimeout: 15_000,
+    // Same reasoning for navigations (goto/waitForURL): unbounded, a stall eats
+    // the whole test timeout and gets reported from teardown instead of the
+    // hung call. Bound them too.
+    navigationTimeout: 30_000,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

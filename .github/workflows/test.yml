@@ -235,7 +235,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-ui
-          path: e2e/playwright-report
+          # playwright-report holds the HTML report (which embeds failure
+          # traces); test-results holds the raw trace.zip/screenshots as a
+          # fallback if the report step itself died.
+          path: |
+            e2e/playwright-report
+            e2e/test-results
           retention-days: 7
 
   docker-tests:
@@ -318,7 +323,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-docker-${{ matrix.docker }}
-          path: e2e/playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
           retention-days: 7
 
   # ----- Final gate: green only when all three suites pass -----

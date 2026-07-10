@@ -1369,15 +1369,15 @@ async fn forgot_password_rate_limit() {
 	// IP per call which would defeat rate-limit accumulation.
 	let ip = std::net::IpAddr::V4(rand::rng().random::<u32>().into());
 
-	// The per-IP unauth window is 20 requests/second (sliding window log — see
-	// `models::rate_limiter`). Unknown user_ids get a silent 202 without the
-	// Argon2 work, so they're cheap. Fire well above the limit *concurrently*
-	// from the same IP: a sequential loop is flaky because under parallel test
-	// load each round-trip can take long enough that earlier requests slide out
-	// of the 1-second window before the count ever reaches 21. Concurrent
-	// dispatch lands the burst inside a single window regardless of per-request
-	// latency.
-	let requests = (0..50).map(|i| {
+	// The per-IP unauth window is 50 requests/second in debug builds (see
+	// `RATE_LIMITS` in `utils::layers::rate_limiter_layer`). Unknown user_ids
+	// get a silent 202 without the Argon2 work, so they're cheap. Fire well
+	// above the limit *concurrently* from the same IP: a sequential loop is
+	// flaky because under parallel test load each round-trip can take long
+	// enough that earlier requests slide out of the 1-second window before the
+	// count ever exceeds the limit. Concurrent dispatch lands the burst inside
+	// a single window regardless of per-request latency.
+	let requests = (0..75).map(|i| {
 		setup.make_web_dashboard_call_from_ip(
 			ApiRequest::<ForgotPasswordRequest>::builder()
 				.headers(ForgotPasswordRequestHeaders {
@@ -1400,7 +1400,7 @@ async fn forgot_password_rate_limit() {
 
 	assert!(
 		throttled > 0,
-		"expected at least one 429 from 50 concurrent forgot_password calls, got none"
+		"expected at least one 429 from 75 concurrent forgot_password calls, got none"
 	);
 }
 

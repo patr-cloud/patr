@@ -167,11 +167,14 @@ test.describe('login — concurrency & state @racy', () => {
 });
 
 test.describe('login — rate limiting (per-IP wiring sanity)', () => {
-  // The per-IP limiter is 20/sec (api/src/utils/layers/rate_limiter_layer.rs).
-  // We reuse one IP across 25 sign-in attempts and assert at least one comes
-  // back as 429 — proving the limiter is wired through. The exact threshold
-  // is timing-sensitive so we don't assert "exactly the 21st".
-  test('21+ rapid requests from one IP triggers 429 at least once', async ({ browser }) => {
+  // The per-IP limiter is 50/sec in debug builds
+  // (api/src/utils/layers/rate_limiter_layer.rs). We reuse one IP across 60
+  // sign-in attempts and assert at least one comes back as 429 — proving the
+  // limiter is wired through. The exact threshold is timing-sensitive so we
+  // don't assert on a specific request index. The burst is CONCURRENT: a
+  // sequential loop on a slow runner takes >1s, letting early requests slide
+  // out of the 1-second window before the count ever exceeds the limit.
+  test('rapid requests from one IP trigger 429 at least once', async ({ browser }) => {
     const ip = randomIPv4();
     const context = await newContext(browser, ip);
     const page = await context.newPage();
@@ -180,12 +183,11 @@ test.describe('login — rate limiting (per-IP wiring sanity)', () => {
       // Hit /auth/sign-in directly from the browser so the route()
       // X-Real-IP override applies. Each call is independent.
       const statuses = await page.evaluate(async (cfTurnstileToken) => {
-        const out: number[] = [];
-        for (let i = 0; i < 25; i++) {
-          // Relative URL — resolves against the dashboard origin Playwright
-          // loaded the page from (baseURL in playwright.config). Keeps this
-          // browser-context evaluate() free of localhost literals.
-          const r = await fetch('/api/auth/sign-in', {
+        // Relative URL — resolves against the dashboard origin Playwright
+        // loaded the page from (baseURL in playwright.config). Keeps this
+        // browser-context evaluate() free of localhost literals.
+        const requests = Array.from({ length: 60 }, () =>
+          fetch('/api/auth/sign-in', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -193,10 +195,9 @@ test.describe('login — rate limiting (per-IP wiring sanity)', () => {
               password: 'X',
               cfTurnstileToken,
             }),
-          });
-          out.push(r.status);
-        }
-        return out;
+          }).then((r) => r.status),
+        );
+        return Promise.all(requests);
       }, TURNSTILE_TOKEN);
       expect(statuses.some((s) => s === 429)).toBe(true);
     } finally {

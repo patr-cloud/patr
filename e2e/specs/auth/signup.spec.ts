@@ -302,7 +302,16 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
       });
       const submit = page.locator('button[type=submit]', { hasText: /^Sign Up$/ });
       await expect(submit).toBeEnabled({ timeout: 15_000 });
-      await Promise.all([submit.click(), submit.click().catch(() => {})]);
+      // Dispatch both clicks synchronously in the page. Racing two locator
+      // clicks is flaky: the first click's navigation removes the button, and
+      // the second click then retries actionability until it times out —
+      // Playwright clicks retry rather than reject, so its .catch() never
+      // fires. In-page dispatch guarantees both clicks land before any
+      // navigation, which is also the truer test of the double-submit guard.
+      await submit.evaluate((button: HTMLButtonElement) => {
+        button.click();
+        button.click();
+      });
       await page.waitForURL(/\/confirm-signup/, { timeout: 10_000 });
       expect(signupCalls).toBe(1);
     });
