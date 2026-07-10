@@ -246,7 +246,14 @@ jobs:
   docker-tests:
     name: Docker Tests
     needs: build
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    # Stays on a GitHub-hosted runner. This suite stands up the docker runner's
+    # production topology (Docker Swarm + overlay network + routing-mesh
+    # published ports + VIP service discovery) inside privileged DinD. The swarm
+    # routing mesh relies on the kernel IPVS modules (ip_vs), which Blacksmith's
+    # Firecracker microVM guest kernel doesn't provide, so published service
+    # ports never route: the faux edge never serves and every deployment test
+    # times out. Revisit if the runner kernel gains IPVS support.
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
