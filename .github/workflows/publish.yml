@@ -7,7 +7,7 @@ on:
 jobs:
   version:
     name: Check Version
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       full: ${{ steps.v.outputs.full }}
       major: ${{ steps.v.outputs.major }}
@@ -81,7 +81,7 @@ jobs:
           - arch: amd64
             runner: ubuntu-24.04
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: blacksmith-4vcpu-ubuntu-2404-arm
     steps:
       - uses: actions/checkout@v6
         with:
@@ -143,7 +143,7 @@ jobs:
           - arch: amd64
             runner: ubuntu-24.04
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: blacksmith-4vcpu-ubuntu-2404-arm
     steps:
       - uses: actions/checkout@v6
         with:
@@ -310,7 +310,7 @@ jobs:
           - arch: amd64
             runner: ubuntu-24.04
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: blacksmith-4vcpu-ubuntu-2404-arm
     steps:
       - uses: actions/checkout@v6
         with:
@@ -369,7 +369,7 @@ jobs:
   manifest-api:
     name: Multi-arch manifest for api
     needs: [version, build-api]
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -408,7 +408,7 @@ jobs:
   manifest-frontend:
     name: Multi-arch manifest for frontend
     needs: [version, build-frontend]
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -447,7 +447,7 @@ jobs:
   deploy:
     name: Deploy to alpha server
     needs: [manifest-api, manifest-frontend]
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     if: github.ref_name == 'develop'
     steps:
       - name: Deploy to server
@@ -461,7 +461,7 @@ jobs:
 
   deploy-worker:
     name: Deploy ingress worker
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     if: github.ref_name == 'develop'
     steps:
       - uses: actions/checkout@v6
@@ -488,7 +488,7 @@ jobs:
   manifest-cli:
     name: Multi-arch manifest for CLI
     needs: [version, build-cli-docker]
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Log in to Docker Hub
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -528,7 +528,7 @@ jobs:
   github-release:
     name: Create GitHub Release
     needs: [version, build-cli-binaries]
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     outputs:
       tag: ${{ steps.release.outputs.tag }}
     permissions:
@@ -623,7 +623,7 @@ jobs:
   update-homebrew-tap:
     name: Update Homebrew formula
     needs: [version, github-release, build-cli-binaries]
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v6
 

@@ -16,7 +16,7 @@ jobs:
   # ----- Stage 1: static checks (gate) -----
   format-check:
     name: Format & Static Checks
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     env:
       SQLX_OFFLINE: "true"
     steps:
@@ -65,7 +65,7 @@ jobs:
   unit-tests:
     name: Unit Tests (common)
     needs: format-check
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     env:
       SQLX_OFFLINE: "true"
     steps:
@@ -89,7 +89,7 @@ jobs:
   build:
     name: Build API + bindings
     needs: unit-tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     env:
       SQLX_OFFLINE: "true"
     steps:
@@ -144,7 +144,7 @@ jobs:
   integration-tests:
     name: Integration Tests (api)
     needs: unit-tests
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 45
     env:
       SQLX_OFFLINE: "true"
@@ -168,7 +168,7 @@ jobs:
   ui-tests:
     name: UI Tests (e2e)
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 45
     env:
       API_BIN: ${{ github.workspace }}/target/debug/api
@@ -246,7 +246,7 @@ jobs:
   docker-tests:
     name: Docker Tests
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -333,7 +333,7 @@ jobs:
     name: CI Green
     needs: [integration-tests, ui-tests, docker-tests]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Verify all suites passed
         run: |
@@ -351,7 +351,7 @@ jobs:
   # SQLx offline data stays verified on staging/master PRs only.
   sqlx-check:
     name: SQLx Offline Check
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     if: github.base_ref == 'staging' || github.base_ref == 'master'
     services:
       postgres:
