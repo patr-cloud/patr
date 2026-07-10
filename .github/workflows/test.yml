@@ -107,12 +107,6 @@ jobs:
       - name: Build api binary
         run: cargo build --package api
 
-      # Built in a separate cargo invocation from `api`: compiling both in one
-      # invocation unifies `common`'s features and fails to compile. The @docker
-      # e2e suite spawns this binary (target/debug/docker) as the real runner.
-      - name: Build docker runner binary
-        run: cargo build --package docker
-
       - name: Generate TS bindings
         run: cargo bindings
 
@@ -124,19 +118,50 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-      - name: Upload docker runner binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: runner-binary
-          path: target/debug/docker
-          retention-days: 1
-          if-no-files-found: error
-
       - name: Upload TS bindings
         uses: actions/upload-artifact@v4
         with:
           name: ts-bindings
           path: frontend/src/bindings
+          retention-days: 1
+          if-no-files-found: error
+
+  # The docker runner binary is built here, on the same github-hosted runner OS
+  # that runs the @docker suite (see docker-tests), rather than on Blacksmith
+  # with the other artifacts. Debug builds bake the config file path from
+  # CARGO_MANIFEST_DIR at compile time; a binary built on Blacksmith
+  # (/home/runner/_work/...) then can't find its config when executed on a
+  # github-hosted runner (/home/runner/work/...). Building it here keeps the
+  # compile-time and run-time repo paths identical.
+  build-docker-runner:
+    name: Build docker runner binary
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+
+      # `common` embeds this folder via #[derive(RustEmbed)]; the build fails if
+      # it doesn't exist.
+      - name: Setup frontend public folder
+        run: mkdir -p frontend/.output/public
+
+      # Built in a separate cargo invocation from `api`: compiling both in one
+      # invocation unifies `common`'s features and fails to compile. The @docker
+      # e2e suite spawns this binary (target/debug/docker) as the real runner.
+      - name: Build docker runner binary
+        run: cargo build --package docker
+
+      - name: Upload docker runner binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-binary
+          path: target/debug/docker
           retention-days: 1
           if-no-files-found: error
 
@@ -245,7 +270,7 @@ jobs:
 
   docker-tests:
     name: Docker Tests
-    needs: build
+    needs: [build, build-docker-runner]
     # Stays on a GitHub-hosted runner. This suite stands up the docker runner's
     # production topology (Docker Swarm + overlay network + routing-mesh
     # published ports + VIP service discovery) inside privileged DinD. The swarm
