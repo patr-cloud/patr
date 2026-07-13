@@ -4,6 +4,11 @@ use ts_rs::TS;
 
 /// The header that represents a Bearer token for authentication.
 mod bearer_token;
+/// The header that represents a `Content-Range` header, which is used for
+/// partial blob uploads and downloads, but is leniently parsed to support the
+/// OCI distribution spec's `<start>-<end>` form instead of the strict HTTP
+/// `bytes <start>-<end>/<total>` form.
+mod content_range;
 /// The header that represents the Docker-Content-Digest header.
 /// This is used in manifest responses to indicate the digest of the
 /// manifest.
@@ -33,6 +38,7 @@ mod total_count_header;
 
 pub use self::{
 	bearer_token::*,
+	content_range::*,
 	docker_content_digest::*,
 	docker_distribution_api_version::*,
 	docker_upload_uuid::*,

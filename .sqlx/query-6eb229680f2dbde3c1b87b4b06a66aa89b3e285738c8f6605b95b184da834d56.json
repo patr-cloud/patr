@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT repository_manifest.manifest_digest, COALESCE(image.os || '/' || image.architecture, 'unknown') AS \"platform!\", repository_manifest.created_at FROM container_registry_repository_manifest repository_manifest INNER JOIN container_registry_manifest manifest ON repository_manifest.manifest_digest = manifest.digest LEFT JOIN container_registry_manifest_image image ON image.manifest_digest = manifest.digest WHERE repository_manifest.repository_id = $1 AND (repository_manifest.manifest_digest = $2 OR repository_manifest.manifest_digest = (SELECT manifest_digest FROM container_registry_repository_tag WHERE repository_id = $1 AND name = $2)) ORDER BY CASE WHEN repository_manifest.manifest_digest = $2 THEN 0 ELSE 1 END LIMIT 1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "manifest_digest",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "platform!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "6eb229680f2dbde3c1b87b4b06a66aa89b3e285738c8f6605b95b184da834d56"
+}

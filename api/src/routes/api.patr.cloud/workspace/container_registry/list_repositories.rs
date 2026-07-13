@@ -63,7 +63,7 @@ pub async fn list_repositories(
 							INNER JOIN
 								manifest_set
 							ON
-								manifest_set.digest = manifest_reference.digest
+								manifest_set.digest = manifest_reference.manifest_digest
 						),
 						manifest_size AS (
 							SELECT
@@ -77,24 +77,22 @@ pub async fn list_repositories(
 						),
 						blob_set AS (
 							SELECT
-								manifest.config_blob_digest AS digest
-							FROM
-								container_registry_manifest manifest
-							INNER JOIN
-								manifest_set
-							ON
-								manifest_set.digest = manifest.digest
-							WHERE
-								manifest.config_blob_digest IS NOT NULL
-							UNION
-							SELECT
-								manifest_blob.blob_digest AS digest
-							FROM
-								container_registry_manifest_blob manifest_blob
-							INNER JOIN
-								manifest_set
-							ON
-								manifest_set.digest = manifest_blob.manifest_digest
+								image.config_blob_digest AS digest
+								FROM
+									container_registry_manifest_image image
+								INNER JOIN
+									manifest_set
+								ON
+									manifest_set.digest = image.manifest_digest
+								UNION
+								SELECT
+									layer.blob_digest AS digest
+								FROM
+									container_registry_manifest_layer layer
+								INNER JOIN
+									manifest_set
+								ON
+									manifest_set.digest = layer.manifest_digest
 						),
 						blob_size AS (
 							SELECT

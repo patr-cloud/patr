@@ -179,7 +179,7 @@ impl TestSetup {
 				},
 				headers: InitiateBlobUploadRequestHeaders {
 					authorization: BearerToken::from_str(api_token).unwrap(),
-					content_length: ContentLength(0),
+					content_length: OptionalHeader::new(Some(ContentLength(0))),
 					content_type: OptionalHeader::new(None),
 				},
 				body: Body::empty(),
@@ -265,7 +265,7 @@ impl TestSetup {
 				},
 				headers: InitiateBlobUploadRequestHeaders {
 					authorization: BearerToken::from_str(api_token).unwrap(),
-					content_length: ContentLength(data.len() as u64),
+					content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 					content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 				},
 				body: Body::from(data.to_vec()),

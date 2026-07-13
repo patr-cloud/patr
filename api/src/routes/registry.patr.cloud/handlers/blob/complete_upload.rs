@@ -14,15 +14,18 @@ use aws_sdk_s3::{
 use axum::body::{Body, Bytes};
 use base64::prelude::*;
 use futures::{StreamExt, TryStreamExt as _};
-use headers::{ContentLength, ContentRange, ContentType};
-use oci_spec::image::Digest as OciDigest;
+use headers::{ContentLength, ContentType};
+use models::utils::ContentRange;
+use oci_spec::image::{Digest as OciDigest, DigestAlgorithm};
 use rustis::commands::{GenericCommands, StringCommands};
 use sha2::{
-	Digest,
+	Digest as _,
 	Sha256,
+	Sha512,
 	digest::common::hazmat::{SerializableState, SerializedState},
 };
 use tokio::task::JoinHandle;
+use tokio_util::io::ReaderStream;
 
 use crate::{models::permissions, redis::keys, routes::registry_patr_cloud::prelude::*};
 
@@ -91,7 +94,7 @@ pub async fn complete_upload(
 						authorization: _,
 						content_type: _,
 						content_length: _,
-						content_range: _,
+						content_range,
 					},
 				body,
 			},
@@ -233,6 +236,25 @@ pub async fn complete_upload(
 		.transpose()?
 		.unwrap_or_default();
 
+	// A final `PUT` may carry a last chunk with a `Content-Range`. If it does,
+	// its start must line up with the bytes already received (S3 + any pending
+	// buffer) — an out-of-order chunk is rejected with a 416, same as `PATCH`.
+	if let Some(content_range) = content_range.into_option() {
+		let start_range = content_range.start().unwrap_or_default();
+		let received_so_far = session.total_bytes_uploaded + buffer.len() as u64;
+		if start_range != received_so_far {
+			warn!(
+				"Content-Range start is {start_range} but last byte position is {received_so_far}"
+			);
+			return RegistryError::builder()
+				.code(ErrorCode::BlobUploadInvalid)
+				.message("Content-Range start does not match expected byte position")
+				.status(StatusCode::RANGE_NOT_SATISFIABLE)
+				.build()
+				.into_result();
+		}
+	}
+
 	let (updated_session, hasher, _) =
 		futures::stream::once(async move { Ok(Bytes::from(buffer)) })
 			.chain(body.into_data_stream().map_err(|err| {
@@ -357,31 +379,168 @@ pub async fn complete_upload(
 			)
 			.await?;
 
-	info!("Completing S3 multipart upload");
-	s3.complete_multipart_upload()
-		.bucket(&config.s3.bucket)
-		.key(format!("registry/uploads/{session_id}"))
-		.upload_id(&updated_session.upload_id)
-		.multipart_upload(
-			CompletedMultipartUpload::builder()
-				.set_parts(Some(
-					updated_session
-						.uploaded_parts_etags
-						.into_iter()
-						.enumerate()
-						.map(|(index, etag)| {
-							CompletedPart::builder()
-								.part_number(index as i32 + 1)
-								.e_tag(etag)
-								.build()
-						})
-						.collect(),
+	let session_key = format!("registry/uploads/{session_id}");
+
+	let reference_digest = OciDigest::from_str(&digest).map_err(|err| {
+		warn!("Invalid digest `{digest}`: {err}");
+		RegistryError::builder()
+			.code(ErrorCode::DigestInvalid)
+			.message("Invalid digest")
+			.status(StatusCode::BAD_REQUEST)
+			.build()
+	})?;
+
+	// Only sha256 (hashed on the fly) and sha512 (verified by re-read below) are
+	// supported. Reject anything else before finalizing the upload.
+	if !matches!(
+		reference_digest.algorithm(),
+		DigestAlgorithm::Sha256 | DigestAlgorithm::Sha512
+	) {
+		warn!(
+			"Unsupported digest algorithm `{}` for blob upload",
+			reference_digest.algorithm()
+		);
+		let _ = s3
+			.abort_multipart_upload()
+			.bucket(&config.s3.bucket)
+			.key(&session_key)
+			.upload_id(&updated_session.upload_id)
+			.send()
+			.await;
+		let _ = redis.del(&pending_key).await;
+		return RegistryError::builder()
+			.code(ErrorCode::Unsupported)
+			.message("Unsupported digest algorithm")
+			.status(StatusCode::BAD_REQUEST)
+			.build()
+			.into_result();
+	}
+
+	let total_bytes = updated_session.total_bytes_uploaded;
+
+	// Common path: the sha256 digest was computed on the fly, so verify it BEFORE
+	// finalizing — a bad digest aborts the still-incomplete multipart upload,
+	// leaving nothing behind.
+	if matches!(reference_digest.algorithm(), DigestAlgorithm::Sha256) {
+		let computed_hex = hex::encode(hasher.finalize());
+		if reference_digest.digest() != computed_hex {
+			error!("Digest mismatch: expected {digest}, computed {computed_hex}");
+			let _ = s3
+				.abort_multipart_upload()
+				.bucket(&config.s3.bucket)
+				.key(&session_key)
+				.upload_id(&updated_session.upload_id)
+				.send()
+				.await;
+			let _ = redis.del(&pending_key).await;
+			return RegistryError::builder()
+				.status(StatusCode::BAD_REQUEST)
+				.code(ErrorCode::DigestInvalid)
+				.message(format!(
+					"Digest mismatch: expected {digest}, got sha256:{computed_hex}"
 				))
-				.build(),
-		)
-		.send()
-		.await?;
-	info!("Successfully completed S3 multipart upload");
+				.build()
+				.into_result();
+		}
+	}
+
+	// Finalize the S3 multipart upload. A zero-byte blob has no parts, and S3
+	// rejects CompleteMultipartUpload with an empty part list — abort that empty
+	// session instead and write the empty object directly below.
+	if updated_session.uploaded_parts_etags.is_empty() {
+		info!("Zero-byte blob upload; aborting the empty multipart session");
+		let _ = s3
+			.abort_multipart_upload()
+			.bucket(&config.s3.bucket)
+			.key(&session_key)
+			.upload_id(&updated_session.upload_id)
+			.send()
+			.await;
+	} else {
+		info!("Completing S3 multipart upload");
+		s3.complete_multipart_upload()
+			.bucket(&config.s3.bucket)
+			.key(&session_key)
+			.upload_id(&updated_session.upload_id)
+			.multipart_upload(
+				CompletedMultipartUpload::builder()
+					.set_parts(Some(
+						updated_session
+							.uploaded_parts_etags
+							.iter()
+							.enumerate()
+							.map(|(index, etag)| {
+								CompletedPart::builder()
+									.part_number(index as i32 + 1)
+									.e_tag(etag)
+									.build()
+							})
+							.collect(),
+					))
+					.build(),
+			)
+			.send()
+			.await?;
+		info!("Successfully completed S3 multipart upload");
+	}
+
+	// Fallback: a non-canonical sha512 digest can only be checked once the blob
+	// is assembled, so re-read the completed object and hash it.
+	// This is slower, I know. But apparently most clients use sha256, so this is a
+	// rare case. If you have a problem with this, take it up with the docker
+	// distribution reference implementation. Not me. They literally do the
+	// same thing.
+	if matches!(reference_digest.algorithm(), DigestAlgorithm::Sha512) {
+		let computed_hex = if total_bytes == 0 {
+			hex::encode(Sha512::digest([]))
+		} else {
+			info!("Re-hashing assembled blob with sha512 (non-canonical digest)");
+			let object = s3
+				.get_object()
+				.bucket(&config.s3.bucket)
+				.key(&session_key)
+				.send()
+				.await?;
+			let mut sha512 = Sha512::new();
+			ReaderStream::new(object.body.into_async_read())
+				.try_for_each(|chunk| {
+					sha512.update(&chunk);
+					std::future::ready(Ok(()))
+				})
+				.await
+				.map_err(|err| {
+					error!("Failed to re-read blob for sha512 verification: {err}");
+					RegistryError::server_error(
+						ErrorCode::BlobUploadInvalid,
+						"Failed to verify blob digest",
+					)
+				})?;
+			hex::encode(sha512.finalize())
+		};
+
+		if reference_digest.digest() != computed_hex {
+			error!("Digest mismatch: expected {digest}, computed {computed_hex}");
+			if total_bytes > 0 {
+				let _ = s3
+					.delete_object()
+					.bucket(&config.s3.bucket)
+					.key(&session_key)
+					.send()
+					.await;
+			}
+			let _ = redis.del(&pending_key).await;
+			return RegistryError::builder()
+				.status(StatusCode::BAD_REQUEST)
+				.code(ErrorCode::DigestInvalid)
+				.message(format!(
+					"Digest mismatch: expected {digest}, got sha512:{computed_hex}"
+				))
+				.build()
+				.into_result();
+		}
+	}
+
+	info!("Digest verification successful");
 
 	// Clean up the pending buffer in Redis
 	let _ = redis.del(&pending_key).await;
@@ -400,7 +559,7 @@ pub async fn complete_upload(
 		RETURNING digest;
 		"#,
 		&digest,
-		updated_session.total_bytes_uploaded as i64
+		total_bytes as i64
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -416,46 +575,22 @@ pub async fn complete_upload(
 		)
 		.await?;
 
-	let computed_digest = hex::encode(hasher.finalize());
-	let reference_digest = OciDigest::from_str(&digest).ok();
-	let digest_mismatch = reference_digest
-		.as_ref()
-		.map(|digest| digest.digest() != computed_digest)
-		.unwrap_or(false);
-
-	info!("Computed digest for uploaded blob");
-
-	// Verify digest matches
-	if digest_mismatch {
-		error!("Digest mismatch");
-
-		// Clean up the uploaded blob
-		let _ = s3
-			.delete_object()
-			.bucket(&config.s3.bucket)
-			.key(format!("registry/uploads/{session_id}"))
-			.send()
-			.await;
-
-		return RegistryError::builder()
-			.status(StatusCode::BAD_REQUEST)
-			.code(ErrorCode::DigestInvalid)
-			.message(format!(
-				"Digest mismatch: expected {digest}, got {computed_digest}",
-			))
-			.build()
-			.into_result();
-	}
-
-	info!("Digest verification successful");
-
 	if inserted {
-		let total_bytes = updated_session.total_bytes_uploaded;
-		let source_key = format!("registry/uploads/{session_id}");
 		let dest_key = format!("registry/blobs/{digest}");
-		let copy_source = format!("{}/{source_key}", config.s3.bucket);
+		let copy_source = format!("{}/{session_key}", config.s3.bucket);
 
-		if total_bytes < constants::REGISTRY_BLOB_FINAL_COPY_MULTIPART_THRESHOLD {
+		if total_bytes == 0 {
+			// The empty session was aborted (never completed), so there is no
+			// source object to copy — write the empty blob straight to its final
+			// key.
+			s3.put_object()
+				.bucket(&config.s3.bucket)
+				.key(&dest_key)
+				.content_length(0)
+				.body(ByteStream::from_static(b""))
+				.send()
+				.await?;
+		} else if total_bytes < constants::REGISTRY_BLOB_FINAL_COPY_MULTIPART_THRESHOLD {
 			s3.copy_object()
 				.bucket(&config.s3.bucket)
 				.copy_source(&copy_source)

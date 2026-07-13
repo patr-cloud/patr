@@ -51,7 +51,7 @@ pub async fn docker_login(
 			token,
 		})
 		.headers(())
-		.status_code(StatusCode::ACCEPTED)
+		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
 }

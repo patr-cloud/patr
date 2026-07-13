@@ -55,7 +55,7 @@ pub async fn list_repository_manifests(
 					COALESCE(config_blob.size, 0) +
 					COALESCE(layer_size.total_size, 0)
 				)::BIGINT AS size,
-				manifest.platform,
+				COALESCE(image.os || '/' || image.architecture, 'unknown') AS platform,
 				repository_manifest.created_at AS created,
 				COALESCE(tag_agg.tags, ARRAY[]::TEXT[]) AS tags
 			FROM
@@ -69,20 +69,20 @@ pub async fn list_repository_manifests(
 			ON
 				manifest.digest = repository_manifest.manifest_digest
 			LEFT JOIN
+				container_registry_manifest_image image
+			ON
+				image.manifest_digest = manifest.digest
+			LEFT JOIN
 				container_registry_blob config_blob
 			ON
-				config_blob.digest = manifest.config_blob_digest
+				config_blob.digest = image.config_blob_digest
 			LEFT JOIN LATERAL (
 				SELECT
-					COALESCE(SUM(layer_blob.size), 0)::BIGINT AS total_size
+					COALESCE(SUM(layer.size), 0)::BIGINT AS total_size
 				FROM
-					container_registry_manifest_blob manifest_blob
-				INNER JOIN
-					container_registry_blob layer_blob
-				ON
-					layer_blob.digest = manifest_blob.blob_digest
+					container_registry_manifest_layer layer
 				WHERE
-					manifest_blob.manifest_digest = repository_manifest.manifest_digest
+					layer.manifest_digest = repository_manifest.manifest_digest
 			) layer_size
 			ON
 				TRUE

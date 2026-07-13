@@ -137,27 +137,27 @@ pub async fn head_blob(
 				FROM
 					container_registry_repository_manifest repo_manifest
 				INNER JOIN
-					container_registry_manifest_blob manifest_blob
+					container_registry_manifest_layer layer
 				ON
-					manifest_blob.manifest_digest = repo_manifest.manifest_digest
+					layer.manifest_digest = repo_manifest.manifest_digest
 				WHERE
 					repo_manifest.repository_id = $2 AND
-					manifest_blob.blob_digest = $1
+					layer.blob_digest = $1
 			)
 			OR
-			/* Check if the blob is a config for any manifest linked to this repo */
+			/* Check if the blob is an image config for any manifest linked to this repo */
 			EXISTS (
 				SELECT
 					1
 				FROM
 					container_registry_repository_manifest repo_manifest
 				INNER JOIN
-					container_registry_manifest manifest
+					container_registry_manifest_image image
 				ON
-					manifest.digest = repo_manifest.manifest_digest
+					image.manifest_digest = repo_manifest.manifest_digest
 				WHERE
 					repo_manifest.repository_id = $2 AND
-					manifest.config_blob_digest = $1
+					image.config_blob_digest = $1
 			)
 		) AS "exists!";
 		"#,

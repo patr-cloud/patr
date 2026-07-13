@@ -124,7 +124,7 @@ pub async fn get_manifest(
 	let manifest_record = query!(
 		r#"
 		SELECT DISTINCT
-			m.content_type,
+			m.media_type AS content_type,
 			m.size,
 			m.digest
 		FROM

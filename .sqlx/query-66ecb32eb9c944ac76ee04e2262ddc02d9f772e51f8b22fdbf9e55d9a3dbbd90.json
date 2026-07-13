@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX container_registry_manifest_reference_idx_referenced_digest ON container_registry_manifest_reference(referenced_digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "66ecb32eb9c944ac76ee04e2262ddc02d9f772e51f8b22fdbf9e55d9a3dbbd90"
+}

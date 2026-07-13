@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE container_registry_manifest_image(manifest_digest TEXT NOT NULL, manifest_kind CONTAINER_REGISTRY_MANIFEST_KIND NOT NULL DEFAULT 'image', config_blob_digest TEXT NOT NULL, os TEXT NOT NULL, architecture TEXT NOT NULL, variant TEXT, os_version TEXT);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "54c7b41fd674537bc5f5bd9c5159553b8275553020d02aa2ce0085e9cd9b20fd"
+}

@@ -440,6 +440,7 @@ async fn registry_delete_manifest_returns_405() {
 	let response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<DeleteManifestPath> {
 			path: DeleteManifestPath {
+				workspace_id: workspace.id,
 				repo_name: repo.name.clone(),
 				reference: image.manifest_digest.clone(),
 			},

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_manifest_reference ADD CONSTRAINT container_registry_manifest_reference_pk PRIMARY KEY(manifest_digest, ordinal), ADD CONSTRAINT container_registry_manifest_reference_chk_kind CHECK(manifest_kind = 'index'), ADD CONSTRAINT container_registry_manifest_reference_fk_manifest FOREIGN KEY(manifest_digest, manifest_kind) REFERENCES container_registry_manifest(digest, kind), ADD CONSTRAINT container_registry_manifest_reference_fk_referenced_digest FOREIGN KEY(referenced_digest) REFERENCES container_registry_manifest(digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6279c7536225006ca99893daef55d8e96cfb40b75290aa41eaceae37b4d4b070"
+}

@@ -61,7 +61,7 @@ async fn blob_upload_wrong_content_type() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::json())),
 			},
 			body: Body::from(data),
@@ -223,7 +223,7 @@ async fn chunked_upload_initiate_works() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_length: ContentLength(0),
+				content_length: OptionalHeader::new(Some(ContentLength(0))),
 				content_type: OptionalHeader::new(None),
 			},
 			body: Body::empty(),

@@ -82,7 +82,7 @@ async fn registry_push_without_permission() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&other_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -126,7 +126,7 @@ async fn push_to_nonexistent_repo() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -216,7 +216,7 @@ async fn push_to_deleted_repo() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -268,7 +268,7 @@ async fn cross_workspace_push_denied() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&token_b.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -343,7 +343,7 @@ async fn initiate_upload_without_push_permission_returns_not_found() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&token_b.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),

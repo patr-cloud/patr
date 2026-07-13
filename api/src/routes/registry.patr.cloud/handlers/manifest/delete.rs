@@ -13,9 +13,11 @@ macros::declare_registry_endpoint!(
 	/// manifest deletions are handled through the Patr API directly. This
 	/// endpoint will return 405 Method Not Allowed.
 	DeleteManifest,
-	DELETE "/v2/{repo_name}/manifests/{reference}" {
+	DELETE "/v2/{workspace_id}/{repo_name}/manifests/{reference}" {
+		/// The workspace ID
+		pub workspace_id: Uuid,
 		/// The repository name
-		#[preprocess(length(max = 255))]
+		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
 		pub repo_name: String,
 		/// The manifest reference (tag name or digest)
 		#[preprocess(regex = constants::REGISTRY_TAG_OR_DIGEST_REGEX)]
@@ -36,10 +38,12 @@ pub async fn delete_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:
 			RegistryProcessedApiRequest {
-				path: DeleteManifestPathProcessed {
-					repo_name: _,
-					reference: _,
-				},
+				path:
+					DeleteManifestPathProcessed {
+						workspace_id: _,
+						repo_name: _,
+						reference: _,
+					},
 				query: (),
 				headers: DeleteManifestRequestHeaders { authorization: _ },
 				body: _,

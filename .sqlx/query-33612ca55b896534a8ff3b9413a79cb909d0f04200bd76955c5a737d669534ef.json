@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE container_registry_manifest_reference(manifest_digest TEXT NOT NULL, manifest_kind CONTAINER_REGISTRY_MANIFEST_KIND NOT NULL DEFAULT 'index', referenced_digest TEXT NOT NULL, ordinal INTEGER NOT NULL, media_type TEXT, size BIGINT, os TEXT, architecture TEXT, variant TEXT, os_version TEXT);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "33612ca55b896534a8ff3b9413a79cb909d0f04200bd76955c5a737d669534ef"
+}

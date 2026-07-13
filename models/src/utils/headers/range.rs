@@ -14,8 +14,14 @@ pub struct Range(HeaderValue);
 
 impl Range {
 	/// Creates a new `Range` header from the given byte range.
+	///
+	/// The value is rendered in the inclusive `start-last` form the OCI upload
+	/// protocol uses (a half-open `0..n` becomes `0-(n-1)`, i.e. the last byte
+	/// index). An empty range (`n == 0`, no bytes received yet — e.g. a status
+	/// query on a freshly initiated upload) renders as `0-0` rather than
+	/// underflowing, since there is no negative last-byte index to report.
 	pub fn new(range: std::ops::Range<u64>) -> Result<Self, Error> {
-		let value = format!("{}-{}", range.start, range.end - 1);
+		let value = format!("{}-{}", range.start, range.end.saturating_sub(1));
 		let header_value = HeaderValue::from_str(&value).map_err(|_| Error::invalid())?;
 		Ok(Self(header_value))
 	}
