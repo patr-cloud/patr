@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
 import { CreateAccountRequest, SocialLoginInitiateResponse } from "~/bindings";
-import { Alert, Button, Input, InputType, PasswordStrength, useToast, Turnstile } from "~/components";
+import { Alert, Button, Input, InputType, PasswordInput, PasswordStrength, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
@@ -274,8 +274,7 @@ const SignUp = () => {
 							}
 						}}
 					>
-						<Input
-							type={InputType.Password}
+						<PasswordInput
 							placeholder="Password"
 							autocomplete="new-password"
 							required={true}
@@ -296,8 +295,7 @@ const SignUp = () => {
 						</div>
 					</Show>
 
-					<Input
-						type={InputType.Password}
+					<PasswordInput
 						placeholder="Confirm Password"
 						autocomplete="new-password"
 						required={true}

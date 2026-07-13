@@ -9,6 +9,7 @@ import {
 	Input,
 	InputType,
 	OtpInput,
+	PasswordInput,
 	PasswordStrength,
 	Turnstile,
 	useToast,
@@ -160,8 +161,7 @@ const ResetPassword = () => {
 						}
 					}}
 				>
-					<Input
-						type={InputType.Password}
+					<PasswordInput
 						placeholder="New password"
 						autocomplete="new-password"
 						required={true}
@@ -182,8 +182,7 @@ const ResetPassword = () => {
 					</div>
 				</Show>
 
-				<Input
-					type={InputType.Password}
+				<PasswordInput
 					placeholder="Confirm new password"
 					autocomplete="new-password"
 					required={true}
