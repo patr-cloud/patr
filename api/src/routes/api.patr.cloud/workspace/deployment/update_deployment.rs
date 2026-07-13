@@ -51,6 +51,7 @@ pub async fn update_deployment(
 						liveness_probe,
 						config_mounts,
 						volumes,
+						image_tag,
 					},
 			},
 		database,
@@ -77,6 +78,7 @@ pub async fn update_deployment(
 		.or(liveness_probe.as_ref().map(|_| 0))
 		.or(config_mounts.as_ref().map(|_| 0))
 		.or(volumes.as_ref().map(|_| 0))
+		.or(image_tag.as_ref().map(|_| 0))
 		.is_none()
 	{
 		debug!(
@@ -256,7 +258,8 @@ pub async fn update_deployment(
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
-			)
+			),
+			image_tag = COALESCE($12, image_tag)
 		WHERE
 			id = $11
 		RETURNING
@@ -272,7 +275,8 @@ pub async fn update_deployment(
 		startup_probe.as_ref().map(|probe| probe.path.as_str()),
 		liveness_probe.as_ref().map(|probe| probe.port as i32),
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
-		deployment_id as _
+		deployment_id as _,
+		image_tag as _
 	)
 	.fetch_one(&mut **database)
 	.await?
