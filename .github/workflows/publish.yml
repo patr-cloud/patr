@@ -687,7 +687,7 @@ jobs:
 
       - name: Generate and push formula
         env:
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          HOMEBREW_TAP_SSH_KEY: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
         run: |
           TAG="${{ needs.github-release.outputs.tag }}"
           VERSION="${{ steps.brew.outputs.brew_version }}"
@@ -705,7 +705,14 @@ jobs:
           sed -i "s|{{SHA_LINUX_ARM64}}|${{ steps.shas.outputs.linux_arm64 }}|g" /tmp/formula.rb
           sed -i "s|{{SHA_LINUX_AMD64}}|${{ steps.shas.outputs.linux_amd64 }}|g" /tmp/formula.rb
 
-          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/patr-cloud/homebrew-cli.git" /tmp/homebrew-cli
+          # Push via an SSH deploy key scoped to the tap repo (replaces the
+          # cross-repo PAT, which is no longer issued).
+          install -m 700 -d /tmp/.ssh
+          printf '%s\n' "$HOMEBREW_TAP_SSH_KEY" > /tmp/.ssh/tap_key
+          chmod 600 /tmp/.ssh/tap_key
+          export GIT_SSH_COMMAND="ssh -i /tmp/.ssh/tap_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+          git clone git@github.com:patr-cloud/homebrew-cli.git /tmp/homebrew-cli
           mkdir -p /tmp/homebrew-cli/Formula
           cp /tmp/formula.rb "/tmp/homebrew-cli/Formula/${FORMULA}.rb"
 
