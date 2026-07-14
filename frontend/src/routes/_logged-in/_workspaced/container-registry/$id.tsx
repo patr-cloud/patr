@@ -19,7 +19,7 @@ import { containerRegistryKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import General from "./-components/general";
-import Images from "./-components/images";
+import Versions from "./-components/versions";
 
 const ContainerRepositoryInfo = () => {
 	const [authState] = useAuthState();
@@ -124,7 +124,7 @@ const ContainerRepositoryInfo = () => {
 									tab={tab}
 									tabItems={[
 										{
-											label: "General",
+											label: "Overview",
 											value: "",
 											onClick: (value) =>
 												navigate({
@@ -134,8 +134,8 @@ const ContainerRepositoryInfo = () => {
 												}),
 										},
 										{
-											label: "Images",
-											value: "images",
+											label: "Tags",
+											value: "tags",
 											onClick: (value) =>
 												navigate({
 													to: "/container-registry/$id",
@@ -150,7 +150,7 @@ const ContainerRepositoryInfo = () => {
 
 						<PageContainerBody class="flex flex-col justify-between gap-8">
 							<Switch fallback={<General repositoryInfo={() => repoInfoQuery.data} />}>
-								<Match when={tab() === "images"}>
+								<Match when={tab() === "tags"}>
 									<Show
 										when={manifestsQuery.data}
 										fallback={
@@ -161,7 +161,14 @@ const ContainerRepositoryInfo = () => {
 										}
 									>
 										{(manifestList) => (
-											<Images manifests={manifestList} refetch={refetchManifests} />
+											<Versions
+												repoId={params().id}
+												imagePath={`registry.patr.cloud/${workspaceId() ?? ""}/${
+													repoInfoQuery.data?.repository?.name ?? ""
+												}`}
+												manifests={manifestList}
+												refetch={refetchManifests}
+											/>
 										)}
 									</Show>
 								</Match>

@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH workspace_manifests AS (SELECT DISTINCT repository_manifest.manifest_digest AS digest FROM container_registry_repository_manifest repository_manifest INNER JOIN container_registry_repository repository ON repository.id = repository_manifest.repository_id WHERE repository.workspace_id = $1 AND repository.deleted IS NULL) SELECT COALESCE((SELECT SUM(blob.size) FROM container_registry_blob blob WHERE blob.digest IN (SELECT image.config_blob_digest FROM container_registry_manifest_image image WHERE image.manifest_digest IN (SELECT digest FROM workspace_manifests) UNION SELECT layer.blob_digest FROM container_registry_manifest_layer layer WHERE layer.manifest_digest IN (SELECT digest FROM workspace_manifests))), 0)::BIGINT AS \"used_bytes!\", (SELECT COUNT(*) FROM container_registry_repository repository WHERE repository.workspace_id = $1 AND repository.deleted IS NULL)::BIGINT AS \"repository_count!\", (SELECT COUNT(*) FROM container_registry_manifest manifest WHERE manifest.kind = 'image' AND manifest.digest IN (SELECT digest FROM workspace_manifests))::BIGINT AS \"image_count!\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "used_bytes!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "repository_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "image_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "0aa40e28a7433c8d41a3a4e3572e85db08a036d443849a4b2175eb00834629a0"
+}

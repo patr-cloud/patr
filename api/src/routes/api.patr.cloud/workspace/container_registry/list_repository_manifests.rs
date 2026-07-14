@@ -19,7 +19,6 @@ pub async fn list_repository_manifests(
 							ContainerRepositoryManifestInfoSearchParams {
 								digest: digest_filter,
 								size: size_filter,
-								platform: platform_filter,
 								created: created_filter,
 								tags: tags_filter,
 							},
@@ -55,9 +54,11 @@ pub async fn list_repository_manifests(
 					COALESCE(config_blob.size, 0) +
 					COALESCE(layer_size.total_size, 0)
 				)::BIGINT AS size,
-				COALESCE(image.os || '/' || image.architecture, 'unknown') AS platform,
+				manifest.kind AS kind,
+				manifest.artifact_type AS artifact_type,
 				repository_manifest.created_at AS created,
-				COALESCE(tag_agg.tags, ARRAY[]::TEXT[]) AS tags
+				COALESCE(tag_agg.tags, ARRAY[]::TEXT[]) AS tags,
+				COALESCE(platform_agg.platforms, '[]'::JSONB) AS platforms
 			FROM
 				container_registry_repository_manifest repository_manifest
 			INNER JOIN
@@ -97,17 +98,64 @@ pub async fn list_repository_manifests(
 			) tag_agg
 			ON
 				TRUE
+			LEFT JOIN LATERAL (
+				SELECT
+					JSONB_AGG(
+						JSONB_BUILD_OBJECT(
+							'os', platform.os,
+							'architecture', platform.architecture,
+							'variant', platform.variant,
+							'osVersion', platform.os_version
+						)
+					) AS platforms
+				FROM (
+					SELECT
+						image.os,
+						image.architecture,
+						image.variant,
+						image.os_version
+					FROM
+						container_registry_manifest_image image
+					WHERE
+						image.manifest_digest = manifest.digest
+					UNION ALL
+					SELECT
+						reference.os,
+						reference.architecture,
+						reference.variant,
+						reference.os_version
+					FROM
+						container_registry_manifest_reference reference
+					WHERE
+						reference.manifest_digest = manifest.digest AND
+						reference.os IS NOT NULL AND
+						reference.architecture IS NOT NULL
+				) platform
+			) platform_agg
+			ON
+				TRUE
 			WHERE
 				repository_manifest.repository_id = $1 AND
 				repository.workspace_id = $2 AND
-				repository.deleted IS NULL
+				repository.deleted IS NULL AND
+				NOT EXISTS (
+					SELECT
+						1
+					FROM
+						container_registry_manifest_reference child_reference
+					WHERE
+						child_reference.referenced_digest =
+							repository_manifest.manifest_digest
+				)
 		)
 		SELECT
 			manifests.digest AS "digest!",
 			manifests.size AS "size!",
-			COALESCE(manifests.platform, 'unknown') AS "platform!",
+			manifests.kind AS "kind!: ManifestKind",
+			manifests.artifact_type,
 			manifests.created,
 			manifests.tags AS "tags!: Vec<String>",
+			manifests.platforms AS "platforms!: sqlx::types::Json<Vec<Platform>>",
 			COUNT(*) OVER () AS "count!"
 		FROM
 			manifests
@@ -115,30 +163,28 @@ pub async fn list_repository_manifests(
 			($3::TEXT IS NULL OR manifests.digest ILIKE '%' || $3 || '%') AND
 			($4::BIGINT IS NULL OR manifests.size >= $4) AND
 			($5::BIGINT IS NULL OR manifests.size <= $5) AND
-			($6::TEXT IS NULL OR manifests.platform ILIKE '%' || $6 || '%') AND
-			($7::TIMESTAMPTZ IS NULL OR manifests.created >= $7) AND
-			($8::TIMESTAMPTZ IS NULL OR manifests.created <= $8) AND
+			($6::TIMESTAMPTZ IS NULL OR manifests.created >= $6) AND
+			($7::TIMESTAMPTZ IS NULL OR manifests.created <= $7) AND
 			(
-				$9::TEXT[] IS NULL OR EXISTS (
+				$8::TEXT[] IS NULL OR EXISTS (
 					SELECT
 						1
 					FROM
 						UNNEST(manifests.tags) AS tag_name
 					WHERE
-						tag_name = ANY($9::TEXT[])
+						tag_name = ANY($8::TEXT[])
 				)
 			)
 		ORDER BY
 			manifests.created DESC
-		LIMIT $10
-		OFFSET $11;
+		LIMIT $9
+		OFFSET $10;
 		"#,
 		repository_id as _,
 		workspace_id as _,
 		digest_filter,
 		size_filter.as_ref().map(|size| *size.start() as i64) as _,
 		size_filter.as_ref().map(|size| *size.end() as i64) as _,
-		platform_filter,
 		created_filter.as_ref().map(|range| range.start()) as _,
 		created_filter.as_ref().map(|range| range.end()) as _,
 		tags_filter.as_deref(),
@@ -153,7 +199,9 @@ pub async fn list_repository_manifests(
 		ContainerRepositoryManifestInfo {
 			digest: manifest.digest,
 			size: manifest.size as u64,
-			platform: manifest.platform,
+			kind: manifest.kind,
+			platforms: manifest.platforms.0,
+			artifact_type: manifest.artifact_type,
 			created: manifest.created,
 			tags: manifest.tags,
 		}

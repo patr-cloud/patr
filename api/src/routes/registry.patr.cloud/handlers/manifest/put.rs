@@ -9,7 +9,11 @@ use aws_sdk_s3::primitives::ByteStream;
 use axum::body::Body;
 use headers::ContentType;
 use models::{
-	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
+	api::workspace::{
+		container_registry::ManifestKind,
+		deployment::*,
+		runner::StreamRunnerDataForWorkspaceServerMsg,
+	},
 	utils::{Base64String, StringifiedU16},
 };
 use oci_spec::image::{
@@ -25,22 +29,6 @@ use sha2::{Digest as _, Sha256, Sha512};
 use time::OffsetDateTime;
 
 use crate::{models::permissions, redis::keys, routes::registry_patr_cloud::prelude::*};
-
-/// Which of the three shapes a stored manifest takes. Mirrors the
-/// `CONTAINER_REGISTRY_MANIFEST_KIND` Postgres enum.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
-#[sqlx(
-	type_name = "CONTAINER_REGISTRY_MANIFEST_KIND",
-	rename_all = "lowercase"
-)]
-pub enum ContainerRegistryManifestKind {
-	/// A runnable single-platform image.
-	Image,
-	/// A multi-arch index / manifest list.
-	Index,
-	/// An OCI artifact (or any manifest that isn't a plain image/index).
-	Artifact,
-}
 
 macros::declare_registry_endpoint!(
 	/// PUT manifest endpoint.
@@ -266,9 +254,9 @@ pub async fn upload_manifest(
 	};
 
 	let (kind, artifact_type, subject_digest) = match &parsed {
-		Parsed::Image(_) => (ContainerRegistryManifestKind::Image, None, None),
+		Parsed::Image(_) => (ManifestKind::Image, None, None),
 		Parsed::Artifact(manifest) => (
-			ContainerRegistryManifestKind::Artifact,
+			ManifestKind::Artifact,
 			manifest.artifact_type().as_ref().map(|ty| ty.to_string()),
 			manifest
 				.subject()
@@ -276,7 +264,7 @@ pub async fn upload_manifest(
 				.map(|sub| sub.digest().to_string()),
 		),
 		Parsed::Index(index) => (
-			ContainerRegistryManifestKind::Index,
+			ManifestKind::Index,
 			index.artifact_type().as_ref().map(|ty| ty.to_string()),
 			index.subject().as_ref().map(|sub| sub.digest().to_string()),
 		),
@@ -460,7 +448,7 @@ pub async fn upload_manifest(
 						ON CONFLICT (manifest_digest, ordinal) DO NOTHING;
 						"#,
 						digest,
-						ContainerRegistryManifestKind::Image as _,
+						ManifestKind::Image as _,
 						ordinal as i32,
 						blob_digest,
 						layer.media_type().to_string(),
@@ -504,7 +492,7 @@ pub async fn upload_manifest(
 						ON CONFLICT (manifest_digest, ordinal) DO NOTHING;
 						"#,
 						digest,
-						ContainerRegistryManifestKind::Artifact as _,
+						ManifestKind::Artifact as _,
 						ordinal as i32,
 						blob_digest,
 						descriptor.media_type().to_string(),

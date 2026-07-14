@@ -1,10 +1,11 @@
-import { Show } from "solid-js";
-import { FiExternalLink } from "solid-icons/fi";
+import { createSignal, Show } from "solid-js";
+import { FiChevronRight, FiExternalLink } from "solid-icons/fi";
 import { GetContainerRepositoryInfoResponse } from "~/bindings";
 import { CopyableField, CopyableFieldVariant, Input, InputType, InputWithLabel, Link, Tooltip } from "~/components";
 import { formatRelativeTime, formatSize, formatDate, get } from "~/utils/func";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { MaybeAccessor } from "~/utils/types";
+import { PullCommand } from "./registry-ui";
 
 interface GeneralInfoProps {
 	repositoryInfo: MaybeAccessor<GetContainerRepositoryInfoResponse | undefined>;
@@ -81,7 +82,19 @@ const General = (props: GeneralInfoProps) => {
 							</InputWithLabel>
 						</div>
 					</div>
-					<PushInstructions repositoryName={get(props.repositoryInfo)?.repository?.name} />
+
+					<div class="py-6">
+						<PullCommand
+							label="Pull this image"
+							reference={`registry.patr.cloud/${workspaceId()}/${
+								get(props.repositoryInfo)?.repository?.name
+							}:latest`}
+						/>
+					</div>
+
+					<CollapsiblePushInstructions
+						repositoryName={get(props.repositoryInfo)?.repository?.name}
+					/>
 				</div>
 			</Show>
 		</div>
@@ -90,10 +103,31 @@ const General = (props: GeneralInfoProps) => {
 
 export default General;
 
+const CollapsiblePushInstructions = (props: { repositoryName: string | undefined }) => {
+	const [open, setOpen] = createSignal(false);
+
+	return (
+		<div class="border-t border-border-color pt-4">
+			<button
+				type="button"
+				onClick={() => setOpen((value) => !value)}
+				class="flex items-center gap-2 text-sm text-gray-300 hover:text-white"
+			>
+				<FiChevronRight size={16} class={`transition-transform ${open() ? "rotate-90" : ""}`} />
+				How to push a new image
+			</button>
+			<Show when={open()}>
+				<PushInstructions repositoryName={props.repositoryName} />
+			</Show>
+		</div>
+	);
+};
+
 const PushInstructions = (props: { repositoryName: string | undefined }) => {
 	const [workspaceId] = useLastWorkspaceId();
 
-	const registryUrl = () => `registry.patr.cloud/${workspaceId()}/${props.repositoryName || "<repository-name>"}`;
+	const registryHost = "registry.patr.cloud";
+	const registryUrl = () => `${registryHost}/${workspaceId()}/${props.repositoryName || "<repository-name>"}`;
 	return (
 		<div class="py-8">
 			<h2 class="text-white text-lg font-semibold mb-4">Push Instructions</h2>
@@ -105,7 +139,7 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 1: Login */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
-							<CopyableField value={`docker login ${registryUrl()} -u patr`} innerClass="font-mono" />
+							<CopyableField value={`docker login ${registryHost} -u patr`} innerClass="font-mono" />
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
 								Use an{" "}
 								<Link
@@ -140,7 +174,7 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						{/* Step 1: Login */}
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
-							<CopyableField value={`docker login ${registryUrl()} -u patr`} innerClass="font-mono" />
+							<CopyableField value={`docker login ${registryHost} -u patr`} innerClass="font-mono" />
 							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
 								Use an&nbsp;
 								<Link

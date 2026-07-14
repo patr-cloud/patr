@@ -6,6 +6,7 @@ mod create_repository;
 mod delete_repository;
 mod delete_repository_manifest;
 mod get_exposed_ports;
+mod get_registry_usage;
 mod get_repository_info;
 mod get_repository_manifest_details;
 mod list_repositories;
@@ -17,6 +18,7 @@ use self::{
 	delete_repository::*,
 	delete_repository_manifest::*,
 	get_exposed_ports::*,
+	get_registry_usage::*,
 	get_repository_info::*,
 	get_repository_manifest_details::*,
 	list_repositories::*,
@@ -31,6 +33,7 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_auth_endpoint(delete_repository_manifest, state, allowed_client_type)
 		.mount_auth_endpoint(delete_repository, state, allowed_client_type)
 		.mount_auth_endpoint(get_exposed_ports, state, allowed_client_type)
+		.mount_auth_endpoint(get_registry_usage, state, allowed_client_type)
 		.mount_auth_endpoint(get_repository_manifest_details, state, allowed_client_type)
 		.mount_auth_endpoint(get_repository_info, state, allowed_client_type)
 		.mount_auth_endpoint(list_repositories, state, allowed_client_type)
