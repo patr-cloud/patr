@@ -77,12 +77,11 @@ export async function openRoleUsersTab(page: Page): Promise<void> {
 }
 
 export async function clickDeleteRole(page: Page, roleName: string): Promise<void> {
-  // The Button component doesn't forward aria-label, so the trash <button>
-  // has no accessible name. Each row has exactly one <button> (the trash) and
-  // one <a> (Manage Role); locate the button by being inside the row.
+  // Each row has two <button>s — the "See users" expand toggle and the trash —
+  // so locate the trash by its accessible name rather than by position.
   const row = page.getByRole('row').filter({ hasText: roleName });
   await row.scrollIntoViewIfNeeded({ timeout: 10_000 }).catch(() => {});
-  await row.locator('button').first().click();
+  await row.getByRole('button', { name: /Delete role/i }).click();
 }
 
 export async function confirmDeleteRoleModal(page: Page): Promise<void> {
