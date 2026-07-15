@@ -62,6 +62,10 @@ const createPaginationState = (opts: {
 	search: Accessor<{ page?: string; count?: string }>;
 	navigate: NavigateFn;
 }): PaginationState => {
+	// Must match the API's ListResourceQuery::DEFAULT_PAGE_SIZE (20). The list
+	// endpoints use that default when no `count` is sent, so if this diverges
+	// the page math invents a phantom trailing page whose fetch 400s with
+	// pageOutOfBounds.
 	const defaultCount = opts.defaultCount ?? 20;
 	const [totalCount, setTotalCount] = createSignal(0);
 

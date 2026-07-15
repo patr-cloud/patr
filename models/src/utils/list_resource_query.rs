@@ -78,14 +78,17 @@ pub struct ListResourceQuery<
 
 impl ListResourceQuery<()> {
 	/// The default page size that should be used if no page size is specified.
-	/// This is currently set to 25. So if no page size is specified, the API
-	/// will return a maximum of 25 items, starting from the first item.
-	pub const DEFAULT_PAGE_SIZE: usize = 25;
+	/// This is currently set to 20. So if no page size is specified, the API
+	/// will return a maximum of 20 items, starting from the first item. Must
+	/// match the frontend pagination hook's `defaultCount` — if they diverge,
+	/// the frontend's page math invents a phantom trailing page whose fetch
+	/// 400s with pageOutOfBounds.
+	pub const DEFAULT_PAGE_SIZE: usize = 20;
 }
 
 /// Get the default page size that should be used if no page size is
-/// specified. This is currently set to 25. So if no page size is specified,
-/// the API will return a maximum of 25 items, starting from the first item.
+/// specified. This is currently set to 20. So if no page size is specified,
+/// the API will return a maximum of 20 items, starting from the first item.
 const fn default_page_size() -> usize {
 	ListResourceQuery::DEFAULT_PAGE_SIZE
 }
