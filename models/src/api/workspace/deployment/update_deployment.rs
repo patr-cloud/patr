@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use super::{DeploymentProbe, EnvironmentVariableValue, ExposedPortType};
-use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+use crate::{
+	prelude::*,
+	utils::constants::{DEPLOYMENT_IMAGE_TAG_REGEX, RESOURCE_NAME_REGEX},
+};
 
 macros::declare_api_endpoint!(
 	/// Route to update a deployment
@@ -29,6 +32,9 @@ macros::declare_api_endpoint!(
 		/// To update the deployment name
 		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
 		pub name: Option<String>,
+		/// To update the container image tag
+		#[preprocess(optional(trim, lowercase, regex = DEPLOYMENT_IMAGE_TAG_REGEX))]
+		pub image_tag: Option<String>,
 		/// Update which runner the deployment is running on
 		#[preprocess(optional(none))]
 		pub runner: Option<Uuid>,
@@ -77,6 +83,7 @@ impl UpdateDeploymentRequest {
 	pub const fn new() -> Self {
 		Self {
 			name: None,
+			image_tag: None,
 			ports: None,
 			machine_type: None,
 			deploy_on_push: None,
@@ -97,6 +104,7 @@ impl UpdateDeploymentRequest {
 		self.name
 			.as_ref()
 			.map(|_| 0)
+			.or(self.image_tag.as_ref().map(|_| 0))
 			.or(self.machine_type.as_ref().map(|_| 0))
 			.or(self.deploy_on_push.as_ref().map(|_| 0))
 			.or(self.runner.as_ref().map(|_| 0))

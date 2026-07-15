@@ -254,6 +254,15 @@ pub mod constants {
 	pub const CONTAINER_REGISTRY_REPOSITORY_NAME_REGEX: &str =
 		macros::verify_regex!(r"^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*$");
 
+	/// The Regex to validate a container image tag (the `:tag` part of an image
+	/// reference). Matches Docker/OCI's tag grammar: 1–128 characters starting
+	/// with a word character, followed by word characters, dots, or dashes.
+	/// Validating it at the edge keeps invalid or empty tags a clean 400
+	/// instead of letting an empty tag reach the DB and produce a broken
+	/// `image:` ref.
+	pub const DEPLOYMENT_IMAGE_TAG_REGEX: &str =
+		macros::verify_regex!(r"^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$");
+
 	/// The Regex to validate a person's first or last name.
 	///
 	/// Matches 1–100 characters of anything that is not an HTML-relevant

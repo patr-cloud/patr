@@ -106,6 +106,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					method: "PATCH",
 					body: JSON.stringify({
 						name: info.name,
+						imageTag: info.imageTag,
 						runner: info.runner,
 						deployOnPush: info.deployOnPush,
 						minHorizontalScale: info.minHorizontalScale,

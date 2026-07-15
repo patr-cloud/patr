@@ -600,6 +600,7 @@ async fn deployment_view_does_not_grant_edit() {
 				})
 				.body(UpdateDeploymentRequest {
 					name: Some(random_name(8)),
+					image_tag: None,
 					runner: None,
 					machine_type: None,
 					deploy_on_push: None,

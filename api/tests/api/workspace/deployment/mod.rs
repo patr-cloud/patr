@@ -81,6 +81,7 @@ async fn send_create(
 fn empty_update() -> UpdateDeploymentRequest {
 	UpdateDeploymentRequest {
 		name: None,
+		image_tag: None,
 		runner: None,
 		machine_type: None,
 		deploy_on_push: None,
@@ -463,6 +464,7 @@ async fn update_deployment_works() {
 				})
 				.body(UpdateDeploymentRequest {
 					name: Some(new_name.clone()),
+					image_tag: None,
 					runner: None,
 					machine_type: None,
 					deploy_on_push: None,
@@ -1237,6 +1239,7 @@ async fn update_deployment_name_persists() {
 				})
 				.body(UpdateDeploymentRequest {
 					name: Some(new_name.clone()),
+					image_tag: None,
 					runner: None,
 					machine_type: None,
 					deploy_on_push: None,
@@ -1323,6 +1326,7 @@ async fn update_deployment_machine_type() {
 				})
 				.body(UpdateDeploymentRequest {
 					name: None,
+					image_tag: None,
 					runner: None,
 					machine_type: Some(other_mt.id),
 					deploy_on_push: None,
@@ -2564,6 +2568,99 @@ async fn update_deployment_invalid_name_400() {
 
 	let mut body = empty_update();
 	body.name = Some("a/b".to_string());
+	assert_eq!(
+		400,
+		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+			.await
+			.status_code()
+			.as_u16()
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_image_tag_persists() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut body = empty_update();
+	body.image_tag = Some("alpine".to_string());
+	assert_eq!(
+		202,
+		send_update(
+			&setup,
+			&user.access_token,
+			workspace.id,
+			deployment.id,
+			body
+		)
+		.await
+		.status_code()
+		.as_u16()
+	);
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>();
+
+	assert_eq!("alpine", response.response.deployment.image_tag);
+}
+
+#[tokio::test]
+async fn update_deployment_invalid_tag_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut body = empty_update();
+	body.image_tag = Some("bad tag!".to_string());
+	assert_eq!(
+		400,
+		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+			.await
+			.status_code()
+			.as_u16()
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_empty_tag_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut body = empty_update();
+	body.image_tag = Some("   ".to_string());
 	assert_eq!(
 		400,
 		send_update(&setup, &user.access_token, workspace.id, dep.id, body)

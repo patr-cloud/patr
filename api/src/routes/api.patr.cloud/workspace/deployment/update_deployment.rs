@@ -15,6 +15,7 @@ use models::{
 	utils::{Base64String, StringifiedU16},
 };
 use rustis::commands::PubSubCommands;
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -40,6 +41,7 @@ pub async fn update_deployment(
 				body:
 					UpdateDeploymentRequestProcessed {
 						name,
+						image_tag,
 						machine_type,
 						deploy_on_push,
 						runner,
@@ -62,10 +64,13 @@ pub async fn update_deployment(
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
 	info!("Updating deployment: {}", deployment_id);
 
+	let now = OffsetDateTime::now_utc();
+
 	// Validate if at least value is to be updated
 	if name
 		.as_ref()
 		.map(|_| 0)
+		.or(image_tag.as_ref().map(|_| 0))
 		.or(machine_type.as_ref().map(|_| 0))
 		.or(deploy_on_push.as_ref().map(|_| 0))
 		.or(runner.as_ref().map(|_| 0))
@@ -86,20 +91,29 @@ pub async fn update_deployment(
 		return Err(ErrorType::WrongParameters);
 	}
 
-	query!(
+	let existing = query!(
 		r#"
 		SELECT
-			id
+			registry,
+			repository_id AS "repository_id: Uuid",
+			image_tag
 		FROM
 			deployment
 		WHERE
-			id = $1;
+			id = $1 AND
+			deleted IS NULL;
 		"#,
 		deployment_id as _,
 	)
 	.fetch_optional(&mut **database)
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
+
+	let old_image_tag = existing.image_tag;
+	let repository_id = existing.repository_id;
+	let is_patr_registry = existing.registry == PatrRegistry.to_string();
+	// Cloned so the requested tag is still available after the UPDATE below.
+	let new_image_tag = image_tag.clone();
 
 	// BEGIN DEFERRED CONSTRAINT
 	query!(
@@ -200,32 +214,33 @@ pub async fn update_deployment(
 			deployment
 		SET
 			name = COALESCE($1, name),
-			machine_type = COALESCE($2, machine_type),
-			deploy_on_push = COALESCE($3, deploy_on_push),
-			runner = COALESCE($4, runner),
-			min_horizontal_scale = COALESCE($5, min_horizontal_scale),
-			max_horizontal_scale = COALESCE($6, max_horizontal_scale),
+			image_tag = COALESCE($2, image_tag),
+			machine_type = COALESCE($3, machine_type),
+			deploy_on_push = COALESCE($4, deploy_on_push),
+			runner = COALESCE($5, runner),
+			min_horizontal_scale = COALESCE($6, min_horizontal_scale),
+			max_horizontal_scale = COALESCE($7, max_horizontal_scale),
 			startup_probe_port = (
 				CASE
-					WHEN $7 = 0 THEN
-						NULL
-					ELSE
-						$7
-				END
-			),
-			startup_probe_path = (
-				CASE
-					WHEN $7 = 0 THEN
+					WHEN $8 = 0 THEN
 						NULL
 					ELSE
 						$8
 				END
 			),
+			startup_probe_path = (
+				CASE
+					WHEN $8 = 0 THEN
+						NULL
+					ELSE
+						$9
+				END
+			),
 			startup_probe_port_type = (
 				CASE
-					WHEN $7 = 0 THEN
+					WHEN $8 = 0 THEN
 						NULL
-					WHEN $7 IS NULL THEN
+					WHEN $8 IS NULL THEN
 						startup_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
@@ -233,36 +248,37 @@ pub async fn update_deployment(
 			),
 			liveness_probe_port = (
 				CASE
-					WHEN $9 = 0 THEN
-						NULL
-					ELSE
-						$9
-				END
-			),
-			liveness_probe_path = (
-				CASE
-					WHEN $9 = 0 THEN
+					WHEN $10 = 0 THEN
 						NULL
 					ELSE
 						$10
 				END
 			),
+			liveness_probe_path = (
+				CASE
+					WHEN $10 = 0 THEN
+						NULL
+					ELSE
+						$11
+				END
+			),
 			liveness_probe_port_type = (
 				CASE
-					WHEN $9 = 0 THEN
+					WHEN $10 = 0 THEN
 						NULL
-					WHEN $9 IS NULL THEN
+					WHEN $10 IS NULL THEN
 						liveness_probe_port_type
 					ELSE
 						'http'::EXPOSED_PORT_TYPE
 				END
 			)
 		WHERE
-			id = $11
+			id = $12
 		RETURNING
 			runner AS "runner: Uuid";
 		"#,
 		name as _,
+		image_tag as _,
 		machine_type as _,
 		deploy_on_push,
 		runner as _,
@@ -272,7 +288,7 @@ pub async fn update_deployment(
 		startup_probe.as_ref().map(|probe| probe.path.as_str()),
 		liveness_probe.as_ref().map(|probe| probe.port as i32),
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
-		deployment_id as _
+		deployment_id as _,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -286,6 +302,89 @@ pub async fn update_deployment(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// If the image tag actually changed, re-resolve current_live_digest so the
+	// deployment redeploys the new image. The runner's docker executor pins to
+	// current_live_digest over the tag, so updating image_tag alone would keep
+	// running the old image. Gated on a real change because the frontend sends
+	// image_tag on every update.
+	if let Some(new_tag) = new_image_tag
+		.as_deref()
+		.filter(|&new| new != old_image_tag.as_str())
+	{
+		let new_digest = if is_patr_registry {
+			let digest = if let Some(repository_id) = repository_id {
+				query!(
+					r#"
+					SELECT
+						manifest_digest
+					FROM
+						container_registry_repository_tag
+					WHERE
+						repository_id = $1 AND
+						name = $2;
+					"#,
+					repository_id as _,
+					new_tag,
+				)
+				.fetch_optional(&mut **database)
+				.await?
+				.map(|row| row.manifest_digest)
+			} else {
+				None
+			};
+
+			// Record the deploy in history, mirroring start_deployment.
+			if let Some(digest) = &digest {
+				query!(
+					r#"
+					INSERT INTO
+						deployment_deploy_history(
+							deployment_id,
+							image_digest,
+							repository_id,
+							created
+						)
+					VALUES
+						($1, $2, $3, $4)
+					ON CONFLICT
+						(deployment_id, image_digest)
+					DO NOTHING;
+					"#,
+					deployment_id as _,
+					digest as _,
+					repository_id as _,
+					now as _,
+				)
+				.execute(&mut **database)
+				.await?;
+			}
+
+			digest
+		} else {
+			// External registries have no resolvable digest; the executor pulls
+			// by tag directly.
+			None
+		};
+
+		// Overwrite (not COALESCE): a resolvable tag pins the new digest; an
+		// unresolvable one clears it so the runner pulls by the new tag and
+		// surfaces a bad tag as a pull failure.
+		query!(
+			r#"
+			UPDATE
+				deployment
+			SET
+				current_live_digest = $2
+			WHERE
+				id = $1;
+			"#,
+			deployment_id as _,
+			new_digest as _,
+		)
+		.execute(&mut **database)
+		.await?;
+	}
 
 	if let Some(environment_variables) = environment_variables {
 		query!(

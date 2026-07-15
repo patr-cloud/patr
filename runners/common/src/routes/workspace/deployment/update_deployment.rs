@@ -27,6 +27,10 @@ pub async fn update_deployment(
 				body:
 					UpdateDeploymentRequestProcessed {
 						name,
+						// Self-hosted runners don't support editing the image tag
+						// (self-hosted is being deprecated); ignore it so the
+						// shared request struct still destructures.
+						image_tag: _,
 						machine_type,
 						deploy_on_push,
 						runner: _,
