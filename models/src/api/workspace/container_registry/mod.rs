@@ -1,3 +1,5 @@
+use std::fmt::{self, Display, Formatter};
+
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -100,6 +102,18 @@ pub struct Platform {
 	pub os_version: Option<String>,
 }
 
+impl Display for Platform {
+	/// Renders a platform as `os/architecture` (with `/variant` appended when
+	/// present), e.g. `linux/amd64` or `linux/arm/v7`.
+	fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+		write!(f, "{}/{}", self.os, self.architecture)?;
+		if let Some(variant) = &self.variant {
+			write!(f, "/{variant}")?;
+		}
+		Ok(())
+	}
+}
+
 /// One filesystem layer of an image: a stored blob that stacks with the others
 /// to form the image's root filesystem. These are the "layers" a user sees when
 /// they inspect an image.
@@ -140,6 +154,29 @@ pub struct ContainerRepositoryManifestInfo {
 	/// The tags that point to this manifest
 	#[search(ty = "custom", name = "Vec<String>")]
 	pub tags: Vec<String>,
+}
+
+impl ContainerRepositoryManifestInfo {
+	/// A short, human-readable platform label for text/CLI display: the single
+	/// platform for an image, a multi-arch summary for an index, and the
+	/// artifact type (or `artifact`) for an artifact.
+	pub fn platform_label(&self) -> String {
+		match self.kind {
+			ManifestKind::Index => match self.platforms.len() {
+				0 => "multi-arch".to_string(),
+				count => format!("multi-arch ({count} platforms)"),
+			},
+			ManifestKind::Artifact => self
+				.artifact_type
+				.clone()
+				.unwrap_or_else(|| "artifact".to_string()),
+			ManifestKind::Image => self
+				.platforms
+				.first()
+				.map(Platform::to_string)
+				.unwrap_or_else(|| "unknown".to_string()),
+		}
+	}
 }
 
 /// Represents a repository of container images in Patr's in-build container

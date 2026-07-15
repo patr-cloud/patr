@@ -161,9 +161,14 @@ pub(super) async fn execute(
 			.iter()
 			.map(|m| {
 				if m.tags.is_empty() {
-					format!("{} ({})", m.digest, m.platform)
+					format!("{} ({})", m.digest, m.platform_label())
 				} else {
-					format!("{} [{}] ({})", m.digest, m.tags.join(", "), m.platform)
+					format!(
+						"{} [{}] ({})",
+						m.digest,
+						m.tags.join(", "),
+						m.platform_label()
+					)
 				}
 			})
 			.collect::<Vec<_>>();
@@ -176,9 +181,14 @@ pub(super) async fn execute(
 			.iter()
 			.find(|m| {
 				let label = if m.tags.is_empty() {
-					format!("{} ({})", m.digest, m.platform)
+					format!("{} ({})", m.digest, m.platform_label())
 				} else {
-					format!("{} [{}] ({})", m.digest, m.tags.join(", "), m.platform)
+					format!(
+						"{} [{}] ({})",
+						m.digest,
+						m.tags.join(", "),
+						m.platform_label()
+					)
 				};
 				label == selected
 			})
