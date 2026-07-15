@@ -13,8 +13,8 @@ import {
 
 // The update API contract (rename, runner, deployOnPush, scale, ports/env/probe
 // replace-vs-keep, empty-PATCH, no-deploy-history) lives in the Rust API suite
-// (api/tests/api/workspace/deployment/mod.rs). Here we cover the one UI quirk:
-// the info form's Image Tag input is a silent no-op.
+// (api/tests/api/workspace/deployment/mod.rs). Here we cover the UI: editing the
+// info form's Image Tag input persists the new tag.
 
 test.beforeAll(async () => {
   await seedMachineType();
@@ -33,9 +33,9 @@ async function setup(api: import('@/prelude').ApiClient, opts: Record<string, un
 }
 
 test.describe('deployment > update [UI]', () => {
-  // The info form's Image Tag input is editable but the PATCH body omits
-  // image_tag → editing it is a silent no-op.
-  test('editing the Image Tag in the info form is a no-op', async ({ browser, api }) => {
+  // The info form's Image Tag input is editable and the PATCH body includes
+  // image_tag → editing it persists the new tag.
+  test('editing the Image Tag in the info form persists the new tag', async ({ browser, api }) => {
     const { user, dep } = await setup(api, { imageTag: 'v1' });
     const context = await newContext(browser, user.clientIp);
     await loginAs(context, user, { workspaceId: user.workspaceId });
@@ -48,8 +48,8 @@ test.describe('deployment > update [UI]', () => {
       await tagInput.fill('v2');
       await updateButton(page).click();
       await expectToast(page, /Deployment updated successfully/i);
-      // Tag is unchanged on the server.
-      expect((await getDeploymentInfoAPI(api, user, user.workspaceId, dep.id)).imageTag).toBe('v1');
+      // Tag is updated on the server.
+      expect((await getDeploymentInfoAPI(api, user, user.workspaceId, dep.id)).imageTag).toBe('v2');
     } finally {
       await context.close();
     }
