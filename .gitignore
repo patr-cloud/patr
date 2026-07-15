@@ -14,6 +14,7 @@
 .worktrees
 
 *.db
+*.db-journal
 *.lock
 
 dump*.sql

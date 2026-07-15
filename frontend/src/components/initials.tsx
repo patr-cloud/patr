@@ -16,6 +16,8 @@ interface InitialsProps {
 	 * Color of the intitials
 	 */
 	color?: Color;
+	/** Background color of the circle. Defaults to `bg-secondary-dark`. */
+	bgColor?: Color;
 }
 
 const sizeClasses = {
@@ -42,9 +44,11 @@ const Initials = (rawProps: InitialsProps) => {
 		return (firstName?.slice(0, 2) ?? "??").toUpperCase();
 	};
 
+	const bgClass = () => (props.bgColor ? getColorClasses(props.bgColor).bg : "bg-secondary-dark");
+
 	return (
 		<div
-			class={`bg-secondary-dark rounded-full flex items-center justify-center font-light ${sizeClasses[props.size]} ${get(props.class)} ${getColorClasses(props.color).text}`}
+			class={`${bgClass()} rounded-full flex items-center justify-center font-light ${sizeClasses[props.size]} ${get(props.class)} ${getColorClasses(props.color).text}`}
 		>
 			{getInitials(get(props.firstName), get(props.lastName))}
 		</div>

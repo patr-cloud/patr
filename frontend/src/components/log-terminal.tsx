@@ -1,4 +1,5 @@
 import { createWS } from "@solid-primitives/websocket";
+import { FiDownload } from "solid-icons/fi";
 import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from "solid-js";
 import { createStore, produce } from "solid-js/store";
 import { createQuery } from "@tanstack/solid-query";
@@ -238,6 +239,25 @@ const LogTerminal = (props: LogTerminalProps) => {
 
 	const entryCount = () => logs.length;
 
+	const downloadLogs = () => {
+		if (logs.length === 0) return;
+		const content = logs
+			.map((entry) => {
+				const ts = typeof entry.timestamp === "string" ? entry.timestamp : entry.timestamp.toISOString();
+				return `${ts}\t${entry.log}`;
+			})
+			.join("\n");
+		const blob = new Blob([content], { type: "text/plain" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `logs-${new Date().toISOString().replace(/[:.]/g, "-")}.log`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	};
+
 	return (
 		<div
 			class="w-full flex flex-col overflow-hidden rounded-xs border border-border-color"
@@ -292,6 +312,19 @@ const LogTerminal = (props: LogTerminalProps) => {
 
 				{/* Entry count */}
 				<span class="text-xxs text-white/30 font-log shrink-0 tabular-nums">{entryCount()} entries</span>
+
+				{/* Download button */}
+				<button
+					type="button"
+					onClick={downloadLogs}
+					disabled={entryCount() === 0}
+					title="Download logs"
+					aria-label="Download logs"
+					class="shrink-0 flex items-center gap-xxs p-1 text-xxs font-medium text-white/40 hover:text-white/80 disabled:text-white/10 disabled:cursor-not-allowed transition-colors"
+				>
+					<FiDownload size={14} />
+					<span>Download logs</span>
+				</button>
 			</div>
 
 			{/* Log body */}
@@ -332,7 +365,7 @@ const LogTerminal = (props: LogTerminalProps) => {
 						</div>
 					}
 				>
-					<For each={logs}>{(log, i) => <LogLine log={log} lineNum={i() + 1} />}</For>
+					<For each={logs}>{(log) => <LogLine log={log} />}</For>
 				</Show>
 			</div>
 		</div>
