@@ -81,6 +81,7 @@ async fn send_create(
 fn empty_update() -> UpdateDeploymentRequest {
 	UpdateDeploymentRequest {
 		name: None,
+		image_tag: None,
 		runner: None,
 		machine_type: None,
 		deploy_on_push: None,
@@ -92,7 +93,6 @@ fn empty_update() -> UpdateDeploymentRequest {
 		liveness_probe: None,
 		config_mounts: None,
 		volumes: None,
-		image_tag: None,
 	}
 }
 
@@ -464,6 +464,7 @@ async fn update_deployment_works() {
 				})
 				.body(UpdateDeploymentRequest {
 					name: Some(new_name.clone()),
+					image_tag: None,
 					runner: None,
 					machine_type: None,
 					deploy_on_push: None,
@@ -475,7 +476,6 @@ async fn update_deployment_works() {
 					liveness_probe: None,
 					config_mounts: None,
 					volumes: None,
-					image_tag: None,
 				})
 				.build(),
 		)
@@ -1239,6 +1239,7 @@ async fn update_deployment_name_persists() {
 				})
 				.body(UpdateDeploymentRequest {
 					name: Some(new_name.clone()),
+					image_tag: None,
 					runner: None,
 					machine_type: None,
 					deploy_on_push: None,
@@ -1250,7 +1251,6 @@ async fn update_deployment_name_persists() {
 					liveness_probe: None,
 					config_mounts: None,
 					volumes: None,
-					image_tag: None,
 				})
 				.build(),
 		)
@@ -1326,6 +1326,7 @@ async fn update_deployment_machine_type() {
 				})
 				.body(UpdateDeploymentRequest {
 					name: None,
+					image_tag: None,
 					runner: None,
 					machine_type: Some(other_mt.id),
 					deploy_on_push: None,
@@ -1337,7 +1338,6 @@ async fn update_deployment_machine_type() {
 					liveness_probe: None,
 					config_mounts: None,
 					volumes: None,
-					image_tag: None,
 				})
 				.build(),
 		)

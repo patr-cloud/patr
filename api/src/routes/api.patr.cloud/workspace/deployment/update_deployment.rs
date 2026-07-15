@@ -41,6 +41,7 @@ pub async fn update_deployment(
 				body:
 					UpdateDeploymentRequestProcessed {
 						name,
+						image_tag,
 						machine_type,
 						deploy_on_push,
 						runner,
@@ -52,7 +53,6 @@ pub async fn update_deployment(
 						liveness_probe,
 						config_mounts,
 						volumes,
-						image_tag,
 					},
 			},
 		database,
@@ -70,6 +70,7 @@ pub async fn update_deployment(
 	if name
 		.as_ref()
 		.map(|_| 0)
+		.or(image_tag.as_ref().map(|_| 0))
 		.or(machine_type.as_ref().map(|_| 0))
 		.or(deploy_on_push.as_ref().map(|_| 0))
 		.or(runner.as_ref().map(|_| 0))
@@ -81,7 +82,6 @@ pub async fn update_deployment(
 		.or(liveness_probe.as_ref().map(|_| 0))
 		.or(config_mounts.as_ref().map(|_| 0))
 		.or(volumes.as_ref().map(|_| 0))
-		.or(image_tag.as_ref().map(|_| 0))
 		.is_none()
 	{
 		debug!(
