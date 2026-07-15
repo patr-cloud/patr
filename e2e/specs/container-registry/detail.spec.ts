@@ -3,6 +3,8 @@ import { createContainerRepo, randomRepoName } from '@/helpers/registry';
 import {
   openRegistryDetail,
   pushInstructionsHeading,
+  pushInstructionsToggle,
+  openPushInstructions,
   imagesEmptyState,
   deleteRepoViaModal,
   deleteTrigger,
@@ -32,7 +34,7 @@ async function withDetail(
 }
 
 test.describe('container registry > detail [UI]', () => {
-  test('General tab shows push instructions with the docker login command', async ({
+  test('Overview tab shows push instructions with the docker login command', async ({
     browser,
     api,
   }) => {
@@ -40,18 +42,19 @@ test.describe('container registry > detail [UI]', () => {
     const name = randomRepoName();
     const repo = await createContainerRepo(api, user, user.workspaceId, name);
     await withDetail(browser, user, repo.id, undefined, async (page) => {
-      await expect(pushInstructionsHeading(page)).toBeVisible();
-      await expect(
-        page
-          .getByText(`docker login registry.patr.cloud/${user.workspaceId}/${name} -u patr`)
-          .first(),
-      ).toBeVisible();
       // Fresh repo size renders as "0 B".
       await expect(page.locator('input[name="repository-size"]')).toHaveValue(/0\s*B/);
+      // Push instructions live behind a collapsible; expand it first. The login
+      // command targets the registry host only (not the per-repo path).
+      await openPushInstructions(page);
+      await expect(pushInstructionsHeading(page)).toBeVisible();
+      await expect(
+        page.getByText('docker login registry.patr.cloud -u patr').first(),
+      ).toBeVisible();
     });
   });
 
-  test('?tab=images shows the empty "No Images Found" state', async ({ browser, api }) => {
+  test('?tab=images shows the empty "No images yet" state', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);
     const repo = await createContainerRepo(api, user, user.workspaceId);
     await withDetail(browser, user, repo.id, 'images', async (page) => {
@@ -59,11 +62,13 @@ test.describe('container registry > detail [UI]', () => {
     });
   });
 
-  test('?tab=garbage falls back to the General tab', async ({ browser, api }) => {
+  test('?tab=garbage falls back to the Overview tab', async ({ browser, api }) => {
     await using user = await createUserWithWorkspace(api);
     const repo = await createContainerRepo(api, user, user.workspaceId);
     await withDetail(browser, user, repo.id, 'garbage', async (page) => {
-      await expect(pushInstructionsHeading(page)).toBeVisible();
+      // Overview shows the push-instructions collapsible; the Images tab's empty
+      // state must not be present.
+      await expect(pushInstructionsToggle(page)).toBeVisible();
       await expect(imagesEmptyState(page)).toBeHidden();
     });
   });

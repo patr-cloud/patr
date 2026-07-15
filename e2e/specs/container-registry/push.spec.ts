@@ -256,8 +256,13 @@ test.describe('@docker container registry images tab [UI]', () => {
     try {
       await openRegistryDetail(page, repo.id, 'images');
       await expect(imagesTab(page)).toBeVisible();
+      // The tag-centric list shows the pushed tag.
       await expect(page.getByText('release', { exact: false }).first()).toBeVisible();
-      // The digest is rendered (sha256-prefixed) in the manifest row.
+      // The digest lives on the image detail page (the list is tag-centric); it
+      // accepts a tag as the reference.
+      await page.goto(`/container-registry/${repo.id}/manifest/release`, {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByText(/sha256:/).first()).toBeVisible();
     } finally {
       await context.close();

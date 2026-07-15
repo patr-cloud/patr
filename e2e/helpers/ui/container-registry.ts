@@ -70,13 +70,24 @@ export async function openRegistryDetail(page: Page, id: string, tab?: string): 
   await page.goto(`/container-registry/${id}${suffix}`, { waitUntil: 'domcontentloaded' });
 }
 
-// HeadTab renders plain <button>s, not role="tab".
-export function generalTab(page: Page) {
-  return page.getByRole('button', { name: 'General', exact: true });
+// HeadTab renders plain <button>s, not role="tab". The first tab is "Overview"
+// (the old "General"); the second is "Images".
+export function overviewTab(page: Page) {
+  return page.getByRole('button', { name: 'Overview', exact: true });
 }
 
 export function imagesTab(page: Page) {
   return page.getByRole('button', { name: 'Images', exact: true });
+}
+
+// The Overview tab hides the push instructions behind a "How to push a new
+// image" collapsible; expand it before asserting on the heading/commands.
+export function pushInstructionsToggle(page: Page) {
+  return page.getByRole('button', { name: 'How to push a new image' });
+}
+
+export async function openPushInstructions(page: Page): Promise<void> {
+  await pushInstructionsToggle(page).click();
 }
 
 export function pushInstructionsHeading(page: Page) {
@@ -84,7 +95,7 @@ export function pushInstructionsHeading(page: Page) {
 }
 
 export function imagesEmptyState(page: Page) {
-  return page.getByText('No Images Found', { exact: true });
+  return page.getByText('No images yet', { exact: true });
 }
 
 // ---------- Delete modal ----------
