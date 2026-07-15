@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
 import { CreateAccountRequest, SocialLoginInitiateResponse } from "~/bindings";
-import { Alert, Button, Input, InputType, useToast, Turnstile } from "~/components";
+import { Alert, Button, Input, InputType, PasswordInput, PasswordStrength, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
@@ -60,6 +60,9 @@ const SignUp = () => {
 
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
 	const [errors, setErrors] = createSignal<FieldErrors>({ ...emptyErrors });
+
+	const [showPasswordStrength, setShowPasswordStrength] = createSignal(false);
+	const [passwordAnchor, setPasswordAnchor] = createSignal<HTMLDivElement>();
 
 	const clearError = (field: keyof FieldErrors) => {
 		setErrors((prev) => ({ ...prev, [field]: "" }));
@@ -261,29 +264,38 @@ const SignUp = () => {
 						</div>
 					</Show>
 
-					<Input
-						type={InputType.Password}
-						placeholder="Password"
-						autocomplete="new-password"
-						required={true}
-						name="password"
-						id="password"
-						value={password}
-						onInput={(e) => {
-							setPassword(e.currentTarget.value);
-							clearError("password");
-						}}
+					<div
+						ref={setPasswordAnchor}
 						class="mt-4"
-						styleVariant="medium"
-					/>
+						onFocusIn={() => setShowPasswordStrength(true)}
+						onFocusOut={(e) => {
+							if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+								setShowPasswordStrength(false);
+							}
+						}}
+					>
+						<PasswordInput
+							placeholder="Password"
+							autocomplete="new-password"
+							required={true}
+							name="password"
+							id="password"
+							value={password}
+							onInput={(e) => {
+								setPassword(e.currentTarget.value);
+								clearError("password");
+							}}
+							styleVariant="medium"
+						/>
+					</div>
+					<PasswordStrength password={password} anchor={passwordAnchor} show={showPasswordStrength} />
 					<Show when={errors().password}>
 						<div class="mt-1">
 							<Alert message={errors().password} type="error" />
 						</div>
 					</Show>
 
-					<Input
-						type={InputType.Password}
+					<PasswordInput
 						placeholder="Confirm Password"
 						autocomplete="new-password"
 						required={true}

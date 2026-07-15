@@ -45,6 +45,7 @@ import RangeSlider from "~/components/range-slider";
 import StatusChip from "~/components/status-chip";
 import OtpInput from "~/components/otp-input";
 import ChipInput from "~/components/chip-input";
+import PasswordStrength from "~/components/password-strength";
 import Sidebar from "~/components/sidebar";
 import TopBar from "~/components/top-bar";
 export {
@@ -96,6 +97,7 @@ export {
 	StatusChip,
 	OtpInput,
 	ChipInput,
+	PasswordStrength,
 	Sidebar,
 	TopBar,
 };

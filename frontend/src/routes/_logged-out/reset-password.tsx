@@ -2,7 +2,18 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, onMount, Show } from "solid-js";
 import { ResetPasswordRequest } from "~/bindings";
-import { Alert, Button, ButtonVariant, Input, InputType, OtpInput, Turnstile, useToast } from "~/components";
+import {
+	Alert,
+	Button,
+	ButtonVariant,
+	Input,
+	InputType,
+	OtpInput,
+	PasswordInput,
+	PasswordStrength,
+	Turnstile,
+	useToast,
+} from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { httpRequest } from "~/utils/http-request";
 import { validatePassword } from "~/utils/validation";
@@ -27,6 +38,9 @@ const ResetPassword = () => {
 	const [confirmPassword, setConfirmPassword] = createSignal("");
 	const [confirmPasswordError, setConfirmPasswordError] = createSignal("");
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+
+	const [showPasswordStrength, setShowPasswordStrength] = createSignal(false);
+	const [passwordAnchor, setPasswordAnchor] = createSignal<HTMLDivElement>();
 
 	// Strip query params after reading them so the OTP doesn't linger in the URL.
 	onMount(() => {
@@ -137,29 +151,38 @@ const ResetPassword = () => {
 					<OtpInput inputVariant="medium" otpDigits={otpDigits} setOtpDigits={setOtpDigits} />
 				</div>
 
-				<Input
-					type={InputType.Password}
-					placeholder="New password"
-					autocomplete="new-password"
-					required={true}
-					name="new-password"
-					id="new-password"
-					value={newPassword}
-					onInput={(e) => {
-						setNewPassword((e.currentTarget as HTMLInputElement).value);
-						setNewPasswordError("");
-					}}
+				<div
+					ref={setPasswordAnchor}
 					class="mt-6"
-					styleVariant="medium"
-				/>
+					onFocusIn={() => setShowPasswordStrength(true)}
+					onFocusOut={(e) => {
+						if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+							setShowPasswordStrength(false);
+						}
+					}}
+				>
+					<PasswordInput
+						placeholder="New password"
+						autocomplete="new-password"
+						required={true}
+						name="new-password"
+						id="new-password"
+						value={newPassword}
+						onInput={(e) => {
+							setNewPassword((e.currentTarget as HTMLInputElement).value);
+							setNewPasswordError("");
+						}}
+						styleVariant="medium"
+					/>
+				</div>
+				<PasswordStrength password={newPassword} anchor={passwordAnchor} show={showPasswordStrength} />
 				<Show when={newPasswordError()}>
 					<div class="mt-1">
 						<Alert message={newPasswordError()} type="error" />
 					</div>
 				</Show>
 
-				<Input
-					type={InputType.Password}
+				<PasswordInput
 					placeholder="Confirm new password"
 					autocomplete="new-password"
 					required={true}
