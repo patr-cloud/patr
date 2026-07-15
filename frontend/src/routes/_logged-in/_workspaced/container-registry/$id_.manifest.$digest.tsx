@@ -54,7 +54,7 @@ const ContainerManifestDetail = () => {
 		navigate({
 			to: "/container-registry/$id",
 			params: { id: params().id },
-			search: { tab: "tags" },
+			search: { tab: "images" },
 		});
 	};
 
@@ -67,7 +67,7 @@ const ContainerManifestDetail = () => {
 						{ label: "Container Repositories", url: "/container-registry" },
 						{
 							label: repoName() || "Loading...",
-							url: `/container-registry/${params().id}?tab=tags`,
+							url: `/container-registry/${params().id}?tab=images`,
 						},
 						{ label: shortDigest(params().digest) },
 					]}

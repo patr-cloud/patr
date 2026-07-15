@@ -30,7 +30,7 @@ interface VersionsProps {
 }
 
 /**
- * The "Versions" tab: a tag-centric list of everything pushed to a repository.
+ * The "Images" tab: a tag-centric list of everything pushed to a repository.
  * Single-platform images and artifacts are plain rows that open a detail page;
  * a multi-arch index expands in place to its per-platform children. Manifests
  * with no tag pointing at them are tucked into a collapsed "Untagged" section.

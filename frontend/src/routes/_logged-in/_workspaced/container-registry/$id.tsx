@@ -134,8 +134,8 @@ const ContainerRepositoryInfo = () => {
 												}),
 										},
 										{
-											label: "Tags",
-											value: "tags",
+											label: "Images",
+											value: "images",
 											onClick: (value) =>
 												navigate({
 													to: "/container-registry/$id",
@@ -150,7 +150,7 @@ const ContainerRepositoryInfo = () => {
 
 						<PageContainerBody class="flex flex-col justify-between gap-8">
 							<Switch fallback={<General repositoryInfo={() => repoInfoQuery.data} />}>
-								<Match when={tab() === "tags"}>
+								<Match when={tab() === "images"}>
 									<Show
 										when={manifestsQuery.data}
 										fallback={
