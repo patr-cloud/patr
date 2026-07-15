@@ -102,7 +102,7 @@ Comprehensive list of missing test cases. Organized by module.
 - [x] `create_deployment_with_ports` — port configuration
 - [x] `update_deployment_name` — Round 2: added `update_deployment_name_persists` that verifies the rename via a follow-up GET (the existing `update_deployment_works` only asserts the call returned success).
 - [x] `update_deployment_machine_type` — change machine type
-- [ ] `update_deployment_image` — DROPPED: misnamed in TODOs.md; `UpdateDeploymentRequest` has no `image_tag`/`registry` field. Image changes happen via `revert_deployment` (deploy history), tracked separately under that section.
+- [x] `update_deployment_image` — Editing the image tag is now supported (`image_tag` on `UpdateDeploymentRequest`). Added `update_deployment_image_tag_persists` (external registry: tag persists via a follow-up GET), `update_deployment_invalid_tag_400` and `update_deployment_empty_tag_400` (tag regex rejects bad/empty tags). TODO: `update_deployment_patr_tag_resolves_digest` — for a Patr-registry deployment, changing the tag should re-resolve `current_live_digest` and write a deploy-history row; deferred because it needs container-registry repository + manifest-tag seeding infra that no test helper covers yet (repos are created via the docker push flow). Covered manually via E2E for now.
 - [x] `start_deployment_already_running` — REFRAMED: handler is idempotent (`start_deployment.rs:136-151` unconditionally sets status); added `start_deployment_idempotent`.
 - [x] `stop_deployment_already_stopped` — REFRAMED: same; added `stop_deployment_idempotent`.
 - [x] `delete_deployment_while_running` — Round 2: handler doesn't check status; test starts the deployment then deletes, asserts success.

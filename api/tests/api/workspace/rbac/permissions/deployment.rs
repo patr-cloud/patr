@@ -611,6 +611,7 @@ async fn deployment_view_does_not_grant_edit() {
 					liveness_probe: None,
 					config_mounts: None,
 					volumes: None,
+					image_tag: None,
 				})
 				.build(),
 		)

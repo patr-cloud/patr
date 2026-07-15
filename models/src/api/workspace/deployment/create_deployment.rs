@@ -1,5 +1,8 @@
 use super::{DeploymentRegistry, DeploymentRunningDetails};
-use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+use crate::{
+	prelude::*,
+	utils::constants::{DEPLOYMENT_IMAGE_TAG_REGEX, RESOURCE_NAME_REGEX},
+};
 
 macros::declare_api_endpoint!(
 	/// Route to create a new deployment
@@ -31,7 +34,7 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub registry: DeploymentRegistry,
 		/// The image tag to use
-		#[preprocess(trim, lowercase)]
+		#[preprocess(trim, lowercase, regex = DEPLOYMENT_IMAGE_TAG_REGEX)]
 		pub image_tag: String,
 		/// The runner to use to run the deployment
 		#[preprocess(none)]

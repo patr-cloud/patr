@@ -1,7 +1,10 @@
 use std::collections::BTreeMap;
 
 use super::{DeploymentProbe, EnvironmentVariableValue, ExposedPortType};
-use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+use crate::{
+	prelude::*,
+	utils::constants::{DEPLOYMENT_IMAGE_TAG_REGEX, RESOURCE_NAME_REGEX},
+};
 
 macros::declare_api_endpoint!(
 	/// Route to update a deployment
@@ -64,7 +67,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub volumes: Option<BTreeMap<Uuid, String>>,
 		/// To update the container image tag
-		#[preprocess(optional(trim))]
+		#[preprocess(optional(trim, lowercase, regex = DEPLOYMENT_IMAGE_TAG_REGEX))]
 		pub image_tag: Option<String>,
 	},
 	audit_log = AppAuditLogger {

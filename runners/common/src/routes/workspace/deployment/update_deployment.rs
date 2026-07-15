@@ -38,6 +38,10 @@ pub async fn update_deployment(
 						liveness_probe,
 						config_mounts,
 						volumes,
+						// Self-hosted runners don't support editing the image tag
+						// (self-hosted is being deprecated); ignore it so the
+						// shared request struct still destructures.
+						image_tag: _,
 					},
 			},
 		database,
