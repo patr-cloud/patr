@@ -13,7 +13,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # ----- Stage 1: static checks (gate) -----
   format-check:
     name: Format & Static Checks
     runs-on: ubuntu-latest
@@ -61,10 +60,8 @@ jobs:
       - run: pnpm format:check
         working-directory: frontend
 
-  # ----- Stage 2: nextest unit tests (gate) -----
   unit-tests:
     name: Unit Tests (common)
-    needs: format-check
     runs-on: ubuntu-latest
     env:
       SQLX_OFFLINE: "true"
@@ -85,10 +82,8 @@ jobs:
 
       - run: cargo nextest run --package common
 
-  # ----- Build the api binary + TS bindings ONCE, fan them out as artifacts -----
   build:
     name: Build API + bindings
-    needs: unit-tests
     runs-on: ubuntu-latest
     env:
       SQLX_OFFLINE: "true"
@@ -140,10 +135,8 @@ jobs:
           retention-days: 1
           if-no-files-found: error
 
-  # ----- Stage 3: integration + UI + docker suites, all in parallel -----
   integration-tests:
     name: Integration Tests (api)
-    needs: unit-tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -328,25 +321,81 @@ jobs:
             e2e/test-results
           retention-days: 7
 
-  # ----- Final gate: green only when all three suites pass -----
+  cli-check:
+    name: Cargo CLI check
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+
+      # `cli` pulls in `common`, which embeds this folder via #[derive(RustEmbed)].
+      - name: Setup frontend public folder
+        run: mkdir -p frontend/.output/public
+
+      - name: Check cli
+        run: cargo check --package cli
+
+  ingress-check:
+    name: Cargo ingress check
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Setup frontend public folder
+        run: mkdir -p frontend/.output/public
+
+      - name: Check ingress
+        run: cargo check --package ingress
+
   ci-green:
     name: CI Green
-    needs: [integration-tests, ui-tests, docker-tests]
+    needs:
+      [
+        format-check,
+        unit-tests,
+        build,
+        integration-tests,
+        cli-check,
+        ingress-check,
+        ui-tests,
+        docker-tests,
+      ]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Verify all suites passed
+      - name: Verify all jobs passed
         run: |
-          if [ "${{ needs.integration-tests.result }}" != "success" ] || \
+          if [ "${{ needs.format-check.result }}" != "success" ] || \
+             [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.build.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.cli-check.result }}" != "success" ] || \
+             [ "${{ needs.ingress-check.result }}" != "success" ] || \
              [ "${{ needs.ui-tests.result }}" != "success" ] || \
              [ "${{ needs.docker-tests.result }}" != "success" ]; then
+            echo "format-check:      ${{ needs.format-check.result }}"
+            echo "unit-tests:        ${{ needs.unit-tests.result }}"
+            echo "build:             ${{ needs.build.result }}"
             echo "integration-tests: ${{ needs.integration-tests.result }}"
+            echo "cli-check:         ${{ needs.cli-check.result }}"
+            echo "ingress-check:     ${{ needs.ingress-check.result }}"
             echo "ui-tests:          ${{ needs.ui-tests.result }}"
             echo "docker-tests:      ${{ needs.docker-tests.result }}"
-            echo "One or more test suites did not pass."
+            echo "One or more jobs did not pass."
             exit 1
           fi
-          echo "All test suites passed."
+          echo "All jobs passed."
 
   # SQLx offline data stays verified on staging/master PRs only.
   sqlx-check:
