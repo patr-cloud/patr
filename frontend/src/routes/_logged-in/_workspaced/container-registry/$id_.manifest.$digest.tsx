@@ -89,10 +89,8 @@ const ContainerManifestDetail = () => {
 									<h3 class="text-white text-lg font-medium mb-2">Delete this image?</h3>
 									<p class="text-gray-400 text-sm mb-6">
 										This permanently removes{" "}
-										<span class="font-mono text-gray-300">
-											{shortDigest(params().digest)}
-										</span>{" "}
-										from {repoName() || "this repository"}. This can't be undone.
+										<span class="font-mono text-gray-300">{shortDigest(params().digest)}</span> from{" "}
+										{repoName() || "this repository"}. This can't be undone.
 									</p>
 									<div class="flex items-center justify-end gap-3">
 										<Button variant={ButtonVariant.Plain} onClick={() => setClose(false)}>
@@ -136,8 +134,6 @@ const ContainerManifestDetail = () => {
 	);
 };
 
-export const Route = createFileRoute(
-	"/_logged-in/_workspaced/container-registry/$id_/manifest/$digest"
-)({
+export const Route = createFileRoute("/_logged-in/_workspaced/container-registry/$id_/manifest/$digest")({
 	component: ContainerManifestDetail,
 });

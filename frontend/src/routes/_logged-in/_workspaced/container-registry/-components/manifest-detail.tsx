@@ -30,7 +30,7 @@ const ManifestDetail = (props: ManifestDetailProps) => {
 	// Exposed ports are best-effort: gate on `isSuccess` so a pending or failed
 	// ports request can never suspend or error the whole page (reading `.data`
 	// on a not-yet-resolved query suspends under Solid Suspense).
-	const ports = () => (portsQuery.isSuccess ? portsQuery.data?.ports ?? [] : []);
+	const ports = () => (portsQuery.isSuccess ? (portsQuery.data?.ports ?? []) : []);
 
 	return (
 		<Show
@@ -89,9 +89,7 @@ const ManifestDetail = (props: ManifestDetailProps) => {
 									>
 										<span class="flex flex-wrap gap-1">
 											<For each={details().platforms}>
-												{(platform) => (
-													<span class="chip-tag">{formatPlatform(platform)}</span>
-												)}
+												{(platform) => <span class="chip-tag">{formatPlatform(platform)}</span>}
 											</For>
 										</span>
 									</Show>
@@ -117,9 +115,7 @@ const ManifestDetail = (props: ManifestDetailProps) => {
 							</DetailField>
 							<Show when={details().artifactType}>
 								<DetailField label="Artifact type">
-									<span class="font-mono text-white text-sm break-all">
-										{details().artifactType}
-									</span>
+									<span class="font-mono text-white text-sm break-all">{details().artifactType}</span>
 								</DetailField>
 							</Show>
 						</div>
@@ -144,9 +140,7 @@ const ManifestDetail = (props: ManifestDetailProps) => {
 									<For each={layers()}>
 										{(layer, index) => (
 											<div class="flex items-center justify-between gap-4 rounded-xs bg-secondary-light px-md py-2">
-												<span class="text-gray-500 shrink-0 w-8 text-sm">
-													{index() + 1}
-												</span>
+												<span class="text-gray-500 shrink-0 w-8 text-sm">{index() + 1}</span>
 												<CopyableField
 													variant={CopyableFieldVariant.Text}
 													value={layer.digest}

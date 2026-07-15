@@ -80,12 +80,7 @@ const Link = (rawProps: ParentProps<LinkProps>) => {
 		<Show
 			when={props.external}
 			fallback={
-				<RouterLink
-					target={props.target}
-					to={target().to}
-					search={target().search}
-					class={derivedClass()}
-				>
+				<RouterLink target={props.target} to={target().to} search={target().search} class={derivedClass()}>
 					{props.children}
 				</RouterLink>
 			}

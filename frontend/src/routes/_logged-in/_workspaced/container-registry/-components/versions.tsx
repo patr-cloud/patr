@@ -14,10 +14,7 @@ import { formatRelativeTime, formatSize, get } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useContainerManifestDetailsQuery } from "~/hooks/fetch";
-import {
-	ContainerRepositoryManifestInfo,
-	ListContainerRepositoryManifestsResponse,
-} from "~/bindings";
+import { ContainerRepositoryManifestInfo, ListContainerRepositoryManifestsResponse } from "~/bindings";
 import { MaybeAccessor } from "~/utils/types";
 import { formatPlatform, KindBadge, PlatformSummary, shortDigest } from "./registry-ui";
 
@@ -88,8 +85,8 @@ const Versions = (props: VersionsProps) => {
 							Untagged ({untagged().length})
 						</button>
 						<p class="text-xs text-gray-500 pl-6">
-							Images with no version label pointing at them — usually older builds a tag has since
-							moved away from.
+							Images with no version label pointing at them — usually older builds a tag has since moved
+							away from.
 						</p>
 						<Show when={showUntagged()}>
 							<Table
@@ -220,11 +217,7 @@ const RowCells = (props: {
 						<span class="flex flex-wrap gap-1 min-w-0">
 							<For each={props.manifest.tags}>
 								{(tag) => (
-									<CopyableField
-										variant={CopyableFieldVariant.Text}
-										value={tag}
-										class="chip-tag"
-									/>
+									<CopyableField variant={CopyableFieldVariant.Text} value={tag} class="chip-tag" />
 								)}
 							</For>
 						</span>
@@ -309,8 +302,7 @@ const IndexPanel = (props: { repoId: string; manifest: ContainerRepositoryManife
 	return (
 		<div class="flex flex-col gap-3">
 			<p class="text-sm text-gray-400">
-				This version is multi-arch — it bundles one image per platform. Pick a platform to see its
-				details.
+				This version is multi-arch — it bundles one image per platform. Pick a platform to see its details.
 			</p>
 			<Show
 				when={detailsQuery.isSuccess}
@@ -323,28 +315,28 @@ const IndexPanel = (props: { repoId: string; manifest: ContainerRepositoryManife
 			>
 				<div class="flex flex-col gap-2">
 					<For each={detailsQuery.data?.referencedManifests ?? []}>
-							{(child) => (
-								<button
-									type="button"
-									onClick={() =>
-										navigate({
-											to: "/container-registry/$id/manifest/$digest",
-											params: { id: props.repoId, digest: child.digest },
-										})
-									}
-									class="flex items-center justify-between gap-4 rounded-xs bg-secondary-light hover:bg-secondary-medium px-md py-2 text-left focus-visible:outline-primary"
-								>
-									<span class="font-mono text-gray-300 w-36 shrink-0">
-										{child.platforms[0] ? formatPlatform(child.platforms[0]) : "unknown"}
-									</span>
-									<span class="font-mono text-gray-500 truncate flex-1 min-w-0">
-										{shortDigest(child.digest)}
-									</span>
-									<span class="text-gray-400 shrink-0">{formatSize(child.size)}</span>
-								</button>
-							)}
-						</For>
-					</div>
+						{(child) => (
+							<button
+								type="button"
+								onClick={() =>
+									navigate({
+										to: "/container-registry/$id/manifest/$digest",
+										params: { id: props.repoId, digest: child.digest },
+									})
+								}
+								class="flex items-center justify-between gap-4 rounded-xs bg-secondary-light hover:bg-secondary-medium px-md py-2 text-left focus-visible:outline-primary"
+							>
+								<span class="font-mono text-gray-300 w-36 shrink-0">
+									{child.platforms[0] ? formatPlatform(child.platforms[0]) : "unknown"}
+								</span>
+								<span class="font-mono text-gray-500 truncate flex-1 min-w-0">
+									{shortDigest(child.digest)}
+								</span>
+								<span class="text-gray-400 shrink-0">{formatSize(child.size)}</span>
+							</button>
+						)}
+					</For>
+				</div>
 			</Show>
 		</div>
 	);

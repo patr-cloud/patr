@@ -48,10 +48,7 @@ const UsageBar = (rawProps: UsageBarProps) => {
 	return (
 		<div class={`w-full h-2 rounded-full bg-secondary-medium overflow-hidden ${get(props.class)}`}>
 			<Show when={get(props.value) > 0 || hasLimit()}>
-				<div
-					class={`h-full rounded-full transition-all ${fillColor()}`}
-					style={{ width: `${percent()}%` }}
-				/>
+				<div class={`h-full rounded-full transition-all ${fillColor()}`} style={{ width: `${percent()}%` }} />
 			</Show>
 		</div>
 	);

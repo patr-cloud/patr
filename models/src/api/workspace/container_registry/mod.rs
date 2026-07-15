@@ -49,8 +49,8 @@ pub struct ContainerRepositoryTagInfo {
 }
 
 /// Which of the three shapes a stored manifest takes. This is the single
-/// definition shared between the database (as the `CONTAINER_REGISTRY_MANIFEST_KIND`
-/// Postgres enum) and the API.
+/// definition shared between the database (as the
+/// `CONTAINER_REGISTRY_MANIFEST_KIND` Postgres enum) and the API.
 #[derive(
 	Debug,
 	Clone,
@@ -69,7 +69,10 @@ pub struct ContainerRepositoryTagInfo {
 #[cfg_attr(
 	not(target_arch = "wasm32"),
 	derive(sqlx::Type),
-	sqlx(type_name = "CONTAINER_REGISTRY_MANIFEST_KIND", rename_all = "lowercase")
+	sqlx(
+		type_name = "CONTAINER_REGISTRY_MANIFEST_KIND",
+		rename_all = "lowercase"
+	)
 )]
 pub enum ManifestKind {
 	/// A runnable single-platform image.

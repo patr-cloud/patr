@@ -68,8 +68,8 @@ const ContainerRegistrySettings = () => {
 											</span>
 											<span class="text-gray-400 text-sm">
 												{Number(usage().repositoryCount)}{" "}
-												{Number(usage().repositoryCount) === 1 ? "repository" : "repositories"} ·{" "}
-												{Number(usage().imageCount)}{" "}
+												{Number(usage().repositoryCount) === 1 ? "repository" : "repositories"}{" "}
+												· {Number(usage().imageCount)}{" "}
 												{Number(usage().imageCount) === 1 ? "image" : "images"}
 											</span>
 										</div>
@@ -85,8 +85,8 @@ const ContainerRegistrySettings = () => {
 								<StatusBadge text="Coming soon" color={Color.Warning} />
 							</div>
 							<p class="text-gray-400 text-sm">
-								Automatically delete images that no version label points at, once they're older
-								than a set number of days — keeps your storage tidy without manual cleanup.
+								Automatically delete images that no version label points at, once they're older than a
+								set number of days — keeps your storage tidy without manual cleanup.
 							</p>
 
 							<div class="flex items-center gap-4">

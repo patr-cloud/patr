@@ -110,10 +110,7 @@ export const useContainerManifestsQuery = (repoId: Accessor<string>) => {
 	});
 };
 
-export const useContainerManifestDetailsQuery = (
-	repoId: Accessor<string>,
-	digestOrTag: Accessor<string>
-) => {
+export const useContainerManifestDetailsQuery = (repoId: Accessor<string>, digestOrTag: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
@@ -142,10 +139,7 @@ export const useContainerManifestDetailsQuery = (
 	});
 };
 
-export const useContainerExposedPortsQuery = (
-	repoId: Accessor<string>,
-	digestOrTag: Accessor<string>
-) => {
+export const useContainerExposedPortsQuery = (repoId: Accessor<string>, digestOrTag: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 

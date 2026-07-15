@@ -92,9 +92,7 @@ const General = (props: GeneralInfoProps) => {
 						/>
 					</div>
 
-					<CollapsiblePushInstructions
-						repositoryName={get(props.repositoryInfo)?.repository?.name}
-					/>
+					<CollapsiblePushInstructions repositoryName={get(props.repositoryInfo)?.repository?.name} />
 				</div>
 			</Show>
 		</div>
