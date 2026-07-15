@@ -183,6 +183,7 @@ pub async fn apply(
 				})
 				.body(UpdateDeploymentRequest {
 					name: Some(name.clone()),
+					image_tag: Some(image_tag),
 					runner: Some(runner),
 					machine_type: Some(machine_type),
 					deploy_on_push: Some(deploy_on_push.resolve_value()?),
