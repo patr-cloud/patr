@@ -2593,10 +2593,16 @@ async fn update_deployment_image_tag_persists() {
 	body.image_tag = Some("alpine".to_string());
 	assert_eq!(
 		202,
-		send_update(&setup, &user.access_token, workspace.id, deployment.id, body)
-			.await
-			.status_code()
-			.as_u16()
+		send_update(
+			&setup,
+			&user.access_token,
+			workspace.id,
+			deployment.id,
+			body
+		)
+		.await
+		.status_code()
+		.as_u16()
 	);
 
 	let response = setup
