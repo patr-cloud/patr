@@ -111,6 +111,11 @@ conformance:
     export PATR_TEST_LOKI_HOST=localhost PATR_TEST_LOKI_PORT=13100
     export PATR_TEST_MIMIR_HOST=localhost PATR_TEST_MIMIR_PORT=18080
 
+    # Compile the integration-test binary up front. Otherwise the readiness wait
+    # below would have to cover a cold compile (minutes on CI) and time out.
+    echo "Building the conformance harness..."
+    cargo test -p api --test integration-tests --no-run
+
     # Boot the harness: it seeds the two conformance repos + an API token, binds
     # :3000, prints the OCI_* env, then blocks serving. Capture its stdout so we
     # can read back the seeded namespaces + token.
