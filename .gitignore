@@ -59,3 +59,6 @@ patr-api
 /e2e/.logs/
 /e2e/test-results/
 /e2e/playwright-report/
+
+# OCI conformance suite output (`just conformance`)
+/api/tests/registry/conformance-results/

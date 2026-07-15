@@ -69,3 +69,102 @@ test *args:
     # get bound to the first runtime and break when subsequent tests on
     # different runtimes try to use them.
     cargo nextest run -p api --test integration-tests --no-fail-fast "$@"
+
+# Run the OCI distribution-spec conformance suite against the registry and fail
+# if it regresses. Boots the (normally #[ignore]d) conformance harness on :3000
+# and points the official conformance image at it. This is the automated form of
+# the manual procedure in api/tests/registry/CONFORMANCE.md.
+conformance:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # Pin the conformance suite; override with OCI_CONFORMANCE_REF to bump it.
+    CONFORMANCE_REF="${OCI_CONFORMANCE_REF:-v1.1.1}"
+    RESULTS_DIR="${OCI_RESULTS_DIR:-$(pwd)/api/tests/registry/conformance-results}"
+    HARNESS_LOG="$(mktemp)"
+
+    docker compose -f api/tests/docker-compose.yaml up -d --wait
+    trap 'kill "${HARNESS_PID:-}" 2>/dev/null || true; docker compose -f api/tests/docker-compose.yaml down -v' EXIT
+
+    echo "Waiting for Mimir to be ready..."
+    until curl -sf http://localhost:18080/ready >/dev/null 2>&1; do sleep 1; done
+
+    [ -f config/api.json ] || cp config/api.sample.json config/api.json
+
+    # Build the official conformance image (pinned) if it isn't already present.
+    if ! docker image inspect oci-conformance:latest >/dev/null 2>&1; then
+        echo "Building oci-conformance:latest from distribution-spec ${CONFORMANCE_REF}..."
+        SPEC_DIR="$(mktemp -d)"
+        git clone --depth 1 --branch "${CONFORMANCE_REF}" \
+            https://github.com/opencontainers/distribution-spec "${SPEC_DIR}/distribution-spec"
+        docker build -t oci-conformance:latest "${SPEC_DIR}/distribution-spec/conformance"
+        rm -rf "${SPEC_DIR}"
+    fi
+
+    # Same host+port env the integration suite uses (see the `test` recipe).
+    export SQLX_OFFLINE=true
+    export PATR_TEST_POSTGRES_HOST=localhost PATR_TEST_POSTGRES_PORT=15432
+    export PATR_TEST_POSTGRES_USER=user PATR_TEST_POSTGRES_PASSWORD=password
+    export PATR_TEST_POSTGRES_DB=api
+    export PATR_TEST_REDIS_HOST=localhost PATR_TEST_REDIS_PORT=16379
+    export PATR_TEST_S3_HOST=localhost PATR_TEST_S3_PORT=19000
+    export PATR_TEST_LOKI_HOST=localhost PATR_TEST_LOKI_PORT=13100
+    export PATR_TEST_MIMIR_HOST=localhost PATR_TEST_MIMIR_PORT=18080
+
+    # Boot the harness: it seeds the two conformance repos + an API token, binds
+    # :3000, prints the OCI_* env, then blocks serving. Capture its stdout so we
+    # can read back the seeded namespaces + token.
+    echo "Booting conformance harness..."
+    cargo test -p api --test integration-tests --quiet -- \
+        --ignored --nocapture registry::conformance_harness::conformance_harness \
+        > "${HARNESS_LOG}" 2>&1 &
+    HARNESS_PID=$!
+
+    # The harness prints OCI_PASSWORD= only after it has bound :3000 and seeded,
+    # so that line is our readiness signal. Bail early if the process dies.
+    echo "Waiting for the harness to come up on :3000..."
+    for _ in $(seq 1 150); do
+        grep -q 'OCI_PASSWORD=' "${HARNESS_LOG}" && break
+        kill -0 "${HARNESS_PID}" 2>/dev/null || { echo "Harness exited early:"; cat "${HARNESS_LOG}"; exit 1; }
+        sleep 2
+    done
+    grep -q 'OCI_PASSWORD=' "${HARNESS_LOG}" || { echo "Harness never became ready:"; cat "${HARNESS_LOG}"; exit 1; }
+
+    # Pull the seeded values out of the (indented) harness banner.
+    banner() { grep "${1}=" "${HARNESS_LOG}" | tail -1 | sed "s/.*${1}=//"; }
+    OCI_NAMESPACE="$(banner OCI_NAMESPACE)"
+    OCI_CROSSMOUNT_NAMESPACE="$(banner OCI_CROSSMOUNT_NAMESPACE)"
+    OCI_PASSWORD="$(banner OCI_PASSWORD)"
+    echo "Harness ready: repo1=${OCI_NAMESPACE} repo2=${OCI_CROSSMOUNT_NAMESPACE}"
+
+    # Run the suite. --network host so the container reaches localhost:3000. The
+    # four OCI_TEST_* flags enable the workflow categories (nothing runs without
+    # them); the three disables are intentional non-features documented in
+    # CONFORMANCE.md (deletes stay on and Skip via the registry's 405 routing).
+    rm -rf "${RESULTS_DIR}"; mkdir -p "${RESULTS_DIR}"
+    docker run --rm --network host \
+        -e OCI_ROOT_URL=http://localhost:3000 \
+        -e OCI_NAMESPACE="${OCI_NAMESPACE}" \
+        -e OCI_CROSSMOUNT_NAMESPACE="${OCI_CROSSMOUNT_NAMESPACE}" \
+        -e OCI_USERNAME=patr -e OCI_PASSWORD="${OCI_PASSWORD}" \
+        -e OCI_TEST_PULL=1 -e OCI_TEST_PUSH=1 \
+        -e OCI_TEST_CONTENT_DISCOVERY=1 -e OCI_TEST_CONTENT_MANAGEMENT=1 \
+        -e OCI_API_REFERRER=false \
+        -e OCI_API_TAGS_LIST=false \
+        -e OCI_DATA_NONDISTRIBUTABLE=false \
+        -e OCI_RESULTS_DIR=/results -v "${RESULTS_DIR}:/results" \
+        oci-conformance:latest
+
+    # Gate on the report as well as the container's exit code: any failures or
+    # errors in the JUnit output is a conformance regression.
+    JUNIT="${RESULTS_DIR}/junit.xml"
+    [ -f "${JUNIT}" ] || { echo "No JUnit report produced at ${JUNIT}"; exit 1; }
+    SUMMARY="$(grep -oE '<testsuite [^>]*' "${JUNIT}" | head -1)"
+    echo "${SUMMARY}"
+    FAILURES="$(printf '%s' "${SUMMARY}" | grep -oE 'failures="[0-9]+"' | grep -oE '[0-9]+')"
+    ERRORS="$(printf '%s' "${SUMMARY}" | grep -oE 'errors="[0-9]+"' | grep -oE '[0-9]+')"
+    if [ "${FAILURES:-1}" != "0" ] || [ "${ERRORS:-1}" != "0" ]; then
+        echo "OCI conformance REGRESSED: ${FAILURES} failures, ${ERRORS} errors (see ${RESULTS_DIR}/report.html)"
+        exit 1
+    fi
+    echo "OCI conformance PASS: ${FAILURES} failures, ${ERRORS} errors."
