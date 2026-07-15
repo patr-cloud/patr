@@ -78,8 +78,13 @@ conformance:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # Pin the conformance suite; override with OCI_CONFORMANCE_REF to bump it.
-    CONFORMANCE_REF="${OCI_CONFORMANCE_REF:-v1.1.1}"
+    # Pin the conformance suite to a distribution-spec commit. NOTE: this must be
+    # a `main` commit, not the v1.1.1 tag — the tagged release ships the old
+    # Ginkgo runner, which panics ("index out of range") against our registry;
+    # the current slog-based runner lives only on main. Override via
+    # OCI_CONFORMANCE_REF to bump it.
+    CONFORMANCE_REF="${OCI_CONFORMANCE_REF:-f037cd9a2c4e6fb0a208642ca3599863c5805c91}"
+    CONFORMANCE_IMAGE="oci-conformance:${CONFORMANCE_REF}"
     RESULTS_DIR="${OCI_RESULTS_DIR:-$(pwd)/api/tests/registry/conformance-results}"
     HARNESS_LOG="$(mktemp)"
 
@@ -91,13 +96,18 @@ conformance:
 
     [ -f config/api.json ] || cp config/api.sample.json config/api.json
 
-    # Build the official conformance image (pinned) if it isn't already present.
-    if ! docker image inspect oci-conformance:latest >/dev/null 2>&1; then
-        echo "Building oci-conformance:latest from distribution-spec ${CONFORMANCE_REF}..."
+    # Build the conformance image (tagged by ref, so bumping the ref rebuilds
+    # rather than silently reusing a stale image) if it isn't already present.
+    if ! docker image inspect "${CONFORMANCE_IMAGE}" >/dev/null 2>&1; then
+        echo "Building ${CONFORMANCE_IMAGE} from distribution-spec ${CONFORMANCE_REF}..."
         SPEC_DIR="$(mktemp -d)"
-        git clone --depth 1 --branch "${CONFORMANCE_REF}" \
-            https://github.com/opencontainers/distribution-spec "${SPEC_DIR}/distribution-spec"
-        docker build -t oci-conformance:latest "${SPEC_DIR}/distribution-spec/conformance"
+        # Fetch the pinned commit shallowly (works for a SHA, unlike --branch).
+        git -C "${SPEC_DIR}" init -q distribution-spec
+        git -C "${SPEC_DIR}/distribution-spec" remote add origin \
+            https://github.com/opencontainers/distribution-spec
+        git -C "${SPEC_DIR}/distribution-spec" fetch -q --depth 1 origin "${CONFORMANCE_REF}"
+        git -C "${SPEC_DIR}/distribution-spec" checkout -q FETCH_HEAD
+        docker build -t "${CONFORMANCE_IMAGE}" "${SPEC_DIR}/distribution-spec/conformance"
         rm -rf "${SPEC_DIR}"
     fi
 
@@ -158,7 +168,7 @@ conformance:
         -e OCI_API_TAGS_LIST=false \
         -e OCI_DATA_NONDISTRIBUTABLE=false \
         -e OCI_RESULTS_DIR=/results -v "${RESULTS_DIR}:/results" \
-        oci-conformance:latest
+        "${CONFORMANCE_IMAGE}"
 
     # Gate on the report as well as the container's exit code: any failures or
     # errors in the JUnit output is a conformance regression.
