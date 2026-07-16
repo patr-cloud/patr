@@ -4,7 +4,13 @@ use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
 use headers::{ContentLength, ContentType};
 use models::{
 	api::workspace::container_registry::*,
-	rbac::{DeploymentPermission, Permission, ResourcePermissionType, WorkspacePermission},
+	rbac::{
+		ContainerRegistryRepositoryPermission,
+		DeploymentPermission,
+		Permission,
+		ResourcePermissionType,
+		WorkspacePermission,
+	},
 };
 
 use super::helpers::*;
@@ -405,4 +411,64 @@ async fn initiate_upload_as_member_without_push_returns_forbidden() {
 		body.contains("push access"),
 		"expected a push-access denial message, got: {body}"
 	);
+}
+
+/// A `docker push` HEADs each blob to check existence before uploading, so a
+/// push-only token must be allowed to run that read. Regression: the pull route
+/// checked only Pull, so a push-only member was denied the existence check and
+/// the push broke. The pull route now accepts push OR pull.
+#[tokio::test]
+async fn head_blob_with_push_only_token_is_allowed() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+
+	// A token that is a workspace member with ONLY push (no pull).
+	let push_perm = setup.get_permission_id(Permission::ContainerRegistryRepository(
+		ContainerRegistryRepositoryPermission::Push,
+	));
+	let push_only = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(
+						push_perm,
+						ResourcePermissionType::Exclude(BTreeSet::new()),
+					)]),
+				},
+			)]),
+		)
+		.await;
+
+	// HEAD a (nonexistent) blob — the existence check a push does first.
+	let digest = sha256_digest(&(0..64u8).collect::<Vec<u8>>());
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<HeadBlobPath> {
+			path: HeadBlobPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+				digest,
+			},
+			query: (),
+			headers: HeadBlobRequestHeaders {
+				authorization: BearerToken::from_str(&push_only.token).unwrap(),
+				range: OptionalHeader::new(None),
+			},
+			body: Body::empty(),
+		})
+		.await;
+
+	// Must not be denied: a push-capable token can check blob existence. The
+	// blob doesn't exist, so 404 is the correct answer.
+	assert_ne!(
+		response.status_code(),
+		StatusCode::FORBIDDEN,
+		"push-only token was denied the blob existence check needed for push"
+	);
+	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }

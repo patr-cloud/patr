@@ -7,7 +7,7 @@
 use headers::{AcceptRanges, ContentLength, ContentType};
 use rustis::commands::GenericCommands as _;
 
-use crate::{redis::keys, routes::registry_patr_cloud::prelude::*};
+use crate::{models::permissions, redis::keys, routes::registry_patr_cloud::prelude::*};
 
 macros::declare_registry_endpoint!(
 	/// HEAD blob endpoint.
@@ -76,18 +76,10 @@ pub async fn head_blob(
 	info!("HEAD blob request");
 
 	// Check that the user can pull from this repository
-	let (repository_id, permission_id) = query!(
+	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid",
-			(
-				SELECT
-					id
-				FROM
-					permission
-				WHERE
-					name = $3
-			) AS "permission_id!: Uuid"
+			id AS "resource_id: Uuid"
 		FROM
 			container_registry_repository
 		WHERE
@@ -97,8 +89,6 @@ pub async fn head_blob(
 		"#,
 		workspace_id as _,
 		&repo_name,
-		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull)
-			.to_string(),
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -110,10 +100,27 @@ pub async fn head_blob(
 			.code(ErrorCode::NameUnknown)
 			.build()
 	})
-	.map(|row| (row.resource_id, row.permission_id))?;
+	.map(|row| row.resource_id)?;
 
+	// A push HEADs each blob to check existence before uploading, so a push-only
+	// token must be allowed to run this read: authorize pull OR push.
+	let pull_permission_id = permissions::get_permission_id(
+		database,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull),
+	)
+	.await;
+	let push_permission_id = permissions::get_permission_id(
+		database,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push),
+	)
+	.await;
 	let authorized =
-		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
+		user_data.has_permission_on_resource(workspace_id, repository_id, pull_permission_id) ||
+			user_data.has_permission_on_resource(
+				workspace_id,
+				repository_id,
+				push_permission_id,
+			);
 
 	if !authorized {
 		debug!("User lacks pull access to repository");
