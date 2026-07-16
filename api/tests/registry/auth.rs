@@ -326,7 +326,7 @@ async fn cross_workspace_push_denied() {
 }
 
 #[tokio::test]
-async fn initiate_upload_without_push_permission_returns_not_found() {
+async fn initiate_upload_as_member_without_push_returns_forbidden() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	// Admin creates workspace + repo
@@ -392,11 +392,17 @@ async fn initiate_upload_without_push_permission_returns_not_found() {
 		})
 		.await;
 
-	// Correct behavior: should be 404 to prevent leaking repo existence
+	// A workspace member who lacks Push gets a clear 403 — the existence-hiding
+	// 404 is reserved for non-members (who can't already list the repo).
+	let status = response.status_code();
+	let body = String::from_utf8_lossy(&response.into_bytes()).to_string();
 	assert_eq!(
-		response.status_code(),
-		StatusCode::NOT_FOUND,
-		"expected 404 for push without permission, got {}",
-		response.status_code()
+		status,
+		StatusCode::FORBIDDEN,
+		"expected 403 for member without push permission, got {status}"
+	);
+	assert!(
+		body.contains("push access"),
+		"expected a push-access denial message, got: {body}"
 	);
 }

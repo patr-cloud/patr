@@ -138,14 +138,26 @@ pub async fn upload_manifest(
 		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
 
 	if !authorized {
-		// Intentionally return a 404 to avoid leaking repository existence
-		debug!("User not authorized to access repository");
-		return RegistryError::builder()
-			.status(StatusCode::NOT_FOUND)
-			.message("Repository not found")
-			.code(ErrorCode::NameUnknown)
-			.build()
-			.into_result();
+		debug!("User lacks push access to repository");
+		// Workspace members get a clear 403 (they can already list repos via the
+		// API, so there's nothing to hide); non-members get a 404 so outsiders
+		// can't enumerate private repositories.
+		return if user_data.permissions.contains_key(&workspace_id) {
+			RegistryError::builder()
+				.status(StatusCode::FORBIDDEN)
+				.message(format!(
+					"You do not have push access to `{workspace_id}/{repo_name}`"
+				))
+				.code(ErrorCode::Denied)
+				.build()
+		} else {
+			RegistryError::builder()
+				.status(StatusCode::NOT_FOUND)
+				.message("Repository not found")
+				.code(ErrorCode::NameUnknown)
+				.build()
+		}
+		.into_result();
 	}
 
 	// Read request body and compute digest
