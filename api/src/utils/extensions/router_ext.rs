@@ -118,7 +118,7 @@ where
 						MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
 						async || {},
 					)
-					.layer(
+					.route_layer(
 						ServiceBuilder::new()
 							.layer(RequestParserLayer::new())
 							.layer(DataStoreConnectionLayer::with_state(state.clone()))
@@ -158,7 +158,7 @@ where
 						MethodFilter::try_from(<E as ApiEndpoint>::METHOD).unwrap(),
 						async || {},
 					)
-					.layer(
+					.route_layer(
 						ServiceBuilder::new()
 							.option_layer(
 								if allowed_client_type == ClientType::WebDashboard {
@@ -201,7 +201,7 @@ where
 					MethodFilter::try_from(<E as RegistryEndpoint>::METHOD).unwrap(),
 					async || {},
 				)
-				.layer(
+				.route_layer(
 					ServiceBuilder::new()
 						.layer(RegistryRequestParserLayer::new())
 						.layer(RegistryDataStoreConnectionLayer::with_state(state.clone()))

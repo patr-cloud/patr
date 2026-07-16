@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, ErrorBoundary, For, Show, Suspense } from "solid-js";
+import { FiSettings } from "solid-icons/fi";
 import {
 	Button,
 	ButtonVariant,
@@ -88,21 +89,32 @@ const ListContainerRepositories = () => {
 					]}
 					subText="Store and manage container images for your deployments"
 					actions={() => (
-						<Show
-							when={
-								isAllowedCreate() &&
-								repositoriesQuery.isSuccess &&
-								(repositoriesQuery.data?.repositories?.length ?? 0) > 0
-							}
-						>
+						<div class="flex items-center justify-end gap-3">
 							<Link
-								href="/container-registry/new"
-								buttonVariant={ButtonVariant.Outlined}
+								href="/container-registry/settings"
+								buttonVariant={ButtonVariant.Plain}
 								external={false}
+								class="flex items-center gap-1"
 							>
-								Create Repository
+								<FiSettings size={16} />
+								Settings
 							</Link>
-						</Show>
+							<Show
+								when={
+									isAllowedCreate() &&
+									repositoriesQuery.isSuccess &&
+									(repositoriesQuery.data?.repositories?.length ?? 0) > 0
+								}
+							>
+								<Link
+									href="/container-registry/new"
+									buttonVariant={ButtonVariant.Outlined}
+									external={false}
+								>
+									Create Repository
+								</Link>
+							</Show>
+						</div>
 					)}
 				/>
 

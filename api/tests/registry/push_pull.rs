@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
+use api::routes::registry_patr_cloud::handlers::manifest::*;
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::container_registry::*,
@@ -9,91 +9,6 @@ use models::{
 
 use super::helpers::*;
 use crate::prelude::*;
-
-#[tokio::test]
-async fn push_and_pull_image() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let repo = setup
-		.create_test_container_repo(&user.access_token, workspace.id)
-		.await;
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
-	let image = setup
-		.push_test_image(&api_token.token, &workspace.id, &repo.name, "latest")
-		.await;
-
-	// Pull manifest back
-	let response = setup
-		.make_registry_call(RegistryUnprocessedApiRequest::<GetManifestPath> {
-			path: GetManifestPath {
-				workspace_id: workspace.id,
-				repo_name: repo.name.clone(),
-				reference: "latest".to_string(),
-			},
-			query: (),
-			headers: GetManifestRequestHeaders {
-				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-			},
-			body: Body::empty(),
-		})
-		.await;
-
-	assert_eq!(response.status_code(), StatusCode::OK);
-	assert_eq!(
-		response.into_bytes().as_ref(),
-		image.manifest_bytes.as_slice()
-	);
-
-	// Pull layer blob back
-	let response = setup
-		.make_registry_call(RegistryUnprocessedApiRequest::<GetBlobPath> {
-			path: GetBlobPath {
-				workspace_id: workspace.id,
-				repo_name: repo.name.clone(),
-				digest: image.layer_digest.clone(),
-			},
-			query: (),
-			headers: GetBlobRequestHeaders {
-				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: OptionalHeader::new(None),
-			},
-			body: Body::empty(),
-		})
-		.await;
-
-	assert_eq!(response.status_code(), StatusCode::OK);
-	assert_eq!(response.into_bytes().as_ref(), image.layer_bytes.as_slice());
-
-	// Pull config blob back
-	let response = setup
-		.make_registry_call(RegistryUnprocessedApiRequest::<GetBlobPath> {
-			path: GetBlobPath {
-				workspace_id: workspace.id,
-				repo_name: repo.name.clone(),
-				digest: image.config_digest.clone(),
-			},
-			query: (),
-			headers: GetBlobRequestHeaders {
-				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				range: OptionalHeader::new(None),
-			},
-			body: Body::empty(),
-		})
-		.await;
-
-	assert_eq!(response.status_code(), StatusCode::OK);
-	assert_eq!(
-		response.into_bytes().as_ref(),
-		image.config_bytes.as_slice()
-	);
-}
 
 #[tokio::test]
 async fn push_image_shows_in_api_manifests() {
@@ -440,6 +355,7 @@ async fn registry_delete_manifest_returns_405() {
 	let response = setup
 		.make_registry_call(RegistryUnprocessedApiRequest::<DeleteManifestPath> {
 			path: DeleteManifestPath {
+				workspace_id: workspace.id,
 				repo_name: repo.name.clone(),
 				reference: image.manifest_digest.clone(),
 			},

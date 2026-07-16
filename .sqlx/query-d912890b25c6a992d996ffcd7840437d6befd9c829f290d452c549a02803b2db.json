@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT repository_manifest.manifest_digest AS \"digest!\", manifest.kind AS \"kind!: ManifestKind\", manifest.artifact_type AS \"artifact_type\", repository_manifest.created_at AS \"created!\", COALESCE(platform_agg.platforms, '[]'::JSONB) AS \"platforms!: sqlx::types::Json<Vec<Platform>>\" FROM container_registry_repository_manifest repository_manifest INNER JOIN container_registry_manifest manifest ON repository_manifest.manifest_digest = manifest.digest LEFT JOIN LATERAL (SELECT JSONB_AGG(JSONB_BUILD_OBJECT('os', platform.os, 'architecture', platform.architecture, 'variant', platform.variant, 'osVersion', platform.os_version)) AS platforms FROM (SELECT image.os, image.architecture, image.variant, image.os_version FROM container_registry_manifest_image image WHERE image.manifest_digest = manifest.digest UNION ALL SELECT reference.os, reference.architecture, reference.variant, reference.os_version FROM container_registry_manifest_reference reference WHERE reference.manifest_digest = manifest.digest AND reference.os IS NOT NULL AND reference.architecture IS NOT NULL) platform) platform_agg ON TRUE WHERE repository_manifest.repository_id = $1 AND (repository_manifest.manifest_digest = $2 OR repository_manifest.manifest_digest = (SELECT manifest_digest FROM container_registry_repository_tag WHERE repository_id = $1 AND name = $2)) ORDER BY CASE WHEN repository_manifest.manifest_digest = $2 THEN 0 ELSE 1 END LIMIT 1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "digest!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "kind!: ManifestKind",
+        "type_info": {
+          "Custom": {
+            "name": "container_registry_manifest_kind",
+            "kind": {
+              "Enum": [
+                "image",
+                "index",
+                "artifact"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "artifact_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "platforms!: sqlx::types::Json<Vec<Platform>>",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      null
+    ]
+  },
+  "hash": "d912890b25c6a992d996ffcd7840437d6befd9c829f290d452c549a02803b2db"
+}

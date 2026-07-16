@@ -30,18 +30,57 @@ pub async fn get_repository_manifest_details(
 ) -> Result<AppResponse<GetContainerRepositoryManifestDetailsRequest>, ErrorType> {
 	info!("Starting: Get manifest details");
 
-	let (digest, platform, manifest_created) = query!(
+	let manifest = query!(
 		r#"
 		SELECT
-			repository_manifest.manifest_digest,
-			COALESCE(manifest.platform, 'unknown') AS "platform!",
-			repository_manifest.created_at
+			repository_manifest.manifest_digest AS "digest!",
+			manifest.kind AS "kind!: ManifestKind",
+			manifest.artifact_type AS "artifact_type",
+			repository_manifest.created_at AS "created!",
+			COALESCE(platform_agg.platforms, '[]'::JSONB)
+				AS "platforms!: sqlx::types::Json<Vec<Platform>>"
 		FROM
 			container_registry_repository_manifest repository_manifest
 		INNER JOIN
 			container_registry_manifest manifest
 		ON
 			repository_manifest.manifest_digest = manifest.digest
+		LEFT JOIN LATERAL (
+			SELECT
+				JSONB_AGG(
+					JSONB_BUILD_OBJECT(
+						'os', platform.os,
+						'architecture', platform.architecture,
+						'variant', platform.variant,
+						'osVersion', platform.os_version
+					)
+				) AS platforms
+			FROM (
+				SELECT
+					image.os,
+					image.architecture,
+					image.variant,
+					image.os_version
+				FROM
+					container_registry_manifest_image image
+				WHERE
+					image.manifest_digest = manifest.digest
+				UNION ALL
+				SELECT
+					reference.os,
+					reference.architecture,
+					reference.variant,
+					reference.os_version
+				FROM
+					container_registry_manifest_reference reference
+				WHERE
+					reference.manifest_digest = manifest.digest AND
+					reference.os IS NOT NULL AND
+					reference.architecture IS NOT NULL
+			) platform
+		) platform_agg
+		ON
+			TRUE
 		WHERE
 			repository_manifest.repository_id = $1
 			AND (
@@ -68,14 +107,9 @@ pub async fn get_repository_manifest_details(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|manifest| {
-		(
-			manifest.manifest_digest,
-			manifest.platform,
-			manifest.created_at,
-		)
-	})
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
+
+	let digest = manifest.digest;
 
 	let tags = query!(
 		r#"
@@ -108,20 +142,20 @@ pub async fn get_repository_manifest_details(
 		FROM
 			container_registry_manifest manifest
 		LEFT JOIN
+			container_registry_manifest_image image
+		ON
+			image.manifest_digest = manifest.digest
+		LEFT JOIN
 			container_registry_blob config_blob
 		ON
-			config_blob.digest = manifest.config_blob_digest
+			config_blob.digest = image.config_blob_digest
 		LEFT JOIN LATERAL (
 			SELECT
-				COALESCE(SUM(layer_blob.size), 0)::BIGINT AS total_size
-			FROM
-				container_registry_manifest_blob manifest_blob
-			INNER JOIN
-				container_registry_blob layer_blob
-			ON
-				layer_blob.digest = manifest_blob.blob_digest
-			WHERE
-				manifest_blob.manifest_digest = manifest.digest
+				COALESCE(SUM(layer.size), 0)::BIGINT AS total_size
+				FROM
+					container_registry_manifest_layer layer
+				WHERE
+					layer.manifest_digest = manifest.digest
 		) layer_size
 		ON
 			TRUE
@@ -137,14 +171,28 @@ pub async fn get_repository_manifest_details(
 	let referenced_manifests = query!(
 		r#"
 		SELECT
-			referenced_manifest.digest AS "digest",
-			COALESCE(referenced_manifest.platform, 'unknown') AS "platform!",
+			referenced_manifest.digest AS "digest!",
+			referenced_manifest.kind AS "kind!: ManifestKind",
+			referenced_manifest.artifact_type AS "artifact_type",
 			(
 				referenced_manifest.size +
 				COALESCE(config_blob.size, 0) +
 				COALESCE(layer_size.total_size, 0)
 			)::BIGINT AS "size!",
 			repository_manifest.created_at AS "created",
+			CASE
+				WHEN manifest_reference.os IS NOT NULL AND
+					manifest_reference.architecture IS NOT NULL
+				THEN JSONB_BUILD_ARRAY(
+					JSONB_BUILD_OBJECT(
+						'os', manifest_reference.os,
+						'architecture', manifest_reference.architecture,
+						'variant', manifest_reference.variant,
+						'osVersion', manifest_reference.os_version
+					)
+				)
+				ELSE '[]'::JSONB
+			END AS "platforms!: sqlx::types::Json<Vec<Platform>>",
 			COALESCE(
 				(
 					SELECT
@@ -169,25 +217,25 @@ pub async fn get_repository_manifest_details(
 			repository_manifest.repository_id = $1 AND
 			repository_manifest.manifest_digest = referenced_manifest.digest
 		LEFT JOIN
+			container_registry_manifest_image ref_image
+		ON
+			ref_image.manifest_digest = referenced_manifest.digest
+		LEFT JOIN
 			container_registry_blob config_blob
 		ON
-			config_blob.digest = referenced_manifest.config_blob_digest
+			config_blob.digest = ref_image.config_blob_digest
 		LEFT JOIN LATERAL (
 			SELECT
-				COALESCE(SUM(layer_blob.size), 0)::BIGINT AS total_size
-			FROM
-				container_registry_manifest_blob manifest_blob
-			INNER JOIN
-				container_registry_blob layer_blob
-			ON
-				layer_blob.digest = manifest_blob.blob_digest
-			WHERE
-				manifest_blob.manifest_digest = referenced_manifest.digest
+				COALESCE(SUM(layer.size), 0)::BIGINT AS total_size
+				FROM
+					container_registry_manifest_layer layer
+				WHERE
+					layer.manifest_digest = referenced_manifest.digest
 		) layer_size
 		ON
 			TRUE
 		WHERE
-			manifest_reference.digest = $2
+			manifest_reference.manifest_digest = $2
 		ORDER BY
 			repository_manifest.created_at DESC;
 		"#,
@@ -200,9 +248,36 @@ pub async fn get_repository_manifest_details(
 	.map(|manifest| ContainerRepositoryManifestInfo {
 		digest: manifest.digest,
 		size: manifest.size as u64,
-		platform: manifest.platform,
+		kind: manifest.kind,
+		platforms: manifest.platforms.0,
+		artifact_type: manifest.artifact_type,
 		created: manifest.created,
 		tags: manifest.tags,
+	})
+	.collect();
+
+	let layers = query!(
+		r#"
+		SELECT
+			blob_digest AS "digest!",
+			size AS "size!",
+			media_type AS "media_type!"
+		FROM
+			container_registry_manifest_layer
+		WHERE
+			manifest_digest = $1
+		ORDER BY
+			ordinal ASC;
+		"#,
+		digest as _,
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.map(|layer| ContainerRepositoryManifestLayer {
+		digest: layer.digest,
+		size: layer.size as u64,
+		media_type: layer.media_type,
 	})
 	.collect();
 
@@ -211,11 +286,14 @@ pub async fn get_repository_manifest_details(
 			manifest_details: ContainerRepositoryManifestInfo {
 				digest,
 				size,
-				created: manifest_created,
+				kind: manifest.kind,
+				platforms: manifest.platforms.0,
+				artifact_type: manifest.artifact_type,
+				created: manifest.created,
 				tags,
-				platform,
 			},
 			referenced_manifests,
+			layers,
 		})
 		.headers(())
 		.status_code(StatusCode::OK)

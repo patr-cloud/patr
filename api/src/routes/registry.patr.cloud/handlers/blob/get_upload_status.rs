@@ -6,6 +6,7 @@
 use std::str::FromStr;
 
 use axum::body::Body;
+use base64::prelude::*;
 use rustis::commands::StringCommands;
 
 use crate::{models::permissions, redis::keys, routes::registry_patr_cloud::prelude::*};
@@ -23,6 +24,13 @@ macros::declare_registry_endpoint!(
 		pub repo_name: String,
 		/// The upload session UUID
 		pub session_id: Uuid,
+	},
+	query = {
+		/// Ignored. A client recovering from an out-of-order chunk may reuse the
+		/// URL it built for a `PUT` — which carries a `?digest=` — for the
+		/// following status `GET`. Accepting (and ignoring) it keeps the strict
+		/// query parser from rejecting an otherwise valid status request.
+		pub digest: Option<String>,
 	},
 	request_headers = {
 		/// The authorization header
@@ -52,7 +60,7 @@ pub async fn get_upload_status(
 						repo_name,
 						session_id,
 					},
-				query: (),
+				query: GetBlobUploadStatusQueryProcessed { digest: _ },
 				headers: GetBlobUploadStatusRequestHeaders { authorization: _ },
 				body: _,
 			},
@@ -103,14 +111,26 @@ pub async fn get_upload_status(
 		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
 
 	if !authorized {
-		// Intentionally return a 404 to avoid leaking repository existence
-		debug!("User not authorized to access repository");
-		return RegistryError::builder()
-			.status(StatusCode::NOT_FOUND)
-			.message("Repository not found")
-			.code(ErrorCode::NameUnknown)
-			.build()
-			.into_result();
+		debug!("User lacks push access to repository");
+		// Workspace members get a clear 403 (they can already list repos via the
+		// API, so there's nothing to hide); non-members get a 404 so outsiders
+		// can't enumerate private repositories.
+		return if user_data.permissions.contains_key(&workspace_id) {
+			RegistryError::builder()
+				.status(StatusCode::FORBIDDEN)
+				.message(format!(
+					"You do not have push access to `{workspace_id}/{repo_name}`"
+				))
+				.code(ErrorCode::Denied)
+				.build()
+		} else {
+			RegistryError::builder()
+				.status(StatusCode::NOT_FOUND)
+				.message("Repository not found")
+				.code(ErrorCode::NameUnknown)
+				.build()
+		}
+		.into_result();
 	}
 
 	let session = serde_json::from_str::<S3UploadSession>(
@@ -119,11 +139,34 @@ pub async fn get_upload_status(
 			.await?,
 	)?;
 
+	// Bytes received so far = what's been flushed to S3 (`total_bytes_uploaded`)
+	// plus any sub-threshold tail still sitting in the pending buffer. For a
+	// small blob nothing is ever flushed, so the pending buffer holds everything
+	// — reporting only `total_bytes_uploaded` here would wrongly say `0-0`.
+	let pending_size = redis
+		.get::<Option<String>>(keys::registry_blob_upload_pending_buffer(&session_id))
+		.await?
+		.map(|encoded| {
+			BASE64_STANDARD
+				.decode(&encoded)
+				.map(|bytes| bytes.len() as u64)
+		})
+		.transpose()
+		.map_err(|err| {
+			error!("Failed to decode pending buffer from Redis: {err}");
+			RegistryError::server_error(
+				ErrorCode::BlobUploadInvalid,
+				"Corrupted pending upload buffer",
+			)
+		})?
+		.unwrap_or_default();
+	let received_so_far = session.total_bytes_uploaded + pending_size;
+
 	// Return 204 No Content with Range and Location headers
 	RegistryResponse::builder()
 		.status_code(StatusCode::NO_CONTENT)
 		.headers(GetBlobUploadStatusResponseHeaders {
-			range: Range::new(0..session.total_bytes_uploaded).map_err(|err| {
+			range: Range::new(0..received_so_far).map_err(|err| {
 				error!("Invalid range error: {}", err);
 				RegistryError::builder()
 					.code(ErrorCode::SizeInvalid)

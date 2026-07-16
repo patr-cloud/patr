@@ -5,3 +5,4 @@ mod m002_per_url_custom_hostnames;
 mod m003_github_sso;
 mod m004_sign_up_attempts;
 mod m005_allow_null_manifest_config_and_platform;
+mod m006_normalize_registry_schema;

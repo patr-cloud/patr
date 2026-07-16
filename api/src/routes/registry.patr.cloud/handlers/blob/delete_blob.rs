@@ -13,13 +13,15 @@ macros::declare_registry_endpoint!(
 	/// blob deletions are handled through the Patr API directly. This
 	/// endpoint will return 405 Method Not Allowed.
 	DeleteBlob,
-	DELETE "/v2/{repo_name}/blobs/{reference}" {
+	DELETE "/v2/{workspace_id}/{repo_name}/blobs/{digest}" {
+		/// The workspace ID
+		pub workspace_id: Uuid,
 		/// The repository name
-		#[preprocess(length(max = 255))]
+		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
 		pub repo_name: String,
-		/// The blob reference (tag name or digest)
-		#[preprocess(regex = constants::REGISTRY_TAG_OR_DIGEST_REGEX)]
-		pub reference: String,
+		/// The blob digest
+		#[preprocess(regex = constants::REGISTRY_DIGEST_REGEX)]
+		pub digest: String,
 	},
 	request_headers = {
 		/// Authorization header with Bearer token
@@ -36,10 +38,12 @@ pub async fn delete_blob(
 	AuthenticatedRegistryAppRequest {
 		request:
 			RegistryProcessedApiRequest {
-				path: DeleteBlobPathProcessed {
-					repo_name: _,
-					reference: _,
-				},
+				path:
+					DeleteBlobPathProcessed {
+						workspace_id: _,
+						repo_name: _,
+						digest: _,
+					},
 				query: (),
 				headers: DeleteBlobRequestHeaders { authorization: _ },
 				body: _,

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO container_registry_manifest_reference(manifest_digest, referenced_digest, ordinal, media_type, size, os, architecture, variant, os_version) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (manifest_digest, ordinal) DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "201d99c38460bdc6bdaf7dc3d69ecfa226422471cac55da259605359c2192795"
+}

@@ -157,7 +157,7 @@ pub(super) async fn execute(
 			[
 				manifest.digest.clone(),
 				format_size(manifest.size),
-				manifest.platform.clone(),
+				manifest.platform_label(),
 				manifest.tags.join(", "),
 				manifest.created.to_string(),
 			]

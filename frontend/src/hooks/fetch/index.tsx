@@ -11,6 +11,9 @@ import {
 	useContainerRegistriesQuery,
 	useContainerRegistryInfoQuery,
 	useContainerManifestsQuery,
+	useContainerManifestDetailsQuery,
+	useContainerExposedPortsQuery,
+	useContainerRegistryUsageQuery,
 	useContainerTagsQuery,
 } from "./container-registry";
 import { useDomainsQuery, useDomainInfoQuery } from "./domains";
@@ -42,6 +45,9 @@ export {
 	useContainerRegistriesQuery,
 	useContainerRegistryInfoQuery,
 	useContainerManifestsQuery,
+	useContainerManifestDetailsQuery,
+	useContainerExposedPortsQuery,
+	useContainerRegistryUsageQuery,
 	useContainerTagsQuery,
 	useDomainsQuery,
 	useDomainInfoQuery,

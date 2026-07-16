@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_manifest_layer ADD CONSTRAINT container_registry_manifest_layer_pk PRIMARY KEY(manifest_digest, ordinal), ADD CONSTRAINT container_registry_manifest_layer_chk_kind CHECK(manifest_kind IN ('image', 'artifact')), ADD CONSTRAINT container_registry_manifest_layer_fk_manifest FOREIGN KEY(manifest_digest, manifest_kind) REFERENCES container_registry_manifest(digest, kind), ADD CONSTRAINT container_registry_manifest_layer_fk_blob_digest FOREIGN KEY(blob_digest) REFERENCES container_registry_blob(digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "54c2bf2761a14b94c98310543fe77f23dfb963617b640eab598c2cc57409f604"
+}

@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT referenced_manifest.digest AS \"digest!\", referenced_manifest.kind AS \"kind!: ManifestKind\", referenced_manifest.artifact_type AS \"artifact_type\", (referenced_manifest.size + COALESCE(config_blob.size, 0) + COALESCE(layer_size.total_size, 0))::BIGINT AS \"size!\", repository_manifest.created_at AS \"created\", CASE WHEN manifest_reference.os IS NOT NULL AND manifest_reference.architecture IS NOT NULL THEN JSONB_BUILD_ARRAY(JSONB_BUILD_OBJECT('os', manifest_reference.os, 'architecture', manifest_reference.architecture, 'variant', manifest_reference.variant, 'osVersion', manifest_reference.os_version)) ELSE '[]'::JSONB END AS \"platforms!: sqlx::types::Json<Vec<Platform>>\", COALESCE((SELECT ARRAY_AGG(tag.name ORDER BY tag.last_updated DESC) FROM container_registry_repository_tag tag WHERE tag.repository_id = $1 AND tag.manifest_digest = referenced_manifest.digest), ARRAY[]::TEXT[]) AS \"tags!: Vec<String>\" FROM container_registry_manifest_reference manifest_reference INNER JOIN container_registry_manifest referenced_manifest ON referenced_manifest.digest = manifest_reference.referenced_digest LEFT JOIN container_registry_repository_manifest repository_manifest ON repository_manifest.repository_id = $1 AND repository_manifest.manifest_digest = referenced_manifest.digest LEFT JOIN container_registry_manifest_image ref_image ON ref_image.manifest_digest = referenced_manifest.digest LEFT JOIN container_registry_blob config_blob ON config_blob.digest = ref_image.config_blob_digest LEFT JOIN LATERAL (SELECT COALESCE(SUM(layer.size), 0)::BIGINT AS total_size FROM container_registry_manifest_layer layer WHERE layer.manifest_digest = referenced_manifest.digest) layer_size ON TRUE WHERE manifest_reference.manifest_digest = $2 ORDER BY repository_manifest.created_at DESC;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "digest!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "kind!: ManifestKind",
+        "type_info": {
+          "Custom": {
+            "name": "container_registry_manifest_kind",
+            "kind": {
+              "Enum": [
+                "image",
+                "index",
+                "artifact"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "artifact_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "size!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "platforms!: sqlx::types::Json<Vec<Platform>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "tags!: Vec<String>",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "62d9d96b168d29845cfb55d96508151191c51fbbcc1a674ca686b627577e21f2"
+}

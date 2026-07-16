@@ -14,12 +14,12 @@ use aws_sdk_s3::{
 use axum::body::{Body, Bytes};
 use base64::prelude::*;
 use futures::{StreamExt, TryStreamExt};
-use headers::{ContentLength, ContentRange, ContentType};
+use headers::{ContentLength, ContentType};
 use http_body::Body as _;
-use models::utils::{DockerUploadUuid, Range};
+use models::utils::{ContentRange, DockerUploadUuid, Range};
 use rustis::commands::{GenericCommands, StringCommands};
 use sha2::{
-	Digest,
+	Digest as _,
 	Sha256,
 	digest::common::hazmat::{SerializableState, SerializedState},
 };
@@ -139,14 +139,26 @@ pub async fn upload_chunk(
 		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
 
 	if !authorized {
-		// Intentionally return a 404 to avoid leaking repository existence
-		debug!("User not authorized to access repository");
-		return RegistryError::builder()
-			.status(StatusCode::NOT_FOUND)
-			.message("Repository not found")
-			.code(ErrorCode::NameUnknown)
-			.build()
-			.into_result();
+		debug!("User lacks push access to repository");
+		// Workspace members get a clear 403 (they can already list repos via the
+		// API, so there's nothing to hide); non-members get a 404 so outsiders
+		// can't enumerate private repositories.
+		return if user_data.permissions.contains_key(&workspace_id) {
+			RegistryError::builder()
+				.status(StatusCode::FORBIDDEN)
+				.message(format!(
+					"You do not have push access to `{workspace_id}/{repo_name}`"
+				))
+				.code(ErrorCode::Denied)
+				.build()
+		} else {
+			RegistryError::builder()
+				.status(StatusCode::NOT_FOUND)
+				.message("Repository not found")
+				.code(ErrorCode::NameUnknown)
+				.build()
+		}
+		.into_result();
 	}
 
 	let session = serde_json::from_str::<S3UploadSession>(
@@ -232,23 +244,19 @@ pub async fn upload_chunk(
 		})
 		.transpose()?
 		.unwrap_or_default();
-	// Clean up the pending buffer in Redis since we're now processing it (if it
-	// exists) If something goes wrong during processing, the client can re-upload
-	// the blob
-	let _ = redis.del(&pending_key).await;
 
 	let pending_size_before = buffer.len() as u64;
 
 	if let Some(content_range) = content_range.into_option() {
-		let start_range = content_range
-			.bytes_range()
-			.map(|range| range.0)
-			.unwrap_or_default();
+		let start_range = content_range.start().unwrap_or_default();
 		let received_so_far = session.total_bytes_uploaded + pending_size_before;
 		if start_range != received_so_far {
 			warn!(
 				"Content-Range start is {start_range} but last byte position is {received_so_far}"
 			);
+			// Reject WITHOUT clearing the pending buffer below — an out-of-order
+			// chunk must leave the already-received bytes intact so the client
+			// can query the correct range and resume.
 			return RegistryError::builder()
 				.code(ErrorCode::BlobUploadInvalid)
 				.message("Content-Range start does not match expected byte position")
@@ -257,6 +265,12 @@ pub async fn upload_chunk(
 				.into_result();
 		}
 	}
+
+	// The chunk is in order — the loaded pending buffer is now being folded into
+	// this request, so clear it from Redis. It is re-stored below if this
+	// request again ends on a sub-threshold tail. (Deleting only after the
+	// Content-Range check keeps an out-of-order chunk from destroying it.)
+	let _ = redis.del(&pending_key).await;
 
 	let hasher = Sha256::deserialize(&SerializedState::<Sha256>::from_iter(
 		hex::decode(&session.hasher_state).map_err(|err| {

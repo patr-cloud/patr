@@ -61,11 +61,26 @@ const Link = (rawProps: ParentProps<LinkProps>) => {
 		return `flex items-center ${variant()} justify-center ${get(props.class) ?? ""}`;
 	};
 
+	// Split an href like "/path?tab=versions" into a clean pathname + a parsed
+	// search object. TanStack's `to` is a pathname only — leaving the query in it
+	// collides with the target route's `validateSearch` defaults and produces
+	// duplicate params (e.g. `?tab=versions&tab=`), so the search must be passed
+	// separately.
+	const target = () => {
+		const [path, query] = props.href.split("?");
+		if (!query) return { to: path, search: undefined };
+		const search: Record<string, string> = {};
+		new URLSearchParams(query).forEach((value, key) => {
+			search[key] = value;
+		});
+		return { to: path, search };
+	};
+
 	return (
 		<Show
 			when={props.external}
 			fallback={
-				<RouterLink target={props.target} to={props.href} class={derivedClass()}>
+				<RouterLink target={props.target} to={target().to} search={target().search} class={derivedClass()}>
 					{props.children}
 				</RouterLink>
 			}

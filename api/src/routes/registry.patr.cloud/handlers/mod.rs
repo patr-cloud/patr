@@ -16,6 +16,8 @@ use crate::prelude::*;
 pub mod blob;
 /// Manifest handlers for the OCI registry.
 pub mod manifest;
+/// Tags-listing handlers for the OCI registry.
+pub mod tags;
 /// Version check handler for the OCI registry.
 mod version_check;
 
@@ -43,6 +45,7 @@ pub use self::version_check::*;
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()
 		.mount_registry_endpoint(version_check, state)
+		.merge(tags::setup_routes(state).await)
 		.merge(manifest::setup_routes(state).await)
 		.merge(blob::setup_routes(state).await)
 }

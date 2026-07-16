@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE CONTAINER_REGISTRY_MANIFEST_KIND AS ENUM('image', /* A runnable single-platform image */ 'index', /* A multi-arch index / manifest list referencing child images */ 'artifact' /* An OCI artifact (SBOM, signature, …); also the catch-all */);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "58f65f2a8d37e2a4ab0adec3988bbc6d12cdf7974e528a1c6fa264745a907371"
+}

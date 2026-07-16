@@ -158,6 +158,39 @@ jobs:
 
       - run: just --justfile api/tests/Justfile test
 
+  conformance-tests:
+    name: OCI Conformance
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@nightly
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Setup frontend public folder
+        run: mkdir -p frontend/.output/public
+
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      # Boots the registry conformance harness and runs the official OCI
+      # distribution-spec suite against it; fails on any conformance regression.
+      - run: just --justfile api/tests/Justfile conformance
+
+      - name: Upload conformance report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oci-conformance-report
+          path: api/tests/registry/conformance-results
+          retention-days: 7
+
   ui-tests:
     name: UI Tests (e2e)
     needs: build
@@ -366,6 +399,7 @@ jobs:
         unit-tests,
         build,
         integration-tests,
+        conformance-tests,
         cli-check,
         ingress-check,
         ui-tests,
@@ -380,6 +414,7 @@ jobs:
              [ "${{ needs.unit-tests.result }}" != "success" ] || \
              [ "${{ needs.build.result }}" != "success" ] || \
              [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.conformance-tests.result }}" != "success" ] || \
              [ "${{ needs.cli-check.result }}" != "success" ] || \
              [ "${{ needs.ingress-check.result }}" != "success" ] || \
              [ "${{ needs.ui-tests.result }}" != "success" ] || \
@@ -388,6 +423,7 @@ jobs:
             echo "unit-tests:        ${{ needs.unit-tests.result }}"
             echo "build:             ${{ needs.build.result }}"
             echo "integration-tests: ${{ needs.integration-tests.result }}"
+            echo "conformance-tests: ${{ needs.conformance-tests.result }}"
             echo "cli-check:         ${{ needs.cli-check.result }}"
             echo "ingress-check:     ${{ needs.ingress-check.result }}"
             echo "ui-tests:          ${{ needs.ui-tests.result }}"

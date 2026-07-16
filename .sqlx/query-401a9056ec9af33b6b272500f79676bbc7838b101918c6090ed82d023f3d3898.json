@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH RECURSIVE manifest_set AS (SELECT manifest_digest AS digest FROM container_registry_repository_manifest WHERE repository_id = $1 UNION SELECT manifest_reference.referenced_digest AS digest FROM container_registry_manifest_reference manifest_reference INNER JOIN manifest_set ON manifest_set.digest = manifest_reference.manifest_digest), manifest_size AS (SELECT COALESCE(SUM(manifest.size), 0)::BIGINT AS size FROM container_registry_manifest manifest INNER JOIN manifest_set ON manifest_set.digest = manifest.digest), blob_set AS (SELECT image.config_blob_digest AS digest FROM container_registry_manifest_image image INNER JOIN manifest_set ON manifest_set.digest = image.manifest_digest UNION SELECT layer.blob_digest AS digest FROM container_registry_manifest_layer layer INNER JOIN manifest_set ON manifest_set.digest = layer.manifest_digest), blob_size AS (SELECT COALESCE(SUM(blob.size), 0)::BIGINT AS size FROM container_registry_blob blob INNER JOIN blob_set ON blob_set.digest = blob.digest) SELECT (manifest_size.size + blob_size.size)::BIGINT AS \"size!\" FROM manifest_size, blob_size;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "size!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "401a9056ec9af33b6b272500f79676bbc7838b101918c6090ed82d023f3d3898"
+}

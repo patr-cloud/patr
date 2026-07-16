@@ -80,6 +80,13 @@ impl TestSetup {
 		&self.state.database
 	}
 
+	/// The shared `AppState`. Exposed so the conformance harness can build a
+	/// combined router (registry + docker-login) bound to a real port that
+	/// reads the same DB/redis/S3 the seeding helpers write to.
+	pub(crate) fn state(&self) -> &AppState {
+		&self.state
+	}
+
 	/// Make a typed API call using `ApiRequest<E>`.
 	///
 	/// All headers (including `authorization` and `user_agent`) are provided

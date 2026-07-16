@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT blob_digest AS \"digest!\", size AS \"size!\", media_type AS \"media_type!\" FROM container_registry_manifest_layer WHERE manifest_digest = $1 ORDER BY ordinal ASC;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "digest!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "size!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "media_type!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "92f23af428114b41acc628814aa0e89d383ac0afffe030d6d5fd9f87628eb093"
+}

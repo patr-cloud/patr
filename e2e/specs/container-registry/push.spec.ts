@@ -179,7 +179,11 @@ test.describe('@docker container registry push/pull', () => {
     });
     expect(ghost.ok).toBe(false);
 
-    // Pull-only token cannot push (existence hidden → push fails).
+    // Pull-only token is a workspace member but lacks push → the registry's
+    // full "You do not have push access to `<ns>`" message reaches the user.
+    // Assert on our message, not docker's error prefix — the prefix varies by
+    // version ("denied:" up to 29.4, "error from registry:" on 29.6) but our
+    // message is surfaced verbatim by all of them.
     const repo = await createContainerRepo(api, user, user.workspaceId);
     const pullToken = await scopedToken(api, user, 'containerRegistryRepository::pull');
     const pushWithPull = await tryPushImage({
@@ -190,6 +194,8 @@ test.describe('@docker container registry push/pull', () => {
       apiToken: pullToken,
     });
     expect(pushWithPull.ok).toBe(false);
+    const denial = `You do not have push access to \`${user.workspaceId}/${repo.name}\``;
+    expect(pushWithPull.stderr.toLowerCase()).toContain(denial.toLowerCase());
 
     // A second workspace's repo id is not pushable with the first user's token
     // under the first workspace path; pushing to the other workspace path fails.
@@ -256,8 +262,13 @@ test.describe('@docker container registry images tab [UI]', () => {
     try {
       await openRegistryDetail(page, repo.id, 'images');
       await expect(imagesTab(page)).toBeVisible();
+      // The tag-centric list shows the pushed tag.
       await expect(page.getByText('release', { exact: false }).first()).toBeVisible();
-      // The digest is rendered (sha256-prefixed) in the manifest row.
+      // The digest lives on the image detail page (the list is tag-centric); it
+      // accepts a tag as the reference.
+      await page.goto(`/container-registry/${repo.id}/manifest/release`, {
+        waitUntil: 'domcontentloaded',
+      });
       await expect(page.getByText(/sha256:/).first()).toBeVisible();
     } finally {
       await context.close();

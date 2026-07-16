@@ -59,8 +59,13 @@ export const containerRegistryKeys = {
 	detail: (workspaceId: string, id: string) => [...containerRegistryKeys.all(workspaceId), "detail", id] as const,
 	manifests: (workspaceId: string, repoId: string) =>
 		[...containerRegistryKeys.all(workspaceId), "manifests", repoId] as const,
+	manifestDetail: (workspaceId: string, repoId: string, digestOrTag: string) =>
+		[...containerRegistryKeys.all(workspaceId), "manifestDetail", repoId, digestOrTag] as const,
 	tags: (workspaceId: string, repoId: string, search?: string) =>
 		[...containerRegistryKeys.all(workspaceId), "tags", repoId, search] as const,
+	ports: (workspaceId: string, repoId: string, digestOrTag: string) =>
+		[...containerRegistryKeys.all(workspaceId), "ports", repoId, digestOrTag] as const,
+	usage: (workspaceId: string) => [...containerRegistryKeys.all(workspaceId), "usage"] as const,
 };
 
 export const domainKeys = {

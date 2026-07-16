@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE container_registry_manifest_image ADD CONSTRAINT container_registry_manifest_image_pk PRIMARY KEY(manifest_digest), ADD CONSTRAINT container_registry_manifest_image_chk_kind CHECK(manifest_kind = 'image'), ADD CONSTRAINT container_registry_manifest_image_fk_manifest FOREIGN KEY(manifest_digest, manifest_kind) REFERENCES container_registry_manifest(digest, kind), ADD CONSTRAINT container_registry_manifest_image_fk_config_blob_digest FOREIGN KEY(config_blob_digest) REFERENCES container_registry_blob(digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6336f0c9ac1e2bac24bb30654924631fca1eed9d75a6417699e77a67fac68353"
+}

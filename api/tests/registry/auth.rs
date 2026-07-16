@@ -4,7 +4,13 @@ use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
 use headers::{ContentLength, ContentType};
 use models::{
 	api::workspace::container_registry::*,
-	rbac::{DeploymentPermission, Permission, ResourcePermissionType, WorkspacePermission},
+	rbac::{
+		ContainerRegistryRepositoryPermission,
+		DeploymentPermission,
+		Permission,
+		ResourcePermissionType,
+		WorkspacePermission,
+	},
 };
 
 use super::helpers::*;
@@ -82,7 +88,7 @@ async fn registry_push_without_permission() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&other_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -126,7 +132,7 @@ async fn push_to_nonexistent_repo() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -164,6 +170,48 @@ async fn pull_from_nonexistent_repo() {
 		.await;
 
 	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
+}
+
+/// A syntactically-invalid manifest reference (leading dot) on an existing repo
+/// must 404 (ManifestUnknown), not 400 — matching the OCI conformance suite and
+/// mainstream registries. Previously the `reference` regex rejected it at the
+/// preprocess layer with a 400 before the handler's 404 path.
+#[tokio::test]
+async fn get_manifest_with_invalid_reference_returns_404() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<GetManifestPath> {
+			path: GetManifestPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+				reference: ".INVALID_MANIFEST_NAME".to_string(),
+			},
+			query: (),
+			headers: GetManifestRequestHeaders {
+				authorization: BearerToken::from_str(&api_token.token).unwrap(),
+			},
+			body: Body::empty(),
+		})
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::NOT_FOUND,
+		"invalid manifest reference should 404, got {}",
+		response.status_code()
+	);
 }
 
 #[tokio::test]
@@ -216,7 +264,7 @@ async fn push_to_deleted_repo() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&api_token.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -268,7 +316,7 @@ async fn cross_workspace_push_denied() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&token_b.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
@@ -284,7 +332,7 @@ async fn cross_workspace_push_denied() {
 }
 
 #[tokio::test]
-async fn initiate_upload_without_push_permission_returns_not_found() {
+async fn initiate_upload_as_member_without_push_returns_forbidden() {
 	let setup = setup().await.expect("failed to setup test server");
 
 	// Admin creates workspace + repo
@@ -343,18 +391,84 @@ async fn initiate_upload_without_push_permission_returns_not_found() {
 			},
 			headers: InitiateBlobUploadRequestHeaders {
 				authorization: BearerToken::from_str(&token_b.token).unwrap(),
-				content_length: ContentLength(data.len() as u64),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 			},
 			body: Body::from(data),
 		})
 		.await;
 
-	// Correct behavior: should be 404 to prevent leaking repo existence
+	// A workspace member who lacks Push gets a clear 403 — the existence-hiding
+	// 404 is reserved for non-members (who can't already list the repo).
+	let status = response.status_code();
+	let body = String::from_utf8_lossy(&response.into_bytes()).to_string();
 	assert_eq!(
-		response.status_code(),
-		StatusCode::NOT_FOUND,
-		"expected 404 for push without permission, got {}",
-		response.status_code()
+		status,
+		StatusCode::FORBIDDEN,
+		"expected 403 for member without push permission, got {status}"
 	);
+	assert!(
+		body.contains("push access"),
+		"expected a push-access denial message, got: {body}"
+	);
+}
+
+/// A `docker push` HEADs each blob to check existence before uploading, so a
+/// push-only token must be allowed to run that read. Regression: the pull route
+/// checked only Pull, so a push-only member was denied the existence check and
+/// the push broke. The pull route now accepts push OR pull.
+#[tokio::test]
+async fn head_blob_with_push_only_token_is_allowed() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+
+	// A token that is a workspace member with ONLY push (no pull).
+	let push_perm = setup.get_permission_id(Permission::ContainerRegistryRepository(
+		ContainerRegistryRepositoryPermission::Push,
+	));
+	let push_only = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(
+						push_perm,
+						ResourcePermissionType::Exclude(BTreeSet::new()),
+					)]),
+				},
+			)]),
+		)
+		.await;
+
+	// HEAD a (nonexistent) blob — the existence check a push does first.
+	let digest = sha256_digest(&(0..64u8).collect::<Vec<u8>>());
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<HeadBlobPath> {
+			path: HeadBlobPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+				digest,
+			},
+			query: (),
+			headers: HeadBlobRequestHeaders {
+				authorization: BearerToken::from_str(&push_only.token).unwrap(),
+				range: OptionalHeader::new(None),
+			},
+			body: Body::empty(),
+		})
+		.await;
+
+	// Must not be denied: a push-capable token can check blob existence. The
+	// blob doesn't exist, so 404 is the correct answer.
+	assert_ne!(
+		response.status_code(),
+		StatusCode::FORBIDDEN,
+		"push-only token was denied the blob existence check needed for push"
+	);
+	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }

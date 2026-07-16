@@ -7,7 +7,7 @@
 use headers::{ContentLength, ContentType};
 use tokio_util::io::ReaderStream;
 
-use crate::routes::registry_patr_cloud::prelude::*;
+use crate::{models::permissions, routes::registry_patr_cloud::prelude::*};
 
 macros::declare_registry_endpoint!(
 	/// GET manifest endpoint.
@@ -22,7 +22,10 @@ macros::declare_registry_endpoint!(
 		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
 		pub repo_name: String,
 		/// The manifest reference (tag name or digest)
-		#[preprocess(regex = constants::REGISTRY_TAG_OR_DIGEST_REGEX)]
+		// Intentionally not regex-validated: an unknown or malformed reference
+		// must reach the handler and 404 (ManifestUnknown), not 400 at preprocess
+		// — strict validation here breaks OCI conformance (nonexistent → 404).
+		#[preprocess(length(max = 255))]
 		pub reference: String,
 	},
 	request_headers = {
@@ -71,18 +74,10 @@ pub async fn get_manifest(
 	}: AuthenticatedRegistryAppRequest<'_, GetManifestPath>,
 ) -> Result<RegistryResponse<GetManifestPath>, RegistryError> {
 	// Check that the user can pull from this repository
-	let (repository_id, permission_id) = query!(
+	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid",
-			(
-				SELECT
-					id
-				FROM
-					permission
-				WHERE
-					name = $3
-			) AS "permission_id!: Uuid"
+			id AS "resource_id: Uuid"
 		FROM
 			container_registry_repository
 		WHERE
@@ -92,8 +87,6 @@ pub async fn get_manifest(
 		"#,
 		workspace_id as _,
 		&repo_name,
-		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull)
-			.to_string(),
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -105,26 +98,44 @@ pub async fn get_manifest(
 			.code(ErrorCode::NameUnknown)
 			.build()
 	})
-	.map(|row| (row.resource_id, row.permission_id))?;
+	.map(|row| row.resource_id)?;
+
+	let permission_id = permissions::get_permission_id(
+		database,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull),
+	)
+	.await;
 
 	let authorized =
 		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
 
 	if !authorized {
-		// Intentionally return a 404 to avoid leaking repository existence
-		debug!("User not authorized to access repository");
-		return RegistryError::builder()
-			.status(StatusCode::NOT_FOUND)
-			.message("Repository not found")
-			.code(ErrorCode::NameUnknown)
-			.build()
-			.into_result();
+		debug!("User lacks pull access to repository");
+		// Workspace members get a clear 403 (they can already list repos via the
+		// API, so there's nothing to hide); non-members get a 404 so outsiders
+		// can't enumerate private repositories.
+		return if user_data.permissions.contains_key(&workspace_id) {
+			RegistryError::builder()
+				.status(StatusCode::FORBIDDEN)
+				.message(format!(
+					"You do not have pull access to `{workspace_id}/{repo_name}`"
+				))
+				.code(ErrorCode::Denied)
+				.build()
+		} else {
+			RegistryError::builder()
+				.status(StatusCode::NOT_FOUND)
+				.message("Repository not found")
+				.code(ErrorCode::NameUnknown)
+				.build()
+		}
+		.into_result();
 	}
 
 	let manifest_record = query!(
 		r#"
 		SELECT DISTINCT
-			m.content_type,
+			m.media_type AS content_type,
 			m.size,
 			m.digest
 		FROM

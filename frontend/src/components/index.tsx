@@ -17,7 +17,9 @@ import InputDropdown from "~/components/input-dropdown";
 import InputDropdownCheckBox from "~/components/input-dropdown-checkbox";
 import { ButtonVariant, CopyableFieldVariant } from "~/utils/color";
 import Table from "~/components/table";
+import ExpandableRow from "~/components/expandable-row";
 import StatusBadge from "~/components/status-badge";
+import UsageBar from "~/components/usage-bar";
 import ContainerGrid from "~/components/container-grid";
 import BgOnboard from "~/components/bg-onboard";
 import { ToastProvider, useToast } from "~/components/toast";
@@ -66,7 +68,9 @@ export {
 	InputDropdown,
 	InputDropdownCheckBox,
 	Table,
+	ExpandableRow,
 	StatusBadge,
+	UsageBar,
 	ContainerGrid,
 	ToastProvider,
 	useToast,

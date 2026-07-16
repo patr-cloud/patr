@@ -1,4 +1,4 @@
-use super::ContainerRepositoryManifestInfo;
+use super::{ContainerRepositoryManifestInfo, ContainerRepositoryManifestLayer};
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
@@ -32,6 +32,10 @@ macros::declare_api_endpoint!(
 		/// The sub-manifests referenced by this manifest, if it's an index manifest. This field will be empty for image manifests.
 		#[serde(default, skip_serializing_if = "Vec::is_empty")]
 		pub referenced_manifests: Vec<ContainerRepositoryManifestInfo>,
+		/// The image's filesystem layers, in order. Empty for an index (its
+		/// children carry the layers).
+		#[serde(default, skip_serializing_if = "Vec::is_empty")]
+		pub layers: Vec<ContainerRepositoryManifestLayer>,
 	},
 	audit_log = NoAuditLogger,
 );

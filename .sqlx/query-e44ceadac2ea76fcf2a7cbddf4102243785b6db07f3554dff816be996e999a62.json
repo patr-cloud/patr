@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX container_registry_manifest_layer_idx_blob_digest ON container_registry_manifest_layer(blob_digest);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e44ceadac2ea76fcf2a7cbddf4102243785b6db07f3554dff816be996e999a62"
+}

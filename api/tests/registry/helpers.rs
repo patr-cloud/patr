@@ -55,9 +55,21 @@ pub fn build_minimal_oci_image(seed: u8) -> TestOciImage {
 /// runtime config inside the image configuration. Each port is exposed on
 /// TCP.
 pub fn build_minimal_oci_image_with_ports(seed: u8, exposed_tcp_ports: &[u16]) -> TestOciImage {
-	// Build an uncompressed tar archive with a single file whose content
-	// depends on `seed`.
-	let file_content: Vec<u8> = vec![seed; 64];
+	build_oci_image_from_content(vec![seed; 64], exposed_tcp_ports)
+}
+
+/// Builds a valid single-layer OCI image whose layer holds `unique`, giving a
+/// globally-unique digest. Pass a per-test-unique value (e.g. the random repo
+/// name): manifests and blobs are content-addressed and deduplicated
+/// registry-wide, so two parallel tests pushing the *same* bytes share one
+/// manifest row and interfere.
+pub fn build_unique_oci_image(unique: &[u8]) -> TestOciImage {
+	build_oci_image_from_content(unique.to_vec(), &[])
+}
+
+/// Shared image construction: builds the tar/layer/config/manifest from a raw
+/// layer file body.
+fn build_oci_image_from_content(file_content: Vec<u8>, exposed_tcp_ports: &[u16]) -> TestOciImage {
 	let mut tar_bytes = Vec::new();
 	{
 		let mut tar = tar::Builder::new(&mut tar_bytes);
@@ -179,7 +191,7 @@ impl TestSetup {
 				},
 				headers: InitiateBlobUploadRequestHeaders {
 					authorization: BearerToken::from_str(api_token).unwrap(),
-					content_length: ContentLength(0),
+					content_length: OptionalHeader::new(Some(ContentLength(0))),
 					content_type: OptionalHeader::new(None),
 				},
 				body: Body::empty(),
@@ -265,7 +277,7 @@ impl TestSetup {
 				},
 				headers: InitiateBlobUploadRequestHeaders {
 					authorization: BearerToken::from_str(api_token).unwrap(),
-					content_length: ContentLength(data.len() as u64),
+					content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
 					content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
 				},
 				body: Body::from(data.to_vec()),
@@ -314,7 +326,9 @@ impl TestSetup {
 		repo_name: &str,
 		tag: &str,
 	) -> TestOciImage {
-		let image = build_minimal_oci_image(0);
+		// Seed by repo name (unique per test) so parallel tests don't share a
+		// manifest digest under the registry's global content-addressed dedup.
+		let image = build_unique_oci_image(repo_name.as_bytes());
 
 		// Push config blob
 		self.push_blob(
