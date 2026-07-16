@@ -179,7 +179,11 @@ test.describe('@docker container registry push/pull', () => {
     });
     expect(ghost.ok).toBe(false);
 
-    // Pull-only token is a workspace member but lacks push → clear 403 denied.
+    // Pull-only token is a workspace member but lacks push → the registry's
+    // full "You do not have push access to `<ns>`" message reaches the user.
+    // Assert on our message, not docker's error prefix — the prefix varies by
+    // version ("denied:" up to 29.4, "error from registry:" on 29.6) but our
+    // message is surfaced verbatim by all of them.
     const repo = await createContainerRepo(api, user, user.workspaceId);
     const pullToken = await scopedToken(api, user, 'containerRegistryRepository::pull');
     const pushWithPull = await tryPushImage({
@@ -190,7 +194,8 @@ test.describe('@docker container registry push/pull', () => {
       apiToken: pullToken,
     });
     expect(pushWithPull.ok).toBe(false);
-    expect(pushWithPull.stderr.toLowerCase()).toContain('denied');
+    const denial = `You do not have push access to \`${user.workspaceId}/${repo.name}\``;
+    expect(pushWithPull.stderr.toLowerCase()).toContain(denial.toLowerCase());
 
     // A second workspace's repo id is not pushable with the first user's token
     // under the first workspace path; pushing to the other workspace path fails.
