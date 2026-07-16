@@ -8,7 +8,7 @@ use std::{str::FromStr, time::Duration};
 
 use headers::{CacheControl, ContentLength, ContentType, ETag};
 
-use crate::routes::registry_patr_cloud::prelude::*;
+use crate::{models::permissions, routes::registry_patr_cloud::prelude::*};
 
 macros::declare_registry_endpoint!(
 	/// HEAD manifest endpoint.
@@ -79,18 +79,10 @@ pub async fn check_manifest(
 	}: AuthenticatedRegistryAppRequest<'_, HeadManifestPath>,
 ) -> Result<RegistryResponse<HeadManifestPath>, RegistryError> {
 	// Check that the user can pull from this repository
-	let (repository_id, permission_id) = query!(
+	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid",
-			(
-				SELECT
-					id
-				FROM
-					permission
-				WHERE
-					name = $3
-			) AS "permission_id!: Uuid"
+			id AS "resource_id: Uuid"
 		FROM
 			container_registry_repository
 		WHERE
@@ -100,8 +92,6 @@ pub async fn check_manifest(
 		"#,
 		workspace_id as _,
 		&repo_name,
-		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull)
-			.to_string(),
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -113,7 +103,13 @@ pub async fn check_manifest(
 			.code(ErrorCode::NameUnknown)
 			.build()
 	})
-	.map(|row| (row.resource_id, row.permission_id))?;
+	.map(|row| row.resource_id)?;
+
+	let permission_id = permissions::get_permission_id(
+		database,
+		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull),
+	)
+	.await;
 
 	let authorized =
 		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
