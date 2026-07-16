@@ -179,7 +179,7 @@ test.describe('@docker container registry push/pull', () => {
     });
     expect(ghost.ok).toBe(false);
 
-    // Pull-only token cannot push (existence hidden → push fails).
+    // Pull-only token is a workspace member but lacks push → clear 403 denied.
     const repo = await createContainerRepo(api, user, user.workspaceId);
     const pullToken = await scopedToken(api, user, 'containerRegistryRepository::pull');
     const pushWithPull = await tryPushImage({
@@ -190,6 +190,7 @@ test.describe('@docker container registry push/pull', () => {
       apiToken: pullToken,
     });
     expect(pushWithPull.ok).toBe(false);
+    expect(pushWithPull.stderr.toLowerCase()).toContain('denied');
 
     // A second workspace's repo id is not pushable with the first user's token
     // under the first workspace path; pushing to the other workspace path fails.
