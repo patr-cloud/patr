@@ -23,7 +23,10 @@ macros::declare_registry_endpoint!(
 		#[preprocess(lowercase, regex = constants::REGISTRY_REPO_NAME_REGEX, length(max = 255))]
 		pub repo_name: String,
 		/// The manifest reference (tag name or digest)
-		#[preprocess(regex = constants::REGISTRY_TAG_OR_DIGEST_REGEX)]
+		// Intentionally not regex-validated: an unknown or malformed reference
+		// must reach the handler and 404 (ManifestUnknown), not 400 at preprocess
+		// — strict validation here breaks OCI conformance (nonexistent → 404).
+		#[preprocess(length(max = 255))]
 		pub reference: String,
 	},
 	request_headers = {

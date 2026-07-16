@@ -166,6 +166,48 @@ async fn pull_from_nonexistent_repo() {
 	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }
 
+/// A syntactically-invalid manifest reference (leading dot) on an existing repo
+/// must 404 (ManifestUnknown), not 400 — matching the OCI conformance suite and
+/// mainstream registries. Previously the `reference` regex rejected it at the
+/// preprocess layer with a 400 before the handler's 404 path.
+#[tokio::test]
+async fn get_manifest_with_invalid_reference_returns_404() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<GetManifestPath> {
+			path: GetManifestPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+				reference: ".INVALID_MANIFEST_NAME".to_string(),
+			},
+			query: (),
+			headers: GetManifestRequestHeaders {
+				authorization: BearerToken::from_str(&api_token.token).unwrap(),
+			},
+			body: Body::empty(),
+		})
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::NOT_FOUND,
+		"invalid manifest reference should 404, got {}",
+		response.status_code()
+	);
+}
+
 #[tokio::test]
 async fn push_to_deleted_repo() {
 	let setup = setup().await.expect("failed to setup test server");
