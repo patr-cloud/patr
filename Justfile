@@ -15,7 +15,7 @@ bindings:
     {
         echo '// Auto-generated barrel — re-exports every binding file. Regenerate via `just bindings`.'
         echo ''
-        ls *.ts | grep -v '^index.ts$' | sort | \
+        ls *.ts | grep -v '^index.ts$' | LC_ALL=C sort | \
             awk '{ sub(/\.ts$/, ""); print "export type * from \"./" $0 "\";" }'
     } > index.ts
     cd ../..
