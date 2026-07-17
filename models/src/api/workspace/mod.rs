@@ -35,6 +35,8 @@ pub mod volume;
 mod create_workspace;
 /// The endpoint to delete a workspace
 mod delete_workspace;
+/// The endpoint to resolve a batch of resource IDs into their names and types
+mod get_resources_info;
 /// The endpoint to get the details of a workspace
 mod get_workspace_info;
 
@@ -48,6 +50,7 @@ mod update_workspace_info;
 pub use self::{
 	create_workspace::*,
 	delete_workspace::*,
+	get_resources_info::*,
 	get_workspace_info::*,
 	is_name_available::*,
 	leave_workspace::*,

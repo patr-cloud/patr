@@ -2,6 +2,7 @@ use std::marker::ConstParamTy;
 
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumMessage, EnumString, VariantArray};
+use ts_rs::TS;
 
 /// A list of all possible resource types in Patr.
 #[derive(
@@ -21,9 +22,14 @@ use strum::{Display, EnumIter, EnumMessage, EnumString, VariantArray};
 	Deserialize,
 	VariantArray,
 	ConstParamTy,
+	TS,
 )]
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
+// Exported under a distinct name so it does not collide with the existing
+// `ResourceType` binding (the `{ name, description }` metadata struct from
+// `list_all_resource_types`).
+#[ts(export, rename = "ResourceTypeName")]
 pub enum ResourceType {
 	/// A workspace, which is also considered a resource
 	Workspace,
