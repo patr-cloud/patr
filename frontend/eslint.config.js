@@ -7,7 +7,15 @@ import globals from "globals";
 
 export default [
 	{
-		ignores: ["dist/**", "node_modules/**", ".vinxi/**", ".output/**", "*.config.ts", "*.config.js", "src/routeTree.gen.ts"],
+		ignores: [
+			"dist/**",
+			"node_modules/**",
+			".vinxi/**",
+			".output/**",
+			"*.config.ts",
+			"*.config.js",
+			"src/routeTree.gen.ts",
+		],
 	},
 	js.configs.recommended,
 	{
@@ -45,6 +53,10 @@ export default [
 			],
 			indent: ["error", "tab", { SwitchCase: 1 }],
 			"no-tabs": "off",
+			// Solid refs (`let el!: HTMLDivElement; <div ref={el}>`) are assigned by
+			// the runtime through the ref binding, which this rule (newly enabled in
+			// @eslint/js v10's recommended set) can't see and flags as never assigned.
+			"no-unassigned-vars": "off",
 			"@typescript-eslint/no-unused-vars": [
 				"warn",
 				{

@@ -115,15 +115,7 @@ export class RunnerHandle implements AsyncDisposable {
         throw err;
       }
 
-      return new RunnerHandle(
-        proc,
-        dind,
-        fauxEdge,
-        runnerId,
-        opts.workspaceId,
-        apiToken,
-        bindPort,
-      );
+      return new RunnerHandle(proc, dind, fauxEdge, runnerId, opts.workspaceId, apiToken, bindPort);
     } catch (err) {
       await dind[Symbol.asyncDispose]();
       throw err;
