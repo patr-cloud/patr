@@ -14,7 +14,7 @@ const GithubCallback = () => {
 
 	const search = Route.useSearch();
 
-	const setLoggedIn = (accessToken: string, refreshToken: string) => {
+	const setLoggedIn = async (accessToken: string, refreshToken: string) => {
 		const newAuth = {
 			type: "LoggedIn" as const,
 			accessToken,
@@ -28,6 +28,7 @@ const GithubCallback = () => {
 				auth: newAuth,
 			},
 		});
+		await router.invalidate();
 		navigate({ to: "/", replace: true });
 	};
 
@@ -60,7 +61,7 @@ const GithubCallback = () => {
 
 		switch (data.status) {
 			case "loggedIn":
-				setLoggedIn(data.accessToken, data.refreshToken);
+				await setLoggedIn(data.accessToken, data.refreshToken);
 				break;
 
 			case "setupRequired":
