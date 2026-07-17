@@ -102,6 +102,7 @@ const CompleteGithubSignup = () => {
 					auth: newAuth,
 				},
 			});
+			await router.invalidate();
 			navigate({ to: "/", replace: true });
 		} else {
 			switch (resp.data?.error) {

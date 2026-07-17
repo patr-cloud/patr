@@ -24,7 +24,7 @@ either                = { workspace = true, features = ["serde"] }
 headers               = { workspace = true, features = [] }
 hex                   = { workspace = true, features = ["default"] }
 http                  = { workspace = true, features = ["default"] }
-ipnetwork             = { workspace = true, features = ["default"] }
+ipnetwork             = { workspace = true, features = ["default", "serde"] }
 macros                = { workspace = true, features = [] }
 preprocess            = { workspace = true, features = [] }
 regex                 = { workspace = true, features = ["default"] }

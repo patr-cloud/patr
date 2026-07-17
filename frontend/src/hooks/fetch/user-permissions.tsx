@@ -23,11 +23,9 @@ export const getPermissions = async (wsId: string) => {
 		throw new Error("Failed to fetch permissions from server");
 	}
 
-	return response.data.permissions.map(
-		(perm): Record<string, ParsedPermission> => ({
-			[perm.id]: parsePermissionName(perm.name),
-		})
-	);
+	return response.data.permissions.map((perm): Record<string, ParsedPermission> => ({
+		[perm.id]: parsePermissionName(perm.name),
+	}));
 };
 
 const useUserPermissionsQuery = () => {

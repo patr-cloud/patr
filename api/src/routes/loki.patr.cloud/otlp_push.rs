@@ -205,12 +205,14 @@ async fn validate_and_rewrite_attributes(
 		attrs.push(KeyValue {
 			key: "runner_id".to_string(),
 			value: string_attr(runner_id.to_string()),
+			..Default::default()
 		});
 	}
 	if !found_workspace_id {
 		attrs.push(KeyValue {
 			key: "workspace_id".to_string(),
 			value: string_attr(workspace_id.to_string()),
+			..Default::default()
 		});
 	}
 
@@ -229,6 +231,7 @@ async fn validate_and_rewrite_attributes(
 		attrs.push(KeyValue {
 			key: "source".to_string(),
 			value: source_attr_value,
+			..Default::default()
 		});
 	}
 
@@ -242,6 +245,7 @@ async fn validate_and_rewrite_attributes(
 			attrs.push(KeyValue {
 				key: "service.name".to_string(),
 				value: service_name_attr,
+				..Default::default()
 			});
 		}
 	}

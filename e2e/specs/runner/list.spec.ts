@@ -42,7 +42,12 @@ test.describe('runner > list [UI]', () => {
       // A never-connected runner shows the unreachable status in its row. Scope
       // to the table; the mobile card grid (md:hidden) renders the status too
       // and its element is first in the DOM but hidden at 1280.
-      await expect(page.getByRole('table').getByText(/unreachable/i).first()).toBeVisible();
+      await expect(
+        page
+          .getByRole('table')
+          .getByText(/unreachable/i)
+          .first(),
+      ).toBeVisible();
     });
   });
 

@@ -129,6 +129,7 @@ const Login = () => {
 					auth: newAuth,
 				},
 			});
+			await router.invalidate();
 			navigate({ to: "/", replace: true });
 		} else {
 			console.error("Error during login:", loginResp);
