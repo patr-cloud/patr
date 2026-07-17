@@ -1,5 +1,4 @@
-// Auto-generated barrel: every binding file is re-exported. Regenerate via:
-//   ls *.ts | grep -v index.ts | sort | awk '{ sub(/\.ts$/, ""); print "export type * from \"./" $0 "\";" }' > index.ts.tmp
+// Auto-generated barrel — re-exports every binding file. Regenerate via `just bindings`.
 
 export type * from "./ActivateMfaPath";
 export type * from "./ActivateMfaRequest";
