@@ -29,9 +29,6 @@ jobs:
 
       - run: cargo fmt --all -- --check
 
-      - name: Generate TS bindings
-        run: cargo bindings
-
       - uses: pnpm/action-setup@v5
         with:
           package_json_file: frontend/package.json
@@ -50,6 +47,23 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
+
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - name: Regenerate TS bindings
+        run: just bindings
+
+      - name: Fail if bindings are out of date
+        run: |
+          git add -N frontend/src/bindings
+          if ! git diff --quiet frontend/src/bindings; then
+            echo "::error::TS bindings are out of date. Run 'just bindings' and commit the result."
+            git diff --stat frontend/src/bindings
+            exit 1
+          fi
 
       - run: pnpm typecheck
         working-directory: frontend
