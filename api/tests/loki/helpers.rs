@@ -100,6 +100,7 @@ pub fn make_otlp_proto_body(attrs: &[(&str, &str)]) -> Vec<u8> {
 			value: Some(AnyValue {
 				value: Some(Value::StringValue(v.to_string())),
 			}),
+			..Default::default()
 		})
 		.collect();
 
