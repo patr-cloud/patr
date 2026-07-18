@@ -8,6 +8,7 @@ import TwoFactorAuthModal from "./two-fa";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import { validateNameField } from "~/utils/validation";
+import { UpdateUserInfoRequest } from "~/bindings/UpdateUserInfoRequest";
 
 const UserSettingsInfoSection = () => {
 	const [authState] = useAuthState();
@@ -56,12 +57,13 @@ const UserSettingsInfoSection = () => {
 		setSubmitting(true);
 
 		try {
+			const body: UpdateUserInfoRequest = {
+				firstName: firstName() ?? "",
+				lastName: lastName() ?? "",
+			};
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user`, {
 				method: "PATCH",
-				body: JSON.stringify({
-					firstName: firstName(),
-					lastName: lastName(),
-				}),
+				body: JSON.stringify(body),
 			});
 
 			if (!response.ok) {

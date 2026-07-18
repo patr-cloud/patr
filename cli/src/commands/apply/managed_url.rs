@@ -214,8 +214,8 @@ pub async fn apply(
 					user_agent: constants::USER_AGENT,
 				})
 				.body(UpdateManagedURLRequest {
-					path: Some(path.clone()),
-					url_type: Some(url_type),
+					path: path.clone(),
+					url_type,
 				})
 				.build(),
 		)

@@ -23,7 +23,7 @@ use crate::prelude::*;
 /// details. The deployment details that can be updated are the name, machine
 /// type, deploy on push, min horizontal scale, max horizontal scale, ports,
 /// environment variables, startup probe, liveness probe, config mounts, and
-/// volumes. At least one of the values must be updated.
+/// volumes.
 pub async fn update_deployment(
 	AuthenticatedAppRequest {
 		request:
@@ -41,18 +41,22 @@ pub async fn update_deployment(
 				body:
 					UpdateDeploymentRequestProcessed {
 						name,
+						registry: _,
 						image_tag,
 						machine_type,
-						deploy_on_push,
 						runner,
-						min_horizontal_scale,
-						max_horizontal_scale,
-						ports,
-						environment_variables,
-						startup_probe,
-						liveness_probe,
-						config_mounts,
-						volumes,
+						running_details:
+							DeploymentRunningDetails {
+								deploy_on_push,
+								min_horizontal_scale,
+								max_horizontal_scale,
+								ports,
+								environment_variables,
+								startup_probe,
+								liveness_probe,
+								config_mounts,
+								volumes,
+							},
 					},
 			},
 		database,
@@ -64,32 +68,12 @@ pub async fn update_deployment(
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
 	info!("Updating deployment: {}", deployment_id);
 
-	let now = OffsetDateTime::now_utc();
-
-	// Validate if at least value is to be updated
-	if name
-		.as_ref()
-		.map(|_| 0)
-		.or(image_tag.as_ref().map(|_| 0))
-		.or(machine_type.as_ref().map(|_| 0))
-		.or(deploy_on_push.as_ref().map(|_| 0))
-		.or(runner.as_ref().map(|_| 0))
-		.or(min_horizontal_scale.as_ref().map(|_| 0))
-		.or(max_horizontal_scale.as_ref().map(|_| 0))
-		.or(ports.as_ref().map(|_| 0))
-		.or(environment_variables.as_ref().map(|_| 0))
-		.or(startup_probe.as_ref().map(|_| 0))
-		.or(liveness_probe.as_ref().map(|_| 0))
-		.or(config_mounts.as_ref().map(|_| 0))
-		.or(volumes.as_ref().map(|_| 0))
-		.is_none()
-	{
-		debug!(
-			"No parameters provided for updating deployment: {}",
-			deployment_id
-		);
+	// Horizontal scale must be at least 1 (a deployment can't run zero replicas).
+	if min_horizontal_scale == 0 || max_horizontal_scale == 0 {
 		return Err(ErrorType::WrongParameters);
 	}
+
+	let now = OffsetDateTime::now_utc();
 
 	let existing = query!(
 		r#"
@@ -113,7 +97,7 @@ pub async fn update_deployment(
 	let repository_id = existing.repository_id;
 	let is_patr_registry = existing.registry == PatrRegistry.to_string();
 	// Cloned so the requested tag is still available after the UPDATE below.
-	let new_image_tag = image_tag.clone();
+	let new_image_tag = image_tag.to_string();
 
 	// BEGIN DEFERRED CONSTRAINT
 	query!(
@@ -124,88 +108,61 @@ pub async fn update_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	let ports = if let Some(ports) = ports {
-		// Updating deployment port in database
-		query!(
-			r#"
-			DELETE FROM
-				deployment_exposed_port
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
+	query!(
+		r#"
+		DELETE FROM
+			deployment_exposed_port
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
-		query!(
-			r#"
-			INSERT INTO 
-				deployment_exposed_port(
-					deployment_id,
-					port,
-					port_type
-				)
-			SELECT
-				*
-			FROM
-				UNNEST(
-					$1::UUID[],
-					$2::INTEGER[],
-					$3::EXPOSED_PORT_TYPE[]
-				)
-			RETURNING
+	let ports = query!(
+		r#"
+		INSERT INTO
+			deployment_exposed_port(
+				deployment_id,
 				port,
-				port_type AS "port_type: ExposedPortType";
-			"#,
-			&ports
-				.iter()
-				.map(|_| deployment_id.into())
-				.collect::<Vec<_>>(),
-			&ports
-				.iter()
-				.map(|(port, _)| port.value() as i32)
-				.collect::<Vec<_>>(),
-			&ports
-				.iter()
-				.map(|(_, port_type)| port_type.to_string())
-				.collect::<Vec<String>>() as _,
-		)
-		.fetch_all(&mut **database)
-		.await?
-		.into_iter()
-		.map(|row| {
-			let port = row.port as u16;
-			let port_type = row.port_type;
+				port_type
+			)
+		SELECT
+			*
+		FROM
+			UNNEST(
+				$1::UUID[],
+				$2::INTEGER[],
+				$3::EXPOSED_PORT_TYPE[]
+			)
+		RETURNING
+			port,
+			port_type AS "port_type: ExposedPortType";
+		"#,
+		&ports
+			.iter()
+			.map(|_| deployment_id.into())
+			.collect::<Vec<_>>(),
+		&ports
+			.iter()
+			.map(|(port, _)| port.value() as i32)
+			.collect::<Vec<_>>(),
+		&ports
+			.iter()
+			.map(|(_, port_type)| port_type.to_string())
+			.collect::<Vec<String>>() as _,
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.map(|row| {
+		let port = row.port as u16;
+		let port_type = row.port_type;
 
-			(StringifiedU16::new(port), port_type)
-		})
-		.collect::<BTreeMap<_, _>>()
-	} else {
-		// Fetch existing ports from database
-		query!(
-			r#"
-			SELECT
-				port,
-				port_type AS "port_type: ExposedPortType"
-			FROM
-				deployment_exposed_port
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id as _
-		)
-		.fetch_all(&mut **database)
-		.await?
-		.into_iter()
-		.map(|row| {
-			let port = row.port as u16;
-			let port_type = row.port_type;
-
-			(StringifiedU16::new(port), port_type)
-		})
-		.collect::<BTreeMap<_, _>>()
-	};
+		(StringifiedU16::new(port), port_type)
+	})
+	.collect::<BTreeMap<_, _>>();
 
 	// Updating deployment details
 	let runner_id = query!(
@@ -213,67 +170,21 @@ pub async fn update_deployment(
 		UPDATE
 			deployment
 		SET
-			name = COALESCE($1, name),
-			image_tag = COALESCE($2, image_tag),
-			machine_type = COALESCE($3, machine_type),
-			deploy_on_push = COALESCE($4, deploy_on_push),
-			runner = COALESCE($5, runner),
-			min_horizontal_scale = COALESCE($6, min_horizontal_scale),
-			max_horizontal_scale = COALESCE($7, max_horizontal_scale),
-			startup_probe_port = (
-				CASE
-					WHEN $8 = 0 THEN
-						NULL
-					ELSE
-						$8
-				END
-			),
-			startup_probe_path = (
-				CASE
-					WHEN $8 = 0 THEN
-						NULL
-					ELSE
-						$9
-				END
-			),
-			startup_probe_port_type = (
-				CASE
-					WHEN $8 = 0 THEN
-						NULL
-					WHEN $8 IS NULL THEN
-						startup_probe_port_type
-					ELSE
-						'http'::EXPOSED_PORT_TYPE
-				END
-			),
-			liveness_probe_port = (
-				CASE
-					WHEN $10 = 0 THEN
-						NULL
-					ELSE
-						$10
-				END
-			),
-			liveness_probe_path = (
-				CASE
-					WHEN $10 = 0 THEN
-						NULL
-					ELSE
-						$11
-				END
-			),
-			liveness_probe_port_type = (
-				CASE
-					WHEN $10 = 0 THEN
-						NULL
-					WHEN $10 IS NULL THEN
-						liveness_probe_port_type
-					ELSE
-						'http'::EXPOSED_PORT_TYPE
-				END
-			)
+			name = $1,
+			image_tag = $2,
+			machine_type = $3,
+			deploy_on_push = $4,
+			runner = $5,
+			min_horizontal_scale = $6,
+			max_horizontal_scale = $7,
+			startup_probe_port = $8,
+			startup_probe_path = $9,
+			startup_probe_port_type = $10,
+			liveness_probe_port = $11,
+			liveness_probe_path = $12,
+			liveness_probe_port_type = $13
 		WHERE
-			id = $12
+			id = $14
 		RETURNING
 			runner AS "runner: Uuid";
 		"#,
@@ -282,12 +193,14 @@ pub async fn update_deployment(
 		machine_type as _,
 		deploy_on_push,
 		runner as _,
-		min_horizontal_scale.map(|v| v as i16),
-		max_horizontal_scale.map(|v| v as i16),
+		min_horizontal_scale as i16,
+		max_horizontal_scale as i16,
 		startup_probe.as_ref().map(|probe| probe.port as i32),
 		startup_probe.as_ref().map(|probe| probe.path.as_str()),
+		startup_probe.as_ref().map(|_| ExposedPortType::Http) as _,
 		liveness_probe.as_ref().map(|probe| probe.port as i32),
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
+		liveness_probe.as_ref().map(|_| ExposedPortType::Http) as _,
 		deployment_id as _,
 	)
 	.fetch_one(&mut **database)
@@ -308,10 +221,7 @@ pub async fn update_deployment(
 	// current_live_digest over the tag, so updating image_tag alone would keep
 	// running the old image. Gated on a real change because the frontend sends
 	// image_tag on every update.
-	if let Some(new_tag) = new_image_tag
-		.as_deref()
-		.filter(|&new| new != old_image_tag.as_str())
-	{
+	if new_image_tag != old_image_tag {
 		let new_digest = if is_patr_registry {
 			let digest = if let Some(repository_id) = repository_id {
 				query!(
@@ -325,7 +235,7 @@ pub async fn update_deployment(
 						name = $2;
 					"#,
 					repository_id as _,
-					new_tag,
+					new_image_tag.as_str(),
 				)
 				.fetch_optional(&mut **database)
 				.await?
@@ -386,159 +296,153 @@ pub async fn update_deployment(
 		.await?;
 	}
 
-	if let Some(environment_variables) = environment_variables {
-		query!(
-			r#"
-			DELETE FROM
-				deployment_environment_variable
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
+	query!(
+		r#"
+		DELETE FROM
+			deployment_environment_variable
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
-		query!(
-			r#"
-			INSERT INTO 
-				deployment_environment_variable(
-					deployment_id,
-					name,
-					value,
-					secret_id
-				)
-			SELECT
-				*
-			FROM
-				UNNEST(
-					$1::UUID[],
-					$2::TEXT[],
-					$3::TEXT[],
-					$4::UUID[]
-				);
-			"#,
-			&environment_variables
-				.iter()
-				.map(|_| deployment_id.into())
-				.collect::<Vec<sqlx::types::Uuid>>(),
-			&environment_variables
-				.iter()
-				.map(|(name, _)| name.clone())
-				.collect::<Vec<_>>(),
-			&environment_variables
-				.iter()
-				.map(|(_, value)| value.value().cloned())
-				.collect::<Vec<Option<String>>>() as _,
-			&environment_variables
-				.iter()
-				.map(|(_, value)| value.secret_id().map(Into::into))
-				.collect::<Vec<Option<sqlx::types::Uuid>>>() as _,
-		)
-		.execute(&mut **database)
-		.await?;
-	}
+	query!(
+		r#"
+		INSERT INTO
+			deployment_environment_variable(
+				deployment_id,
+				name,
+				value,
+				secret_id
+			)
+		SELECT
+			*
+		FROM
+			UNNEST(
+				$1::UUID[],
+				$2::TEXT[],
+				$3::TEXT[],
+				$4::UUID[]
+			);
+		"#,
+		&environment_variables
+			.iter()
+			.map(|_| deployment_id.into())
+			.collect::<Vec<sqlx::types::Uuid>>(),
+		&environment_variables
+			.iter()
+			.map(|(name, _)| name.clone())
+			.collect::<Vec<_>>(),
+		&environment_variables
+			.iter()
+			.map(|(_, value)| value.value().cloned())
+			.collect::<Vec<Option<String>>>() as _,
+		&environment_variables
+			.iter()
+			.map(|(_, value)| value.secret_id().map(Into::into))
+			.collect::<Vec<Option<sqlx::types::Uuid>>>() as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
-	if let Some(config_mounts) = config_mounts {
-		query!(
-			r#"
-			DELETE FROM
-				deployment_config_mounts
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
+	query!(
+		r#"
+		DELETE FROM
+			deployment_config_mounts
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
-		query!(
-			r#"
-			INSERT INTO 
-				deployment_config_mounts(
-					deployment_id,
-					path,
-					file
-				)
-			SELECT
-				*
-			FROM
-				UNNEST(
-					$1::UUID[],
-					$2::TEXT[],
-					$3::BYTEA[]
-				);
-			"#,
-			&config_mounts
-				.iter()
-				.map(|_| deployment_id.into())
-				.collect::<Vec<_>>(),
-			&config_mounts
-				.iter()
-				.map(|(path, _)| path.clone())
-				.collect::<Vec<_>>(),
-			&config_mounts
-				.iter()
-				.map(|(_, file)| file.to_vec())
-				.collect::<Vec<_>>(),
-		)
-		.execute(&mut **database)
-		.await?;
-	}
+	query!(
+		r#"
+		INSERT INTO
+			deployment_config_mounts(
+				deployment_id,
+				path,
+				file
+			)
+		SELECT
+			*
+		FROM
+			UNNEST(
+				$1::UUID[],
+				$2::TEXT[],
+				$3::BYTEA[]
+			);
+		"#,
+		&config_mounts
+			.iter()
+			.map(|_| deployment_id.into())
+			.collect::<Vec<_>>(),
+		&config_mounts
+			.iter()
+			.map(|(path, _)| path.clone())
+			.collect::<Vec<_>>(),
+		&config_mounts
+			.iter()
+			.map(|(_, file)| file.to_vec())
+			.collect::<Vec<_>>(),
+	)
+	.execute(&mut **database)
+	.await?;
 
-	if let Some(updated_volumes) = &volumes {
-		query!(
-			r#"
-			DELETE FROM
-				deployment_volume_mount
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
+	query!(
+		r#"
+		DELETE FROM
+			deployment_volume_mount
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
-		query!(
-			r#"
-			INSERT INTO
-				deployment_volume_mount(
-					deployment_id,
-					volume_id,
-					volume_mount_path
-				)
-			SELECT
-				*
-			FROM
-				UNNEST(
-					$1::UUID[],
-					$2::UUID[],
-					$3::TEXT[]
-				);
-			"#,
-			&updated_volumes
-				.iter()
-				.map(|_| deployment_id.into())
-				.collect::<Vec<_>>(),
-			&updated_volumes
-				.iter()
-				.map(|(volume_id, _)| (*volume_id).into())
-				.collect::<Vec<_>>(),
-			&updated_volumes
-				.iter()
-				.map(|(_, volume_mount_path)| volume_mount_path.clone())
-				.collect::<Vec<_>>(),
-		)
-		.execute(&mut **database)
-		.await
-		.map_err(|err| match err {
-			sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
-			sqlx::Error::Database(err) if err.is_foreign_key_violation() => {
-				ErrorType::ResourceDoesNotExist
-			}
-			err => ErrorType::server_error(err),
-		})?;
-	}
+	query!(
+		r#"
+		INSERT INTO
+			deployment_volume_mount(
+				deployment_id,
+				volume_id,
+				volume_mount_path
+			)
+		SELECT
+			*
+		FROM
+			UNNEST(
+				$1::UUID[],
+				$2::UUID[],
+				$3::TEXT[]
+			);
+		"#,
+		&volumes
+			.iter()
+			.map(|_| deployment_id.into())
+			.collect::<Vec<_>>(),
+		&volumes
+			.iter()
+			.map(|(volume_id, _)| (*volume_id).into())
+			.collect::<Vec<_>>(),
+		&volumes
+			.iter()
+			.map(|(_, volume_mount_path)| volume_mount_path.clone())
+			.collect::<Vec<_>>(),
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
+		sqlx::Error::Database(err) if err.is_foreign_key_violation() => {
+			ErrorType::ResourceDoesNotExist
+		}
+		err => ErrorType::server_error(err),
+	})?;
 
 	CloudflareClient::new(
 		Credentials::UserAuthToken {

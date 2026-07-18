@@ -175,8 +175,8 @@ async fn update_volume_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateVolumeRequest {
-					name: Some(new_name.clone()),
-					size: None,
+					name: new_name.clone(),
+					size: 1,
 				})
 				.build(),
 		)
@@ -333,8 +333,8 @@ async fn update_volume_increase_size() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateVolumeRequest {
-					name: None,
-					size: Some(5),
+					name: random_name(8),
+					size: 5,
 				})
 				.build(),
 		)
@@ -400,8 +400,8 @@ async fn update_volume_decrease_size() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateVolumeRequest {
-					name: None,
-					size: Some(2),
+					name: random_name(8),
+					size: 2,
 				})
 				.build(),
 		)

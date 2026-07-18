@@ -20,11 +20,15 @@ pub async fn update_api_token(
 					},
 				body:
 					UpdateApiTokenRequestProcessed {
-						name,
-						permissions,
-						token_nbf,
-						token_exp,
-						allowed_ips,
+						token:
+							UserApiTokenProcessed {
+								name,
+								permissions,
+								token_nbf,
+								token_exp,
+								allowed_ips,
+								created: _,
+							},
 					},
 			},
 		database,
@@ -36,68 +40,39 @@ pub async fn update_api_token(
 ) -> Result<AppResponse<UpdateApiTokenRequest>, ErrorType> {
 	trace!("Updating API token: {}", token_id);
 
-	if name
-		.as_ref()
-		.map(|_| 0)
-		.or(permissions.as_ref().map(|_| 0))
-		.or(token_nbf.as_ref().map(|_| 0))
-		.or(token_exp.as_ref().map(|_| 0))
-		.or(allowed_ips.as_ref().map(|_| 0))
-		.is_none()
-	{
-		debug!(
-			"No parameters provided for updating API token: {}",
-			token_id
-		);
+	if permissions.is_empty() {
 		return Err(ErrorType::WrongParameters);
+	}
+
+	// The full object carries both bounds, so validate the window directly.
+	if let (Some(nbf), Some(exp)) = (token_nbf, token_exp) {
+		if nbf > exp {
+			return Err(ErrorType::WrongParameters);
+		}
 	}
 
 	// Normalize an empty whitelist to a clear request — semantically the
 	// same as "no IP restriction", and stops the authenticator from rejecting
 	// every request against a vacuous list.
-	let allowed_ips = allowed_ips.map(|opt| opt.filter(|ips| !ips.is_empty()));
-
-	// Tri-state per nullable field: None = keep existing, Some(None) = clear,
-	// Some(Some(v)) = set. Encoded in SQL as CASE WHEN $clear THEN NULL etc.
-	let nbf_clear = matches!(&token_nbf, Some(None));
-	let nbf_value = token_nbf.flatten();
-	let exp_clear = matches!(&token_exp, Some(None));
-	let exp_value = token_exp.flatten();
-	let ips_clear = matches!(&allowed_ips, Some(None));
-	let ips_value = allowed_ips.flatten();
+	let allowed_ips = allowed_ips.filter(|ips| !ips.is_empty());
 
 	let rows_updated = query!(
 		r#"
 		UPDATE
 			user_api_token
 		SET
-			name = COALESCE($1, name),
-			token_nbf = CASE
-				WHEN $2 THEN NULL
-				WHEN $3::TIMESTAMPTZ IS NOT NULL THEN $3
-				ELSE token_nbf
-			END,
-			token_exp = CASE
-				WHEN $4 THEN NULL
-				WHEN $5::TIMESTAMPTZ IS NOT NULL THEN $5
-				ELSE token_exp
-			END,
-			allowed_ips = CASE
-				WHEN $6 THEN NULL
-				WHEN $7::INET[] IS NOT NULL THEN $7
-				ELSE allowed_ips
-			END
+			name = $1,
+			token_nbf = $2,
+			token_exp = $3,
+			allowed_ips = $4
 		WHERE
-			token_id = $8 AND
-			user_id = $9;
+			token_id = $5 AND
+			user_id = $6;
 		"#,
-		name.as_deref(),
-		nbf_clear,
-		nbf_value,
-		exp_clear,
-		exp_value,
-		ips_clear,
-		ips_value.as_deref(),
+		&*name,
+		token_nbf,
+		token_exp,
+		allowed_ips.as_deref(),
 		token_id as _,
 		user_data.id as _,
 	)
@@ -118,148 +93,165 @@ pub async fn update_api_token(
 		return Err(ErrorType::ApiTokenDoesNotExist);
 	}
 
-	// Validate the merged nbf/exp window. A PATCH that only touches one side
-	// can land the other in an unusable order against the existing value, so
-	// re-read post-COALESCE and reject if the result is inverted. The tx
-	// rolls the UPDATE back when we return Err.
-	let bounds = query!(
+	trace!("API token updated");
+
+	query!(
 		r#"
-		SELECT
-			token_nbf,
-			token_exp
-		FROM
-			user_api_token
+		DELETE FROM
+			user_api_token_workspace_super_admin
 		WHERE
 			token_id = $1;
 		"#,
 		token_id as _,
 	)
-	.fetch_one(&mut **database)
+	.execute(&mut **database)
 	.await?;
 
-	if let (Some(nbf), Some(exp)) = (bounds.token_nbf, bounds.token_exp) {
-		if nbf > exp {
-			return Err(ErrorType::WrongParameters);
+	query!(
+		r#"
+		DELETE FROM
+			user_api_token_resource_permissions_include
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
+			user_api_token_resource_permissions_exclude
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
+			user_api_token_resource_permissions_type
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
+			user_api_token_workspace_permission_type
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	trace!("Existing permissions deleted");
+
+	for (workspace_id, permission) in permissions {
+		trace!("Inserting permission for workspace ID: `{workspace_id}`");
+
+		let Some(user_permission) = user_data.permissions.get(&workspace_id) else {
+			debug!("The user does not have any permissions on workspace ID: `{workspace_id}`");
+			return Err(ErrorType::Unauthorized);
+		};
+
+		if !user_permission.is_superset_of(&permission) {
+			debug!("The user does not have adequate permissions on workspace ID: `{workspace_id}`");
+			return Err(ErrorType::Unauthorized);
 		}
-	}
 
-	trace!("API token updated");
+		match permission {
+			WorkspacePermission::SuperAdmin => {
+				trace!("Inserting permission as super admin");
+				query!(
+					r#"
+					INSERT INTO
+						user_api_token_workspace_permission_type(
+							token_id,
+							workspace_id,
+							token_permission_type
+						)
+					VALUES
+						(
+							$1,
+							$2,
+							'super_admin'
+						);
+					"#,
+					token_id as _,
+					workspace_id as _,
+				)
+				.execute(&mut **database)
+				.await?;
 
-	if let Some(permissions) = permissions {
-		if permissions.is_empty() {
-			return Err(ErrorType::WrongParameters);
-		}
-
-		trace!("Updating permissions for API token: {}", token_id);
-
-		query!(
-			r#"
-			DELETE FROM
-				user_api_token_workspace_super_admin
-			WHERE
-				token_id = $1;
-			"#,
-			token_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
-
-		query!(
-			r#"
-			DELETE FROM
-				user_api_token_resource_permissions_include
-			WHERE
-				token_id = $1;
-			"#,
-			token_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
-
-		query!(
-			r#"
-			DELETE FROM
-				user_api_token_resource_permissions_exclude
-			WHERE
-				token_id = $1;
-			"#,
-			token_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
-
-		query!(
-			r#"
-			DELETE FROM
-				user_api_token_resource_permissions_type
-			WHERE
-				token_id = $1;
-			"#,
-			token_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
-
-		query!(
-			r#"
-			DELETE FROM
-				user_api_token_workspace_permission_type
-			WHERE
-				token_id = $1;
-			"#,
-			token_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
-
-		trace!("Existing permissions deleted");
-
-		for (workspace_id, permission) in permissions {
-			trace!("Inserting permission for workspace ID: `{workspace_id}`");
-
-			let Some(user_permission) = user_data.permissions.get(&workspace_id) else {
-				debug!("The user does not have any permissions on workspace ID: `{workspace_id}`");
-				return Err(ErrorType::Unauthorized);
-			};
-
-			if !user_permission.is_superset_of(&permission) {
-				debug!(
-					"The user does not have adequate permissions on workspace ID: `{workspace_id}`"
-				);
-				return Err(ErrorType::Unauthorized);
+				query!(
+					r#"
+					INSERT INTO
+						user_api_token_workspace_super_admin(
+							token_id,
+							user_id,
+							workspace_id,
+							token_permission_type
+						)
+					VALUES
+						(
+							$1,
+							$2,
+							$3,
+							DEFAULT
+						);
+					"#,
+					token_id as _,
+					user_data.id as _,
+					workspace_id as _,
+				)
+				.execute(&mut **database)
+				.await?;
 			}
+			WorkspacePermission::Member { permissions } => {
+				trace!("Inserting permission as member");
+				// The per-permission rows below FK onto this parent row, so it
+				// has to land first. create_api_token does the same.
+				query!(
+					r#"
+					INSERT INTO
+						user_api_token_workspace_permission_type(
+							token_id,
+							workspace_id,
+							token_permission_type
+						)
+					VALUES
+						(
+							$1,
+							$2,
+							'member'
+						);
+					"#,
+					token_id as _,
+					workspace_id as _,
+				)
+				.execute(&mut **database)
+				.await?;
 
-			match permission {
-				WorkspacePermission::SuperAdmin => {
-					trace!("Inserting permission as super admin");
+				for (permission_id, resource_permission) in permissions {
 					query!(
 						r#"
 						INSERT INTO
-							user_api_token_workspace_permission_type(
+							user_api_token_resource_permissions_type(
 								token_id,
 								workspace_id,
-								token_permission_type
-							)
-						VALUES
-							(
-								$1,
-								$2,
-								'super_admin'
-							);
-						"#,
-						token_id as _,
-						workspace_id as _,
-					)
-					.execute(&mut **database)
-					.await?;
-
-					query!(
-						r#"
-						INSERT INTO
-							user_api_token_workspace_super_admin(
-								token_id,
-								user_id,
-								workspace_id,
+								permission_id,
+								resource_permission_type,
 								token_permission_type
 							)
 						VALUES
@@ -267,134 +259,84 @@ pub async fn update_api_token(
 								$1,
 								$2,
 								$3,
+								$4,
 								DEFAULT
 							);
 						"#,
 						token_id as _,
-						user_data.id as _,
 						workspace_id as _,
+						permission_id as _,
+						ResourcePermissionTypeDiscriminant::from(&resource_permission) as _,
 					)
 					.execute(&mut **database)
 					.await?;
-				}
-				WorkspacePermission::Member { permissions } => {
-					trace!("Inserting permission as member");
-					// The per-permission rows below FK onto this parent row, so it
-					// has to land first. create_api_token does the same.
-					query!(
-						r#"
-						INSERT INTO
-							user_api_token_workspace_permission_type(
-								token_id,
-								workspace_id,
-								token_permission_type
+
+					match resource_permission {
+						ResourcePermissionType::Include(resource_ids) => {
+							query!(
+								r#"
+								INSERT INTO
+									user_api_token_resource_permissions_include(
+										token_id,
+										workspace_id,
+										permission_id,
+										resource_id,
+										resource_deleted,
+										permission_type
+									)
+								VALUES
+									(
+										$1,
+										$2,
+										$3,
+										UNNEST($4::UUID[]),
+										DEFAULT,
+										DEFAULT
+									);
+								"#,
+								token_id as _,
+								workspace_id as _,
+								permission_id as _,
+								&resource_ids
+									.into_iter()
+									.map(|id| id.into())
+									.collect::<Vec<_>>(),
 							)
-						VALUES
-							(
-								$1,
-								$2,
-								'member'
-							);
-						"#,
-						token_id as _,
-						workspace_id as _,
-					)
-					.execute(&mut **database)
-					.await?;
-
-					for (permission_id, resource_permission) in permissions {
-						query!(
-							r#"
-							INSERT INTO
-								user_api_token_resource_permissions_type(
-									token_id,
-									workspace_id,
-									permission_id,
-									resource_permission_type,
-									token_permission_type
-								)
-							VALUES
-								(
-									$1,
-									$2,
-									$3,
-									$4,
-									DEFAULT
-								);
-							"#,
-							token_id as _,
-							workspace_id as _,
-							permission_id as _,
-							ResourcePermissionTypeDiscriminant::from(&resource_permission) as _,
-						)
-						.execute(&mut **database)
-						.await?;
-
-						match resource_permission {
-							ResourcePermissionType::Include(resource_ids) => {
-								for resource_id in resource_ids {
-									query!(
-										r#"
-										INSERT INTO
-											user_api_token_resource_permissions_include(
-												token_id,
-												workspace_id,
-												permission_id,
-												resource_id,
-												resource_deleted,
-												permission_type
-											)
-										VALUES
-											(
-												$1,
-												$2,
-												$3,
-												$4,
-												DEFAULT,
-												DEFAULT
-											);
-										"#,
-										token_id as _,
-										workspace_id as _,
-										permission_id as _,
-										resource_id as _,
+							.execute(&mut **database)
+							.await?;
+						}
+						ResourcePermissionType::Exclude(resource_ids) => {
+							query!(
+								r#"
+								INSERT INTO
+									user_api_token_resource_permissions_exclude(
+										token_id,
+										workspace_id,
+										permission_id,
+										resource_id,
+										resource_deleted,
+										permission_type
 									)
-									.execute(&mut **database)
-									.await?;
-								}
-							}
-							ResourcePermissionType::Exclude(resource_ids) => {
-								for resource_id in resource_ids {
-									query!(
-										r#"
-										INSERT INTO
-											user_api_token_resource_permissions_exclude(
-												token_id,
-												workspace_id,
-												permission_id,
-												resource_id,
-												resource_deleted,
-												permission_type
-											)
-										VALUES
-											(
-												$1,
-												$2,
-												$3,
-												$4,
-												DEFAULT,
-												DEFAULT
-											);
-										"#,
-										token_id as _,
-										workspace_id as _,
-										permission_id as _,
-										resource_id as _,
-									)
-									.execute(&mut **database)
-									.await?;
-								}
-							}
+								VALUES
+									(
+										$1,
+										$2,
+										$3,
+										UNNEST($4::UUID[]),
+										DEFAULT,
+										DEFAULT
+									);
+								"#,
+								token_id as _,
+								workspace_id as _,
+								permission_id as _,
+								&resource_ids
+									.into_iter()
+									.map(|id| id.into())
+									.collect::<Vec<_>>(),
+							)
+							.execute(&mut **database)
+							.await?;
 						}
 					}
 				}

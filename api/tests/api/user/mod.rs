@@ -110,8 +110,8 @@ async fn update_user_info_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserInfoRequest {
-					first_name: Some("Updated".to_string()),
-					last_name: Some("Name".to_string()),
+					first_name: "Updated".to_string(),
+					last_name: "Name".to_string(),
 				})
 				.build(),
 		)
@@ -147,8 +147,8 @@ async fn update_user_info_unauthorized() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserInfoRequest {
-					first_name: Some("Hacker".to_string()),
-					last_name: None,
+					first_name: "Hacker".to_string(),
+					last_name: "User".to_string(),
 				})
 				.build(),
 		)
@@ -272,8 +272,8 @@ async fn update_user_info_first_name_persists() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserInfoRequest {
-					first_name: Some("Alice".to_string()),
-					last_name: None,
+					first_name: "Alice".to_string(),
+					last_name: "User".to_string(),
 				})
 				.build(),
 		)
@@ -298,7 +298,7 @@ async fn update_user_info_first_name_persists() {
 }
 
 #[tokio::test]
-async fn update_user_info_empty_fields() {
+async fn update_user_info_same_values_noop() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 
@@ -310,8 +310,8 @@ async fn update_user_info_empty_fields() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserInfoRequest {
-					first_name: None,
-					last_name: None,
+					first_name: "Test".to_string(),
+					last_name: "User".to_string(),
 				})
 				.build(),
 		)
@@ -573,8 +573,8 @@ async fn assert_update_first_name_rejected(setup: &TestSetup, user: &TestUser, b
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserInfoRequest {
-					first_name: Some(bad.to_string()),
-					last_name: None,
+					first_name: bad.to_string(),
+					last_name: "User".to_string(),
 				})
 				.build(),
 		)
@@ -605,8 +605,8 @@ async fn update_user_info_rejects_xss_in_last_name() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserInfoRequest {
-					first_name: None,
-					last_name: Some("<img onerror=x>".to_string()),
+					first_name: "Test".to_string(),
+					last_name: "<img onerror=x>".to_string(),
 				})
 				.build(),
 		)
@@ -651,8 +651,8 @@ async fn update_user_info_accepts_unicode_first_name() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserInfoRequest {
-					first_name: Some("山田".to_string()),
-					last_name: Some("José".to_string()),
+					first_name: "山田".to_string(),
+					last_name: "José".to_string(),
 				})
 				.build(),
 		)
@@ -673,8 +673,8 @@ async fn update_user_info_trims_surrounding_whitespace() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserInfoRequest {
-					first_name: Some("  Ada  ".to_string()),
-					last_name: None,
+					first_name: "  Ada  ".to_string(),
+					last_name: "User".to_string(),
 				})
 				.build(),
 		)

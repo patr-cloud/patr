@@ -183,20 +183,6 @@ pub fn validate_password(value: Cow<'_, str>) -> Result<Cow<'_, str>, preprocess
 	Ok(value)
 }
 
-/// Distinguishes "field absent" from "field present with null" on a PATCH
-/// request body. Paired with `#[serde(default)]`, the field type
-/// `Option<Option<T>>` deserializes as:
-/// - `None` when the JSON omits the key (keep existing),
-/// - `Some(None)` when the JSON sends `null` (clear the value),
-/// - `Some(Some(v))` when the JSON sends a concrete value.
-pub fn deserialize_double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
-where
-	T: serde::Deserialize<'de>,
-	D: serde::Deserializer<'de>,
-{
-	serde::Deserialize::deserialize(deserializer).map(Some)
-}
-
 /// All the constants used in the application.
 /// Constants are used to avoid hardcoding values, since that might introduce
 /// typos.

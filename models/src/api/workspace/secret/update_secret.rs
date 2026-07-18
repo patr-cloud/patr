@@ -24,10 +24,10 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The updated name of the secret
-		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
-		pub name: Option<String>,
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
+		pub name: String,
 		/// The updated value of the secret
 		#[preprocess(none)]
-		pub value: Option<String>,
+		pub value: String,
 	}
 );

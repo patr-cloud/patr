@@ -642,54 +642,56 @@ pub async fn get_permissions_for_api_token(
 
 						match resource_permission {
 							ResourcePermissionType::Include(resource_ids) => {
-								for resource_id in resource_ids {
-									query!(
-										r#"
-										INSERT INTO
-											user_api_token_resource_permissions_include(
-												token_id,
-												workspace_id,
-												permission_id,
-												resource_id,
-												resource_deleted,
-												permission_type
-											)
-										VALUES
-											($1, $2, $3, $4, DEFAULT, DEFAULT);
-										"#,
-										login_id as _,
-										workspace_id as _,
-										permission_id as _,
-										resource_id as _,
-									)
-									.execute(&mut *db_connection)
-									.await?;
-								}
+								query!(
+									r#"
+									INSERT INTO
+										user_api_token_resource_permissions_include(
+											token_id,
+											workspace_id,
+											permission_id,
+											resource_id,
+											resource_deleted,
+											permission_type
+										)
+									VALUES
+										($1, $2, $3, UNNEST($4::UUID[]), DEFAULT, DEFAULT);
+									"#,
+									login_id as _,
+									workspace_id as _,
+									permission_id as _,
+									&resource_ids
+										.iter()
+										.map(|id| (*id).into())
+										.collect::<Vec<_>>(),
+								)
+								.execute(&mut *db_connection)
+								.await?;
 							}
 							ResourcePermissionType::Exclude(resource_ids) => {
-								for resource_id in resource_ids {
-									query!(
-										r#"
-										INSERT INTO
-											user_api_token_resource_permissions_exclude(
-												token_id,
-												workspace_id,
-												permission_id,
-												resource_id,
-												resource_deleted,
-												permission_type
-											)
-										VALUES
-											($1, $2, $3, $4, DEFAULT, DEFAULT);
-										"#,
-										login_id as _,
-										workspace_id as _,
-										permission_id as _,
-										resource_id as _,
-									)
-									.execute(&mut *db_connection)
-									.await?;
-								}
+								query!(
+									r#"
+									INSERT INTO
+										user_api_token_resource_permissions_exclude(
+											token_id,
+											workspace_id,
+											permission_id,
+											resource_id,
+											resource_deleted,
+											permission_type
+										)
+									VALUES
+										($1, $2, $3, UNNEST($4::UUID[]), DEFAULT, DEFAULT);
+									"#,
+									login_id as _,
+									workspace_id as _,
+									permission_id as _,
+									&resource_ids
+										.iter()
+										.map(|id| (*id).into())
+										.collect::<Vec<_>>(),
+								)
+								.execute(&mut *db_connection)
+								.await?;
 							}
 						}
 					}

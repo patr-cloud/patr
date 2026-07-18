@@ -51,9 +51,7 @@ pub async fn update_volume(
 	.body
 	.volume;
 
-	if let Some(size) = size &&
-		volume.size > size
-	{
+	if volume.size > u64::from(size) {
 		return Err(ErrorType::CannotReduceVolumeSize);
 	}
 
@@ -62,13 +60,13 @@ pub async fn update_volume(
 		UPDATE
 			deployment_volume
 		SET
-			volume_size = COALESCE($1, volume_size),
-			name = COALESCE($2, name)
+			volume_size = $1,
+			name = $2
 		WHERE
 			id = $3;
 		"#,
-		size.map(|size| size as i64),
-		name.as_deref(),
+		i64::from(size),
+		&*name,
 		volume_id as _
 	)
 	.execute(&mut **database)

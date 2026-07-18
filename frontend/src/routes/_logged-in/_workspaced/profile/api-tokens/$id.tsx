@@ -44,12 +44,10 @@ const ApiTokenInfo = () => {
 
 	const apiTokenInfo = () => apiTokenInfoQuery.data;
 
-	// Token-name draft (mirrors the workspace-rename pattern). Seeded once
-	// from the query when data arrives; user edits drive the input; Save
-	// commits via PATCH, optimistically updates the cache, and the button
-	// re-disables itself.
+	// Token-name draft. Seeded once from the query when data arrives; user
+	// edits drive the input. Saving sends the full token object (see saveToken).
 	const [tokenName, setTokenName] = createSignal<string | undefined>();
-	const [isUpdatingName, setIsUpdatingName] = createSignal(false);
+	const [isSaving, setIsSaving] = createSignal(false);
 
 	createEffect(() => {
 		const persisted = apiTokenInfo()?.name;
@@ -57,33 +55,6 @@ const ApiTokenInfo = () => {
 			setTokenName(persisted);
 		}
 	});
-
-	const onSaveTokenName = async (e: EventT<SubmitEvent, HTMLFormElement>) => {
-		e.preventDefault();
-		if (isUpdatingName()) return;
-
-		const newName = (tokenName() ?? "").trim();
-		const current = apiTokenInfo()?.name ?? "";
-		if (!newName || newName === current) return;
-
-		setIsUpdatingName(true);
-		try {
-			const resp = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`, {
-				method: "PATCH",
-				body: JSON.stringify({ name: newName }),
-			});
-			if (!resp.ok) {
-				toast(resp.data?.error || "Failed to update token name", "error");
-				return;
-			}
-			queryClient.setQueryData<GetApiTokenInfoResponse>(apiTokenKeys.detail(params().id), (prev) =>
-				prev ? { ...prev, name: newName } : prev
-			);
-			toast("Token name updated", "success");
-		} finally {
-			setIsUpdatingName(false);
-		}
-	};
 
 	// Permission editing state
 	const [enabledWorkspaces, setEnabledWorkspaces] = createSignal<Set<string>>(new Set());
@@ -185,10 +156,20 @@ const ApiTokenInfo = () => {
 		setIsApiTokenModalOpen(true);
 	};
 
-	const onSavePermissions = async () => {
+	// Single save for the whole token: the full object (name + permissions +
+	// carried nbf/exp/allowedIps) is sent on every update. Both the name form
+	// and the permissions section call this, so neither clobbers the other.
+	const saveToken = async () => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
 			toast("You must be logged in to update an API Token", "error");
+			return;
+		}
+
+		const info = apiTokenInfo();
+		const name = (tokenName() ?? info?.name ?? "").trim();
+		if (!name) {
+			toast("Token name is required", "error");
 			return;
 		}
 
@@ -198,26 +179,38 @@ const ApiTokenInfo = () => {
 			return;
 		}
 
-		const info = apiTokenInfo();
-		const body = {
-			permissions: workspacePermissions(),
-			tokenNbf: info?.tokenNbf,
-			tokenExp: info?.tokenExp,
-			allowedIps: info?.allowedIps || [],
-		} as UpdateApiTokenRequest;
+		if (isSaving()) return;
+		setIsSaving(true);
+		try {
+			const body = {
+				name,
+				permissions: perms,
+				tokenNbf: info?.tokenNbf,
+				tokenExp: info?.tokenExp,
+				allowedIps: info?.allowedIps,
+			} as UpdateApiTokenRequest;
 
-		const response = await httpRequest<null>(`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`, {
-			method: "PATCH",
-			body: JSON.stringify(body),
-		});
+			const response = await httpRequest<null>(
+				`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`,
+				{
+					method: "PATCH",
+					body: JSON.stringify(body),
+				}
+			);
 
-		if (!response.ok) {
-			console.error("Failed to update API Token:", response.data.error);
-			toast("Failed to update API Token", "error");
-			return;
+			if (!response.ok) {
+				console.error("Failed to update API Token:", response.data.error);
+				toast(response.data?.error || "Failed to update API Token", "error");
+				return;
+			}
+
+			queryClient.setQueryData<GetApiTokenInfoResponse>(apiTokenKeys.detail(params().id), (prev) =>
+				prev ? { ...prev, name, permissions: perms } : prev
+			);
+			toast("API Token updated successfully", "success");
+		} finally {
+			setIsSaving(false);
 		}
-
-		toast("API Token permissions updated successfully", "success");
 	};
 
 	return (
@@ -268,7 +261,13 @@ const ApiTokenInfo = () => {
 								/>
 							</InputWithLabel>
 
-							<form onSubmit={onSaveTokenName} class="w-full">
+							<form
+								onSubmit={(e) => {
+									e.preventDefault();
+									saveToken();
+								}}
+								class="w-full"
+							>
 								<InputWithLabel for="token-name" label="Name">
 									<div class="flex gap-2 items-center w-full">
 										<Input
@@ -283,11 +282,7 @@ const ApiTokenInfo = () => {
 										<Button
 											type="submit"
 											variant={ButtonVariant.Contained}
-											disabled={
-												isUpdatingName() ||
-												(tokenName() ?? "").trim() === "" ||
-												(tokenName() ?? "").trim() === (apiTokenInfo()?.name ?? "")
-											}
+											disabled={isSaving() || (tokenName() ?? "").trim() === ""}
 										>
 											Save
 										</Button>
@@ -310,8 +305,8 @@ const ApiTokenInfo = () => {
 										<h3 class="text-lg text-white">Workspace Permissions</h3>
 										<Button
 											variant={ButtonVariant.Contained}
-											onClick={onSavePermissions}
-											disabled={enabledWorkspaces().size === 0}
+											onClick={saveToken}
+											disabled={isSaving() || enabledWorkspaces().size === 0}
 										>
 											Save Permissions
 										</Button>

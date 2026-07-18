@@ -30,14 +30,14 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The updated name of the role
-		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
-		pub name: Option<String>,
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
+		pub name: String,
 		/// The updated description of the role
-		#[preprocess(optional(trim, regex = ROLE_DESCRIPTION_REGEX))]
-		pub description: Option<String>,
+		#[preprocess(trim, regex = ROLE_DESCRIPTION_REGEX)]
+		pub description: String,
 		/// The updated list of permission this role has
 		#[preprocess(none)]
-		pub permissions: Option<BTreeMap<Uuid, ResourcePermissionType>>,
+		pub permissions: BTreeMap<Uuid, ResourcePermissionType>,
 	},
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,

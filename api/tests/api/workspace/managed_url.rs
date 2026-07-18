@@ -261,8 +261,12 @@ async fn update_managed_url_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateManagedURLRequest {
-					path: Some("/updated".to_string()),
-					url_type: None,
+					path: "/updated".to_string(),
+					url_type: ManagedUrlType::Redirect {
+						url: "https://example.com".to_string(),
+						permanent_redirect: false,
+						http_only: false,
+					},
 				})
 				.build(),
 		)
@@ -736,11 +740,11 @@ async fn update_managed_url_change_redirect_to_proxy_url() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateManagedURLRequest {
-					path: None,
-					url_type: Some(ManagedUrlType::ProxyUrl {
+					path: "/".to_string(),
+					url_type: ManagedUrlType::ProxyUrl {
 						url: "https://upstream.example.com".to_string(),
 						http_only: false,
-					}),
+					},
 				})
 				.build(),
 		)
@@ -818,12 +822,12 @@ async fn update_managed_url_change_proxy_url_to_redirect() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateManagedURLRequest {
-					path: None,
-					url_type: Some(ManagedUrlType::Redirect {
+					path: "/".to_string(),
+					url_type: ManagedUrlType::Redirect {
 						url: "https://final.example.com".to_string(),
 						permanent_redirect: true,
 						http_only: false,
-					}),
+					},
 				})
 				.build(),
 		)
@@ -1226,8 +1230,11 @@ async fn update_managed_url_path_persists() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateManagedURLRequest {
-					path: Some("/v2".to_string()),
-					url_type: None,
+					path: "/v2".to_string(),
+					url_type: ManagedUrlType::ProxyDeployment {
+						deployment_id: f.deployment,
+						port: 80,
+					},
 				})
 				.build(),
 		)
@@ -1242,7 +1249,7 @@ async fn update_managed_url_path_persists() {
 }
 
 #[tokio::test]
-async fn update_managed_url_empty_body_noop() {
+async fn update_managed_url_same_values_noop() {
 	let setup = setup().await.expect("failed to setup test server");
 	let f = mu_fixture(&setup).await;
 	let created = send_create_mu(
@@ -1267,8 +1274,11 @@ async fn update_managed_url_empty_body_noop() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateManagedURLRequest {
-					path: None,
-					url_type: None,
+					path: "/".to_string(),
+					url_type: ManagedUrlType::ProxyDeployment {
+						deployment_id: f.deployment,
+						port: 80,
+					},
 				})
 				.build(),
 		)
@@ -1279,7 +1289,7 @@ async fn update_managed_url_empty_body_noop() {
 	assert_eq!(
 		urls.iter().find(|u| u.id == created.id.id).unwrap().path,
 		"/",
-		"an empty update body should be a no-op"
+		"resending the same values should be a no-op"
 	);
 }
 
@@ -1301,8 +1311,11 @@ async fn update_managed_url_nonexistent_401() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateManagedURLRequest {
-					path: Some("/x".to_string()),
-					url_type: None,
+					path: "/x".to_string(),
+					url_type: ManagedUrlType::ProxyUrl {
+						url: "https://example.com".to_string(),
+						http_only: false,
+					},
 				})
 				.build(),
 		)

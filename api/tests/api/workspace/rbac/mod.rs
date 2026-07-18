@@ -180,9 +180,12 @@ async fn update_role_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: Some(new_name.clone()),
-					description: None,
-					permissions: None,
+					name: new_name.clone(),
+					description: "test role".to_string(),
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						ResourcePermissionType::Include(Default::default()),
+					)]),
 				})
 				.build(),
 		)
@@ -585,9 +588,12 @@ async fn update_role_nonexistent() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: Some(random_name(8)),
-					description: None,
-					permissions: None,
+					name: random_name(8),
+					description: "test role".to_string(),
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						ResourcePermissionType::Include(Default::default()),
+					)]),
 				})
 				.build(),
 		)
@@ -627,9 +633,9 @@ async fn update_role_add_permissions() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: None,
-					permissions: Some(perms),
+					name: random_name(8),
+					description: "test role".to_string(),
+					permissions: perms,
 				})
 				.build(),
 		)
@@ -698,9 +704,9 @@ async fn update_role_remove_permissions() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: None,
-					permissions: Some(next),
+					name: random_name(8),
+					description: "test role".to_string(),
+					permissions: next,
 				})
 				.build(),
 		)
@@ -1020,9 +1026,12 @@ async fn update_role_rejects_xss_in_description() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: Some("<script>alert(1)</script>".to_string()),
-					permissions: None,
+					name: random_name(8),
+					description: "<script>alert(1)</script>".to_string(),
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						ResourcePermissionType::Include(Default::default()),
+					)]),
 				})
 				.build(),
 		)
@@ -1088,9 +1097,12 @@ async fn role_cross_workspace_update_denied() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: Some("x".to_string()),
-					permissions: None,
+					name: random_name(8),
+					description: "test role".to_string(),
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						ResourcePermissionType::Include(Default::default()),
+					)]),
 				})
 				.build(),
 		)
@@ -1275,9 +1287,9 @@ async fn update_role_empty_permissions_400() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: None,
-					permissions: Some(BTreeMap::new()),
+					name: random_name(8),
+					description: "test role".to_string(),
+					permissions: BTreeMap::new(),
 				})
 				.build(),
 		)
@@ -1286,41 +1298,6 @@ async fn update_role_empty_permissions_400() {
 		400,
 		response.status_code().as_u16(),
 		"a PATCH that empties the permissions map should be 400"
-	);
-}
-
-#[tokio::test]
-async fn update_role_empty_body_400() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let role = setup
-		.create_test_role(&user.access_token, workspace.id)
-		.await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<UpdateRoleRequest>::builder()
-				.path(UpdateRolePath {
-					workspace_id: workspace.id,
-					role_id: role.id,
-				})
-				.headers(UpdateRoleRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(UpdateRoleRequest {
-					name: None,
-					description: None,
-					permissions: None,
-				})
-				.build(),
-		)
-		.await;
-	assert_eq!(
-		400,
-		response.status_code().as_u16(),
-		"an empty PATCH body should be 400 (WrongParameters)"
 	);
 }
 

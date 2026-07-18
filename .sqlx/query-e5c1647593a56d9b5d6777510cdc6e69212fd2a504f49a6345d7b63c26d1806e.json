@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE managed_url SET path = $2, url_type = $3, deployment_id = $4, port = $5, static_site_id = $6, url = $7, permanent_redirect = $8, http_only = $9 WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        {
+          "Custom": {
+            "name": "managed_url_type",
+            "kind": {
+              "Enum": [
+                "proxy_to_deployment",
+                "proxy_to_static_site",
+                "proxy_url",
+                "redirect"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Int4",
+        "Uuid",
+        "Text",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e5c1647593a56d9b5d6777510cdc6e69212fd2a504f49a6345d7b63c26d1806e"
+}

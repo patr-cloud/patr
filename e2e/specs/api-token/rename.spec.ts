@@ -37,7 +37,11 @@ test.describe('api token > rename', () => {
 			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
 		});
 		const renamed = `renamed-${Date.now().toString(36)}`;
-		await patchApiTokenAPI(api, user, t.id, { name: renamed });
+		// Update sends the full token object; resend the existing permissions.
+		await patchApiTokenAPI(api, user, t.id, {
+			name: renamed,
+			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+		});
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user, { workspaceId: user.workspaceId });
 		const page = await context.newPage();

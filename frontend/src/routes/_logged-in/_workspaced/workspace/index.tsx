@@ -19,6 +19,7 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import { createEffect, createSignal } from "solid-js";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
+import { UpdateWorkspaceInfoRequest } from "~/bindings/UpdateWorkspaceInfoRequest";
 import { EventT } from "~/utils/types";
 
 const General = () => {
@@ -60,9 +61,10 @@ const General = () => {
 		if (isUpdating()) return;
 		setIsUpdating(true);
 		try {
+			const body: UpdateWorkspaceInfoRequest = { name: newName };
 			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}`, {
 				method: "PATCH",
-				body: JSON.stringify({ name: newName }),
+				body: JSON.stringify(body),
 			});
 
 			if (!response.ok) {

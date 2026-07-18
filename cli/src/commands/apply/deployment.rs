@@ -166,6 +166,30 @@ pub async fn apply(
 	.find(|d| d.name == name)
 	.map(|d| d.id);
 
+	let running_details = DeploymentRunningDetails {
+		deploy_on_push: deploy_on_push.resolve_value()?,
+		min_horizontal_scale: min_horizontal_scale.resolve_value()?,
+		max_horizontal_scale: max_horizontal_scale.resolve_value()?,
+		ports: ports.into_inner(),
+		environment_variables: environment_variables
+			.into_inner()
+			.into_iter()
+			.map(|(key, value)| Ok((key, value.resolve_value()?)))
+			.collect::<Result<_, IaacError>>()?,
+		startup_probe,
+		liveness_probe,
+		config_mounts: config_mounts
+			.into_iter()
+			.map(|(key, mount)| {
+				(
+					key,
+					Base64String::from_string(fs::read_to_string(&mount).unwrap_or(mount)),
+				)
+			})
+			.collect(),
+		volumes: Default::default(),
+	};
+
 	// If an ID is provided, specifically use that. Otherwise, use the found
 	// deployment ID by name.
 	if let Some(deployment_id) = id.or(deployment_id) {
@@ -182,37 +206,12 @@ pub async fn apply(
 					user_agent: constants::USER_AGENT,
 				})
 				.body(UpdateDeploymentRequest {
-					name: Some(name.clone()),
-					image_tag: Some(image_tag),
-					runner: Some(runner),
-					machine_type: Some(machine_type),
-					deploy_on_push: Some(deploy_on_push.resolve_value()?),
-					min_horizontal_scale: Some(min_horizontal_scale.resolve_value()?),
-					max_horizontal_scale: Some(max_horizontal_scale.resolve_value()?),
-					ports: Some(ports.into_inner()),
-					environment_variables: Some(
-						environment_variables
-							.into_inner()
-							.into_iter()
-							.map(|(key, value)| Ok((key, value.resolve_value()?)))
-							.collect::<Result<_, IaacError>>()?,
-					),
-					startup_probe,
-					liveness_probe,
-					config_mounts: Some(
-						config_mounts
-							.into_iter()
-							.map(|(key, mount)| {
-								(
-									key,
-									Base64String::from_string(
-										fs::read_to_string(&mount).unwrap_or(mount),
-									),
-								)
-							})
-							.collect(),
-					),
-					volumes: Default::default(),
+					name: name.clone(),
+					registry,
+					image_tag,
+					runner,
+					machine_type,
+					running_details,
 				})
 				.build(),
 		)
@@ -237,31 +236,7 @@ pub async fn apply(
 					image_tag,
 					runner,
 					machine_type,
-					running_details: DeploymentRunningDetails {
-						deploy_on_push: deploy_on_push.resolve_value()?,
-						min_horizontal_scale: min_horizontal_scale.resolve_value()?,
-						max_horizontal_scale: max_horizontal_scale.resolve_value()?,
-						ports: ports.into_inner(),
-						environment_variables: environment_variables
-							.into_inner()
-							.into_iter()
-							.map(|(key, value)| Ok((key, value.resolve_value()?)))
-							.collect::<Result<_, IaacError>>()?,
-						startup_probe,
-						liveness_probe,
-						config_mounts: config_mounts
-							.into_iter()
-							.map(|(key, mount)| {
-								(
-									key,
-									Base64String::from_string(
-										fs::read_to_string(&mount).unwrap_or(mount),
-									),
-								)
-							})
-							.collect(),
-						volumes: Default::default(),
-					},
+					running_details,
 					deploy_on_create: true,
 				})
 				.build(),
