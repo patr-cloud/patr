@@ -33,7 +33,7 @@ Nobody reads large text anyway (other than LLMs), so here's a skimmed down versi
 ### Dependencies needed
 
 - [Rust](https://www.rust-lang.org/tools/install): `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-- [cargo leptos](https://github.com/leptos-rs/cargo-leptos): `cargo install cargo-leptos`
+- [Node.js](https://nodejs.org) (>=22) and [pnpm](https://pnpm.io) (the frontend is a SolidJS app)
 - Postgres
 - Redis
 

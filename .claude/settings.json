@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path'); case \"$f\" in *.rs) rustfmt --edition 2024 \"$f\";; */frontend/*|*/e2e/*) cd \"$(dirname \"$f\")\" && pnpm exec prettier --write \"$f\";; esac 2>/dev/null || true",
+            "statusMessage": "Formatting edited file…"
+          }
+        ]
+      }
+    ]
+  }
+}

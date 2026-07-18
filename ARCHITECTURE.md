@@ -37,10 +37,10 @@ Once a DevContainer is running, create a config file by copying the `./config/ap
 Once setup, you can run the project by running:
 
 ```bash
-cargo leptos serve
+cargo api
 ```
 
-You can now access the project at `http://localhost:3000`.
+You can now access the project at `http://localhost:3001`.
 
 ## Onto the good stuff!
 
@@ -57,9 +57,9 @@ Okay, here's a rough architecture of the project. The whole repo is a single mon
 
 - `./api`: The backend API that hosts the API as well as the frontend.
 - `./cli`: The CLI that interacts with the API.
-- `./components`: The shared Leptos components that are used by the frontend.
 - `./config`: The configuration files for the API.
-- `./frontend`: The frontend for Patr.
+- `./frontend`: The frontend for Patr, a SolidJS (SolidStart) app.
+- `./ingress`: The Cloudflare Worker that proxies requests to the right cluster.
 - `./macros`: Commonly used macros for the project.
 - `./models`: The models that are shared throughout the codebase. This includes:
   - `./api`: The format for request, response, error, headers and query parameters.
@@ -73,14 +73,14 @@ Okay, here's a rough architecture of the project. The whole repo is a single mon
 
 Each runner is basically a piece of code that connects to the API via websocket, and listens for changes. When a deployment is created, the API notifies the runner about the deployment. The runner then pulls the docker image, creates the container, and starts the container. The runner then listens for changes to the deployment and updates the container accordingly. It also listens for changes to the container to update the status of the deployment (running, stopped, etc).
 
-Patr comes built-in with two runners: Docker runner and Kubernetes runner (the code for which can be found in the `./runners` directory). The docker runner can be used to run your deployments on a VM, Raspberry Pi, etc.
+The active runner is the Docker runner (`./runners/docker`), which can run your deployments on a VM, Raspberry Pi, etc. There's also a Kubernetes runner (`./runners/kubernetes`), but it predates the current design and is legacy — don't build on it.
 
-The `./runners/common` is used to share code between the runners. This includes the code to connect to the API, listen for changes, and update the status of the deployment. It also manages the storage of the deployment data, and periodically syncing the data with the API. The common library is still a work in progress, and is not yet complete. This would provide a single trait with async fns that can be used to implement a runner. All the syncing and updating of the deployment data would be handled by the common library.
+The `./runners/common` library shares code between runners: connecting to the API, listening for changes, storing deployment data in a local SQLite DB, and periodically syncing with the API. It exposes a single `RunnerExecutor` trait — implement it and `common` handles the reconciliation, actor supervision, and syncing.
 
 Fun fact - since runners are essentially just pieces of code that connect to the API, you can write your own runner to run your deployments on your own infrastructure. The API is designed to be agnostic to where the code is running, so you can even use Patr to manage your deployments across multiple PaaS providers!
 
 ## How routes are declared
 
-This is a completely in-house system that was developed in order to avoid invalid responses. Essentially, there is a singular `ApiEndpoint` trait [here](./models/src/endpoint.rs), that declares an associated type for the request body, response body, request headers, response headers, query parameters and path parameters. This trait is then implemented for each route in the API. This allows us to have a single source of truth for the route, and ensures that the response is always valid. Additionally, response headers and request headers are implemented as structs. Trait bounds are used to ensure that the required headers are always present.
+This is a completely in-house system that was developed in order to avoid invalid responses. Essentially, there is a singular `ApiEndpoint` trait [here](./models/src/api/api_endpoint.rs), that declares an associated type for the request body, response body, request headers, response headers, query parameters and path parameters. This trait is then implemented for each route in the API. This allows us to have a single source of truth for the route, and ensures that the response is always valid. Additionally, response headers and request headers are implemented as structs. Trait bounds are used to ensure that the required headers are always present.
 
 There's a lot of things going on here, but for the most part, you don't need to worry about this. The `declare_api_endpoint!` macro (documented [here](./macros/src/lib.rs)) does all the heavy lifting for you.
