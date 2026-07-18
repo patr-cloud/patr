@@ -9,37 +9,37 @@ const OBS_MOCK_PORT = Number(process.env.OBS_MOCK_PORT ?? 13900);
 const OBS_MOCK_URL = `http://127.0.0.1:${OBS_MOCK_PORT}`;
 
 export type ObservabilityConfig = {
-  // Loki query_range result values: [unixNanos, logLine].
-  loki?: { values: Array<[string, string]> };
-  // Mimir query_range result values: [unixSeconds, value].
-  mimir?: { values: Array<[number, string]> };
-  // Loki tail frames pushed over the websocket; each frame is a values array.
-  tail?: Array<Array<[string, string]>>;
-  // Return un-parseable body for this backend so the API's parse-error (500)
-  // path can be exercised.
-  malformed?: 'loki' | 'mimir';
+	// Loki query_range result values: [unixNanos, logLine].
+	loki?: { values: Array<[string, string]> };
+	// Mimir query_range result values: [unixSeconds, value].
+	mimir?: { values: Array<[number, string]> };
+	// Loki tail frames pushed over the websocket; each frame is a values array.
+	tail?: Array<Array<[string, string]>>;
+	// Return un-parseable body for this backend so the API's parse-error (500)
+	// path can be exercised.
+	malformed?: 'loki' | 'mimir';
 };
 
 export type RecordedRequest = {
-  kind: 'loki' | 'mimir' | 'loki-tail';
-  path: string;
-  query: Record<string, string>;
-  headers: Record<string, string>;
+	kind: 'loki' | 'mimir' | 'loki-tail';
+	path: string;
+	query: Record<string, string>;
+	headers: Record<string, string>;
 };
 
 export async function configureObservability(org: string, cfg: ObservabilityConfig): Promise<void> {
-  await fetch(`${OBS_MOCK_URL}/__configure`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ org, ...cfg }),
-  });
+	await fetch(`${OBS_MOCK_URL}/__configure`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ org, ...cfg }),
+	});
 }
 
 export async function observabilityRequests(org: string): Promise<RecordedRequest[]> {
-  const res = await fetch(`${OBS_MOCK_URL}/__requests?org=${encodeURIComponent(org)}`);
-  return (await res.json()) as RecordedRequest[];
+	const res = await fetch(`${OBS_MOCK_URL}/__requests?org=${encodeURIComponent(org)}`);
+	return (await res.json()) as RecordedRequest[];
 }
 
 export async function resetObservability(org: string): Promise<void> {
-  await fetch(`${OBS_MOCK_URL}/__reset?org=${encodeURIComponent(org)}`, { method: 'POST' });
+	await fetch(`${OBS_MOCK_URL}/__reset?org=${encodeURIComponent(org)}`, { method: 'POST' });
 }

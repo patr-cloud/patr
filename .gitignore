@@ -49,8 +49,7 @@ dist-ssr
 *.sw?
 
 # LLM files doesn't need to be tracked
-.claude/
-CLAUDE.md
+CLAUDE.local.md
 patr-api
 .worktrees/
 

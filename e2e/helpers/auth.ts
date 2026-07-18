@@ -17,20 +17,20 @@ import { JWT_SECRET } from '@/helpers/config';
  * path doesn't recognise.
  */
 export function expireAccessTokenJwt(currentAccessToken: string): string {
-  const decoded = jwt.decode(currentAccessToken);
-  if (typeof decoded !== 'object' || decoded === null) {
-    throw new Error('Could not decode access token JWT');
-  }
-  const now = Math.floor(Date.now() / 1000);
-  return jwt.sign(
-    {
-      ...decoded,
-      exp: now - 60,
-      nbf: now - 120,
-      iat: now - 120,
-      jti: uuidv1().replace(/-/g, ''),
-    },
-    JWT_SECRET,
-    { algorithm: 'HS256' },
-  );
+	const decoded = jwt.decode(currentAccessToken);
+	if (typeof decoded !== 'object' || decoded === null) {
+		throw new Error('Could not decode access token JWT');
+	}
+	const now = Math.floor(Date.now() / 1000);
+	return jwt.sign(
+		{
+			...decoded,
+			exp: now - 60,
+			nbf: now - 120,
+			iat: now - 120,
+			jti: uuidv1().replace(/-/g, ''),
+		},
+		JWT_SECRET,
+		{ algorithm: 'HS256' },
+	);
 }

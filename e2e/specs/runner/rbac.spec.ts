@@ -1,11 +1,11 @@
 import {
-  test,
-  expect,
-  newContext,
-  loginAs,
-  createUserWithWorkspace,
-  createSecondMemberWithRole,
-  getPermissionId,
+	test,
+	expect,
+	newContext,
+	loginAs,
+	createUserWithWorkspace,
+	createSecondMemberWithRole,
+	getPermissionId,
 } from '@/prelude';
 import type { ApiClient, UserHandle } from '@/prelude';
 import { createRunnerAPI } from '@/helpers/runner-api';
@@ -20,46 +20,46 @@ import { openRunnerList, addRunnerLink, runnerRow, emptyStateHeading } from '@/h
 type Owner = UserHandle & { workspaceId: string };
 
 async function permId(api: ApiClient, owner: Owner, name: string): Promise<string> {
-  return getPermissionId(api, owner.accessToken, owner.workspaceId, owner.clientIp, name);
+	return getPermissionId(api, owner.accessToken, owner.workspaceId, owner.clientIp, name);
 }
 
 // Control-visibility through the dashboard: the create CTA is gated on the
 // create permission, so a view-only member sees runners but no "Add Runner".
 test.describe('runner > RBAC [UI]', () => {
-  test('a view-only member sees runners but no Add Runner CTA', async ({ browser, api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    const runner = await createRunnerAPI(api, owner, owner.workspaceId);
-    const viewId = await permId(api, owner, 'runner::view');
-    await using member = await createSecondMemberWithRole(api, owner, {
-      [viewId]: { permissionType: 'exclude', resources: [] },
-    });
-    const context = await newContext(browser, member.clientIp);
-    await loginAs(context, member, { workspaceId: owner.workspaceId });
-    const page = await context.newPage();
-    try {
-      await openRunnerList(page);
-      await expect(runnerRow(page, runner.name)).toBeVisible({ timeout: 15_000 });
-      await expect(addRunnerLink(page)).toHaveCount(0);
-    } finally {
-      await context.close();
-    }
-  });
+	test('a view-only member sees runners but no Add Runner CTA', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const runner = await createRunnerAPI(api, owner, owner.workspaceId);
+		const viewId = await permId(api, owner, 'runner::view');
+		await using member = await createSecondMemberWithRole(api, owner, {
+			[viewId]: { permissionType: 'exclude', resources: [] },
+		});
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openRunnerList(page);
+			await expect(runnerRow(page, runner.name)).toBeVisible({ timeout: 15_000 });
+			await expect(addRunnerLink(page)).toHaveCount(0);
+		} finally {
+			await context.close();
+		}
+	});
 
-  test('a member with no runner permission sees the empty state', async ({ browser, api }) => {
-    await using owner = await createUserWithWorkspace(api);
-    await createRunnerAPI(api, owner, owner.workspaceId);
-    const viewRoles = await permId(api, owner, 'viewRoles');
-    await using member = await createSecondMemberWithRole(api, owner, {
-      [viewRoles]: { permissionType: 'exclude', resources: [] },
-    });
-    const context = await newContext(browser, member.clientIp);
-    await loginAs(context, member, { workspaceId: owner.workspaceId });
-    const page = await context.newPage();
-    try {
-      await openRunnerList(page);
-      await expect(emptyStateHeading(page)).toBeVisible({ timeout: 15_000 });
-    } finally {
-      await context.close();
-    }
-  });
+	test('a member with no runner permission sees the empty state', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		await createRunnerAPI(api, owner, owner.workspaceId);
+		const viewRoles = await permId(api, owner, 'viewRoles');
+		await using member = await createSecondMemberWithRole(api, owner, {
+			[viewRoles]: { permissionType: 'exclude', resources: [] },
+		});
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openRunnerList(page);
+			await expect(emptyStateHeading(page)).toBeVisible({ timeout: 15_000 });
+		} finally {
+			await context.close();
+		}
+	});
 });

@@ -7,28 +7,28 @@ export { test, expect, newContext } from '@/fixtures/api';
 export type { ApiClient } from '@/helpers/api';
 
 export {
-  createUserAccount,
-  createUserWithWorkspace,
-  createUserWithWorkspaces,
-  createPendingSignup,
-  addMemberToWorkspace,
-  createSecondMemberWithRole,
-  createSecondUserNoMembership,
-  getOwnUserId,
+	createUserAccount,
+	createUserWithWorkspace,
+	createUserWithWorkspaces,
+	createPendingSignup,
+	addMemberToWorkspace,
+	createSecondMemberWithRole,
+	createSecondUserNoMembership,
+	getOwnUserId,
 } from '@/helpers/user';
 export type { User, UserHandle, PendingSignup } from '@/helpers/user';
 
 export {
-  getPermissionId,
-  listPermissions,
-  createRoleAPI,
-  updateRoleAPI,
-  deleteRoleAPI,
-  listRolesAPI,
-  getRoleAPI,
-  setUserRolesAPI,
-  removeMemberAPI,
-  currentPermissionsAPI,
+	getPermissionId,
+	listPermissions,
+	createRoleAPI,
+	updateRoleAPI,
+	deleteRoleAPI,
+	listRolesAPI,
+	getRoleAPI,
+	setUserRolesAPI,
+	removeMemberAPI,
+	currentPermissionsAPI,
 } from '@/helpers/api/rbac';
 
 export { loginAs } from '@/helpers/ui/session';
@@ -36,9 +36,9 @@ export { expectUrl, expectUrlNot } from '@/helpers/ui/workspace';
 
 export { createApiTokenAPI, patchApiTokenAPI, callWithApiToken } from '@/helpers/api-token';
 export type {
-  ApiTokenHandle,
-  CreateApiTokenOpts,
-  WorkspacePermissionInput,
+	ApiTokenHandle,
+	CreateApiTokenOpts,
+	WorkspacePermissionInput,
 } from '@/helpers/api-token';
 
 export { RunnerHandle } from '@/helpers/runner';
@@ -52,22 +52,22 @@ export { randomIPv4 } from '@/helpers/ip';
 export { computeTotp } from '@/helpers/totp';
 export { readMfaSetupSecret } from '@/helpers/redis';
 export {
-  queryUser,
-  backdateSignupOtp,
-  backdatePasswordResetToken,
-  exhaustPasswordResetAttempts,
-  backdateWebLoginExpiry,
-  deleteWebLogin,
-  sql,
+	queryUser,
+	backdateSignupOtp,
+	backdatePasswordResetToken,
+	exhaustPasswordResetAttempts,
+	backdateWebLoginExpiry,
+	deleteWebLogin,
+	sql,
 } from '@/helpers/db';
 
 // Shared test-harness configuration — re-exported so specs can import from
 // '@/prelude' without knowing the helper layout.
 export {
-  DEBUG_OTP,
-  HYDRATION_TIMEOUT,
-  USER_AGENT,
-  JWT_SECRET,
-  TURNSTILE_TOKEN,
+	DEBUG_OTP,
+	HYDRATION_TIMEOUT,
+	USER_AGENT,
+	JWT_SECRET,
+	TURNSTILE_TOKEN,
 } from '@/helpers/config';
 export { DASHBOARD_URL, API_DIRECT_URL, VINXI_DEV_URL } from '@/helpers/urls';
