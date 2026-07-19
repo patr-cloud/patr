@@ -192,6 +192,7 @@ const EnvUploadModal = (props: EnvUploadModalProps) => {
 								<input
 									ref={fileInputRef}
 									type="file"
+									name="env-file"
 									accept=".env,text/plain"
 									class="hidden"
 									onChange={onFileChange}
@@ -212,10 +213,11 @@ const EnvUploadModal = (props: EnvUploadModalProps) => {
 									}}
 									onDragLeave={() => setIsDragging(false)}
 									onDrop={onDrop}
-									class={`flex flex-col items-center justify-center gap-3 px-6 py-10 border-2 border-dashed rounded-md cursor-pointer transition-colors ${isDragging()
+									class={`flex flex-col items-center justify-center gap-3 px-6 py-10 border-2 border-dashed rounded-md cursor-pointer transition-colors ${
+										isDragging()
 											? "border-primary bg-primary/8"
 											: "border-primary/30 hover:border-primary/60 hover:bg-primary/4"
-										}`}
+									}`}
 								>
 									<FiUploadCloud size={40} class="text-white" />
 									<div class="text-center">

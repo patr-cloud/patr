@@ -21,6 +21,10 @@ import {
 	createDeploymentLink,
 	fillFirstPort,
 	fillFirstEnv,
+	uploadEnvFile,
+	envUploadSummary,
+	envUploadKeys,
+	submitEnvUpload,
 } from '@/helpers/ui/deployment';
 
 // Deployment creation through the dashboard. The API contract — registry/tag/
@@ -115,6 +119,57 @@ test.describe('deployment > create [UI]', () => {
 		const info = await getDeploymentInfoAPI(api, user, user.workspaceId, createdId);
 		expect(info.ports).toEqual({ '8080': 'http' });
 		expect(info.environmentVariables).toEqual({ FOO: 'bar' });
+	});
+
+	test('an uploaded .env file is parsed, reviewable, and persists on create', async ({
+		browser,
+		api,
+	}) => {
+		await using user = await createUserWithWorkspace(api);
+		const runner = await createRunnerAPI(api, user, user.workspaceId);
+		let createdId = '';
+		// Exercises the parser through the UI: a comment, an `export ` prefix, a
+		// double-quoted value with a space, and a duplicate key (last one wins).
+		const dotEnv = [
+			'# a comment',
+			'FOO=bar',
+			'export QUOTED="a b"',
+			'TRAILING=keep # inline comment',
+			'DUP=first',
+			'DUP=second',
+			'',
+		].join('\n');
+		await withCreatePage(browser, user, async (page) => {
+			await fillDeploymentName(page, randomDeploymentName());
+			await selectRegistry(page, 'Docker Hub');
+			await fillImageName(page, 'traefik/whoami');
+			await fillImageTag(page, 'latest');
+			await selectRunner(page, runner.name);
+
+			await uploadEnvFile(page, dotEnv);
+			// 4 keys, not 5: the comment is skipped and DUP is deduped.
+			await expect(envUploadSummary(page)).toContainText('4');
+			await expect(envUploadKeys(page).first()).toHaveValue('FOO');
+			await submitEnvUpload(page);
+
+			// The rows landed in the env editor behind the modal.
+			await expect(page.locator('input[placeholder="Enter Env Name"]').first()).toHaveValue(
+				'FOO',
+			);
+
+			await submitCreateDeployment(page);
+			await expectToast(page, /Deployment created successfully/i);
+			await expectUrl(page, /\/deployments\/[0-9a-f]{32}/, { timeout: 10_000 });
+			createdId = (page.url().match(/\/deployments\/([0-9a-f]{32})/) ?? [])[1] ?? '';
+		});
+		expect(createdId).toMatch(/^[0-9a-f]{32}$/);
+		const info = await getDeploymentInfoAPI(api, user, user.workspaceId, createdId);
+		expect(info.environmentVariables).toEqual({
+			FOO: 'bar',
+			QUOTED: 'a b',
+			TRAILING: 'keep',
+			DUP: 'second',
+		});
 	});
 
 	test('the header Create button appears once there is at least one deployment', async ({

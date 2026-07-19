@@ -100,6 +100,39 @@ export async function fillFirstEnv(page: Page, key: string, value: string): Prom
 	await page.locator('input[placeholder="Enter Env Value"]').first().fill(value);
 }
 
+// ---------- .env upload modal (env-upload-modal.tsx) ----------
+
+// Opens the review modal and hands it `contents` as a .env file. The file input
+// is hidden behind a dropzone, so set it directly; `name="env-file"` keeps this
+// off the config-mount FileInputs ("deployment-config") on the same page.
+export async function uploadEnvFile(page: Page, contents: string): Promise<void> {
+	await page.getByRole('button', { name: /Upload your \.env file/i }).click();
+	await page.locator('input[name="env-file"]').setInputFiles({
+		name: '.env',
+		mimeType: 'text/plain',
+		buffer: Buffer.from(contents),
+	});
+}
+
+// "Parsed N variables from .env" summary shown once a file is ingested.
+export function envUploadSummary(page: Page) {
+	return page.getByText(/Parsed\s+\d+\s+variables?\s+from/i);
+}
+
+// Key inputs of the parsed rows, in order ("KEY" placeholder). Assert contents
+// with toHaveValue: the value is a DOM property, not a matchable attribute.
+export function envUploadKeys(page: Page) {
+	return page.locator('input[placeholder="KEY"]');
+}
+
+export function addToDeploymentButton(page: Page) {
+	return page.getByRole('button', { name: /Add to deployment/i });
+}
+
+export async function submitEnvUpload(page: Page): Promise<void> {
+	await addToDeploymentButton(page).click();
+}
+
 // ---------- Detail (/deployments/{id}) ----------
 
 export async function openDeploymentDetail(page: Page, id: string, tab?: string): Promise<void> {
