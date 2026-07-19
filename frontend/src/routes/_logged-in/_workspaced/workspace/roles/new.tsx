@@ -11,10 +11,10 @@ import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-components/workspace-header";
 import PermissionSelector from "./-components/permission-selector";
-import { usePermissionsQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
-import { parsePermissionName, parseCamelCase } from "~/utils/func";
+import PermissionRow, { removeResourceFromPermissions } from "./-components/permission-row";
+import { usePermissionsQuery, useResourcesInfoQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
+import { parsePermissionName } from "~/utils/func";
 import { validateNameField, validateRoleDescription } from "~/utils/validation";
-import { FiTrash2 } from "solid-icons/fi";
 
 const CreateRoles = () => {
 	const [workspaceId] = useLastWorkspaceId();
@@ -52,6 +52,11 @@ const CreateRoles = () => {
 			};
 		});
 	});
+
+	// Every resource referenced by the table, resolved in a single request so the
+	// rows can show what the selected IDs actually refer to.
+	const allResourceIds = createMemo(() => [...new Set(permissionEntries().flatMap((perm) => perm.resources))]);
+	const resourcesInfoQuery = useResourcesInfoQuery(() => allResourceIds());
 
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
 
@@ -137,6 +142,7 @@ const CreateRoles = () => {
 							<div class="text-white text-sm font-medium">Permissions</div>
 							<PermissionSelector
 								workspaceId={workspaceId()!}
+								permissionsData={permissionsData()}
 								onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
 							/>
 
@@ -144,42 +150,28 @@ const CreateRoles = () => {
 								<Table
 									column_grids={["flex-4", "flex-3", "flex-4", "flex-1"]}
 									headings={["Resource Type", "Action", "Resources", ""]}
+									heading_align="left"
 									rows={permissionEntries().sort(
 										(a, b) =>
 											a.resourceType.localeCompare(b.resourceType) ||
 											a.action.localeCompare(b.action)
 									)}
 									renderRow={(perm) => (
-										<tr class="table-row">
-											<td class="flex-4 flex items-center justify-center">
-												<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
-											</td>
-											<td class="flex-3 flex items-center justify-center">
-												<span>{parseCamelCase(perm.action)}</span>
-											</td>
-											<td class="flex-4 flex items-center justify-center">
-												<Show
-													when={perm.resources.length > 0}
-													fallback={<span class="text-gray-400">All resources</span>}
-												>
-													<span class="text-sm">
-														{perm.permissionType === "include" ? "Only " : "All except "}
-														{perm.resources.length} resource
-														{perm.resources.length !== 1 ? "s" : ""}
-													</span>
-												</Show>
-											</td>
-											<td
-												class="flex-1 cursor-pointer"
-												onClick={() => {
-													const newPermissionsData = { ...permissionsData() };
-													delete newPermissionsData[perm.permissionId];
-													setPermissionsData(newPermissionsData);
-												}}
-											>
-												<FiTrash2 color="red" />
-											</td>
-										</tr>
+										<PermissionRow
+											perm={perm}
+											resourceInfo={resourcesInfoQuery.data}
+											isLoadingResources={resourcesInfoQuery.isPending}
+											onRemove={() => {
+												const newPermissionsData = { ...permissionsData() };
+												delete newPermissionsData[perm.permissionId];
+												setPermissionsData(newPermissionsData);
+											}}
+											onRemoveResource={(resourceId) =>
+												setPermissionsData((prev) =>
+													removeResourceFromPermissions(prev, perm.permissionId, resourceId)
+												)
+											}
+										/>
 									)}
 								/>
 							</Show>

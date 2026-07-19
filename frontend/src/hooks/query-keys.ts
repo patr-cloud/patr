@@ -121,4 +121,7 @@ export const logKeys = {
 export const resourceKeys = {
 	all: (workspaceId: string) => ["resources", workspaceId] as const,
 	list: (workspaceId: string, resourceType: string) => [...resourceKeys.all(workspaceId), resourceType] as const,
+	// Keyed on the sorted ID list so an unchanged set of resources reuses the cache.
+	info: (workspaceId: string, resourceIds: readonly string[]) =>
+		[...resourceKeys.all(workspaceId), "info", resourceIds] as const,
 };

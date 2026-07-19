@@ -97,6 +97,7 @@ const WorkspacePermissionItem = (props: WorkspacePermissionItemProps) => {
 						<PermissionSelector
 							class="flex-1 w-full"
 							workspaceId={props.workspace.id}
+							permissionsData={permissionsData()}
 							onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
 						/>
 

@@ -7,11 +7,11 @@ import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
 import { createLoggedInAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { ResourcePermissionType } from "~/bindings";
-import { usePermissionsQuery, useRoleInfoQuery } from "~/hooks/fetch";
+import { usePermissionsQuery, useResourcesInfoQuery, useRoleInfoQuery } from "~/hooks/fetch";
 import { roleKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
-import { FiTrash2 } from "solid-icons/fi";
-import { parsePermissionName, parseCamelCase } from "~/utils/func";
+import PermissionRow, { removeResourceFromPermissions } from "./permission-row";
+import { parsePermissionName } from "~/utils/func";
 import { validateNameField, validateRoleDescription } from "~/utils/validation";
 
 const EditPermissions = () => {
@@ -64,6 +64,11 @@ const EditPermissions = () => {
 			};
 		});
 	});
+
+	// Every resource referenced by the table, resolved in a single request so the
+	// rows can show what the stored IDs actually refer to.
+	const allResourceIds = createMemo(() => [...new Set(permissionEntries().flatMap((perm) => perm.resources))]);
+	const resourcesInfoQuery = useResourcesInfoQuery(() => allResourceIds());
 
 	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async () => {
 		const nameError = validateNameField(roleName());
@@ -152,6 +157,7 @@ const EditPermissions = () => {
 					<PermissionSelector
 						class="flex-1"
 						workspaceId={workspaceId()!}
+						permissionsData={permissionsData()}
 						onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
 					/>
 				</div>
@@ -159,43 +165,26 @@ const EditPermissions = () => {
 				<Table
 					column_grids={["flex-4", "flex-3", "flex-4", "flex-1"]}
 					headings={["Resource Type", "Action", "Resources", ""]}
+					heading_align="left"
 					rows={permissionEntries().sort(
 						(a, b) => a.resourceType.localeCompare(b.resourceType) || a.action.localeCompare(b.action)
 					)}
 					renderRow={(perm) => (
-						<tr role="row" class="table-row">
-							<td role="cell" class="flex-4 flex items-center justify-start">
-								<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
-							</td>
-							<td role="cell" class="flex-3 flex items-center justify-start">
-								<span>{parseCamelCase(perm.action)}</span>
-							</td>
-							<td role="cell" class="flex-4 flex items-center justify-start">
-								<Show
-									when={perm.resources.length > 0}
-									fallback={<span class="text-gray-400">All resources</span>}
-								>
-									<span class="text-sm">
-										{perm.permissionType === "include" ? "Only " : "All except "}
-										{perm.resources.length} resource{perm.resources.length !== 1 ? "s" : ""}
-									</span>
-								</Show>
-							</td>
-							<td role="cell" class="flex-1 flex items-center justify-center">
-								<button
-									type="button"
-									aria-label="Remove permission"
-									class="text-error hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
-									onClick={() => {
-										const newPermissionsData = { ...permissionsData() };
-										delete newPermissionsData[perm.permissionId];
-										setPermissionsData(newPermissionsData);
-									}}
-								>
-									<FiTrash2 size={16} />
-								</button>
-							</td>
-						</tr>
+						<PermissionRow
+							perm={perm}
+							resourceInfo={resourcesInfoQuery.data}
+							isLoadingResources={resourcesInfoQuery.isPending}
+							onRemove={() => {
+								const newPermissionsData = { ...permissionsData() };
+								delete newPermissionsData[perm.permissionId];
+								setPermissionsData(newPermissionsData);
+							}}
+							onRemoveResource={(resourceId) =>
+								setPermissionsData((prev) =>
+									removeResourceFromPermissions(prev, perm.permissionId, resourceId)
+								)
+							}
+						/>
 					)}
 				/>
 			</div>
