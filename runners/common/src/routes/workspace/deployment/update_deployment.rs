@@ -27,9 +27,8 @@ pub async fn update_deployment(
 				body:
 					UpdateDeploymentRequestProcessed {
 						name,
-						// Self-hosted runners don't support editing the image tag or
-						// registry (self-hosted is being deprecated); ignore them.
-						registry: _,
+						// Self-hosted runners don't support editing the image tag
+						// (self-hosted is being deprecated); ignore it.
 						image_tag: _,
 						machine_type,
 						runner: _,

@@ -207,7 +207,6 @@ pub async fn apply(
 				})
 				.body(UpdateDeploymentRequest {
 					name: name.clone(),
-					registry,
 					image_tag,
 					runner,
 					machine_type,

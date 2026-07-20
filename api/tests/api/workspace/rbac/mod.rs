@@ -180,8 +180,10 @@ async fn update_role_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: new_name.clone(),
-					description: "test role".to_string(),
+					role: Role {
+						name: new_name.clone(),
+						description: "test role".to_string(),
+					},
 					permissions: BTreeMap::from([(
 						setup.get_permission_id(Permission::ViewRoles),
 						ResourcePermissionType::Include(Default::default()),
@@ -487,8 +489,10 @@ async fn create_role_duplicate_name() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: role.name.clone(),
-					description: "duplicate".to_string(),
+					role: Role {
+						name: role.name.clone(),
+						description: "duplicate".to_string(),
+					},
 					permissions: BTreeMap::new(),
 				})
 				.build(),
@@ -588,8 +592,10 @@ async fn update_role_nonexistent() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: random_name(8),
-					description: "test role".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
 					permissions: BTreeMap::from([(
 						setup.get_permission_id(Permission::ViewRoles),
 						ResourcePermissionType::Include(Default::default()),
@@ -633,8 +639,10 @@ async fn update_role_add_permissions() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: random_name(8),
-					description: "test role".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
 					permissions: perms,
 				})
 				.build(),
@@ -704,8 +712,10 @@ async fn update_role_remove_permissions() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: random_name(8),
-					description: "test role".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
 					permissions: next,
 				})
 				.build(),
@@ -825,8 +835,10 @@ async fn create_role_invalid_name() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: "!!!".to_string(),
-					description: "test".to_string(),
+					role: Role {
+						name: "!!!".to_string(),
+						description: "test".to_string(),
+					},
 					permissions: perms,
 				})
 				.build(),
@@ -925,8 +937,10 @@ async fn create_role_with_description(
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: random_name(8),
-					description: description.to_string(),
+					role: Role {
+						name: random_name(8),
+						description: description.to_string(),
+					},
 					permissions,
 				})
 				.build(),
@@ -1026,8 +1040,10 @@ async fn update_role_rejects_xss_in_description() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: random_name(8),
-					description: "<script>alert(1)</script>".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "<script>alert(1)</script>".to_string(),
+					},
 					permissions: BTreeMap::from([(
 						setup.get_permission_id(Permission::ViewRoles),
 						ResourcePermissionType::Include(Default::default()),
@@ -1097,8 +1113,10 @@ async fn role_cross_workspace_update_denied() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: random_name(8),
-					description: "test role".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
 					permissions: BTreeMap::from([(
 						setup.get_permission_id(Permission::ViewRoles),
 						ResourcePermissionType::Include(Default::default()),
@@ -1213,8 +1231,10 @@ async fn create_role_name_too_short() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: "ab".to_string(),
-					description: "too short".to_string(),
+					role: Role {
+						name: "ab".to_string(),
+						description: "too short".to_string(),
+					},
 					permissions: BTreeMap::from([(
 						setup.get_permission_id(Permission::ViewRoles),
 						ResourcePermissionType::Exclude(Default::default()),
@@ -1248,8 +1268,10 @@ async fn create_role_same_name_across_workspaces() {
 						user_agent: TEST_USER_AGENT,
 					})
 					.body(CreateNewRoleRequest {
-						name: name.clone(),
-						description: "shared name".to_string(),
+						role: Role {
+							name: name.clone(),
+							description: "shared name".to_string(),
+						},
 						permissions: BTreeMap::from([(
 							setup.get_permission_id(Permission::ViewRoles),
 							ResourcePermissionType::Exclude(Default::default()),
@@ -1287,8 +1309,10 @@ async fn update_role_empty_permissions_400() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: random_name(8),
-					description: "test role".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
 					permissions: BTreeMap::new(),
 				})
 				.build(),

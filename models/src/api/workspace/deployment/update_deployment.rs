@@ -1,4 +1,4 @@
-use super::{DeploymentRegistry, DeploymentRunningDetails};
+use super::DeploymentRunningDetails;
 use crate::{
 	prelude::*,
 	utils::constants::{DEPLOYMENT_IMAGE_TAG_REGEX, RESOURCE_NAME_REGEX},
@@ -30,11 +30,6 @@ macros::declare_api_endpoint!(
 		/// The name of the deployment
 		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
-		/// The registry the deployment will use
-		/// It can either be patr's registry or docker's registry
-		#[preprocess(none)]
-		#[serde(flatten)]
-		pub registry: DeploymentRegistry,
 		/// The image tag to use
 		#[preprocess(trim, lowercase, regex = DEPLOYMENT_IMAGE_TAG_REGEX)]
 		pub image_tag: String,

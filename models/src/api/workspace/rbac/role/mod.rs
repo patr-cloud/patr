@@ -22,15 +22,21 @@ pub use self::{
 	list_users_for_role::*,
 	update_role::*,
 };
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	utils::constants::{RESOURCE_NAME_REGEX, ROLE_DESCRIPTION_REGEX},
+};
 
 /// The role metadata
+#[::preprocess::sync]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct Role {
 	/// The name of the role
+	#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 	pub name: String,
 	/// The description of the role
-	#[serde(default, skip_serializing_if = "String::is_empty")]
+	#[preprocess(trim, regex = ROLE_DESCRIPTION_REGEX)]
+	#[serde(default, skip_serializing_if = "str::is_empty")]
 	pub description: String,
 }

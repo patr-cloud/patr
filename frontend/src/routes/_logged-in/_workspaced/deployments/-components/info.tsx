@@ -103,10 +103,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			return;
 		}
 
-		// The full deployment object is sent on every update. `registry` and
-		// `machineType` are immutable but required in the request shape, so we
-		// carry them over from the fetched info.
-		const common = {
+		// The full deployment object is sent on every update. `machineType` is
+		// immutable but required in the request shape, so we carry it over from
+		// the fetched info. The registry can't change after create, so it isn't
+		// part of the update request.
+		const body: UpdateDeploymentRequest = {
 			name: info.name,
 			imageTag: info.imageTag,
 			runner: info.runner,
@@ -121,10 +122,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			configMounts: info.configMounts,
 			volumes: info.volumes,
 		};
-		const body: UpdateDeploymentRequest =
-			"repositoryId" in info
-				? { ...common, registry: info.registry, repositoryId: info.repositoryId }
-				: { ...common, registry: info.registry, imageName: info.imageName };
 
 		setIsUpdating(true);
 		try {

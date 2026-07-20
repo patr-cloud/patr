@@ -25,8 +25,7 @@ pub async fn update_role(
 				},
 				body:
 					UpdateRoleRequestProcessed {
-						name,
-						description,
+						role: RoleProcessed { name, description },
 						permissions,
 					},
 			},

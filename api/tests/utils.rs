@@ -469,8 +469,10 @@ impl TestSetup {
 						user_agent: TEST_USER_AGENT,
 					})
 					.body(CreateNewRoleRequest {
-						name: name.clone(),
-						description: "test role with permissions".to_string(),
+						role: Role {
+							name: name.clone(),
+							description: "test role with permissions".to_string(),
+						},
 						permissions,
 					})
 					.build(),

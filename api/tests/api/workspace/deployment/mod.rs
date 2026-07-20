@@ -89,7 +89,6 @@ async fn full_update(
 	let info = get_info(setup, token, workspace_id, deployment_id).await;
 	UpdateDeploymentRequest {
 		name: info.deployment.name.clone(),
-		registry: info.deployment.registry.clone(),
 		image_tag: info.deployment.image_tag.clone(),
 		runner: info.deployment.runner,
 		machine_type: info.deployment.machine_type,
@@ -2923,10 +2922,6 @@ async fn update_deployment_nonexistent_401() {
 
 	let body = UpdateDeploymentRequest {
 		name: "x-y-z".to_string(),
-		registry: DeploymentRegistry::ExternalRegistry {
-			registry: "registry.hub.docker.com".to_string(),
-			image_name: "library/nginx".to_string(),
-		},
 		image_tag: "latest".to_string(),
 		runner: Uuid::nil(),
 		machine_type: Uuid::nil(),

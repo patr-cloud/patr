@@ -600,10 +600,6 @@ async fn deployment_view_does_not_grant_edit() {
 				})
 				.body(UpdateDeploymentRequest {
 					name: random_name(8),
-					registry: DeploymentRegistry::ExternalRegistry {
-						registry: "registry.hub.docker.com".to_string(),
-						image_name: "library/nginx".to_string(),
-					},
 					image_tag: "latest".to_string(),
 					runner: Uuid::nil(),
 					machine_type: Uuid::nil(),

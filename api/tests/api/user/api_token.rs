@@ -37,8 +37,10 @@ async fn probe_modify_roles(
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: random_name(8),
-					description: "cascade probe".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "cascade probe".to_string(),
+					},
 					permissions: BTreeMap::from([(
 						view_perm,
 						ResourcePermissionType::Exclude(BTreeSet::new()),

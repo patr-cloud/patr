@@ -41,7 +41,6 @@ pub async fn update_deployment(
 				body:
 					UpdateDeploymentRequestProcessed {
 						name,
-						registry: _,
 						image_tag,
 						machine_type,
 						runner,
