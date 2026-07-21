@@ -36,7 +36,7 @@ test.describe('security — cookie tampering', () => {
 				},
 			]);
 			// Navigate to a guarded route.
-			await page.goto('/profile');
+			await page.goto('/profile', { waitUntil: 'domcontentloaded' });
 			await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
 		} finally {
 			await context.close();

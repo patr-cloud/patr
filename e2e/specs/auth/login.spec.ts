@@ -139,7 +139,10 @@ test.describe('login — concurrency & state @racy', () => {
 			await waitForLoggedIn(page);
 
 			const page2 = await context.newPage();
-			await page2.goto('/profile');
+			// /profile is a _workspaced route where the default waitUntil: 'load'
+			// never fires (see e2e/CLAUDE.md), so the navigation hangs to the test
+			// timeout — wait for 'domcontentloaded' instead.
+			await page2.goto('/profile', { waitUntil: 'domcontentloaded' });
 			await expect(page2).not.toHaveURL(/\/login/, { timeout: 10_000 });
 		} finally {
 			await context.close();
