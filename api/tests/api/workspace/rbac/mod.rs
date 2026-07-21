@@ -180,9 +180,14 @@ async fn update_role_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: Some(new_name.clone()),
-					description: None,
-					permissions: None,
+					role: Role {
+						name: new_name.clone(),
+						description: "test role".to_string(),
+					},
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						ResourcePermissionType::Include(Default::default()),
+					)]),
 				})
 				.build(),
 		)
@@ -484,8 +489,10 @@ async fn create_role_duplicate_name() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: role.name.clone(),
-					description: "duplicate".to_string(),
+					role: Role {
+						name: role.name.clone(),
+						description: "duplicate".to_string(),
+					},
 					permissions: BTreeMap::new(),
 				})
 				.build(),
@@ -585,9 +592,14 @@ async fn update_role_nonexistent() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: Some(random_name(8)),
-					description: None,
-					permissions: None,
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						ResourcePermissionType::Include(Default::default()),
+					)]),
 				})
 				.build(),
 		)
@@ -627,9 +639,11 @@ async fn update_role_add_permissions() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: None,
-					permissions: Some(perms),
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
+					permissions: perms,
 				})
 				.build(),
 		)
@@ -698,9 +712,11 @@ async fn update_role_remove_permissions() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: None,
-					permissions: Some(next),
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
+					permissions: next,
 				})
 				.build(),
 		)
@@ -819,8 +835,10 @@ async fn create_role_invalid_name() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: "!!!".to_string(),
-					description: "test".to_string(),
+					role: Role {
+						name: "!!!".to_string(),
+						description: "test".to_string(),
+					},
 					permissions: perms,
 				})
 				.build(),
@@ -919,8 +937,10 @@ async fn create_role_with_description(
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: random_name(8),
-					description: description.to_string(),
+					role: Role {
+						name: random_name(8),
+						description: description.to_string(),
+					},
 					permissions,
 				})
 				.build(),
@@ -1020,9 +1040,14 @@ async fn update_role_rejects_xss_in_description() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: Some("<script>alert(1)</script>".to_string()),
-					permissions: None,
+					role: Role {
+						name: random_name(8),
+						description: "<script>alert(1)</script>".to_string(),
+					},
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						ResourcePermissionType::Include(Default::default()),
+					)]),
 				})
 				.build(),
 		)
@@ -1088,9 +1113,14 @@ async fn role_cross_workspace_update_denied() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: Some("x".to_string()),
-					permissions: None,
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						ResourcePermissionType::Include(Default::default()),
+					)]),
 				})
 				.build(),
 		)
@@ -1201,8 +1231,10 @@ async fn create_role_name_too_short() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: "ab".to_string(),
-					description: "too short".to_string(),
+					role: Role {
+						name: "ab".to_string(),
+						description: "too short".to_string(),
+					},
 					permissions: BTreeMap::from([(
 						setup.get_permission_id(Permission::ViewRoles),
 						ResourcePermissionType::Exclude(Default::default()),
@@ -1236,8 +1268,10 @@ async fn create_role_same_name_across_workspaces() {
 						user_agent: TEST_USER_AGENT,
 					})
 					.body(CreateNewRoleRequest {
-						name: name.clone(),
-						description: "shared name".to_string(),
+						role: Role {
+							name: name.clone(),
+							description: "shared name".to_string(),
+						},
 						permissions: BTreeMap::from([(
 							setup.get_permission_id(Permission::ViewRoles),
 							ResourcePermissionType::Exclude(Default::default()),
@@ -1275,9 +1309,11 @@ async fn update_role_empty_permissions_400() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateRoleRequest {
-					name: None,
-					description: None,
-					permissions: Some(BTreeMap::new()),
+					role: Role {
+						name: random_name(8),
+						description: "test role".to_string(),
+					},
+					permissions: BTreeMap::new(),
 				})
 				.build(),
 		)
@@ -1286,41 +1322,6 @@ async fn update_role_empty_permissions_400() {
 		400,
 		response.status_code().as_u16(),
 		"a PATCH that empties the permissions map should be 400"
-	);
-}
-
-#[tokio::test]
-async fn update_role_empty_body_400() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let role = setup
-		.create_test_role(&user.access_token, workspace.id)
-		.await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<UpdateRoleRequest>::builder()
-				.path(UpdateRolePath {
-					workspace_id: workspace.id,
-					role_id: role.id,
-				})
-				.headers(UpdateRoleRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(UpdateRoleRequest {
-					name: None,
-					description: None,
-					permissions: None,
-				})
-				.build(),
-		)
-		.await;
-	assert_eq!(
-		400,
-		response.status_code().as_u16(),
-		"an empty PATCH body should be 400 (WrongParameters)"
 	);
 }
 

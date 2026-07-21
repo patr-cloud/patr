@@ -6,7 +6,10 @@ import { expect } from '@playwright/test';
 //            button[type=submit] with text "Login".
 
 export async function openLoginPage(page: Page): Promise<void> {
-	await page.goto('/login');
+	// Default waitUntil: 'load' is unreliable on these routes (see e2e/CLAUDE.md)
+	// and leaves an unbounded navigation that can stall under parallel-context
+	// load — use 'domcontentloaded' so the wait is bounded.
+	await page.goto('/login', { waitUntil: 'domcontentloaded' });
 }
 
 export async function fillLoginForm(

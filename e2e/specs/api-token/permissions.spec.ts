@@ -50,11 +50,9 @@ test.describe('api token > permissions [UI]', () => {
 		try {
 			await openTokenDetail(page, token.id);
 			await clickSavePermissions(page);
-			await expect(page.getByText(/API Token permissions updated successfully/i)).toBeVisible(
-				{
-					timeout: 15_000,
-				},
-			);
+			await expect(page.getByText(/API Token updated successfully/i)).toBeVisible({
+				timeout: 15_000,
+			});
 		} finally {
 			await context.close();
 		}

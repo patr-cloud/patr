@@ -24,14 +24,13 @@ macros::declare_api_endpoint!(
 		}
 	},
 	request = {
-		/// The new path of the updated URL
-		#[preprocess(optional(trim, lowercase))]
-		pub path: Option<String>,
-		/// The new type of the updated URL which can be
-		/// Deployment, Static Site, Proxy or Redirect
+		/// The path of the URL
+		#[preprocess(trim, lowercase)]
+		pub path: String,
+		/// The URL type (Deployment, Static Site, Proxy or Redirect)
 		#[serde(flatten)]
-		#[preprocess(optional(none))]
-		pub url_type: Option<ManagedUrlType>,
+		#[preprocess(none)]
+		pub url_type: ManagedUrlType,
 	},
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,

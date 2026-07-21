@@ -4,8 +4,7 @@ use models::api::workspace::*;
 use crate::prelude::*;
 
 /// The handler to update the information of a workspace. At the moment, only
-/// the name can be updated. However, this will be expanded in the future. At
-/// least one parameter must be provided for the update.
+/// the name can be updated. However, this will be expanded in the future.
 pub async fn update_workspace_info(
 	AuthenticatedAppRequest {
 		request:
@@ -28,12 +27,25 @@ pub async fn update_workspace_info(
 ) -> Result<AppResponse<UpdateWorkspaceInfoRequest>, ErrorType> {
 	info!("Updating information for workspace `{workspace_id}`");
 
-	// If more parameters are added, add them here
-	if name.is_none() {
-		return Err(ErrorType::WrongParameters);
-	}
+	let current_name = query!(
+		r#"
+		SELECT
+			name
+		FROM
+			workspace
+		WHERE
+			id = $1;
+		"#,
+		&workspace_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist)?
+	.name;
 
-	if let Some(ref name) = name {
+	// The full object always carries the name, so only check availability when it
+	// actually changed — otherwise the workspace's own name would fail the check.
+	if *name != *current_name {
 		let available = super::is_name_available(AuthenticatedAppRequest {
 			request: ProcessedApiRequest {
 				path: IsWorkspaceNameAvailablePath,
@@ -66,11 +78,11 @@ pub async fn update_workspace_info(
 		UPDATE
 			workspace
 		SET
-			name = COALESCE($1, name)
+			name = $1
 		WHERE
 			id = $2;
 		"#,
-		name.as_deref(),
+		&*name,
 		&workspace_id as _,
 	)
 	.execute(&mut **database)

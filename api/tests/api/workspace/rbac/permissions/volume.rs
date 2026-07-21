@@ -254,8 +254,8 @@ async fn volume_view_does_not_grant_edit() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateVolumeRequest {
-					name: None,
-					size: Some(2),
+					name: "voledit".to_string(),
+					size: 2,
 				})
 				.build(),
 		)

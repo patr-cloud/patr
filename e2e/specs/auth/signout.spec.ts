@@ -44,7 +44,7 @@ test.describe('sign-out', () => {
 		const { context, page } = await loggedInPage(browser, api);
 		try {
 			await signOut(page);
-			await page.goto('/profile');
+			await page.goto('/profile', { waitUntil: 'domcontentloaded' });
 			await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
 		} finally {
 			await context.close();

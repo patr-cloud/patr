@@ -141,8 +141,11 @@ async fn managed_url_denied_without_permission() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateManagedURLRequest {
-					path: Some("/new".to_string()),
-					url_type: None,
+					path: "/new".to_string(),
+					url_type: ManagedUrlType::ProxyUrl {
+						url: "example.com".to_string(),
+						http_only: false,
+					},
 				})
 				.build(),
 		)

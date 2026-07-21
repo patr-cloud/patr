@@ -72,13 +72,9 @@ const EditPermissions = () => {
 		setRoleDescriptionError(descError);
 		if (nameError || descError) return;
 
-		const role = roleInfoQuery.data;
 		const requestBody: UpdateRoleRequest = {
-			name: roleName().trim() !== role?.name ? roleName().trim() : undefined,
-			description:
-				roleDescription().trim() !== (role?.description ?? "")
-					? roleDescription().trim() || undefined
-					: undefined,
+			name: roleName().trim(),
+			description: roleDescription().trim(),
 			permissions: permissionsData(),
 		};
 

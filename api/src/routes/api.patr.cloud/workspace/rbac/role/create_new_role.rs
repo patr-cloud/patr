@@ -23,8 +23,7 @@ pub async fn create_new_role(
 					},
 				body:
 					CreateNewRoleRequestProcessed {
-						name,
-						description,
+						role: RoleProcessed { name, description },
 						permissions,
 					},
 			},

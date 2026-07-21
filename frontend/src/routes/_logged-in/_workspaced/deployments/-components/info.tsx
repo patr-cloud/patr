@@ -1,6 +1,11 @@
 import { FiChevronDown } from "solid-icons/fi";
 import { createEffect, createSignal, Show } from "solid-js";
-import { ExposedPortType, GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
+import {
+	ExposedPortType,
+	GetDeploymentInfoResponse,
+	UpdateDeploymentRequest,
+	UpdateDeploymentResponse,
+} from "~/bindings";
 import {
 	Button,
 	CopyableField,
@@ -98,25 +103,33 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			return;
 		}
 
+		// The full deployment object is sent on every update. `machineType` is
+		// immutable but required in the request shape, so we carry it over from
+		// the fetched info. The registry can't change after create, so it isn't
+		// part of the update request.
+		const body: UpdateDeploymentRequest = {
+			name: info.name,
+			imageTag: info.imageTag,
+			runner: info.runner,
+			machineType: info.machineType,
+			deployOnPush: info.deployOnPush,
+			minHorizontalScale: info.minHorizontalScale,
+			maxHorizontalScale: info.maxHorizontalScale,
+			ports: info.ports,
+			environmentVariables: info.environmentVariables,
+			startupProbe: info.startupProbe,
+			livenessProbe: info.livenessProbe,
+			configMounts: info.configMounts,
+			volumes: info.volumes,
+		};
+
 		setIsUpdating(true);
 		try {
 			const response = await httpRequest<UpdateDeploymentResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId()}/deployment/${info.id}`,
 				{
 					method: "PATCH",
-					body: JSON.stringify({
-						name: info.name,
-						imageTag: info.imageTag,
-						runner: info.runner,
-						deployOnPush: info.deployOnPush,
-						minHorizontalScale: info.minHorizontalScale,
-						maxHorizontalScale: info.maxHorizontalScale,
-						ports: info.ports,
-						environmentVariables: info.environmentVariables,
-						startupProbe: info.startupProbe,
-						livenessProbe: info.livenessProbe,
-						configMounts: info.configMounts,
-					}),
+					body: JSON.stringify(body),
 				}
 			);
 

@@ -9,8 +9,7 @@ use time::OffsetDateTime;
 use crate::prelude::*;
 
 /// The handler to update a role in a workspace. This will update the name,
-/// description, and permissions of the role. If the name or permissions are not
-/// provided, they will not be updated.
+/// description, and permissions of the role.
 pub async fn update_role(
 	AuthenticatedAppRequest {
 		request:
@@ -26,8 +25,7 @@ pub async fn update_role(
 				},
 				body:
 					UpdateRoleRequestProcessed {
-						name,
-						description,
+						role: RoleProcessed { name, description },
 						permissions,
 					},
 			},
@@ -40,14 +38,7 @@ pub async fn update_role(
 ) -> Result<AppResponse<UpdateRoleRequest>, ErrorType> {
 	info!("Updating role: {}", role_id);
 
-	if name
-		.as_ref()
-		.map(|_| 0)
-		.or(permissions.as_ref().map(|_| 0))
-		.or(description.as_ref().map(|_| 0))
-		.is_none()
-	{
-		debug!("No parameters provided for updating API role: {}", role_id);
+	if permissions.is_empty() {
 		return Err(ErrorType::WrongParameters);
 	}
 
@@ -56,14 +47,14 @@ pub async fn update_role(
 		UPDATE
 			role
 		SET
-			name = COALESCE($1, name),
-			description = COALESCE($2, description)
+			name = $1,
+			description = $2
 		WHERE
 			id = $3 AND
 			owner_id = $4;
 		"#,
-		name.as_deref(),
-		description.as_deref(),
+		&*name,
+		&*description,
 		role_id as _,
 		workspace_id as _,
 	)
@@ -81,57 +72,52 @@ pub async fn update_role(
 
 	trace!("Role updated");
 
-	if let Some(permissions) = permissions {
-		if permissions.is_empty() {
-			return Err(ErrorType::WrongParameters);
-		}
-
-		query!(
-			r#"
+	query!(
+		r#"
 			DELETE FROM
 				role_resource_permissions_include
 			WHERE
 				role_id = $1;
 			"#,
-			role_id as _
-		)
-		.execute(&mut **database)
-		.await?;
+		role_id as _
+	)
+	.execute(&mut **database)
+	.await?;
 
-		trace!("Deleted all the included permissions");
+	trace!("Deleted all the included permissions");
 
-		query!(
-			r#"
+	query!(
+		r#"
 			DELETE FROM
 				role_resource_permissions_exclude
 			WHERE
 				role_id = $1;
 			"#,
-			role_id as _
-		)
-		.execute(&mut **database)
-		.await?;
+		role_id as _
+	)
+	.execute(&mut **database)
+	.await?;
 
-		trace!("Deleted all the excluded permissions");
+	trace!("Deleted all the excluded permissions");
 
-		query!(
-			r#"
+	query!(
+		r#"
 			DELETE FROM
 				role_resource_permissions_type
 			WHERE
 				role_id = $1;
 			"#,
-			role_id as _
-		)
-		.execute(&mut **database)
-		.await?;
+		role_id as _
+	)
+	.execute(&mut **database)
+	.await?;
 
-		trace!("Role permissions deleted");
+	trace!("Role permissions deleted");
 
-		for (permission_id, permission) in permissions {
-			let permission_type = ResourcePermissionTypeDiscriminant::from(&permission);
-			query!(
-				r#"
+	for (permission_id, permission) in permissions {
+		let permission_type = ResourcePermissionTypeDiscriminant::from(&permission);
+		query!(
+			r#"
 				INSERT INTO
 					role_resource_permissions_type(
 						role_id,
@@ -145,16 +131,16 @@ pub async fn update_role(
 						$3
 					);
 				"#,
-				role_id as _,
-				permission_id as _,
-				permission_type as _,
-			)
-			.execute(&mut **database)
-			.await?;
-			match permission {
-				ResourcePermissionType::Include(resources) => {
-					query!(
-						r#"
+			role_id as _,
+			permission_id as _,
+			permission_type as _,
+		)
+		.execute(&mut **database)
+		.await?;
+		match permission {
+			ResourcePermissionType::Include(resources) => {
+				query!(
+					r#"
 						INSERT INTO
 							role_resource_permissions_include(
 								role_id,
@@ -170,22 +156,22 @@ pub async fn update_role(
 								DEFAULT
 							);
 						"#,
-						role_id as _,
-						permission_id as _,
-						&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
-					)
-					.execute(&mut **database)
-					.await
-					.map_err(|err| match err {
-						sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-							ErrorType::ResourceDoesNotExist
-						}
-						other => ErrorType::server_error(other),
-					})?;
-				}
-				ResourcePermissionType::Exclude(resources) => {
-					query!(
-						r#"
+					role_id as _,
+					permission_id as _,
+					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
+				)
+				.execute(&mut **database)
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						ErrorType::ResourceDoesNotExist
+					}
+					other => ErrorType::server_error(other),
+				})?;
+			}
+			ResourcePermissionType::Exclude(resources) => {
+				query!(
+					r#"
 						INSERT INTO
 							role_resource_permissions_exclude(
 								role_id,
@@ -201,24 +187,23 @@ pub async fn update_role(
 								DEFAULT
 							);
 						"#,
-						role_id as _,
-						permission_id as _,
-						&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
-					)
-					.execute(&mut **database)
-					.await
-					.map_err(|err| match err {
-						sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-							ErrorType::ResourceDoesNotExist
-						}
-						other => ErrorType::server_error(other),
-					})?;
-				}
-			};
-		}
-
-		trace!("Role permissions inserted");
+					role_id as _,
+					permission_id as _,
+					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
+				)
+				.execute(&mut **database)
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						ErrorType::ResourceDoesNotExist
+					}
+					other => ErrorType::server_error(other),
+				})?;
+			}
+		};
 	}
+
+	trace!("Role permissions inserted");
 
 	redis
 		.setex(

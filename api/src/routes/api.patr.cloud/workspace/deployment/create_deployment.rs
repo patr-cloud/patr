@@ -60,6 +60,11 @@ pub async fn create_deployment(
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
 	info!("Creating deployment with name `{name}` in workspace: {workspace_id}");
 
+	// Horizontal scale must be at least 1 (a deployment can't run zero replicas).
+	if min_horizontal_scale == 0 || max_horizontal_scale == 0 {
+		return Err(ErrorType::WrongParameters);
+	}
+
 	let now = OffsetDateTime::now_utc();
 
 	let deployment_id = query!(

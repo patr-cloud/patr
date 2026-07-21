@@ -56,8 +56,10 @@ async fn rbac_modify_roles_grants_access() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: random_name(8),
-					description: "test".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "test".to_string(),
+					},
 					permissions,
 				})
 				.build(),
@@ -131,8 +133,10 @@ async fn rbac_modify_roles_denied_without_permission() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: random_name(8),
-					description: "test".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "test".to_string(),
+					},
 					permissions: BTreeMap::new(),
 				})
 				.build(),
@@ -188,8 +192,10 @@ async fn rbac_view_does_not_grant_modify() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: random_name(8),
-					description: "test".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "test".to_string(),
+					},
 					permissions: BTreeMap::new(),
 				})
 				.build(),

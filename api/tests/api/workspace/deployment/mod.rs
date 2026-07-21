@@ -77,22 +77,22 @@ async fn send_create(
 		.await
 }
 
-/// An all-`None` update body. Tests set the single field they exercise.
-fn empty_update() -> UpdateDeploymentRequest {
+/// A full update body seeded from a deployment's current state. Updates now
+/// send the whole object, so tests mutate the single field they exercise and
+/// leave the rest identical to what the deployment already has.
+async fn full_update(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+) -> UpdateDeploymentRequest {
+	let info = get_info(setup, token, workspace_id, deployment_id).await;
 	UpdateDeploymentRequest {
-		name: None,
-		image_tag: None,
-		runner: None,
-		machine_type: None,
-		deploy_on_push: None,
-		min_horizontal_scale: None,
-		max_horizontal_scale: None,
-		ports: None,
-		environment_variables: None,
-		startup_probe: None,
-		liveness_probe: None,
-		config_mounts: None,
-		volumes: None,
+		name: info.deployment.name.clone(),
+		image_tag: info.deployment.image_tag.clone(),
+		runner: info.deployment.runner,
+		machine_type: info.deployment.machine_type,
+		running_details: info.running_details.clone(),
 	}
 }
 
@@ -451,6 +451,8 @@ async fn update_deployment_works() {
 		.await;
 
 	let new_name = random_name(8);
+	let mut body = full_update(&setup, &user.access_token, workspace.id, deployment.id).await;
+	body.name = new_name.clone();
 	setup
 		.make_web_dashboard_call(
 			ApiRequest::<UpdateDeploymentRequest>::builder()
@@ -462,21 +464,7 @@ async fn update_deployment_works() {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(UpdateDeploymentRequest {
-					name: Some(new_name.clone()),
-					image_tag: None,
-					runner: None,
-					machine_type: None,
-					deploy_on_push: None,
-					min_horizontal_scale: None,
-					max_horizontal_scale: None,
-					ports: None,
-					environment_variables: None,
-					startup_probe: None,
-					liveness_probe: None,
-					config_mounts: None,
-					volumes: None,
-				})
+				.body(body)
 				.build(),
 		)
 		.await
@@ -1225,6 +1213,8 @@ async fn update_deployment_name_persists() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 	let new_name = random_name(8);
+	let mut body = full_update(&setup, &user.access_token, workspace.id, deployment.id).await;
+	body.name = new_name.clone();
 
 	setup
 		.make_web_dashboard_call(
@@ -1237,21 +1227,7 @@ async fn update_deployment_name_persists() {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(UpdateDeploymentRequest {
-					name: Some(new_name.clone()),
-					image_tag: None,
-					runner: None,
-					machine_type: None,
-					deploy_on_push: None,
-					min_horizontal_scale: None,
-					max_horizontal_scale: None,
-					ports: None,
-					environment_variables: None,
-					startup_probe: None,
-					liveness_probe: None,
-					config_mounts: None,
-					volumes: None,
-				})
+				.body(body)
 				.build(),
 		)
 		.await
@@ -1313,6 +1289,8 @@ async fn update_deployment_machine_type() {
 		return;
 	};
 
+	let mut body = full_update(&setup, &user.access_token, workspace.id, deployment.id).await;
+	body.machine_type = other_mt.id;
 	setup
 		.make_web_dashboard_call(
 			ApiRequest::<UpdateDeploymentRequest>::builder()
@@ -1324,21 +1302,7 @@ async fn update_deployment_machine_type() {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(UpdateDeploymentRequest {
-					name: None,
-					image_tag: None,
-					runner: None,
-					machine_type: Some(other_mt.id),
-					deploy_on_push: None,
-					min_horizontal_scale: None,
-					max_horizontal_scale: None,
-					ports: None,
-					environment_variables: None,
-					startup_probe: None,
-					liveness_probe: None,
-					config_mounts: None,
-					volumes: None,
-				})
+				.body(body)
 				.build(),
 		)
 		.await
@@ -2080,7 +2044,7 @@ async fn create_deployment_nonexistent_machine_500() {
 }
 
 #[tokio::test]
-async fn create_deployment_min_scale_zero_accepted() {
+async fn create_deployment_min_scale_zero_400() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -2092,15 +2056,16 @@ async fn create_deployment_min_scale_zero_accepted() {
 		.await;
 	let mt = first_machine_type(&setup, workspace.id).await;
 
-	// Create has no scale validation; the DB CHECK allows 0 <= max.
+	// Both create and update reject minHorizontalScale=0 — a deployment can't
+	// run zero replicas.
 	let mut body = patr_body(repo.id, runner.id, mt);
 	body.running_details.min_horizontal_scale = 0;
 	assert!(
 		send_create(&setup, &user.access_token, workspace.id, body)
 			.await
 			.status_code()
-			.is_success(),
-		"create should accept minHorizontalScale=0"
+			.is_client_error(),
+		"create should reject minHorizontalScale=0"
 	);
 }
 
@@ -2566,8 +2531,8 @@ async fn update_deployment_invalid_name_400() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut body = empty_update();
-	body.name = Some("a/b".to_string());
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.name = "a/b".to_string();
 	assert_eq!(
 		400,
 		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
@@ -2589,8 +2554,8 @@ async fn update_deployment_image_tag_persists() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut body = empty_update();
-	body.image_tag = Some("alpine".to_string());
+	let mut body = full_update(&setup, &user.access_token, workspace.id, deployment.id).await;
+	body.image_tag = "alpine".to_string();
 	assert_eq!(
 		202,
 		send_update(
@@ -2636,8 +2601,8 @@ async fn update_deployment_invalid_tag_400() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut body = empty_update();
-	body.image_tag = Some("bad tag!".to_string());
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.image_tag = "bad tag!".to_string();
 	assert_eq!(
 		400,
 		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
@@ -2659,8 +2624,8 @@ async fn update_deployment_empty_tag_400() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut body = empty_update();
-	body.image_tag = Some("   ".to_string());
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.image_tag = "   ".to_string();
 	assert_eq!(
 		400,
 		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
@@ -2685,8 +2650,8 @@ async fn update_deployment_change_runner() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
-	let mut body = empty_update();
-	body.runner = Some(runner2.id);
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.runner = runner2.id;
 	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
@@ -2706,8 +2671,8 @@ async fn update_deployment_deploy_on_push() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut body = empty_update();
-	body.deploy_on_push = Some(true);
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.running_details.deploy_on_push = true;
 	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
@@ -2727,15 +2692,15 @@ async fn update_deployment_min_scale_zero_400() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	// Update enforces range(min=1) per scale field, unlike create.
-	let mut body = empty_update();
-	body.min_horizontal_scale = Some(0);
-	assert_eq!(
-		400,
+	// Update enforces minHorizontalScale >= 1, same as create.
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.running_details.min_horizontal_scale = 0;
+	assert!(
 		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
 			.await
 			.status_code()
-			.as_u16()
+			.is_client_error(),
+		"update should reject minHorizontalScale=0"
 	);
 }
 
@@ -2751,9 +2716,9 @@ async fn update_deployment_max_less_than_min_500() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut body = empty_update();
-	body.min_horizontal_scale = Some(5);
-	body.max_horizontal_scale = Some(2);
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.running_details.min_horizontal_scale = 5;
+	body.running_details.max_horizontal_scale = 2;
 	assert!(
 		send_update(&setup, &user.access_token, workspace.id, dep.id, body)
 			.await
@@ -2775,20 +2740,18 @@ async fn update_deployment_ports_replaced() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut first = empty_update();
-	first.ports = Some(BTreeMap::from([(
-		StringifiedU16::new(80),
-		ExposedPortType::Http,
-	)]));
+	let mut first = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	first.running_details.ports =
+		BTreeMap::from([(StringifiedU16::new(80), ExposedPortType::Http)]);
 	send_update(&setup, &user.access_token, workspace.id, dep.id, first)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
 
-	let mut second = empty_update();
-	second.ports = Some(BTreeMap::from([
+	let mut second = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	second.running_details.ports = BTreeMap::from([
 		(StringifiedU16::new(8080), ExposedPortType::Http),
 		(StringifiedU16::new(9090), ExposedPortType::Http),
-	]));
+	]);
 	send_update(&setup, &user.access_token, workspace.id, dep.id, second)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
@@ -2816,17 +2779,17 @@ async fn update_deployment_ports_omitted_kept() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut set_ports = empty_update();
-	set_ports.ports = Some(BTreeMap::from([
+	let mut set_ports = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	set_ports.running_details.ports = BTreeMap::from([
 		(StringifiedU16::new(80), ExposedPortType::Http),
 		(StringifiedU16::new(8080), ExposedPortType::Http),
-	]));
+	]);
 	send_update(&setup, &user.access_token, workspace.id, dep.id, set_ports)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
 
-	let mut name_only = empty_update();
-	name_only.name = Some(random_name(8));
+	let mut name_only = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	name_only.name = random_name(8);
 	send_update(&setup, &user.access_token, workspace.id, dep.id, name_only)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
@@ -2854,8 +2817,8 @@ async fn update_deployment_env_replaced_and_kept() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut set_env = empty_update();
-	set_env.environment_variables = Some(BTreeMap::from([
+	let mut set_env = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	set_env.running_details.environment_variables = BTreeMap::from([
 		(
 			"B".to_string(),
 			EnvironmentVariableValue::String("2".to_string()),
@@ -2864,7 +2827,7 @@ async fn update_deployment_env_replaced_and_kept() {
 			"C".to_string(),
 			EnvironmentVariableValue::String("3".to_string()),
 		),
-	]));
+	]);
 	send_update(&setup, &user.access_token, workspace.id, dep.id, set_env)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
@@ -2872,8 +2835,8 @@ async fn update_deployment_env_replaced_and_kept() {
 	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
 	assert_eq!(info.running_details.environment_variables.len(), 2);
 
-	let mut name_only = empty_update();
-	name_only.name = Some(random_name(8));
+	let mut name_only = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	name_only.name = random_name(8);
 	send_update(&setup, &user.access_token, workspace.id, dep.id, name_only)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
@@ -2910,8 +2873,8 @@ async fn update_deployment_startup_probe_set_then_cleared() {
 		.response;
 	let dep_id = created.id.id;
 
-	let mut set_probe = empty_update();
-	set_probe.startup_probe = Some(DeploymentProbe {
+	let mut set_probe = full_update(&setup, &user.access_token, workspace.id, dep_id).await;
+	set_probe.running_details.startup_probe = Some(DeploymentProbe {
 		port: 8080,
 		path: "/healthz".to_string(),
 	});
@@ -2929,12 +2892,9 @@ async fn update_deployment_startup_probe_set_then_cleared() {
 		})
 	);
 
-	// port=0 is the sentinel that clears the probe.
-	let mut clear_probe = empty_update();
-	clear_probe.startup_probe = Some(DeploymentProbe {
-		port: 0,
-		path: String::new(),
-	});
+	// Clearing a probe now means sending `None` (the port=0 sentinel is gone).
+	let mut clear_probe = full_update(&setup, &user.access_token, workspace.id, dep_id).await;
+	clear_probe.running_details.startup_probe = None;
 	send_update(
 		&setup,
 		&user.access_token,
@@ -2950,35 +2910,7 @@ async fn update_deployment_startup_probe_set_then_cleared() {
 			.running_details
 			.startup_probe
 			.is_none(),
-		"port=0 should clear the startup probe"
-	);
-}
-
-#[tokio::test]
-async fn update_deployment_empty_patch_400() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let runner = setup
-		.create_test_runner(&user.access_token, workspace.id)
-		.await;
-	let dep = setup
-		.create_test_deployment(&user.access_token, workspace.id, runner.id)
-		.await;
-
-	assert_eq!(
-		400,
-		send_update(
-			&setup,
-			&user.access_token,
-			workspace.id,
-			dep.id,
-			empty_update()
-		)
-		.await
-		.status_code()
-		.as_u16(),
-		"an empty PATCH should be WrongParameters (400)"
+		"sending startup_probe: None should clear the startup probe"
 	);
 }
 
@@ -2988,8 +2920,23 @@ async fn update_deployment_nonexistent_401() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
-	let mut body = empty_update();
-	body.name = Some("x-y-z".to_string());
+	let body = UpdateDeploymentRequest {
+		name: "x-y-z".to_string(),
+		image_tag: "latest".to_string(),
+		runner: Uuid::nil(),
+		machine_type: Uuid::nil(),
+		running_details: DeploymentRunningDetails {
+			deploy_on_push: false,
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 1,
+			ports: BTreeMap::new(),
+			environment_variables: BTreeMap::new(),
+			startup_probe: None,
+			liveness_probe: None,
+			config_mounts: BTreeMap::new(),
+			volumes: BTreeMap::new(),
+		},
+	};
 	assert_eq!(
 		401,
 		send_update(&setup, &user.access_token, workspace.id, Uuid::nil(), body)
@@ -3011,8 +2958,8 @@ async fn update_deployment_writes_no_deploy_history() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let mut body = empty_update();
-	body.name = Some(random_name(8));
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.name = random_name(8);
 	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));

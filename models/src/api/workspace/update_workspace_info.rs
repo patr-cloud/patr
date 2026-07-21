@@ -22,8 +22,8 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The new name of the workspace
-		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
-		pub name: Option<String>,
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
+		pub name: String,
 	},
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,

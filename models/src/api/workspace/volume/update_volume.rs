@@ -24,11 +24,11 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The name of the volume
-		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
-		pub name: Option<String>,
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
+		pub name: String,
 		/// The size of the volume
-		#[preprocess(optional(range(min = 1)))]
-		pub size: Option<u64>,
+		#[preprocess(range(min = 1))]
+		pub size: u16,
 	},
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,

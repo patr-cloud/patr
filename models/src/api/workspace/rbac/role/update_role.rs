@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 
-use crate::{
-	prelude::*,
-	rbac::ResourcePermissionType,
-	utils::constants::{RESOURCE_NAME_REGEX, ROLE_DESCRIPTION_REGEX},
-};
+use super::Role;
+use crate::{prelude::*, rbac::ResourcePermissionType};
 
 macros::declare_api_endpoint!(
 	/// Route to create a new role
@@ -29,15 +26,13 @@ macros::declare_api_endpoint!(
 		}
 	},
 	request = {
-		/// The updated name of the role
-		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
-		pub name: Option<String>,
-		/// The updated description of the role
-		#[preprocess(optional(trim, regex = ROLE_DESCRIPTION_REGEX))]
-		pub description: Option<String>,
+		/// The updated name and description of the role
+		#[serde(flatten)]
+		#[preprocess]
+		pub role: Role,
 		/// The updated list of permission this role has
 		#[preprocess(none)]
-		pub permissions: Option<BTreeMap<Uuid, ResourcePermissionType>>,
+		pub permissions: BTreeMap<Uuid, ResourcePermissionType>,
 	},
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,

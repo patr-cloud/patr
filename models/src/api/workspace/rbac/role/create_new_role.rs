@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 
-use crate::{
-	prelude::*,
-	rbac::ResourcePermissionType,
-	utils::constants::{RESOURCE_NAME_REGEX, ROLE_DESCRIPTION_REGEX},
-};
+use super::Role;
+use crate::{prelude::*, rbac::ResourcePermissionType};
 
 macros::declare_api_endpoint!(
 	/// Route to create a new role
@@ -27,12 +24,10 @@ macros::declare_api_endpoint!(
 		}
 	},
 	request = {
-		/// The name of the new role
-		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
-		pub name: String,
-		/// The description of the new role
-		#[preprocess(trim, regex = ROLE_DESCRIPTION_REGEX)]
-		pub description: String,
+		/// The name and description of the new role
+		#[serde(flatten)]
+		#[preprocess]
+		pub role: Role,
 		/// List of Permission IDs and the type of permission that is granted on this new role.
 		#[preprocess(none)]
 		pub permissions: BTreeMap<Uuid, ResourcePermissionType>,

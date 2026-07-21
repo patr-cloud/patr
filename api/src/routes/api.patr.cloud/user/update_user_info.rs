@@ -33,13 +33,13 @@ pub async fn update_user_info(
 		UPDATE
 			"user"
 		SET
-			first_name = COALESCE($1, first_name),
-			last_name = COALESCE($2, last_name)
+			first_name = $1,
+			last_name = $2
 		WHERE
 			id = $3;
 		"#,
-		first_name.as_deref(),
-		last_name.as_deref(),
+		&*first_name,
+		&*last_name,
 		user_data.id as _,
 	)
 	.execute(&mut **database)

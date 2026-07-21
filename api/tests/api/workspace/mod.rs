@@ -246,7 +246,7 @@ async fn update_workspace_info_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateWorkspaceInfoRequest {
-					name: Some(new_name.clone()),
+					name: new_name.clone(),
 				})
 				.build(),
 		)
@@ -290,7 +290,7 @@ async fn update_workspace_name_conflict() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateWorkspaceInfoRequest {
-					name: Some(workspace_a.name.clone()),
+					name: workspace_a.name.clone(),
 				})
 				.build(),
 		)
@@ -320,7 +320,7 @@ async fn update_workspace_unauthorized() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateWorkspaceInfoRequest {
-					name: Some(random_name(8)),
+					name: random_name(8),
 				})
 				.build(),
 		)
@@ -364,7 +364,7 @@ async fn update_workspace_denied_without_edit_permission() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateWorkspaceInfoRequest {
-					name: Some(random_name(8)),
+					name: random_name(8),
 				})
 				.build(),
 		)

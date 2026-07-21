@@ -37,8 +37,10 @@ async fn probe_modify_roles(
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateNewRoleRequest {
-					name: random_name(8),
-					description: "cascade probe".to_string(),
+					role: Role {
+						name: random_name(8),
+						description: "cascade probe".to_string(),
+					},
 					permissions: BTreeMap::from([(
 						view_perm,
 						ResourcePermissionType::Exclude(BTreeSet::new()),
@@ -235,13 +237,18 @@ async fn api_token_nbf_after_exp_rejected_on_patch() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateApiTokenRequest {
-					name: None,
-					permissions: None,
-					token_nbf: Some(Some(
-						time::OffsetDateTime::now_utc() + time::Duration::days(7),
-					)),
-					token_exp: None,
-					allowed_ips: None,
+					token: UserApiToken {
+						name: "patchtoken".to_string(),
+						permissions: BTreeMap::from([(
+							workspace.id,
+							WorkspacePermission::SuperAdmin,
+						)]),
+						// nbf 7 days out, exp 1 day out (resent) → nbf > exp → 400.
+						token_nbf: Some(time::OffsetDateTime::now_utc() + time::Duration::days(7)),
+						token_exp: Some(time::OffsetDateTime::now_utc() + time::Duration::days(1)),
+						allowed_ips: None,
+						created: time::OffsetDateTime::now_utc(),
+					},
 				})
 				.build(),
 		)
@@ -407,11 +414,14 @@ async fn api_token_patch_empty_permissions_400() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateApiTokenRequest {
-					name: None,
-					permissions: Some(BTreeMap::new()),
-					token_nbf: None,
-					token_exp: None,
-					allowed_ips: None,
+					token: UserApiToken {
+						name: "emptyperm".to_string(),
+						permissions: BTreeMap::new(),
+						token_nbf: None,
+						token_exp: None,
+						allowed_ips: None,
+						created: time::OffsetDateTime::now_utc(),
+					},
 				})
 				.build(),
 		)
@@ -526,11 +536,14 @@ async fn api_token_cross_user_patch_idor_404() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateApiTokenRequest {
-					name: None,
-					permissions: Some(BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)])),
-					token_nbf: None,
-					token_exp: None,
-					allowed_ips: None,
+					token: UserApiToken {
+						name: "idortoken".to_string(),
+						permissions: BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+						token_nbf: None,
+						token_exp: None,
+						allowed_ips: None,
+						created: time::OffsetDateTime::now_utc(),
+					},
 				})
 				.build(),
 		)
@@ -826,16 +839,19 @@ async fn api_token_patch_revokes_access() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateApiTokenRequest {
-					name: None,
-					permissions: Some(BTreeMap::from([(
-						workspace.id,
-						WorkspacePermission::Member {
-							permissions: BTreeMap::from([(view, all_resources())]),
-						},
-					)])),
-					token_nbf: None,
-					token_exp: None,
-					allowed_ips: None,
+					token: UserApiToken {
+						name: "revoketoken".to_string(),
+						permissions: BTreeMap::from([(
+							workspace.id,
+							WorkspacePermission::Member {
+								permissions: BTreeMap::from([(view, all_resources())]),
+							},
+						)]),
+						token_nbf: None,
+						token_exp: None,
+						allowed_ips: None,
+						created: time::OffsetDateTime::now_utc(),
+					},
 				})
 				.build(),
 		)
@@ -1026,11 +1042,17 @@ async fn update_api_token_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateApiTokenRequest {
-					name: Some(new_name.clone()),
-					permissions: None,
-					token_nbf: None,
-					token_exp: None,
-					allowed_ips: None,
+					token: UserApiToken {
+						name: new_name.clone(),
+						permissions: BTreeMap::from([(
+							workspace.id,
+							WorkspacePermission::SuperAdmin,
+						)]),
+						token_nbf: None,
+						token_exp: None,
+						allowed_ips: None,
+						created: time::OffsetDateTime::now_utc(),
+					},
 				})
 				.build(),
 		)
@@ -1278,11 +1300,17 @@ async fn update_api_token_name_conflict() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateApiTokenRequest {
-					name: Some(first.name.clone()),
-					permissions: None,
-					token_nbf: None,
-					token_exp: None,
-					allowed_ips: None,
+					token: UserApiToken {
+						name: first.name.clone(),
+						permissions: BTreeMap::from([(
+							workspace.id,
+							WorkspacePermission::SuperAdmin,
+						)]),
+						token_nbf: None,
+						token_exp: None,
+						allowed_ips: None,
+						created: time::OffsetDateTime::now_utc(),
+					},
 				})
 				.build(),
 		)

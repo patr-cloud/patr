@@ -22,7 +22,7 @@ async fn edit_workspace_permission_grants_access() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateWorkspaceInfoRequest {
-					name: Some(random_name(8)),
+					name: random_name(8),
 				})
 				.build(),
 		)
@@ -57,7 +57,7 @@ async fn edit_workspace_denied_without_permission() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateWorkspaceInfoRequest {
-					name: Some(random_name(8)),
+					name: random_name(8),
 				})
 				.build(),
 		)
