@@ -194,7 +194,7 @@ pub(crate) async fn upsert(
 				(String::from("managed-by"), String::from("patr")),
 				(String::from("patr.deploymentId"), id.to_string()),
 			]),
-			content.to_string(),
+			content.as_slice(),
 		)
 		.await?;
 

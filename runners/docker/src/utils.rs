@@ -20,9 +20,10 @@ pub async fn update_config(
 	docker: &Docker,
 	base_name: &str,
 	mut labels: HashMap<String, String>,
-	data: String,
+	data: impl AsRef<[u8]>,
 ) -> Result<(String, String), RunnerError> {
-	let full_hash = Sha256::digest(&data)
+	let data = data.as_ref();
+	let full_hash = Sha256::digest(data)
 		.iter()
 		.map(|byte| format!("{:02x}", byte))
 		.collect::<String>();
@@ -108,7 +109,7 @@ pub async fn update_config(
 		.create_config(ConfigSpec {
 			name: Some(config_name.clone()),
 			labels: Some(labels),
-			data: Some(BASE64.encode(data.as_bytes())),
+			data: Some(BASE64.encode(data)),
 			templating: None,
 		})
 		.await
