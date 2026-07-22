@@ -1,13 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, ParentProps, Show, Suspense } from "solid-js";
 import { CreateWorkspaceResponse } from "~/bindings";
 import { Alert, BgOnboard, Button, Input, InputType, useToast } from "~/components";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useWorkspacesQuery } from "~/hooks/fetch";
-import { workspacesKeys } from "~/hooks/query-keys";
 import { ButtonVariant } from "~/utils/color";
 import { cloudOnly } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
@@ -27,7 +25,6 @@ const WorkspaceOnboard = () => {
 
 	const [, setWorkspaceId] = useLastWorkspaceId();
 	const workspacesQuery = useWorkspacesQuery();
-	const queryClient = useQueryClient();
 
 	createEffect(() => {
 		if ((workspacesQuery.data?.workspaces?.length || 0) > 0) {
@@ -76,7 +73,6 @@ const WorkspaceOnboard = () => {
 
 			if (response.data.id) {
 				setWorkspaceId(response.data.id);
-				await queryClient.invalidateQueries({ queryKey: workspacesKeys.list() });
 				navigate({ to: "/" });
 			}
 		} catch {
