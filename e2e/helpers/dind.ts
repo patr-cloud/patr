@@ -163,6 +163,36 @@ export class DindHandle implements AsyncDisposable {
 		});
 	}
 
+	// Read a file from inside the running swarm task of a deployment. Locates the
+	// task container by the `patr.deploymentId` label the runner stamps on every
+	// container spec, then `cat`s the target path against the DinD's own dockerd.
+	// Used to assert the exact bytes of a mounted config (the double-base64
+	// regression left base64 text in the file). Throws if no task is running yet,
+	// so callers can poll it through `waitFor`.
+	async readDeploymentFile(deploymentId: string, path: string): Promise<string> {
+		const { stdout: ids } = await execa('docker', [
+			'-H',
+			this.dockerHost,
+			'ps',
+			'-q',
+			'--filter',
+			`label=patr.deploymentId=${deploymentId}`,
+		]);
+		const containerId = ids.trim().split('\n').filter(Boolean)[0];
+		if (!containerId) {
+			throw new Error(`no running container for deployment ${deploymentId}`);
+		}
+		const { stdout } = await execa('docker', [
+			'-H',
+			this.dockerHost,
+			'exec',
+			containerId,
+			'cat',
+			path,
+		]);
+		return stdout;
+	}
+
 	async [Symbol.asyncDispose](): Promise<void> {
 		await execa('docker', ['rm', '-f', this.containerId]).catch(() => {});
 	}

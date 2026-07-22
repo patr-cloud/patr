@@ -334,4 +334,70 @@ test.describe('deployment > execution @docker', () => {
 		expect(followed.status).toBe(200);
 		expect(followed.body).toContain('Hostname');
 	});
+
+	test('a config mount is written to the container as raw content, not base64-encoded', async ({
+		api,
+	}, testInfo) => {
+		test.setTimeout(300_000);
+		await using user = await createUserWithWorkspace(api);
+		await using runner = await RunnerHandle.connect({
+			api,
+			user,
+			workspaceId: user.workspaceId,
+			dockerVersion: dockerVersionOf(testInfo),
+		});
+
+		// nginx:alpine has a shell + `cat` and stays running as a foreground
+		// process — the default whoami image is scratch (no `cat` to read the file).
+		const repo = await createContainerRepo(api, user, user.workspaceId);
+		await pushImageToPatrRegistry({
+			dockerHost: runner.docker.dockerHost,
+			workspaceId: user.workspaceId,
+			repoName: repo.name,
+			tag: 'latest',
+			apiToken: runner.apiToken,
+			sourceImage: 'nginx:alpine',
+		});
+
+		// The value is JSON; its base64 form is disjoint text (starts with a
+		// letter, no braces), so a double-encode leaves base64 in the file rather
+		// than the JSON — exactly the reported bug.
+		const mountPath = '/etc/e2e-config.json';
+		const raw = JSON.stringify({ hello: 'world', nested: { n: 1 } });
+		const encoded = Buffer.from(raw).toString('base64');
+
+		const dep = await createDeploymentAPI(api, user, user.workspaceId, {
+			repositoryId: repo.id,
+			runnerId: runner.runnerId,
+			imageTag: 'latest',
+			port: 80,
+			deployOnCreate: true,
+			// Config-mount values travel over the wire as `Base64String`, so send
+			// the base64 form — the server decodes it once before storage.
+			configMounts: { [mountPath]: encoded },
+		});
+
+		expect(
+			await waitForDeploymentStatus(api, user, user.workspaceId, dep.id, 'running', {
+				timeoutMs: 180_000,
+			}),
+		).toBe('running');
+
+		// Read the mounted file from inside the running task, retrying while the
+		// swarm task settles onto a node.
+		let contents = '';
+		await waitFor(
+			async () => {
+				contents = await runner.docker.readDeploymentFile(dep.id, mountPath);
+				return contents.length > 0;
+			},
+			{ timeoutMs: 60_000, intervalMs: 2000, label: 'config mount file readable' },
+		);
+
+		// The file must be the exact JSON we mounted — the double-base64 bug wrote
+		// `encoded` (base64 text) here instead, which fails every assertion below.
+		expect(contents.trim()).toBe(raw);
+		expect(contents.trim()).not.toBe(encoded);
+		expect(() => JSON.parse(contents)).not.toThrow();
+	});
 });
