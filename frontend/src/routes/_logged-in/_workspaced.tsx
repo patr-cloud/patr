@@ -13,41 +13,25 @@ const WorkspacedLayout = () => {
 	const location = useLocation();
 	const [workspaceId, setWorkspaceId] = useLastWorkspaceId();
 	const [isMobileOpen, setMobileOpen] = createSignal(false);
-	// Fire the /onboard redirect at most once per empty-state entry. `navigate`
-	// re-triggers the workspaces query (router invalidation), which re-runs this
-	// effect, which would call `navigate` again — a microtask-rate storm that
-	// pins the main thread before the transition can even commit (so a
-	// location-based guard never clears). A plain, non-reactive flag breaks the
-	// feedback regardless of transition timing; it resets if workspaces appear.
-	let hasRedirected = false;
 
 	createEffect(() => {
-		// Wait until the query has actually settled — `isPending` only covers
-		// the initial fetch, so without `isFetching` an invalidation triggered
-		// by /onboard briefly exposes stale empty data and bounces the user
-		// back, creating a microtask-rate redirect loop.
-		if (!workspacesQuery.isPending && !workspacesQuery.isFetching) {
+		if (!workspacesQuery.isPending) {
 			const ws = workspacesQuery.data?.workspaces;
 			if (!ws || ws.length === 0) {
-				// Stored workspace no longer exists / user no longer has access
-				// — clear it so dependent queries (permissions etc.) don't fire
-				// against a stale id and 401.
-				if (workspaceId()) {
-					setWorkspaceId(null);
-				}
-				// On self-hosted there is no onboarding flow — the singleton
-				// workspace is seeded out-of-band. Render an inline error
-				// instead of redirecting into a 404 loop.
-				if (IS_CLOUD && !hasRedirected) {
-					hasRedirected = true;
+				// Self-hosted has no onboarding flow — the workspace is seeded
+				// out-of-band, so render the inline message below instead of
+				// redirecting into a 404 loop.
+				if (IS_CLOUD) {
 					navigate({ to: "/onboard", replace: true });
 				}
-			} else {
-				hasRedirected = false;
-				const current = workspaceId();
-				if (!current || !ws.some((w) => w.id === current)) {
-					setWorkspaceId(ws[0].id);
-				}
+			} else if (!workspaceId()) {
+				setWorkspaceId(ws[0].id);
+			} else if (!ws.some((w) => w.id === workspaceId())) {
+				// The cookie points at a workspace the user is no longer in
+				// (removed by an owner, deleted, or never existed). Fall back
+				// to the first workspace we DO have access to so the rest of
+				// the tree doesn't 403 on every query.
+				setWorkspaceId(ws[0].id);
 			}
 		}
 	});
