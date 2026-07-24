@@ -16,6 +16,7 @@ import {
 	clickSwitcherWorkspace,
 	getLastWorkspaceIdCookie,
 	waitForActiveWorkspaceCookie,
+	expectFirstWorkspaceScreen,
 } from '@/helpers/ui/workspace';
 
 async function withTwoWorkspaces(
@@ -128,7 +129,7 @@ test.describe('workspace > navigation @racy', () => {
 		}
 	});
 
-	test('redirects the user to /onboard when all workspaces are soft-deleted', async ({
+	test('shows the create-workspace screen when all workspaces are soft-deleted', async ({
 		browser,
 		api,
 	}) => {
@@ -145,8 +146,10 @@ test.describe('workspace > navigation @racy', () => {
 			// it. Bypassing the DELETE /workspace endpoint to avoid the audit_log
 			// FK quirk; the listing query filters on workspace.deleted IS NULL.
 			await sql(`UPDATE workspace SET deleted = NOW() WHERE id = $1`, [user.workspaceId]);
-			await page.goto('/profile', { waitUntil: 'domcontentloaded' });
-			await expectUrl(page, /\/onboard/, { timeout: 15_000 });
+			// Re-enter a _workspaced route: the workspaces query refetches to empty
+			// and the layout swaps in the inline create-first-workspace screen.
+			await page.goto('/', { waitUntil: 'domcontentloaded' });
+			await expectFirstWorkspaceScreen(page, 15_000);
 		} finally {
 			await context.close();
 		}
