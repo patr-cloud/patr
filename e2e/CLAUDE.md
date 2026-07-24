@@ -27,6 +27,6 @@ Running `playwright test` on its own boots nothing — use `just test` (or `just
 - **Serial by default** (`workers: 1`) — the shared dev stack (single Postgres, one API binary, Vinxi HMR) breaks under concurrency. Opt into parallelism with `TEST_THREADS`. Flaky concurrency/navigation specs are tagged `@racy` and run serially in a second pass.
 - **Vinxi HMR breaks naive Playwright waits**: use `waitUntil: 'domcontentloaded'` (default `'load'` never fires on `_workspaced` routes), use the custom `expectUrl` helpers (not `toHaveURL` polling), and **never `page.reload()`** (it hangs — open a new tab in the same context instead). Narrow route interception to `/api/**`, not `/**`, or HMR requests starve the scheduler.
 - **Debug-build shortcuts**: OTP is always `000000`, Turnstile token `1x00000000000000000000AA` always passes. **Don't skip email flows** — use the debug OTP, or read the secret straight from Postgres/Redis via `helpers/db.ts` / `helpers/redis.ts`.
-- **Cookie origin**: `loginAs` must set cookies on `:3001` (the Caddy origin the SPA loads from), not `:13030`, or they aren't sent → redirect to `/onboard`.
+- **Cookie origin**: `loginAs` must set cookies on `:3001` (the Caddy origin the SPA loads from), not `:13030`, or they aren't sent → the `_logged-in` guard bounces to `/login`.
 - `@docker` suite = real Docker-in-Docker, matrix over Docker 26–29 (`--project=docker-<v>`). Needs `cargo build -p docker` first, or the harness gets ENOENT.
 - **Don't judge flakiness from the last run** — baseline against an average of 4–5 green runs.

@@ -79,8 +79,8 @@ export async function newContext(
 
 	// Bound context.close() (as the comment above promises). React-Query
 	// background polls keep a dashboard page busy, so the native close can stall
-	// indefinitely and eat the 60s test timeout — e.g. after a successful onboard
-	// navigates to the dashboard. Closing the pages first stops that activity so
+	// indefinitely and eat the 60s test timeout — e.g. after creating the first
+	// workspace swaps in the dashboard. Closing the pages first stops that activity so
 	// the native close returns immediately; the race is a backstop, and since the
 	// pages are already closed a timed-out context is inert (no polls left to leak).
 	const nativeClose = context.close.bind(context);

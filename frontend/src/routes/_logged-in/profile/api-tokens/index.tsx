@@ -153,7 +153,7 @@ const ListApiTokens = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/profile/api-tokens/")({
+export const Route = createFileRoute("/_logged-in/profile/api-tokens/")({
 	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
 		page: (search.page as string) || undefined,
 		count: (search.count as string) || undefined,

@@ -46,6 +46,6 @@ const UserSettingsPage = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/profile/")({
+export const Route = createFileRoute("/_logged-in/profile/")({
 	component: UserSettingsPage,
 });

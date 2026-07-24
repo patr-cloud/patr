@@ -257,6 +257,6 @@ const CreateApiTokens = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/profile/api-tokens/new")({
+export const Route = createFileRoute("/_logged-in/profile/api-tokens/new")({
 	component: CreateApiTokens,
 });

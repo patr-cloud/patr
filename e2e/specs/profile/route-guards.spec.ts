@@ -22,17 +22,16 @@ test.describe('profile > route guards', () => {
 		}
 	});
 
-	test('redirects users with zero workspaces from /profile to /onboard', async ({
-		browser,
-		api,
-	}) => {
+	test('lets a user with zero workspaces open /profile', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user);
 		const page = await context.newPage();
 		try {
-			await page.goto('/profile', { waitUntil: 'domcontentloaded' });
-			await expectUrl(page, /\/onboard/, { timeout: 10_000 });
+			// Profile is user-scoped and lives outside the _workspaced zone, so it
+			// loads without a workspace — no bounce to a create/onboarding screen.
+			await openProfile(page);
+			await expectUrl(page, /\/profile/, { timeout: 10_000 });
 		} finally {
 			await context.close();
 		}

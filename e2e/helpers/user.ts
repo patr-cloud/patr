@@ -67,8 +67,8 @@ export async function createPendingSignup(
 }
 
 // Creates a verified user AND a workspace, so the frontend's _workspaced
-// route group resolves cleanly to /profile, dashboard, etc. Use this when
-// the test needs to navigate to any logged-in page beyond /onboard.
+// route group renders the dashboard rather than the inline create-workspace
+// screen. Use this when the test needs a workspace-scoped page to load.
 export async function createUserWithWorkspace(
 	api: ApiClient,
 ): Promise<UserHandle & { workspaceId: string }> {
