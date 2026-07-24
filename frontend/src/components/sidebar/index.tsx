@@ -117,14 +117,10 @@ const Sidebar: Component = () => {
 
 	return (
 		<aside
-			class={`fixed inset-y-0 left-0 z-40 w-64 md:static md:w-14 lg:w-64 h-screen bg-secondary border-r border-white/5 flex flex-col transition-transform duration-200 md:translate-x-0 ${
+			class={`fixed inset-y-0 left-0 z-40 w-64 md:static md:w-14 lg:w-64 md:h-full bg-secondary border-r border-white/5 flex flex-col transition-transform duration-200 md:translate-x-0 ${
 				sidebar.isMobileOpen() ? "translate-x-0" : "-translate-x-full"
 			}`}
 		>
-			<div class="p-6 md:p-3 md:justify-center lg:p-6 lg:justify-start flex items-center gap-3">
-				<img src="/images/patr-lowercase.png" alt="Patr Cloud" class="h-8 w-auto" />
-			</div>
-
 			<nav class="flex-1 overflow-y-auto py-4">
 				<For each={items}>{(item) => <SidebarItem {...item} />}</For>
 			</nav>

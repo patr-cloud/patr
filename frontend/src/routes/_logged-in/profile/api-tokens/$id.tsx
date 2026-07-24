@@ -344,6 +344,6 @@ const ApiTokenInfo = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/profile/api-tokens/$id")({
+export const Route = createFileRoute("/_logged-in/profile/api-tokens/$id")({
 	component: ApiTokenInfo,
 });

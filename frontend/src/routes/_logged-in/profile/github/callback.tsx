@@ -54,7 +54,7 @@ const GithubConnectCallback = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/profile/github/callback")(
+export const Route = createFileRoute("/_logged-in/profile/github/callback")(
 	cloudOnly({
 		validateSearch: (search: Record<string, unknown>): { code?: string; state?: string } => ({
 			code: (search.code as string) || undefined,

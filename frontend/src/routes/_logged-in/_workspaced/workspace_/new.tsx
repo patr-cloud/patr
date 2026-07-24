@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal, Show } from "solid-js";
-import { CreateWorkspaceResponse } from "~/bindings";
+import { Show } from "solid-js";
 import {
 	Alert,
 	Button,
@@ -13,61 +12,18 @@ import {
 	PageContainerHead,
 	useToast,
 } from "~/components";
-import { createAsyncAction, useAuthState } from "~/hooks";
-import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { workspacesKeys } from "~/hooks/query-keys";
-import { useQueryClient } from "@tanstack/solid-query";
+import { useCreateWorkspace } from "~/hooks/use-create-workspace";
 import { cloudOnly } from "~/utils/env";
-import { httpRequest } from "~/utils/http-request";
 
 const CreateWorkspace = () => {
-	const [authState] = useAuthState();
-	const [, setCurrentWorkspaceName] = useLastWorkspaceId();
 	const toast = useToast();
 	const navigate = useNavigate();
-	const queryClient = useQueryClient();
 
-	const [workspaceName, setWorkspaceName] = createSignal("");
-	const [nameError, setNameError] = createSignal("");
-
-	const { execute: createWorkspace, isLoading } = createAsyncAction(async () => {
-		const auth = authState();
-		if (!auth || auth.type !== "LoggedIn") {
-			toast("You must be logged in to create a workspace", "error");
-			return;
-		}
-
-		const name = workspaceName().trim();
-		if (!name) {
-			setNameError("Workspace name is required.");
-			return;
-		}
-
-		const response = await httpRequest<CreateWorkspaceResponse>(`${import.meta.env.VITE_BASE_URL}/api/workspace`, {
-			method: "POST",
-			body: JSON.stringify({ name }),
-		});
-
-		if (!response.ok) {
-			setNameError("Failed to create workspace. Please try a different name.");
-			return;
-		}
-
-		toast("Workspace created successfully", "success");
-
-		// Always switch to the new workspace. The previous guard
-		// `!currentWorkspaceName()` was dead code — by the time we're on
-		// `/workspace/new` the lastWorkspaceId cookie is always set (the
-		// `_workspaced` layout requires it), so the cookie was never updated
-		// and the user stayed on the old workspace.
-		if (response.data.id) {
-			setCurrentWorkspaceName(response.data.id);
+	const { workspaceName, setWorkspaceName, nameError, setNameError, isLoading, submit } = useCreateWorkspace({
+		onCreated: (_id, name) => {
 			toast(`Switched to ${name}`, "success");
-		}
-
-		await queryClient.invalidateQueries({ queryKey: workspacesKeys.list() });
-
-		navigate({ to: "/workspace" });
+			navigate({ to: "/workspace" });
+		},
 	});
 
 	return (
@@ -92,7 +48,7 @@ const CreateWorkspace = () => {
 						class="flex flex-col gap-8"
 						onSubmit={async (e: SubmitEvent) => {
 							e.preventDefault();
-							await createWorkspace().catch(() => {
+							await submit().catch(() => {
 								toast("An unexpected error occurred while creating the workspace", "error");
 							});
 						}}

@@ -11,9 +11,10 @@ import {
 import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 import {
 	openCreateWorkspacePage,
-	fillOnboardName as fillCreateName, // same #workspace-name selector
+	fillWorkspaceName as fillCreateName, // same #workspace-name selector
 	submitCreateWorkspace,
 	expectToast,
+	expectFirstWorkspaceScreen,
 	getLastWorkspaceIdCookie,
 	openWorkspaceSwitcher,
 	listSwitcherWorkspaceNames,
@@ -52,7 +53,7 @@ test.describe('workspace create > route guards', () => {
 		}
 	});
 
-	test('redirects a user with zero workspaces from /workspace/new to /onboard', async ({
+	test('shows the create-workspace screen for a zero-workspace user at /workspace/new', async ({
 		browser,
 		api,
 	}) => {
@@ -61,8 +62,12 @@ test.describe('workspace create > route guards', () => {
 		await loginAs(context, user);
 		const page = await context.newPage();
 		try {
+			// /workspace/new lives under _workspaced; with no workspace the layout
+			// renders the inline create-first-workspace screen in place of the page
+			// (no /onboard route anymore), and the URL stays put.
 			await page.goto('/workspace/new', { waitUntil: 'domcontentloaded' });
-			await expectUrl(page, /\/onboard/, { timeout: 10_000 });
+			await expectFirstWorkspaceScreen(page);
+			await expectUrl(page, /\/workspace\/new/, { timeout: 10_000 });
 		} finally {
 			await context.close();
 		}
