@@ -3,7 +3,7 @@ import { expect } from '@playwright/test';
 import { HYDRATION_TIMEOUT } from '@/helpers/config';
 
 // Frontend reference:
-//   frontend/src/routes/_logged-in/_workspaced/profile/api-tokens/new.tsx
+//   frontend/src/routes/_logged-in/profile/api-tokens/new.tsx
 //   .../api-tokens/$id.tsx
 //   .../api-tokens/-components/{api-token-modal,regenerate-modal,workspace-permission-item}.tsx
 //   frontend/src/components/modal/delete-resource-modal.tsx
