@@ -73,8 +73,13 @@ test.describe('api token > list', () => {
 			});
 		}
 		await withList(browser, user, async (page) => {
-			// Pagination control should be visible; assert some pagination text/nav.
-			await expect(page.locator('nav, [role="navigation"]').first()).toBeVisible({
+			// Default page size is 20, so force a smaller one to actually span more
+			// than one page (11 > 10). The pagination controls only render when
+			// totalPages > 1; assert a pagination-specific button, since the list
+			// page has no sidebar nav to incidentally match now that profile lives
+			// outside the _workspaced layout.
+			await page.goto('/profile/api-tokens?count=10', { waitUntil: 'domcontentloaded' });
+			await expect(page.getByRole('button', { name: 'First page' })).toBeVisible({
 				timeout: 10_000,
 			});
 		});
