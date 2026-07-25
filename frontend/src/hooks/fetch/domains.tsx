@@ -9,7 +9,6 @@ import { httpRequest } from "~/utils/http-request";
 export type WorkspaceDomain = {
 	id: string;
 	name: string;
-	nameserverType: string;
 	isVerified: boolean;
 };
 

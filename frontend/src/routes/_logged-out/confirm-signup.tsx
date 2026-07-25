@@ -4,6 +4,7 @@ import { createSignal, onMount, Show } from "solid-js";
 import { CompleteSignUpRequest } from "~/bindings";
 import { Alert, Button, ButtonVariant, Input, InputType, OtpInput, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
+import { cloudOnly, IS_CLOUD } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 
 const ConfirmSignUp = () => {
@@ -41,7 +42,7 @@ const ConfirmSignUp = () => {
 			return;
 		}
 
-		if (!turnstileToken()) {
+		if (IS_CLOUD && !turnstileToken()) {
 			toast("Please complete the security verification", "error");
 			return;
 		}
@@ -49,7 +50,7 @@ const ConfirmSignUp = () => {
 		const body: CompleteSignUpRequest = {
 			username: username(),
 			verificationToken: otpDigits().join(""),
-			cfTurnstileToken: turnstileToken(),
+			cfTurnstileToken: IS_CLOUD ? turnstileToken() : "self-hosted",
 		};
 		const resp = await httpRequest("/api/auth/join", {
 			method: "POST",
@@ -136,14 +137,16 @@ const ConfirmSignUp = () => {
 				</div>
 
 				{/* Turnstile Widget */}
-				<div class="mt-6 flex justify-center">
-					<Turnstile
-						onVerify={setTurnstileToken}
-						onExpire={() => setTurnstileToken("")}
-						onError={() => setTurnstileToken("")}
-						action="complete-sign-up"
-					/>
-				</div>
+				{IS_CLOUD && (
+					<div class="mt-6 flex justify-center">
+						<Turnstile
+							onVerify={setTurnstileToken}
+							onExpire={() => setTurnstileToken("")}
+							onError={() => setTurnstileToken("")}
+							action="complete-sign-up"
+						/>
+					</div>
+				)}
 
 				{/* Buttons */}
 				<div class="pt-8 w-full flex flex-row items-center justify-between">
@@ -165,7 +168,7 @@ const ConfirmSignUp = () => {
 						variant={ButtonVariant.Contained}
 						class="py-4 text-base font-semibold px-8"
 						type="submit"
-						disabled={!turnstileToken() || otpDigits().some((d) => d === "")}
+						disabled={(IS_CLOUD && !turnstileToken()) || otpDigits().some((d) => d === "")}
 					>
 						Confirm
 					</Button>
@@ -180,10 +183,12 @@ const ConfirmSignUp = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/confirm-signup")({
-	validateSearch: (search: Record<string, unknown>): { username?: string; otp?: string } => ({
-		username: (search.username as string) || undefined,
-		otp: (search.otp as string) || undefined,
-	}),
-	component: ConfirmSignUp,
-});
+export const Route = createFileRoute("/_logged-out/confirm-signup")(
+	cloudOnly({
+		validateSearch: (search: Record<string, unknown>): { username?: string; otp?: string } => ({
+			username: (search.username as string) || undefined,
+			otp: (search.otp as string) || undefined,
+		}),
+		component: ConfirmSignUp,
+	})
+);

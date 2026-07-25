@@ -44,6 +44,8 @@ pub mod prelude {
 	pub use models::prelude::*;
 	pub use oci_spec::distribution::*;
 
+	#[cfg(not(feature = "cloud"))]
+	pub use crate::routes::registry_patr_cloud::utils::RegistryNamespace;
 	pub use crate::{
 		prelude::*,
 		routes::registry_patr_cloud::{

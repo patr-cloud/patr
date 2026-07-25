@@ -203,7 +203,7 @@ where
 				)
 				.route_layer(
 					ServiceBuilder::new()
-						.layer(RegistryRequestParserLayer::new())
+						.layer(RegistryRequestParserLayer::with_state(state.clone()))
 						.layer(RegistryDataStoreConnectionLayer::with_state(state.clone()))
 						.layer(RegistryPreprocessLayer::new())
 						.layer(RegistryAuthenticationLayer::new())

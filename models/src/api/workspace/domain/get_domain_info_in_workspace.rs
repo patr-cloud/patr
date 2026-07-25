@@ -27,7 +27,6 @@ macros::declare_api_endpoint!(
 		/// The domain information containing:
 		/// - domain - The domain metadata
 		/// - is_verified - whether the domain is verified or not
-		/// - nameserver_type - The type of the nameserver
 		#[serde(flatten)]
 		pub workspace_domain: WithId<WorkspaceDomain>,
 	},

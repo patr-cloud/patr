@@ -1,12 +1,6 @@
-use std::ops::Add;
-
-use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
-use axum::http::StatusCode;
 use models::api::auth::*;
-use rand::RngExt;
-use time::OffsetDateTime;
 
-use crate::{prelude::*, utils::cloudflare::validate_turnstile_token};
+use crate::prelude::*;
 
 pub async fn create_account(
 	AppRequest {
@@ -31,83 +25,69 @@ pub async fn create_account(
 		mut state,
 	}: AppRequest<'_, CreateAccountRequest>,
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
-	trace!("Validating Cloudflare Turnstile token");
-	let cf_turnstile_response = validate_turnstile_token(
-		&state.config.cloudflare.turnstile_secret,
-		&cf_turnstile_token,
-		Some(client_ip),
-	)
-	.await
-	.inspect_err(|err| {
-		error!("Error verifying Cloudflare Turnstile token: `{}`", err);
-	})?;
+	cfg_if! {
+		if #[cfg(not(feature = "cloud"))] {
+			// Self-hosted instances don't allow self-service sign-up — users
+			// are seeded / invited by the operator. Mirror the frontend, which
+			// 404s the sign-up routes.
+			let _ = (
+				username,
+				password,
+				first_name,
+				last_name,
+				recovery_method,
+				cf_turnstile_token,
+				user_agent,
+				database,
+				redis,
+				client_ip,
+				state,
+			);
+			Err(ErrorType::FeatureNotSupported)
+		} else {
+			use std::ops::Add;
 
-	if !cf_turnstile_response.success {
-		return Err(ErrorType::TurnstileVerificationFailed);
-	}
+			use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
+			use axum::http::StatusCode;
+			use rand::RngExt;
+			use time::OffsetDateTime;
 
-	if !cfg!(debug_assertions) && &cf_turnstile_response.action != "sign-up" {
-		return Err(ErrorType::TurnstileVerificationActionMismatch);
-	}
+			use crate::utils::cloudflare::validate_turnstile_token;
 
-	info!("Creating account");
+			trace!("Validating Cloudflare Turnstile token");
+			let cf_turnstile_response = validate_turnstile_token(
+				&state.config.cloudflare.turnstile_secret,
+				&cf_turnstile_token,
+				client_ip,
+			)
+			.await
+			.inspect_err(|err| {
+				error!("Error verifying Cloudflare Turnstile token: `{}`", err);
+			})?;
 
-	trace!("Checking if username is available");
-	// check if username is available
-	let is_username_available = super::is_username_valid(AppRequest {
-		client_ip,
-		request: ProcessedApiRequest::builder()
-			.headers(IsUsernameValidRequestHeaders {
-				user_agent: user_agent.clone(),
-			})
-			.query(IsUsernameValidQueryProcessed {
-				username: username.clone(),
-			})
-			.path(IsUsernameValidPath)
-			.body(IsUsernameValidRequestProcessed)
-			.build(),
-		database,
-		redis,
-		state: state.clone(),
-	})
-	.await
-	.inspect_err(|err| {
-		error!("Error checking if username is available: `{}`", err);
-	})?
-	.body
-	.available;
-
-	if !is_username_available {
-		return Err(ErrorType::UsernameUnavailable);
-	}
-
-	match &recovery_method {
-		RecoveryMethod::PhoneNumber {
-			recovery_phone_country_code: _,
-			recovery_phone_number: _,
-		} => {
-			todo!("Check if phone is valid");
-		}
-		RecoveryMethod::Email { recovery_email } => {
-			// Validate the email format. The `#[preprocess(email)]` attribute
-			// inside `RecoveryMethod::Email` doesn't run because the parent
-			// field on `CreateAccountRequest` doesn't recurse into the enum.
-			if preprocess::validators::validate_email(recovery_email.as_str()).is_err() {
-				return Err(ErrorType::InvalidEmail);
+			if !cf_turnstile_response.success {
+				return Err(ErrorType::TurnstileVerificationFailed);
 			}
 
-			// Check if email is valid
-			let is_email_available = super::is_email_valid(AppRequest {
+			if !cfg!(debug_assertions) && &cf_turnstile_response.action != "sign-up" {
+				return Err(ErrorType::TurnstileVerificationActionMismatch);
+			}
+
+			info!("Creating account");
+
+			trace!("Checking if username is available");
+			// check if username is available
+			let is_username_available = super::is_username_valid(AppRequest {
 				client_ip,
 				request: ProcessedApiRequest::builder()
-					.headers(IsEmailValidRequestHeaders {
+					.headers(IsUsernameValidRequestHeaders {
 						user_agent: user_agent.clone(),
 					})
-					.query(IsEmailValidQueryProcessed {
-						email: recovery_email.clone().into(),
+					.query(IsUsernameValidQueryProcessed {
+						username: username.clone(),
 					})
-					.path(IsEmailValidPath)
-					.body(IsEmailValidRequestProcessed)
+					.path(IsUsernameValidPath)
+					.body(IsUsernameValidRequestProcessed)
 					.build(),
 				database,
 				redis,
@@ -115,161 +95,206 @@ pub async fn create_account(
 			})
 			.await
 			.inspect_err(|err| {
-				error!("Error checking if email is available: `{}`", err);
+				error!("Error checking if username is available: `{}`", err);
 			})?
 			.body
 			.available;
 
-			if !is_email_available {
-				return Err(ErrorType::EmailUnavailable);
+			if !is_username_available {
+				return Err(ErrorType::UsernameUnavailable);
 			}
-		}
-	}
 
-	let now = OffsetDateTime::now_utc();
-	let otp = format!("{:06}", rand::rng().random_range(constants::OTP_RANGE));
-	let hashed_otp = argon2::Argon2::new_with_secret(
-		state.config.password_pepper.as_ref(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.inspect_err(|err| {
-		error!("Error creating Argon2: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.hash_password_with_salt(otp.as_bytes(), &generate_salt())
-	.inspect_err(|err| {
-		error!("Error hashing OTP: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.to_string();
-	let otp_expiry = now.add(constants::OTP_VALIDITY);
+			match &recovery_method {
+				RecoveryMethod::PhoneNumber {
+					recovery_phone_country_code: _,
+					recovery_phone_number: _,
+				} => {
+					todo!("Check if phone is valid");
+				}
+				RecoveryMethod::Email { recovery_email } => {
+					// Validate the email format. The `#[preprocess(email)]` attribute
+					// inside `RecoveryMethod::Email` doesn't run because the parent
+					// field on `CreateAccountRequest` doesn't recurse into the enum.
+					if preprocess::validators::validate_email(recovery_email.as_str()).is_err() {
+						return Err(ErrorType::InvalidEmail);
+					}
 
-	let hashed_password = argon2::Argon2::new_with_secret(
-		state.config.password_pepper.as_ref(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.inspect_err(|err| {
-		error!("Error creating Argon2: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.hash_password_with_salt(password.as_bytes(), &generate_salt())
-	.inspect_err(|err| {
-		error!("Error hashing password: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.to_string();
+					// Check if email is valid
+					let is_email_available = super::is_email_valid(AppRequest {
+						client_ip,
+						request: ProcessedApiRequest::builder()
+							.headers(IsEmailValidRequestHeaders {
+								user_agent: user_agent.clone(),
+							})
+							.query(IsEmailValidQueryProcessed {
+								email: recovery_email.clone().into(),
+							})
+							.path(IsEmailValidPath)
+							.body(IsEmailValidRequestProcessed)
+							.build(),
+						database,
+						redis,
+						state: state.clone(),
+					})
+					.await
+					.inspect_err(|err| {
+						error!("Error checking if email is available: `{}`", err);
+					})?
+					.body
+					.available;
 
-	let recovery_email;
-	let recovery_phone_country_code;
-	let recovery_phone_number;
+					if !is_email_available {
+						return Err(ErrorType::EmailUnavailable);
+					}
+				}
+			}
 
-	match recovery_method {
-		RecoveryMethod::PhoneNumber {
-			recovery_phone_country_code: country_code,
-			recovery_phone_number: number,
-		} => {
-			recovery_email = None;
-			recovery_phone_country_code = Some(country_code);
-			recovery_phone_number = Some(number);
-		}
-		RecoveryMethod::Email {
-			recovery_email: email,
-		} => {
-			recovery_email = Some(email);
-			recovery_phone_country_code = None;
-			recovery_phone_number = None;
-		}
-	}
+			let now = OffsetDateTime::now_utc();
+			let otp = format!("{:06}", rand::rng().random_range(constants::OTP_RANGE));
+			let hashed_otp = argon2::Argon2::new_with_secret(
+				state.config.password_pepper.as_ref(),
+				Algorithm::Argon2id,
+				Version::V0x13,
+				constants::HASHING_PARAMS,
+			)
+			.inspect_err(|err| {
+				error!("Error creating Argon2: `{}`", err);
+			})
+			.map_err(ErrorType::server_error)?
+			.hash_password_with_salt(otp.as_bytes(), &generate_salt())
+			.inspect_err(|err| {
+				error!("Error hashing OTP: `{}`", err);
+			})
+			.map_err(ErrorType::server_error)?
+			.to_string();
+			let otp_expiry = now.add(constants::OTP_VALIDITY);
 
-	query!(
-		r#"
-		INSERT INTO
-			user_to_sign_up(
-				username,
-				password,
-				first_name,
-				last_name,
+			let hashed_password = argon2::Argon2::new_with_secret(
+				state.config.password_pepper.as_ref(),
+				Algorithm::Argon2id,
+				Version::V0x13,
+				constants::HASHING_PARAMS,
+			)
+			.inspect_err(|err| {
+				error!("Error creating Argon2: `{}`", err);
+			})
+			.map_err(ErrorType::server_error)?
+			.hash_password_with_salt(password.as_bytes(), &generate_salt())
+			.inspect_err(|err| {
+				error!("Error hashing password: `{}`", err);
+			})
+			.map_err(ErrorType::server_error)?
+			.to_string();
 
+			let recovery_email;
+			let recovery_phone_country_code;
+			let recovery_phone_number;
+
+			match recovery_method {
+				RecoveryMethod::PhoneNumber {
+					recovery_phone_country_code: country_code,
+					recovery_phone_number: number,
+				} => {
+					recovery_email = None;
+					recovery_phone_country_code = Some(country_code);
+					recovery_phone_number = Some(number);
+				}
+				RecoveryMethod::Email {
+					recovery_email: email,
+				} => {
+					recovery_email = Some(email);
+					recovery_phone_country_code = None;
+					recovery_phone_number = None;
+				}
+			}
+
+			query!(
+				r#"
+				INSERT INTO
+					user_to_sign_up(
+						username,
+						password,
+						first_name,
+						last_name,
+
+						recovery_email,
+						recovery_phone_country_code,
+						recovery_phone_number,
+
+						otp_hash,
+						otp_expiry,
+						sign_up_attempts
+					)
+				VALUES
+					(
+						$1,
+						$2,
+						$3,
+						$4,
+
+						$5,
+						$6,
+						$7,
+
+						$8,
+						$9,
+						0
+					)
+				ON CONFLICT
+					(username)
+				DO UPDATE SET
+					password = EXCLUDED.password,
+					first_name = EXCLUDED.first_name,
+					last_name = EXCLUDED.last_name,
+					recovery_email = EXCLUDED.recovery_email,
+					recovery_phone_country_code = EXCLUDED.recovery_phone_country_code,
+					recovery_phone_number = EXCLUDED.recovery_phone_number,
+					otp_hash = EXCLUDED.otp_hash,
+					otp_expiry = EXCLUDED.otp_expiry
+				WHERE
+					EXCLUDED.otp_expiry > NOW();
+				"#,
+				&username,
+				hashed_password,
+				&first_name,
+				&last_name,
 				recovery_email,
 				recovery_phone_country_code,
 				recovery_phone_number,
-
-				otp_hash,
+				hashed_otp,
 				otp_expiry,
-				sign_up_attempts
 			)
-		VALUES
-			(
-				$1,
-				$2,
-				$3,
-				$4,
+			.execute(&mut **database)
+			.await
+			.inspect_err(|err| {
+				error!("Error inserting into user_to_sign_up: `{}`", err);
+			})?;
 
-				$5,
-				$6,
-				$7,
+			trace!("User to sign up inserted into the database");
 
-				$8,
-				$9,
-				0
-			)
-		ON CONFLICT
-			(username)
-		DO UPDATE SET
-			password = EXCLUDED.password,
-			first_name = EXCLUDED.first_name,
-			last_name = EXCLUDED.last_name,
-			recovery_email = EXCLUDED.recovery_email,
-			recovery_phone_country_code = EXCLUDED.recovery_phone_country_code,
-			recovery_phone_number = EXCLUDED.recovery_phone_number,
-			otp_hash = EXCLUDED.otp_hash,
-			otp_expiry = EXCLUDED.otp_expiry
-		WHERE
-			EXCLUDED.otp_expiry > NOW();
-		"#,
-		&username,
-		hashed_password,
-		&first_name,
-		&last_name,
-		recovery_email,
-		recovery_phone_country_code,
-		recovery_phone_number,
-		hashed_otp,
-		otp_expiry,
-	)
-	.execute(&mut **database)
-	.await
-	.inspect_err(|err| {
-		error!("Error inserting into user_to_sign_up: `{}`", err);
-	})?;
+			state
+				.worker
+				.send_email(
+					recovery_email
+						.clone()
+						.unwrap_or_else(|| "unknown".to_string()),
+					UserSignUpEmail {
+						username: username.to_string(),
+						otp,
+						otp_expiry: constants::OTP_VALIDITY.to_string(),
+					},
+				)
+				.await
+				.inspect_err(|err| {
+					error!("Error enqueuing sign-up email: `{}`", err);
+				})?;
 
-	trace!("User to sign up inserted into the database");
-
-	state
-		.worker
-		.send_email(
-			recovery_email
-				.clone()
-				.unwrap_or_else(|| "unknown".to_string()),
-			UserSignUpEmail {
-				username: username.to_string(),
-				otp,
-				otp_expiry: constants::OTP_VALIDITY.to_string(),
-			},
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error enqueuing sign-up email: `{}`", err);
-		})?;
-
-	AppResponse::builder()
-		.body(CreateAccountResponse)
-		.headers(())
-		.status_code(StatusCode::CREATED)
-		.build()
-		.into_result()
+			AppResponse::builder()
+				.body(CreateAccountResponse)
+				.headers(())
+				.status_code(StatusCode::CREATED)
+				.build()
+				.into_result()
+		}
+	}
 }

@@ -16,6 +16,7 @@ import {
 	expectUpdateDisabled,
 	expectUpdateEnabled,
 	expectToast,
+	expectFirstWorkspaceScreen,
 	getLastWorkspaceIdCookie,
 } from '@/helpers/ui/workspace';
 
@@ -60,7 +61,7 @@ test.describe('workspace settings > route guards', () => {
 		}
 	});
 
-	test('redirects users with zero workspaces from /workspace to /onboard', async ({
+	test('shows the create-workspace screen for a zero-workspace user at /workspace', async ({
 		browser,
 		api,
 	}) => {
@@ -69,8 +70,10 @@ test.describe('workspace settings > route guards', () => {
 		await loginAs(context, user);
 		const page = await context.newPage();
 		try {
+			// /workspace is under _workspaced; with no workspace the layout renders
+			// the inline create-first-workspace screen in place of the settings page.
 			await page.goto('/workspace', { waitUntil: 'domcontentloaded' });
-			await expectUrl(page, /\/onboard/, { timeout: 10_000 });
+			await expectFirstWorkspaceScreen(page);
 		} finally {
 			await context.close();
 		}

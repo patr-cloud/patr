@@ -22,17 +22,16 @@ test.describe('profile > route guards', () => {
 		}
 	});
 
-	test('redirects users with zero workspaces from /profile to /onboard', async ({
-		browser,
-		api,
-	}) => {
+	test('lets a user with zero workspaces open /profile', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user);
 		const page = await context.newPage();
 		try {
-			await page.goto('/profile', { waitUntil: 'domcontentloaded' });
-			await expectUrl(page, /\/onboard/, { timeout: 10_000 });
+			// Profile is user-scoped and lives outside the _workspaced zone, so it
+			// loads without a workspace — no bounce to a create/onboarding screen.
+			await openProfile(page);
+			await expectUrl(page, /\/profile/, { timeout: 10_000 });
 		} finally {
 			await context.close();
 		}
@@ -76,6 +75,28 @@ test.describe('profile > route guards', () => {
 			await expect(page.locator('#first-name')).toHaveValue(user.firstName, {
 				timeout: 15_000,
 			});
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('a dead session (expired access + unusable refresh) is redirected to /login in SSR', async ({
+		browser,
+		api,
+	}) => {
+		await using user = await createUserWithWorkspace(api);
+		// Expired access token AND a refresh token that can't be redeemed: the SSR
+		// middleware should refresh, fail, clear the cookie, and 302 to /login —
+		// before the stream flushes, so there's no logged-out flash and no
+		// ERR_HTTP_HEADERS_SENT from a late Set-Cookie.
+		user.accessToken = expireAccessTokenJwt(user.accessToken);
+		user.refreshToken = 'deadbeef.invalidrefreshtoken';
+		const context = await newContext(browser, user.clientIp);
+		await loginAs(context, user, { workspaceId: user.workspaceId });
+		const page = await context.newPage();
+		try {
+			await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+			await expectUrl(page, /\/login/, { timeout: 10_000 });
 		} finally {
 			await context.close();
 		}

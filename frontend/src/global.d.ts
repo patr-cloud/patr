@@ -8,6 +8,9 @@ interface ViteTypeOptions {
 interface ImportMetaEnv {
 	readonly VITE_BASE_URL: string;
 	readonly VITE_TURNSTILE_SITE_KEY: string;
+	readonly VITE_CLOUD_MODE: string;
+	readonly VITE_BASE_DOMAIN: string;
+	readonly VITE_DEPLOYMENT_DOMAIN: string;
 }
 
 interface ImportMeta {

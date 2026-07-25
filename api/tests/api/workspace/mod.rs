@@ -499,6 +499,72 @@ async fn is_name_available_false() {
 }
 
 #[tokio::test]
+async fn is_name_available_rejects_malformed_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// `!!!` fails RESOURCE_NAME_REGEX (special chars + under the 4-char min),
+	// so the query preprocessor should reject it rather than reporting
+	// availability for a name that could never be created.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<IsWorkspaceNameAvailableRequest>::builder()
+				.headers(IsWorkspaceNameAvailableRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(IsWorkspaceNameAvailableQuery {
+					name: "!!!".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"malformed name should be rejected, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn is_name_available_after_soft_delete() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	// Soft-delete the workspace directly (the DELETE endpoint is blocked on an
+	// audit_log FK redesign). The name should then free up, since the partial
+	// unique index only covers `deleted IS NULL`.
+	setup
+		.execute_sql(&format!(
+			"UPDATE workspace SET deleted = NOW() WHERE name = '{}';",
+			workspace.name
+		))
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<IsWorkspaceNameAvailableRequest>::builder()
+				.headers(IsWorkspaceNameAvailableRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(IsWorkspaceNameAvailableQuery {
+					name: workspace.name.clone(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<IsWorkspaceNameAvailableResponse>>();
+
+	assert!(
+		response.response.available,
+		"a soft-deleted workspace name should be available again"
+	);
+}
+
+#[tokio::test]
 async fn concurrent_create_same_resource() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

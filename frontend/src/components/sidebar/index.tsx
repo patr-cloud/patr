@@ -1,8 +1,12 @@
 import { Link, useLocation } from "@tanstack/solid-router";
 import { FiHome, FiBox, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight, FiPackage } from "solid-icons/fi";
-import { Component, createSignal, For, Show } from "solid-js";
-import WorkspaceSwitcher from "./workspace-switcher";
+import { Component, createSignal, For, lazy, Show } from "solid-js";
 import { useSidebar } from "./context";
+import { IS_CLOUD } from "~/utils/env";
+
+// Lazy + IS_CLOUD-gated so Vite tree-shakes the switcher chunk out of
+// self-hosted bundles entirely.
+const WorkspaceSwitcher = IS_CLOUD ? lazy(() => import("./workspace-switcher")) : null;
 
 interface SidebarItemProps {
 	label: string;
@@ -113,21 +117,19 @@ const Sidebar: Component = () => {
 
 	return (
 		<aside
-			class={`fixed inset-y-0 left-0 z-40 w-64 md:static md:w-14 lg:w-64 h-screen bg-secondary border-r border-white/5 flex flex-col transition-transform duration-200 md:translate-x-0 ${
+			class={`fixed inset-y-0 left-0 z-40 w-64 md:static md:w-14 lg:w-64 md:h-full bg-secondary border-r border-white/5 flex flex-col transition-transform duration-200 md:translate-x-0 ${
 				sidebar.isMobileOpen() ? "translate-x-0" : "-translate-x-full"
 			}`}
 		>
-			<div class="p-6 md:p-3 md:justify-center lg:p-6 lg:justify-start flex items-center gap-3">
-				<img src="/images/patr-lowercase.png" alt="Patr Cloud" class="h-8 w-auto" />
-			</div>
-
 			<nav class="flex-1 overflow-y-auto py-4">
 				<For each={items}>{(item) => <SidebarItem {...item} />}</For>
 			</nav>
 
-			<div class="block md:hidden lg:block px-4 py-8 border-t border-white/5">
-				<WorkspaceSwitcher />
-			</div>
+			{WorkspaceSwitcher && (
+				<div class="block md:hidden lg:block px-4 py-8 border-t border-white/5">
+					<WorkspaceSwitcher />
+				</div>
+			)}
 		</aside>
 	);
 };

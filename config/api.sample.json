@@ -1,11 +1,11 @@
 {
 	"server": {
 		"bindAddress": "127.0.0.1:3000",
-		"apiBasePath": "/"
+		"apiBasePath": "/",
+		"baseDomain": "patr.example.com"
 	},
 	"passwordPepper": "keyboard cat",
 	"jwtSecret": "keyboard cat",
-	"primaryHostedDomain": "onpatr.cloud",
 	"database": {
 		"host": "postgres",
 		"port": 5432,
@@ -38,14 +38,6 @@
 		"from": "no-reply@example.com",
 		"password": "password"
 	},
-	"cloudflare": {
-		"apiKey": "<cloudflare-api-key>",
-		"accountId": "<account-id>",
-		"workerNamespaceId": "<worker-namespace-id>",
-		"turnstileSecret": "1x0000000000000000000000000000000AA",
-		"primaryHostedZoneId": "<primary-hosted-zone-id>",
-		"ingressScriptName": "<ingress-script-name>"
-	},
 	"opentelemetry": {
 		"tracing": {
 			"endpoint": "http://tracing:4317/v1/traces"
@@ -59,15 +51,8 @@
 			"password": "password"
 		}
 	},
-	"ipinfo": {
-		"token": "token"
-	},
-	"socialLogin": {
-		"github": {
-			"clientId": "<github-client-id>",
-			"clientSecret": "<github-client-secret>",
-			"callbackUrl": "http://localhost:3000/login/github",
-			"connectCallbackUrl": "http://localhost:3000/profile/github/callback"
-		}
+	"registry": {
+		"service": "patr.example.com",
+		"realm": "https://patr.example.com/api/auth/docker-login"
 	}
 }

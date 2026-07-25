@@ -8,6 +8,8 @@ import {
 } from "~/bindings";
 import { Button, ButtonVariant, Input, InputDropdown, LoadingSpinner, useToast, InfoPopup } from "~/components";
 import { createAuthenticatedAction, createFormAction } from "~/hooks";
+import { useApiEnvironmentQuery } from "~/hooks/fetch";
+import { DEPLOYMENT_DOMAIN, IS_CLOUD } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import DeploymentOption from "./deployment-option";
@@ -27,6 +29,17 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 	const [shouldDelete, setShouldDelete] = createSignal(false);
 
 	const toast = useToast();
+	const apiEnvironment = useApiEnvironmentQuery();
+
+	// Cloud points CNAMEs at `ingress.{deployment-domain}`; on self-hosted
+	// the operator's `baseDomain` from /api/info IS the ingress host. Cloud
+	// value is build-time constant, self-hosted value may still be loading.
+	const ingressHost = () =>
+		IS_CLOUD
+			? DEPLOYMENT_DOMAIN
+				? `ingress.${DEPLOYMENT_DOMAIN}`
+				: "your ingress hostname"
+			: (apiEnvironment.data?.baseDomain ?? "Loading...");
 
 	const { execute: deleteUrl, isLoading: isDeleting } = createAuthenticatedAction(async ({ workspaceId }) => {
 		const response = await httpRequest<void>(
@@ -101,7 +114,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 													<p>
 														Name: {props.managedUrl.subDomain}.{props.domainInfo.name || ""}
 													</p>
-													<p>Value: ingress.onpatr.cloud</p>
+													<p>Value: {ingressHost()}</p>
 												</div>
 											</div>
 										)}

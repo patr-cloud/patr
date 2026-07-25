@@ -43,9 +43,9 @@ use self::{
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
 		.merge(container_registry::setup_routes(state, allowed_client_type).await)
-		.merge(domain::setup_routes(state, allowed_client_type).await)
 		// .merge(database::setup_routes(state, allowed_client_type).await)
 		.merge(deployment::setup_routes(state, allowed_client_type).await)
+		.merge(domain::setup_routes(state, allowed_client_type).await)
 		.merge(managed_url::setup_routes(state, allowed_client_type).await)
 		.merge(rbac::setup_routes(state, allowed_client_type).await)
 		.merge(runner::setup_routes(state, allowed_client_type).await)

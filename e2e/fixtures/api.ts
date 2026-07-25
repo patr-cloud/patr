@@ -53,6 +53,17 @@ export async function newContext(
 	// script and provide a stub that fires the always-passes test token at once
 	// (and again on reset, for re-verify flows). The backend accepts it verbatim.
 	await context.route('https://challenges.cloudflare.com/**', (route) => route.abort());
+
+	// Block the external Google Fonts pulled in by `app.css`
+	// (@import fonts.googleapis.com → fonts.gstatic.com). A pending @import is
+	// render- and load-blocking, so on a CI runner with slow/throttled external
+	// network the request stalls and the document `load` event never fires —
+	// `page.goto` (waitUntil:'load' by default) then hangs the full 60s test
+	// timeout. Aborting them makes navigation depend only on the local stack;
+	// pages fall back to system fonts, which tests don't assert on.
+	await context.route('https://fonts.googleapis.com/**', (route) => route.abort());
+	await context.route('https://fonts.gstatic.com/**', (route) => route.abort());
+
 	await context.addInitScript((token: string) => {
 		const state: { callback: ((t: string) => void) | null } = { callback: null };
 		(window as unknown as { turnstile: unknown }).turnstile = {
@@ -68,8 +79,8 @@ export async function newContext(
 
 	// Bound context.close() (as the comment above promises). React-Query
 	// background polls keep a dashboard page busy, so the native close can stall
-	// indefinitely and eat the 60s test timeout — e.g. after a successful onboard
-	// navigates to the dashboard. Closing the pages first stops that activity so
+	// indefinitely and eat the 60s test timeout — e.g. after creating the first
+	// workspace swaps in the dashboard. Closing the pages first stops that activity so
 	// the native close returns immediately; the race is a backstop, and since the
 	// pages are already closed a timed-out context is inert (no polls left to leak).
 	const nativeClose = context.close.bind(context);

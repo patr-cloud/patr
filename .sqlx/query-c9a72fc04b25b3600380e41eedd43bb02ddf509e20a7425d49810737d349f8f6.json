@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_domain.id, CONCAT(name, '.', tld) AS \"name!\", is_verified, last_verified FROM workspace_domain WHERE id = $1 AND workspace_domain.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_verified",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      true
+    ]
+  },
+  "hash": "c9a72fc04b25b3600380e41eedd43bb02ddf509e20a7425d49810737d349f8f6"
+}

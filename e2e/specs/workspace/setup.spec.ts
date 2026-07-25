@@ -6,21 +6,24 @@ import {
 	createUserWithWorkspace,
 	loginAs,
 	expectUrl,
-	expectUrlNot,
 } from '@/prelude';
 import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 import {
-	openOnboardPage,
-	fillOnboardName,
-	submitOnboard,
-	onboardSubmitButton,
+	openFirstWorkspaceScreen,
+	fillWorkspaceName,
+	submitFirstWorkspace,
+	firstWorkspaceButton,
+	expectFirstWorkspaceScreen,
 	expectToast,
 	getLastWorkspaceIdCookie,
 } from '@/helpers/ui/workspace';
 
 const VALID = () => `wks-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-async function onboardWith(
+// Runs `fn` against the zero-workspace create screen: a fresh account with no
+// workspace, logged in, sitting on `/` where the _workspaced layout renders the
+// inline create-first-workspace screen in place of the dashboard.
+async function onFirstWorkspaceScreen(
 	browser: import('@playwright/test').Browser,
 	user: { accessToken: string; refreshToken: string; clientIp: string },
 	fn: (
@@ -32,7 +35,7 @@ async function onboardWith(
 	await loginAs(context, user as any);
 	const page = await context.newPage();
 	try {
-		await openOnboardPage(page);
+		await openFirstWorkspaceScreen(page);
 		await fn(page, context);
 	} finally {
 		await context.close();
@@ -40,18 +43,21 @@ async function onboardWith(
 }
 
 test.describe('workspace setup > route guards', () => {
-	test('redirects unauthenticated visits to /onboard to /login', async ({ browser }) => {
+	test('redirects unauthenticated visits to the dashboard to /login', async ({ browser }) => {
 		const context = await newContext(browser);
 		const page = await context.newPage();
 		try {
-			await page.goto('/onboard', { waitUntil: 'domcontentloaded' });
+			await page.goto('/', { waitUntil: 'domcontentloaded' });
 			await expectUrl(page, /\/login/, { timeout: 10_000 });
 		} finally {
 			await context.close();
 		}
 	});
 
-	test('sends a user with zero workspaces to /onboard after login', async ({ browser, api }) => {
+	test('shows the create-workspace screen to a zero-workspace user after login', async ({
+		browser,
+		api,
+	}) => {
 		await using user = await createUserAccount(api);
 		const context = await newContext(browser, user.clientIp);
 		const page = await context.newPage();
@@ -60,20 +66,27 @@ test.describe('workspace setup > route guards', () => {
 			await fillLoginForm(page, { userId: user.username, password: user.password });
 			await submitLogin(page);
 			await waitForLoggedIn(page);
-			await expectUrl(page, /\/onboard$/, { timeout: 10_000 });
+			// No separate /onboard route — the dashboard renders the inline create
+			// screen in place of the page, and the URL stays at the root.
+			await expectFirstWorkspaceScreen(page);
+			await expectUrl(page, /\/$/, { timeout: 10_000 });
 		} finally {
 			await context.close();
 		}
 	});
 
-	test('sends a user with a workspace away from /onboard', async ({ browser, api }) => {
+	test('shows the dashboard (not the create screen) to a user who has a workspace', async ({
+		browser,
+		api,
+	}) => {
 		await using user = await createUserWithWorkspace(api);
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user, { workspaceId: user.workspaceId });
 		const page = await context.newPage();
 		try {
-			await page.goto('/onboard', { waitUntil: 'domcontentloaded' });
-			await expectUrlNot(page, /\/onboard/, { timeout: 10_000 });
+			await page.goto('/', { waitUntil: 'domcontentloaded' });
+			await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10_000 });
+			await expect(page.locator('#workspace-name')).toBeHidden();
 		} finally {
 			await context.close();
 		}
@@ -81,23 +94,24 @@ test.describe('workspace setup > route guards', () => {
 });
 
 test.describe('workspace setup > happy path', () => {
-	test('creates the first workspace and sets the lastWorkspaceId cookie', async ({
-		browser,
-		api,
-	}) => {
+	test('creates the first workspace and swaps in the dashboard', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page, context) => {
+		await onFirstWorkspaceScreen(browser, user, async (page, context) => {
 			const name = VALID();
-			await fillOnboardName(page, name);
+			await fillWorkspaceName(page, name);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().endsWith('/api/workspace') && r.request().method() === 'POST',
 				{ timeout: 30_000 },
 			);
-			await submitOnboard(page);
+			await submitFirstWorkspace(page);
 			const resp = await respPromise;
 			expect(resp.ok()).toBe(true);
 			await expectToast(page, /Workspace created successfully/i);
-			await expectUrlNot(page, /\/onboard/, { timeout: 10_000 });
+			// No navigation: creating the workspace invalidates the workspaces
+			// query, and the layout reactively swaps the create screen for the
+			// dashboard once the refetch lands.
+			await expect(page.getByText('Quick Actions')).toBeVisible({ timeout: 10_000 });
+			await expect(page.locator('#workspace-name')).toBeHidden();
 			const cookieId = await getLastWorkspaceIdCookie(context);
 			expect(cookieId).toBeTruthy();
 		});
@@ -127,7 +141,7 @@ test.describe('workspace setup > validation', () => {
 			(r) => r.url().endsWith('/api/workspace') && r.request().method() === 'POST',
 			{ timeout: 30_000 },
 		);
-		await submitOnboard(page);
+		await submitFirstWorkspace(page);
 		const resp = await respPromise;
 		expect(resp.ok()).toBe(false);
 		await expect(
@@ -137,9 +151,9 @@ test.describe('workspace setup > validation', () => {
 
 	test('rejects an empty name with an inline alert and no POST', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
 			await expectNoCreateRequest(page, async () => {
-				await submitOnboard(page);
+				await submitFirstWorkspace(page);
 			});
 			await expect(page.getByText(/Workspace name is required\./i)).toBeVisible();
 		});
@@ -147,10 +161,10 @@ test.describe('workspace setup > validation', () => {
 
 	test('rejects a whitespace-only name with an inline alert', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
-			await fillOnboardName(page, '   ');
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
+			await fillWorkspaceName(page, '   ');
 			await expectNoCreateRequest(page, async () => {
-				await submitOnboard(page);
+				await submitFirstWorkspace(page);
 			});
 			await expect(page.getByText(/Workspace name is required\./i)).toBeVisible();
 		});
@@ -158,34 +172,34 @@ test.describe('workspace setup > validation', () => {
 
 	test('rejects a name shorter than 4 characters', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
-			await fillOnboardName(page, 'abc');
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
+			await fillWorkspaceName(page, 'abc');
 			await expectServerRejectionInline(page);
 		});
 	});
 
 	test('rejects a name longer than 255 characters', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
-			await fillOnboardName(page, 'a'.repeat(256));
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
+			await fillWorkspaceName(page, 'a'.repeat(256));
 			await expectServerRejectionInline(page);
 		});
 	});
 
 	test('rejects a name containing disallowed characters', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
-			await fillOnboardName(page, 'my!workspace');
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
+			await fillWorkspaceName(page, 'my!workspace');
 			await expectServerRejectionInline(page);
 		});
 	});
 
 	test('trims leading and trailing whitespace before submitting', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
 			const padded = '  validname-' + Date.now().toString(36) + '  ';
 			const expected = padded.trim();
-			await fillOnboardName(page, padded);
+			await fillWorkspaceName(page, padded);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().endsWith('/api/workspace') && r.request().method() === 'POST',
 				{ timeout: 30_000 },
@@ -194,7 +208,7 @@ test.describe('workspace setup > validation', () => {
 				(r) => r.url().endsWith('/api/workspace') && r.method() === 'POST',
 				{ timeout: 30_000 },
 			);
-			await submitOnboard(page);
+			await submitFirstWorkspace(page);
 			const [req, resp] = await Promise.all([reqPromise, respPromise]);
 			expect(resp.ok()).toBe(true);
 			const body = JSON.parse(req.postData() ?? '{}') as { name: string };
@@ -214,8 +228,8 @@ test.describe('workspace setup > validation', () => {
 			body: { name: shared },
 		});
 		await using userB = await createUserAccount(api);
-		await onboardWith(browser, userB, async (page) => {
-			await fillOnboardName(page, shared);
+		await onFirstWorkspaceScreen(browser, userB, async (page) => {
+			await fillWorkspaceName(page, shared);
 			await expectServerRejectionInline(page);
 		});
 	});
@@ -229,16 +243,16 @@ test.describe('workspace setup > validation', () => {
 			body: { name: base.toLowerCase() },
 		});
 		await using userB = await createUserAccount(api);
-		await onboardWith(browser, userB, async (page) => {
-			await fillOnboardName(page, base.toUpperCase());
+		await onFirstWorkspaceScreen(browser, userB, async (page) => {
+			await fillWorkspaceName(page, base.toUpperCase());
 			await expectServerRejectionInline(page);
 		});
 	});
 
 	test('rejects a unicode-only name', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
-			await fillOnboardName(page, '工作空间aaaa');
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
+			await fillWorkspaceName(page, '工作空间aaaa');
 			await expectServerRejectionInline(page);
 		});
 	});
@@ -248,11 +262,11 @@ test.describe('workspace setup > validation', () => {
 		api,
 	}) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
-			await fillOnboardName(page, `x'); DROP TABLE workspace;--`);
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
+			await fillWorkspaceName(page, `x'); DROP TABLE workspace;--`);
 			await expectServerRejectionInline(page);
 			await page.locator('#workspace-name').fill('');
-			await fillOnboardName(page, 'abcd');
+			await fillWorkspaceName(page, 'abcd');
 			await expect(page.locator('#workspace-name')).toHaveValue('abcd');
 		});
 	});
@@ -261,13 +275,13 @@ test.describe('workspace setup > validation', () => {
 test.describe('workspace setup > concurrency & UX @racy', () => {
 	test('fires exactly one POST on a rapid double-submit', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
-			await fillOnboardName(page, VALID());
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
+			await fillWorkspaceName(page, VALID());
 			let postCount = 0;
-			// Hold the create POST so its success-navigation doesn't fire during the
-			// test: the page stays on /onboard, so the suppressed second click still
-			// has a button and teardown isn't racing a navigation. fallback() keeps
-			// the context's x-real-ip route.
+			// Hold the create POST so its success doesn't swap the screen out mid
+			// test: the create screen stays mounted, so the suppressed second click
+			// still has a button and teardown isn't racing the dashboard swap.
+			// fallback() keeps the context's x-real-ip route.
 			await page.route('**/api/workspace', async (route) => {
 				if (route.request().method() === 'POST') {
 					postCount += 1;
@@ -277,16 +291,16 @@ test.describe('workspace setup > concurrency & UX @racy', () => {
 			});
 
 			// First submit fires POST #1 (held) and disables the button via isLoading.
-			await submitOnboard(page);
+			await submitFirstWorkspace(page);
 			// The second submit is suppressed by the isLoading guard; force the click
 			// so Playwright doesn't auto-wait for the disabled button.
-			await onboardSubmitButton(page)
+			await firstWorkspaceButton(page)
 				.click({ force: true })
 				.catch(() => undefined);
 
 			// Give a stray second POST a chance to surface, then assert exactly one
 			// fired — the rapid double-submit was debounced. (The POST is still held,
-			// so the page is on /onboard and teardown is clean.)
+			// so the create screen is still mounted and teardown is clean.)
 			await page.waitForTimeout(700);
 			expect(postCount).toBe(1);
 		});
@@ -294,19 +308,26 @@ test.describe('workspace setup > concurrency & UX @racy', () => {
 
 	test('clears the inline error on the next keystroke', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
-			await submitOnboard(page);
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
+			await submitFirstWorkspace(page);
 			await expect(page.getByText(/Workspace name is required\./i)).toBeVisible();
 			await page.locator('#workspace-name').fill('a');
 			await expect(page.getByText(/Workspace name is required\./i)).toBeHidden();
 		});
 	});
 
-	test('renders /onboard without the sidebar or topbar', async ({ browser, api }) => {
+	test('renders the create screen inside the app shell (sidebar + topbar)', async ({
+		browser,
+		api,
+	}) => {
 		await using user = await createUserAccount(api);
-		await onboardWith(browser, user, async (page) => {
-			await expect(page.getByText('CREATE WORKSPACE', { exact: true })).toBeHidden();
-			await expect(page.getByText('Select A Workspace', { exact: true })).toBeHidden();
+		await onFirstWorkspaceScreen(browser, user, async (page) => {
+			// Unlike the old standalone /onboard page, the create screen now renders
+			// within the dashboard shell: the sidebar nav and the workspace switcher
+			// are present alongside the form.
+			await expectFirstWorkspaceScreen(page);
+			await expect(page.getByRole('link', { name: /^Deployments$/ })).toBeVisible();
+			await expect(page.getByText('Select A Workspace', { exact: true })).toBeVisible();
 		});
 	});
 });

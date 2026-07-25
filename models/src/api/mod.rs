@@ -12,6 +12,9 @@ pub mod workspace;
 /// in the API. Since it is a large trait, a helper macro is provided to
 /// generate a request. See: [`macros::declare_api_endpoint`]
 mod api_endpoint;
+/// The endpoint that publishes deployment-type and other instance-level
+/// values the clients need to bootstrap.
+mod api_environment;
 /// The endpoint to get the version of the API
 mod get_version;
 
@@ -21,7 +24,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-pub use self::{api_endpoint::*, get_version::*};
+pub use self::{api_endpoint::*, api_environment::*, get_version::*};
 use crate::prelude::*;
 
 /// A type alias for a map that only contains an ID.

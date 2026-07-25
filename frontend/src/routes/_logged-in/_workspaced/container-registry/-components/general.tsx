@@ -4,6 +4,7 @@ import { GetContainerRepositoryInfoResponse } from "~/bindings";
 import { CopyableField, CopyableFieldVariant, Input, InputType, InputWithLabel, Link, Tooltip } from "~/components";
 import { formatRelativeTime, formatSize, formatDate, get } from "~/utils/func";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
+import { REGISTRY_DOMAIN } from "~/utils/env";
 import { MaybeAccessor } from "~/utils/types";
 import { PullCommand } from "./registry-ui";
 
@@ -24,7 +25,7 @@ const General = (props: GeneralInfoProps) => {
 							<InputWithLabel for="repository-name" label="Repository Name">
 								<CopyableField
 									variant={CopyableFieldVariant.Input}
-									value={`registry.patr.cloud/${workspaceId()}/${get(props.repositoryInfo)?.repository?.name}`}
+									value={`${REGISTRY_DOMAIN ?? "<registry>"}/${workspaceId()}/${get(props.repositoryInfo)?.repository?.name}`}
 									buttonPosition="start"
 								/>
 							</InputWithLabel>
@@ -124,7 +125,7 @@ const CollapsiblePushInstructions = (props: { repositoryName: string | undefined
 const PushInstructions = (props: { repositoryName: string | undefined }) => {
 	const [workspaceId] = useLastWorkspaceId();
 
-	const registryHost = "registry.patr.cloud";
+	const registryHost = REGISTRY_DOMAIN ?? "<registry>";
 	const registryUrl = () => `${registryHost}/${workspaceId()}/${props.repositoryName || "<repository-name>"}`;
 	return (
 		<div class="py-8">

@@ -12,7 +12,7 @@ version.workspace      = true
 workspace = true
 
 [features]
-cloud   = ["models/cloud"]
+cloud   = ["models/cloud", "dep:cloudflare", "dep:ipinfo"]
 default = ["cloud"]
 
 [dependencies]
@@ -29,8 +29,9 @@ axum-extra                     = { workspace = true, features = ["default", "typ
 axum-typed-websockets          = { workspace = true, features = ["default"] }
 base32                         = { workspace = true, features = [] }
 base64                         = { workspace = true, features = ["default"] }
+cfg-if                         = { workspace = true, features = [] }
 clap                           = { workspace = true, features = ["std", "derive"] }
-cloudflare                     = { workspace = true, features = ["rustls-tls"] }
+cloudflare                     = { workspace = true, features = ["rustls-tls"], optional = true }
 config                         = { workspace = true, features = ["json", "convert-case"] }
 console-subscriber             = { workspace = true, features = ["default"] }
 cron                           = { workspace = true, features = [] }
@@ -42,7 +43,7 @@ hickory-resolver               = { workspace = true, features = ["tokio"] }
 http                           = { workspace = true, features = ["default"] }
 http-body                      = { workspace = true, features = [] }
 inventory                      = { workspace = true, features = [] }
-ipinfo                         = { workspace = true, features = [] }
+ipinfo                         = { workspace = true, features = [], optional = true }
 jsonwebtoken                   = { workspace = true, features = ["default", "aws_lc_rs"] }
 lettre                         = { workspace = true, features = ["tokio1-rustls-tls", "smtp-transport", "builder", "tokio1"] }
 macros                         = { workspace = true, features = [] }

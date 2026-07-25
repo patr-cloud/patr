@@ -1,4 +1,3 @@
-use super::DomainNameserverType;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
@@ -27,12 +26,6 @@ macros::declare_api_endpoint!(
 		/// CHECK both see normalized input.
 		#[preprocess(lowercase, domain)]
 		pub domain: String,
-		/// The type of nameserver
-		/// It can be
-		/// - Internal: The nameserver is managed by Patr
-		/// - External: The nameserver is managed by the user
-		#[preprocess(none)]
-		pub nameserver_type: DomainNameserverType,
 	},
 	response = {
 		/// The ID of the created record

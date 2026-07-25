@@ -4,6 +4,7 @@ import { onMount } from "solid-js";
 import type { SocialLoginCallbackResponse } from "~/bindings";
 import { useToast } from "~/components";
 import { useAuthState } from "~/hooks";
+import { cloudOnly } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 
 const GithubCallback = () => {
@@ -95,10 +96,12 @@ const GithubCallback = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/login/github")({
-	validateSearch: (search: Record<string, unknown>): { code?: string; state?: string } => ({
-		code: (search.code as string) || undefined,
-		state: (search.state as string) || undefined,
-	}),
-	component: GithubCallback,
-});
+export const Route = createFileRoute("/_logged-out/login/github")(
+	cloudOnly({
+		validateSearch: (search: Record<string, unknown>): { code?: string; state?: string } => ({
+			code: (search.code as string) || undefined,
+			state: (search.state as string) || undefined,
+		}),
+		component: GithubCallback,
+	})
+);

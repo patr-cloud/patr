@@ -128,6 +128,10 @@ pub enum ErrorType {
 	/// email address. Also returned when a link/setup token is invalid or
 	/// expired.
 	SocialLoginFailed,
+	/// The requested feature is not available in this build of Patr. Returned,
+	/// for example, when a self-hosted deployment is asked to perform an action
+	/// that requires cloud-only infrastructure.
+	FeatureNotSupported,
 }
 
 impl ErrorType {
@@ -181,6 +185,7 @@ impl ErrorType {
 			Self::TurnstileVerificationActionMismatch => StatusCode::FORBIDDEN,
 			Self::RateLimitExceeded => StatusCode::TOO_MANY_REQUESTS,
 			Self::SocialLoginFailed => StatusCode::BAD_REQUEST,
+			Self::FeatureNotSupported => StatusCode::NOT_IMPLEMENTED,
 		}
 	}
 
@@ -272,6 +277,7 @@ impl ErrorType {
 					"Ensure your GitHub account has a verified email address.",
 				)
 			}
+			Self::FeatureNotSupported => "This feature is not available in this build of Patr",
 		}
 	}
 

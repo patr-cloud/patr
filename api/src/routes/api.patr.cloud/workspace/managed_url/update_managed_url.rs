@@ -219,12 +219,18 @@ pub async fn update_managed_url(
 	.execute(&mut **database)
 	.await?;
 
-	utils::cloudflare::sync_ingress_kv_for_fqdn(
-		&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
-		database,
-		&state.config,
-	)
-	.await?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			utils::cloudflare::sync_ingress_kv_for_fqdn(
+				&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
+				database,
+				&state.config,
+			)
+			.await?;
+		} else {
+			let _ = &state;
+		}
+	}
 
 	let new_runner = new_proxy_deployment.map(|(r, _)| r);
 

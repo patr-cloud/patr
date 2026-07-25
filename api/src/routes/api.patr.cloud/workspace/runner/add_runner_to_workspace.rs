@@ -1,4 +1,5 @@
 use axum::http::StatusCode;
+#[cfg(feature = "cloud")]
 use cloudflare::{
 	endpoints::workerskv::write_key,
 	framework::{
@@ -7,7 +8,9 @@ use cloudflare::{
 		client::{ClientConfig, async_api::Client as CloudflareClient},
 	},
 };
-use models::{api::workspace::runner::*, cloudflare::kv::*, prelude::*};
+#[cfg(feature = "cloud")]
+use models::cloudflare::kv::*;
+use models::{api::workspace::runner::*, prelude::*};
 
 use crate::prelude::*;
 
@@ -61,7 +64,14 @@ pub async fn add_runner_to_workspace(
 	})?
 	.id;
 
-	let tunnel_id = utils::cloudflare::create_tunnel_with_config(id, &state.config).await?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			let tunnel_id = utils::cloudflare::create_tunnel_with_config(id, &state.config).await?;
+		} else {
+			let _ = &state;
+			let tunnel_id = String::new();
+		}
+	}
 
 	query!(
 		r#"
@@ -94,24 +104,28 @@ pub async fn add_runner_to_workspace(
 		other => other.into(),
 	})?;
 
-	CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: state.config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Custom(state.config.cloudflare.base_url.clone()),
-	)?
-	.request(&write_key::WriteKey {
-		account_identifier: &state.config.cloudflare.account_id,
-		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-		key: &id.to_string(),
-		params: write_key::WriteKeyParams {
-			expiration: None,
-			expiration_ttl: None,
-		},
-		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&InternalKVData::Runner)?),
-	})
-	.await?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			CloudflareClient::new(
+				Credentials::UserAuthToken {
+					token: state.config.cloudflare.api_key.clone(),
+				},
+				ClientConfig::default(),
+				Environment::Custom(state.config.cloudflare.base_url.clone()),
+			)?
+			.request(&write_key::WriteKey {
+				account_identifier: &state.config.cloudflare.account_id,
+				namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+				key: &id.to_string(),
+				params: write_key::WriteKeyParams {
+					expiration: None,
+					expiration_ttl: None,
+				},
+				body: write_key::WriteKeyBody::Value(serde_json::to_vec(&InternalKVData::Runner)?),
+			})
+			.await?;
+		}
+	}
 
 	AppResponse::builder()
 		.body(AddRunnerToWorkspaceResponse {

@@ -1,4 +1,4 @@
-use axum::http::StatusCode;
+#[cfg(feature = "cloud")]
 use cloudflare::{endpoints::cfd_tunnel::Tunnel, framework::response::ApiSuccess};
 use models::api::workspace::runner::*;
 
@@ -29,84 +29,93 @@ pub async fn get_ingress_token_for_runner(
 ) -> Result<AppResponse<GetIngressTokenForRunnerRequest>, ErrorType> {
 	info!("Getting ingress token for runner `{runner_id}`");
 
-	let runner = query!(
-		r#"
-		SELECT
-			cloudflare_tunnel_id
-		FROM
-			runner
-		WHERE
-			id = $1;
-		"#,
-		&runner_id as _,
-	)
-	.fetch_optional(&mut **database)
-	.await?
-	.ok_or(ErrorType::ResourceDoesNotExist)?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			use axum::http::StatusCode;
 
-	let client = reqwest::Client::new();
+			let runner = query!(
+				r#"
+				SELECT
+					cloudflare_tunnel_id
+				FROM
+					runner
+				WHERE
+					id = $1;
+				"#,
+				&runner_id as _,
+			)
+			.fetch_optional(&mut **database)
+			.await?
+			.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	// Check if the tunnel still exists on Cloudflare
-	let tunnel_exists = client
-		.get(format!(
-			"{}accounts/{}/cfd_tunnel/{}",
-			state.config.cloudflare.base_url,
-			state.config.cloudflare.account_id,
-			runner.cloudflare_tunnel_id
-		))
-		.bearer_auth(&state.config.cloudflare.api_key)
-		.send()
-		.await?
-		.json::<ApiSuccess<Option<Tunnel>>>()
-		.await?
-		.result
-		.filter(|tunnel| tunnel.deleted_at.is_none())
-		.is_some();
+			let client = reqwest::Client::new();
 
-	// If the tunnel was deleted or removed, recreate it with catch-all config
-	let tunnel_id = if tunnel_exists {
-		runner.cloudflare_tunnel_id
-	} else {
-		warn!("Tunnel for runner `{runner_id}` not found on Cloudflare, recreating");
+			// Check if the tunnel still exists on Cloudflare
+			let tunnel_exists = client
+				.get(format!(
+					"{}accounts/{}/cfd_tunnel/{}",
+					state.config.cloudflare.base_url,
+					state.config.cloudflare.account_id,
+					runner.cloudflare_tunnel_id
+				))
+				.bearer_auth(&state.config.cloudflare.api_key)
+				.send()
+				.await?
+				.json::<ApiSuccess<Option<Tunnel>>>()
+				.await?
+				.result
+				.filter(|tunnel| tunnel.deleted_at.is_none())
+				.is_some();
 
-		let new_tunnel_id =
-			utils::cloudflare::create_tunnel_with_config(runner_id, &state.config).await?;
+			// If the tunnel was deleted or removed, recreate it with catch-all config
+			let tunnel_id = if tunnel_exists {
+				runner.cloudflare_tunnel_id
+			} else {
+				warn!("Tunnel for runner `{runner_id}` not found on Cloudflare, recreating");
 
-		query!(
-			r#"
-			UPDATE
-				runner
-			SET
-				cloudflare_tunnel_id = $1
-			WHERE
-				id = $2;
-			"#,
-			&new_tunnel_id,
-			runner_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
+				let new_tunnel_id =
+					utils::cloudflare::create_tunnel_with_config(runner_id, &state.config).await?;
 
-		new_tunnel_id
-	};
+				query!(
+					r#"
+					UPDATE
+						runner
+					SET
+						cloudflare_tunnel_id = $1
+					WHERE
+						id = $2;
+					"#,
+					&new_tunnel_id,
+					runner_id as _,
+				)
+				.execute(&mut **database)
+				.await?;
 
-	trace!("Getting the tunnel token for the runner");
-	let token = client
-		.get(format!(
-			"{}accounts/{}/cfd_tunnel/{}/token",
-			state.config.cloudflare.base_url, state.config.cloudflare.account_id, tunnel_id
-		))
-		.bearer_auth(&state.config.cloudflare.api_key)
-		.send()
-		.await?
-		.json::<ApiSuccess<String>>()
-		.await?
-		.result;
+				new_tunnel_id
+			};
 
-	AppResponse::builder()
-		.body(GetIngressTokenForRunnerResponse { token })
-		.headers(())
-		.status_code(StatusCode::OK)
-		.build()
-		.into_result()
+			trace!("Getting the tunnel token for the runner");
+			let token = client
+				.get(format!(
+					"{}accounts/{}/cfd_tunnel/{}/token",
+					state.config.cloudflare.base_url, state.config.cloudflare.account_id, tunnel_id
+				))
+				.bearer_auth(&state.config.cloudflare.api_key)
+				.send()
+				.await?
+				.json::<ApiSuccess<String>>()
+				.await?
+				.result;
+
+			AppResponse::builder()
+				.body(GetIngressTokenForRunnerResponse { token })
+				.headers(())
+				.status_code(StatusCode::OK)
+				.build()
+				.into_result()
+		} else {
+			let _ = (runner_id, database, state);
+			Err(ErrorType::FeatureNotSupported)
+		}
+	}
 }

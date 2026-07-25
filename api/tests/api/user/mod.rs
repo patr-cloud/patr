@@ -509,6 +509,72 @@ async fn search_for_user_special_chars() {
 }
 
 #[tokio::test]
+async fn search_for_user_too_short() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// Queries under 3 (trimmed) characters are rejected with WrongParameters
+	// before hitting the DB.
+	for short in ["ab", " a ", ""] {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<SearchForUserRequest>::builder()
+					.query(SearchForUserQuery {
+						query: short.to_string(),
+					})
+					.headers(SearchForUserRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+
+		assert!(
+			response.status_code().is_client_error(),
+			"a <3-char query `{short}` should be rejected, got {}",
+			response.status_code()
+		);
+	}
+}
+
+#[tokio::test]
+async fn search_for_user_limits_to_five() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// Six users sharing a unique random infix all match the same ILIKE search;
+	// the handler caps results at LIMIT 5.
+	let marker = random_name(6);
+	for i in 0..6 {
+		setup
+			.create_test_user_with_username(&format!("{marker}x{i}"))
+			.await;
+	}
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<SearchForUserRequest>::builder()
+				.query(SearchForUserQuery {
+					query: marker.clone(),
+				})
+				.headers(SearchForUserRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<SearchForUserResponse>>();
+
+	assert_eq!(
+		response.response.users.len(),
+		5,
+		"search must cap results at 5 even though 6 users match"
+	);
+}
+
+#[tokio::test]
 async fn change_password_same_as_current() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

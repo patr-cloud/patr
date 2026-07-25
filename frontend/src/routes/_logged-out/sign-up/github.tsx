@@ -5,6 +5,7 @@ import type { SocialLoginSetupRequest, SocialLoginSetupResponse } from "~/bindin
 import { Alert, Button, Input, InputType, useToast } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createAsyncAction, useAuthState } from "~/hooks";
+import { cloudOnly } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
 
@@ -245,21 +246,23 @@ const CompleteGithubSignup = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/sign-up/github")({
-	validateSearch: (
-		search: Record<string, unknown>
-	): {
-		setupToken?: string;
-		username?: string;
-		firstName?: string;
-		lastName?: string;
-		email?: string;
-	} => ({
-		setupToken: (search.setupToken as string) || undefined,
-		username: (search.username as string) || undefined,
-		firstName: (search.firstName as string) || undefined,
-		lastName: (search.lastName as string) || undefined,
-		email: (search.email as string) || undefined,
-	}),
-	component: CompleteGithubSignup,
-});
+export const Route = createFileRoute("/_logged-out/sign-up/github")(
+	cloudOnly({
+		validateSearch: (
+			search: Record<string, unknown>
+		): {
+			setupToken?: string;
+			username?: string;
+			firstName?: string;
+			lastName?: string;
+			email?: string;
+		} => ({
+			setupToken: (search.setupToken as string) || undefined,
+			username: (search.username as string) || undefined,
+			firstName: (search.firstName as string) || undefined,
+			lastName: (search.lastName as string) || undefined,
+			email: (search.email as string) || undefined,
+		}),
+		component: CompleteGithubSignup,
+	})
+);

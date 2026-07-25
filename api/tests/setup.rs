@@ -1,5 +1,7 @@
 use std::{collections::BTreeMap, net::SocketAddr, sync::Once};
 
+#[cfg(feature = "cloud")]
+use api::utils::config::{CloudflareConfig, GitHubOAuthConfig, IpInfoConfig, SocialLoginConfig};
 use api::{
 	app::AppState,
 	prelude::ClientType,
@@ -11,19 +13,16 @@ use api::{
 	},
 	utils::config::{
 		AppConfig,
-		CloudflareConfig,
 		DatabaseConfig,
 		EmailConfig,
-		GitHubOAuthConfig,
-		IpInfoConfig,
 		LogsConfig,
 		MetricsConfig,
 		OpenTelemetryConfig,
 		RedisConfig,
+		RegistryConfig,
 		RunningEnvironment,
 		S3Config,
 		ServerConfig,
-		SocialLoginConfig,
 		TracingConfig,
 	},
 };
@@ -476,9 +475,11 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		server: ServerConfig {
 			bind_address: web_bind_address,
 			api_base_path: String::from("/"),
+			base_domain: String::from("patr.cloud"),
 		},
 		password_pepper,
 		jwt_secret,
+		#[cfg(feature = "cloud")]
 		primary_hosted_domain: String::from("testonpatr.cloud"),
 		environment: if cfg!(debug_assertions) {
 			RunningEnvironment::Development
@@ -489,6 +490,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		s3: s3.clone(),
 		database,
 		redis,
+		#[cfg(feature = "cloud")]
 		cloudflare: CloudflareConfig {
 			api_key: "fake-api-key".to_string(),
 			account_id: "fake-account-id".to_string(),
@@ -510,9 +512,11 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 				password: "".to_string(),
 			},
 		},
+		#[cfg(feature = "cloud")]
 		ipinfo: IpInfoConfig {
 			token: "".to_string(),
 		},
+		#[cfg(feature = "cloud")]
 		social_login: SocialLoginConfig {
 			github: GitHubOAuthConfig {
 				client_id: "fake-github-client-id".to_string(),
@@ -520,6 +524,10 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 				callback_url: "http://localhost:3000/login/github".to_string(),
 				connect_callback_url: "http://localhost:3000/profile/github/callback".to_string(),
 			},
+		},
+		registry: RegistryConfig {
+			service: "registry.patr.cloud".to_string(),
+			realm: "http://localhost:3000/auth/docker-login".to_string(),
 		},
 	};
 

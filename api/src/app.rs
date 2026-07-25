@@ -5,7 +5,6 @@ use std::{
 
 use apalis_postgres::PostgresStorage;
 use axum::extract::FromRef;
-use futures::FutureExt;
 use models::{RequestUserData, prelude::*};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
@@ -16,170 +15,173 @@ use crate::{prelude::*, utils::config::AppConfig, worker::WorkerTaskType};
 /// Sets up the router and starts the server.
 #[instrument(skip(state))]
 pub async fn serve(state: &AppState) {
-	if cfg!(debug_assertions) {
-		let api_listener = TcpListener::bind(state.config.server.bind_address)
+	cfg_if! {
+		if #[cfg(all(feature = "cloud", debug_assertions))] {
+			use futures::FutureExt;
+			let api_listener = TcpListener::bind(state.config.server.bind_address)
+				.await
+				.unwrap();
+
+			info!(
+				"API server running on http://{}",
+				api_listener.local_addr().unwrap()
+			);
+
+			let app_listener = TcpListener::bind(SocketAddr::from((
+				state.config.server.bind_address.ip(),
+				state.config.server.bind_address.port() + 1,
+			)))
 			.await
 			.unwrap();
 
-		info!(
-			"API server running on http://{}",
-			api_listener.local_addr().unwrap()
-		);
+			info!(
+				"Frontend server running on http://{}",
+				app_listener.local_addr().unwrap()
+			);
 
-		let app_listener = TcpListener::bind(SocketAddr::from((
-			state.config.server.bind_address.ip(),
-			state.config.server.bind_address.port() + 1,
-		)))
-		.await
-		.unwrap();
-
-		info!(
-			"Frontend server running on http://{}",
-			app_listener.local_addr().unwrap()
-		);
-
-		let registry_listener = TcpListener::bind(SocketAddr::from((
-			state.config.server.bind_address.ip(),
-			state.config.server.bind_address.port() + 2,
-		)))
-		.await
-		.unwrap();
-
-		info!(
-			"Registry server running on http://{}",
-			registry_listener.local_addr().unwrap()
-		);
-
-		let loki_listener = TcpListener::bind(SocketAddr::from((
-			state.config.server.bind_address.ip(),
-			state.config.server.bind_address.port() + 3,
-		)))
-		.await
-		.unwrap();
-
-		info!(
-			"Loki server running on http://{}",
-			loki_listener.local_addr().unwrap()
-		);
-
-		let assets_listener = TcpListener::bind(SocketAddr::from((
-			state.config.server.bind_address.ip(),
-			state.config.server.bind_address.port() + 4,
-		)))
-		.await
-		.unwrap();
-
-		info!(
-			"Assets server running on http://{}",
-			assets_listener.local_addr().unwrap()
-		);
-
-		let mimir_listener = TcpListener::bind(SocketAddr::from((
-			state.config.server.bind_address.ip(),
-			state.config.server.bind_address.port() + 5,
-		)))
-		.await
-		.unwrap();
-
-		info!(
-			"Mimir server running on http://{}",
-			mimir_listener.local_addr().unwrap()
-		);
-
-		futures::future::join_all([
-			async {
-				axum::serve(
-					api_listener,
-					crate::routes::api_patr_cloud::setup_routes(state, ClientType::ApiToken)
-						.await
-						.into_make_service_with_connect_info::<SocketAddr>(),
-				)
-				.with_graceful_shutdown(crate::exit_signal())
-				.await
-				.unwrap();
-			}
-			.boxed(),
-			async {
-				axum::serve(
-					app_listener,
-					crate::routes::app_patr_cloud::setup_routes(state)
-						.await
-						.into_make_service_with_connect_info::<SocketAddr>(),
-				)
-				.with_graceful_shutdown(crate::exit_signal())
-				.await
-				.unwrap();
-			}
-			.boxed(),
-			async {
-				axum::serve(
-					registry_listener,
-					crate::routes::registry_patr_cloud::setup_routes(state)
-						.await
-						.into_make_service_with_connect_info::<SocketAddr>(),
-				)
-				.with_graceful_shutdown(crate::exit_signal())
-				.await
-				.unwrap();
-			}
-			.boxed(),
-			async {
-				axum::serve(
-					loki_listener,
-					crate::routes::loki_patr_cloud::setup_routes(state)
-						.await
-						.into_make_service_with_connect_info::<SocketAddr>(),
-				)
-				.with_graceful_shutdown(crate::exit_signal())
-				.await
-				.unwrap();
-			}
-			.boxed(),
-			async {
-				axum::serve(
-					assets_listener,
-					crate::routes::assets_patr_cloud::setup_routes(state)
-						.await
-						.into_make_service_with_connect_info::<SocketAddr>(),
-				)
-				.with_graceful_shutdown(crate::exit_signal())
-				.await
-				.unwrap();
-			}
-			.boxed(),
-			async {
-				axum::serve(
-					mimir_listener,
-					crate::routes::mimir_patr_cloud::setup_routes(state)
-						.await
-						.into_make_service_with_connect_info::<SocketAddr>(),
-				)
-				.with_graceful_shutdown(crate::exit_signal())
-				.await
-				.unwrap();
-			}
-			.boxed(),
-		])
-		.await;
-	} else {
-		let tcp_listener = TcpListener::bind(state.config.server.bind_address)
+			let registry_listener = TcpListener::bind(SocketAddr::from((
+				state.config.server.bind_address.ip(),
+				state.config.server.bind_address.port() + 2,
+			)))
 			.await
 			.unwrap();
 
-		info!(
-			"Listening for connections on http://{}",
-			tcp_listener.local_addr().unwrap()
-		);
+			info!(
+				"Registry server running on http://{}",
+				registry_listener.local_addr().unwrap()
+			);
 
-		axum::serve(
-			tcp_listener,
-			crate::routes::setup_routes(state)
+			let loki_listener = TcpListener::bind(SocketAddr::from((
+				state.config.server.bind_address.ip(),
+				state.config.server.bind_address.port() + 3,
+			)))
+			.await
+			.unwrap();
+
+			info!(
+				"Loki server running on http://{}",
+				loki_listener.local_addr().unwrap()
+			);
+
+			let assets_listener = TcpListener::bind(SocketAddr::from((
+				state.config.server.bind_address.ip(),
+				state.config.server.bind_address.port() + 4,
+			)))
+			.await
+			.unwrap();
+
+			info!(
+				"Assets server running on http://{}",
+				assets_listener.local_addr().unwrap()
+			);
+
+			let mimir_listener = TcpListener::bind(SocketAddr::from((
+				state.config.server.bind_address.ip(),
+				state.config.server.bind_address.port() + 5,
+			)))
+			.await
+			.unwrap();
+
+			info!(
+				"Mimir server running on http://{}",
+				mimir_listener.local_addr().unwrap()
+			);
+
+			futures::future::join_all([
+				async {
+					axum::serve(
+						api_listener,
+						crate::routes::api_patr_cloud::setup_routes(state, ClientType::ApiToken)
+							.await
+							.into_make_service_with_connect_info::<SocketAddr>(),
+					)
+					.with_graceful_shutdown(crate::exit_signal())
+					.await
+					.unwrap();
+				}
+				.boxed(),
+				async {
+					axum::serve(
+						app_listener,
+						crate::routes::app_patr_cloud::setup_routes(state)
+							.await
+							.into_make_service_with_connect_info::<SocketAddr>(),
+					)
+					.with_graceful_shutdown(crate::exit_signal())
+					.await
+					.unwrap();
+				}
+				.boxed(),
+				async {
+					axum::serve(
+						registry_listener,
+						crate::routes::registry_patr_cloud::setup_routes(state)
+							.await
+							.into_make_service_with_connect_info::<SocketAddr>(),
+					)
+					.with_graceful_shutdown(crate::exit_signal())
+					.await
+					.unwrap();
+				}
+				.boxed(),
+				async {
+					axum::serve(
+						loki_listener,
+						crate::routes::loki_patr_cloud::setup_routes(state)
+							.await
+							.into_make_service_with_connect_info::<SocketAddr>(),
+					)
+					.with_graceful_shutdown(crate::exit_signal())
+					.await
+					.unwrap();
+				}
+				.boxed(),
+				async {
+					axum::serve(
+						assets_listener,
+						crate::routes::assets_patr_cloud::setup_routes(state)
+							.await
+							.into_make_service_with_connect_info::<SocketAddr>(),
+					)
+					.with_graceful_shutdown(crate::exit_signal())
+					.await
+					.unwrap();
+				}
+				.boxed(),
+				async {
+					axum::serve(
+						mimir_listener,
+						crate::routes::mimir_patr_cloud::setup_routes(state)
+							.await
+							.into_make_service_with_connect_info::<SocketAddr>(),
+					)
+					.with_graceful_shutdown(crate::exit_signal())
+					.await
+					.unwrap();
+				}
+				.boxed(),
+			])
+			.await;
+		} else {
+			let tcp_listener = TcpListener::bind(state.config.server.bind_address)
 				.await
-				.into_make_service_with_connect_info::<SocketAddr>(),
-		)
-		.with_graceful_shutdown(crate::exit_signal())
-		.await
-		.unwrap();
+				.unwrap();
+
+			info!(
+				"Listening for connections on http://{}",
+				tcp_listener.local_addr().unwrap()
+			);
+
+			axum::serve(
+				tcp_listener,
+				crate::routes::setup_routes(state)
+					.await
+					.into_make_service_with_connect_info::<SocketAddr>(),
+			)
+			.with_graceful_shutdown(crate::exit_signal())
+			.await
+			.unwrap();
+		}
 	}
 }
 

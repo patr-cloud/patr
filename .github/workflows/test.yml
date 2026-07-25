@@ -29,9 +29,6 @@ jobs:
 
       - run: cargo fmt --all -- --check
 
-      - name: Generate TS bindings
-        run: cargo bindings
-
       - uses: pnpm/action-setup@v5
         with:
           package_json_file: frontend/package.json
@@ -50,6 +47,23 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
+
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - name: Regenerate TS bindings
+        run: just bindings
+
+      - name: Fail if bindings are out of date
+        run: |
+          git add -N frontend/src/bindings
+          if ! git diff --quiet frontend/src/bindings; then
+            echo "::error::TS bindings are out of date. Run 'just bindings' and commit the result."
+            git diff --stat frontend/src/bindings
+            exit 1
+          fi
 
       - run: pnpm typecheck
         working-directory: frontend
@@ -263,7 +277,9 @@ jobs:
           name: playwright-report-ui
           # playwright-report holds the HTML report (which embeds failure
           # traces); test-results holds the raw trace.zip/screenshots as a
-          # fallback if the report step itself died.
+          # fallback if the report step itself died. Both have per-pass
+          # subfolders (main/, racy/) so the two `just test` passes don't
+          # overwrite each other.
           path: |
             e2e/playwright-report
             e2e/test-results

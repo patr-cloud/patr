@@ -1,4 +1,5 @@
 import { test, expect, newContext, createUserAccount, loginAs, expectUrl } from '@/prelude';
+import { expectFirstWorkspaceScreen } from '@/helpers/ui/workspace';
 
 const GUARDED_URLS = [
 	'/workspace/roles',
@@ -21,7 +22,7 @@ test.describe('rbac > route guards', () => {
 		});
 	}
 
-	test('redirects users with zero workspaces from /workspace/* to /onboard', async ({
+	test('shows the create-workspace screen for a zero-workspace user under /workspace/*', async ({
 		browser,
 		api,
 	}) => {
@@ -30,8 +31,10 @@ test.describe('rbac > route guards', () => {
 		await loginAs(context, user);
 		const page = await context.newPage();
 		try {
+			// _workspaced routes render the inline create-first-workspace screen when
+			// the user has no workspace, instead of redirecting to a separate route.
 			await page.goto('/workspace/roles', { waitUntil: 'domcontentloaded' });
-			await expectUrl(page, /\/onboard/, { timeout: 10_000 });
+			await expectFirstWorkspaceScreen(page);
 		} finally {
 			await context.close();
 		}

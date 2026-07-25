@@ -52,6 +52,7 @@ dist-ssr
 CLAUDE.local.md
 patr-api
 .worktrees/
+.playwright-mcp
 
 # E2E test scaffolding
 /e2e/.pids/

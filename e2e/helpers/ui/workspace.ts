@@ -4,12 +4,12 @@ import { DASHBOARD_URL } from '@/helpers/urls';
 import { HYDRATION_TIMEOUT } from '@/helpers/config';
 
 // Frontend reference:
-//   frontend/src/routes/_logged-in/_non-workspaced/onboard.tsx
+//   frontend/src/components/create-first-workspace.tsx  (zero-workspace screen)
 //   frontend/src/routes/_logged-in/_workspaced/workspace_/new.tsx
 //   frontend/src/routes/_logged-in/_workspaced/workspace/index.tsx
 //   frontend/src/components/sidebar/workspace-switcher.tsx
 //
-// All three forms share `#workspace-name`. Submit buttons differ by text.
+// All of these forms share `#workspace-name`. Submit buttons differ by text.
 
 async function waitForVisible(page: Page, selector: string): Promise<void> {
 	await page.locator(selector).first().waitFor({
@@ -18,23 +18,35 @@ async function waitForVisible(page: Page, selector: string): Promise<void> {
 	});
 }
 
-// ---------- Onboard (/onboard) ----------
+// ---------- First-workspace screen (zero-workspace state) ----------
 
-export async function openOnboardPage(page: Page): Promise<void> {
-	await page.goto('/onboard', { waitUntil: 'domcontentloaded' });
+// A logged-in user with no workspace lands here at any _workspaced route: the
+// layout renders the inline "create your first workspace" screen in place of
+// the page (no redirect, no /onboard route anymore). `/` is the natural entry.
+export async function openFirstWorkspaceScreen(page: Page): Promise<void> {
+	await page.goto('/', { waitUntil: 'domcontentloaded' });
 	await waitForVisible(page, '#workspace-name');
 }
 
-export async function fillOnboardName(page: Page, name: string): Promise<void> {
+// Fills the shared `#workspace-name` input (every create/rename form uses it).
+export async function fillWorkspaceName(page: Page, name: string): Promise<void> {
 	await page.locator('#workspace-name').fill(name);
 }
 
-export function onboardSubmitButton(page: Page) {
+export function firstWorkspaceButton(page: Page) {
 	return page.getByRole('button', { name: /^(Create Workspace|Creating\.\.\.)$/ });
 }
 
-export async function submitOnboard(page: Page): Promise<void> {
-	await onboardSubmitButton(page).click();
+export async function submitFirstWorkspace(page: Page): Promise<void> {
+	await firstWorkspaceButton(page).click();
+}
+
+// Asserts the zero-workspace create screen is showing. Keys off the distinct
+// heading, since this screen and /workspace/new both use `#workspace-name`.
+export async function expectFirstWorkspaceScreen(page: Page, timeout = 10_000): Promise<void> {
+	await expect(page.getByRole('heading', { name: /Create your workspace/i })).toBeVisible({
+		timeout,
+	});
 }
 
 // ---------- /workspace/new ----------
@@ -151,9 +163,9 @@ export async function listSwitcherWorkspaceNames(page: Page): Promise<string[]> 
 // ---------- URL polling (workaround for Playwright + Vinxi quirk) ----------
 
 // expect(page).toHaveURL() hangs indefinitely against the Vinxi dev server
-// after createEffect-based client-side redirects (e.g. _workspaced → /onboard
-// for zero-workspace users). page.url() reads fine; the bug is in Playwright's
-// internal waitForURL signal handling under HMR. Roll our own poll on Node's
+// after client-side redirects under HMR (e.g. the _logged-in guard bouncing an
+// unauthenticated visitor to /login). page.url() reads fine; the bug is in
+// Playwright's internal waitForURL signal handling. Roll our own poll on Node's
 // setTimeout instead.
 export async function expectUrl(
 	page: Page,

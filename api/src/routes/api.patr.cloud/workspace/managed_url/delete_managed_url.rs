@@ -1,4 +1,5 @@
 use axum::http::StatusCode;
+#[cfg(feature = "cloud")]
 use cloudflare::{
 	endpoints::zones::custom_hostnames::*,
 	framework::{
@@ -101,12 +102,16 @@ pub async fn delete_managed_url(
 	.execute(&mut **database)
 	.await?;
 
-	utils::cloudflare::sync_ingress_kv_for_fqdn(
-		&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
-		database,
-		&state.config,
-	)
-	.await?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			utils::cloudflare::sync_ingress_kv_for_fqdn(
+				&format!("{}.{}", managed_url.sub_domain, managed_url.domain),
+				database,
+				&state.config,
+			)
+			.await?;
+		}
+	}
 
 	// Lock the custom hostname row to prevent race conditions with concurrent
 	// create/delete operations on the same FQDN
@@ -161,24 +166,31 @@ pub async fn delete_managed_url(
 		.execute(&mut **database)
 		.await?;
 
-		let cf_client = CloudflareClient::new(
-			Credentials::UserAuthToken {
-				token: state.config.cloudflare.api_key.clone(),
-			},
-			ClientConfig::default(),
-			Environment::Custom(state.config.cloudflare.base_url.clone()),
-		)?;
+		cfg_if! {
+			if #[cfg(feature = "cloud")] {
+				let cf_client = CloudflareClient::new(
+					Credentials::UserAuthToken {
+						token: state.config.cloudflare.api_key.clone(),
+					},
+					ClientConfig::default(),
+					Environment::Custom(state.config.cloudflare.base_url.clone()),
+				)?;
 
-		match cf_client
-			.request(&DeleteCustomHostname {
-				zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
-				custom_hostname_id: &locked_hostname.cloudflare_custom_hostname_id,
-			})
-			.await
-		{
-			Ok(_) => {}
-			Err(ApiFailure::Error(status, _)) if status == reqwest::StatusCode::NOT_FOUND => {}
-			Err(err) => return Err(ErrorType::server_error(err)),
+				match cf_client
+					.request(&DeleteCustomHostname {
+						zone_identifier: &state.config.cloudflare.primary_hosted_zone_id,
+						custom_hostname_id: &locked_hostname.cloudflare_custom_hostname_id,
+					})
+					.await
+				{
+					Ok(_) => {}
+					Err(ApiFailure::Error(status, _))
+						if status == reqwest::StatusCode::NOT_FOUND => {}
+					Err(err) => return Err(ErrorType::server_error(err)),
+				}
+			} else {
+				let _ = (locked_hostname, &state);
+			}
 		}
 	}
 

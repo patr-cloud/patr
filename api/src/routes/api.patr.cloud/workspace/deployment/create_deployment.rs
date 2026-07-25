@@ -1,4 +1,5 @@
 use axum::http::StatusCode;
+#[cfg(feature = "cloud")]
 use cloudflare::{
 	endpoints::workerskv::write_key,
 	framework::{
@@ -7,10 +8,9 @@ use cloudflare::{
 		client::{ClientConfig, async_api::Client as CloudflareClient},
 	},
 };
-use models::{
-	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
-	cloudflare::kv::*,
-};
+use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
+#[cfg(feature = "cloud")]
+use models::cloudflare::kv::*;
 use rustis::commands::PubSubCommands;
 use time::OffsetDateTime;
 
@@ -388,28 +388,36 @@ pub async fn create_deployment(
 		}
 	}
 
-	CloudflareClient::new(
-		Credentials::UserAuthToken {
-			token: state.config.cloudflare.api_key.clone(),
-		},
-		ClientConfig::default(),
-		Environment::Custom(state.config.cloudflare.base_url.clone()),
-	)?
-	.request(&write_key::WriteKey {
-		account_identifier: &state.config.cloudflare.account_id,
-		namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-		key: &deployment_id.to_string(),
-		params: write_key::WriteKeyParams {
-			expiration: None,
-			expiration_ttl: None,
-		},
-		body: write_key::WriteKeyBody::Value(serde_json::to_vec(&InternalKVData::Deployment {
-			ports: ports.keys().map(|port| port.value()).collect(),
-			runner_id: runner,
-			status: DeploymentStatus::Deploying,
-		})?),
-	})
-	.await?;
+	cfg_if! {
+		if #[cfg(feature = "cloud")] {
+			CloudflareClient::new(
+				Credentials::UserAuthToken {
+					token: state.config.cloudflare.api_key.clone(),
+				},
+				ClientConfig::default(),
+				Environment::Custom(state.config.cloudflare.base_url.clone()),
+			)?
+			.request(&write_key::WriteKey {
+				account_identifier: &state.config.cloudflare.account_id,
+				namespace_identifier: &state.config.cloudflare.worker_namespace_id,
+				key: &deployment_id.to_string(),
+				params: write_key::WriteKeyParams {
+					expiration: None,
+					expiration_ttl: None,
+				},
+				body: write_key::WriteKeyBody::Value(serde_json::to_vec(
+					&InternalKVData::Deployment {
+						ports: ports.keys().map(|port| port.value()).collect(),
+						runner_id: runner,
+						status: DeploymentStatus::Deploying,
+					},
+				)?),
+			})
+			.await?;
+		} else {
+			let _ = state; // Avoid unused variable warning
+		}
+	}
 
 	// TODO Temporary workaround until audit logs and triggers are implemented
 	redis

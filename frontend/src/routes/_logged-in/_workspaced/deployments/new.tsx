@@ -28,12 +28,11 @@ import PortInput from "./-components/port";
 import { createFormAction } from "~/hooks";
 import { Uuid } from "~/utils/func";
 import { useRunnersQuery, useContainerRegistriesQuery, useContainerTagsQuery } from "~/hooks/fetch";
+import { REGISTRY_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import ProbeInput from "./-components/probe-input";
 import ConfigMount from "./-components/config-mount";
 import { useNavigate } from "@tanstack/solid-router";
-
-const PATR_REGISTRY = "registry.patr.cloud";
 
 const CreateDeploymentPage = () => {
 	const toast = useToast();
@@ -66,7 +65,7 @@ const CreateDeploymentPage = () => {
 	const [portsValid, setPortsValid] = createSignal(true);
 	const [configMountsValid, setConfigMountsValid] = createSignal(true);
 
-	const isPatrRegistry = () => registry() === PATR_REGISTRY;
+	const isPatrRegistry = () => REGISTRY_DOMAIN !== undefined && registry() === REGISTRY_DOMAIN;
 
 	// Debounce tag filter updates to avoid hammering the API on every keystroke
 	let tagFilterTimer: ReturnType<typeof setTimeout> | undefined;
@@ -108,7 +107,7 @@ const CreateDeploymentPage = () => {
 
 		const requestBody = (
 			isPatrRegistry()
-				? { ...commonFields, registry: PATR_REGISTRY, repositoryId: repositoryId() }
+				? { ...commonFields, registry: REGISTRY_DOMAIN, repositoryId: repositoryId() }
 				: { ...commonFields, registry: registry(), imageName: imageName() }
 		) as CreateDeploymentRequest;
 
@@ -171,7 +170,9 @@ const CreateDeploymentPage = () => {
 								<div class="flex-10 flex items-center gap-4 w-full">
 									<InputDropdown
 										options={[
-											{ value: PATR_REGISTRY, label: "Patr Registry" },
+											...(REGISTRY_DOMAIN
+												? [{ value: REGISTRY_DOMAIN, label: "Patr Registry" }]
+												: []),
 											{ value: "docker.io", label: "Docker Hub" },
 										]}
 										value={registry()}
