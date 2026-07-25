@@ -106,8 +106,12 @@ test *args:
     PORT=$VINXI_PORT pnpm --dir ../frontend run start &
     echo $! > .pids/frontend.pid
     until nc -z localhost $VINXI_PORT; do sleep 0.2; done
-    pnpm exec playwright test {{args}} --grep-invert @racy --pass-with-no-tests; rc1=$?
-    pnpm exec playwright test {{args}} --grep @racy --workers=1 --pass-with-no-tests; rc2=$?
+    # Each pass gets its own report + output folder. Playwright wipes both at
+    # the start of every run, so sharing them meant the @racy pass destroyed the
+    # main pass's failure traces before CI could upload them — the reason CI
+    # flakes were undebuggable.
+    PW_REPORT_DIR=playwright-report/main pnpm exec playwright test {{args}} --grep-invert @racy --output=test-results/main --pass-with-no-tests; rc1=$?
+    PW_REPORT_DIR=playwright-report/racy pnpm exec playwright test {{args}} --grep @racy --workers=1 --output=test-results/racy --pass-with-no-tests; rc2=$?
     exit $(( rc1 || rc2 ))
 
 serve:
