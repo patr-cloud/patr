@@ -1,6 +1,7 @@
-import { Alert, Button, ButtonVariant, Input, useToast } from "~/components";
+import { Alert, Button, ButtonVariant, Input, UnsavedChangesGuard, useToast } from "~/components";
+import { Color } from "~/utils/color";
 import PermissionMatrix from "./permission-matrix";
-import { createEffect, createSignal, Show, Suspense } from "solid-js";
+import { createEffect, createMemo, createSignal, Show, Suspense } from "solid-js";
 import { useParams } from "@tanstack/solid-router";
 import { httpRequest } from "~/utils/http-request";
 import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
@@ -42,6 +43,11 @@ const EditPermissions = () => {
 		setRoleDescriptionError(descError);
 		if (nameError || descError) return;
 
+		if (Object.keys(permissionsData()).length === 0) {
+			toast("Add at least one permission before saving", "error");
+			return;
+		}
+
 		const requestBody: UpdateRoleRequest = {
 			name: roleName().trim(),
 			description: roleDescription().trim(),
@@ -67,6 +73,30 @@ const EditPermissions = () => {
 		if (wsId) {
 			queryClient.invalidateQueries({ queryKey: roleKeys.detail(wsId, params().roleId) });
 		}
+	});
+
+	// Order-independent serialization of a permission map, so that toggling a
+	// resource off and on again (which can reorder the arrays) doesn't read as a
+	// change against the loaded snapshot.
+	const canonicalPermissions = (perms: { [key: string]: ResourcePermissionType }) =>
+		JSON.stringify(
+			Object.keys(perms)
+				.sort()
+				.map((id) => [id, perms[id].permissionType, [...perms[id].resources].sort()])
+		);
+
+	// True while the form differs from what the server last returned. Once a save
+	// lands and the query refetches, the seed effect above re-syncs the signals,
+	// so this drops back to false on its own.
+	const isDirty = createMemo(() => {
+		const role = roleInfoQuery.data;
+		if (!role) return false;
+		if (roleName().trim() !== role.name) return true;
+		if (roleDescription().trim() !== (role.description ?? "")) return true;
+		return (
+			canonicalPermissions(permissionsData()) !==
+			canonicalPermissions((role.permissions ?? {}) as { [key: string]: ResourcePermissionType })
+		);
 	});
 
 	return (
@@ -119,7 +149,16 @@ const EditPermissions = () => {
 				</div>
 
 				<div class="flex flex-col gap-2">
-					<label class="text-white text-sm">Edit Permissions in role</label>
+					<div class="flex justify-between items-center">
+						<label class="text-white text-sm">Edit Permissions in role</label>
+						<Button
+							variant={ButtonVariant.Plain}
+							color={Color.Error}
+							onClick={() => setPermissionsData({})}
+						>
+							Clear All
+						</Button>
+					</div>
 					<PermissionMatrix
 						workspaceId={workspaceId()!}
 						permissionsData={permissionsData()}
@@ -130,6 +169,11 @@ const EditPermissions = () => {
 						sortToken={roleInfoQuery.dataUpdatedAt}
 					/>
 				</div>
+
+				<UnsavedChangesGuard
+					when={isDirty}
+					message="You have unsaved changes to this role. If you leave now, they'll be lost."
+				/>
 			</div>
 		</Suspense>
 	);
