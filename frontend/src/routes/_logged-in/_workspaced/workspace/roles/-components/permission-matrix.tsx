@@ -76,7 +76,8 @@ const Pill = (props: {
 		onClick={() => props.onClick()}
 		class={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xs text-sm
 			transition-colors cursor-pointer border disabled:cursor-not-allowed disabled:opacity-50
-			min-h-8.75 bg-secondary ${props.selected ? "border-primary text-white" : "border-transparent text-grey hover:border-grey"
+			min-h-8.75 bg-secondary ${
+				props.selected ? "border-primary text-white" : "border-transparent text-grey hover:border-grey"
 			}`}
 	>
 		<span class="truncate text-left">{props.label}</span>
