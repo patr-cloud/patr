@@ -105,6 +105,43 @@ body {
 	background-color: var(--color-secondary);
 }
 
+/*
+ * Scrollbars, styled to the palette rather than left to the browser.
+ *
+ * `scrollbar-gutter: stable` reserves the space whether or not a bar is showing,
+ * so content doesn't shift the moment a container becomes scrollable. Firefox
+ * takes the standard two properties; WebKit and Blink need the pseudo-elements,
+ * hence both being declared.
+ */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-secondary-medium) transparent;
+	/* Only affects scroll containers, so this is safe to declare universally. */
+	scrollbar-gutter: stable;
+}
+
+*::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+	background-color: var(--color-secondary-medium);
+	border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+	background-color: var(--color-border-color);
+}
+
+*::-webkit-scrollbar-corner {
+	background: transparent;
+}
+
 @layer base {
 	input:not([type="range"]),
 	textarea,

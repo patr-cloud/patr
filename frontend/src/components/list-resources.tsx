@@ -1,32 +1,8 @@
 import { Show } from "solid-js";
-import { createInfiniteQuery } from "@tanstack/solid-query";
-import { useAuthState } from "~/hooks";
-import { get, getResourceEndpoint, parseCamelCase } from "~/utils/func";
-import { resourceKeys } from "~/hooks/query-keys";
-import { httpRequest } from "~/utils/http-request";
+import { get, parseCamelCase } from "~/utils/func";
+import { useWorkspaceResourcesQuery } from "~/hooks/fetch/resources";
 import InputDropdownCheckbox from "./input-dropdown-checkbox";
 import { MaybeAccessor } from "~/utils/types";
-
-const PAGE_SIZE = 20;
-
-type ResourcePage = {
-	items: { id: string; name: string }[];
-	totalCount: number;
-	page: number;
-};
-
-const extractItems = (data: Record<string, { id: string; name: string }[]>) => {
-	return (
-		data.deployments ||
-		data.runners ||
-		data.repositories ||
-		data.staticSites ||
-		data.volumes ||
-		data.databases ||
-		data.secrets ||
-		[]
-	);
-};
 
 const ListResources = (props: {
 	workspaceId: MaybeAccessor<string>;
@@ -34,41 +10,10 @@ const ListResources = (props: {
 	selectedResources: MaybeAccessor<Set<string>>;
 	toggleResource: (resourceId: string) => void;
 }) => {
-	const [authState] = useAuthState();
-
-	const resourcesQuery = createInfiniteQuery(() => {
-		const auth = authState();
-		const wsId = get(props.workspaceId);
-		const type = get(props.resourceType);
-		const endpoint = type ? getResourceEndpoint(type) : undefined;
-		return {
-			queryKey: resourceKeys.list(wsId ?? "", type ?? ""),
-			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!type && !!endpoint,
-			meta: { errorMessage: `Failed to fetch ${type}` },
-			initialPageParam: 0,
-			queryFn: async ({ pageParam }: { pageParam: number }): Promise<ResourcePage> => {
-				const response = await httpRequest<Record<string, { id: string; name: string }[]>>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/${endpoint}?page=${pageParam}&count=${PAGE_SIZE}`,
-					{ method: "GET" }
-				);
-
-				if (!response.ok) {
-					throw new Error(response.data.error);
-				}
-
-				const totalCount = Number(response.headers.get("x-total-count") ?? 0);
-				return {
-					items: extractItems(response.data),
-					totalCount,
-					page: pageParam,
-				};
-			},
-			getNextPageParam: (lastPage: ResourcePage): number | undefined => {
-				const loaded = (lastPage.page + 1) * PAGE_SIZE;
-				return loaded < lastPage.totalCount ? lastPage.page + 1 : undefined;
-			},
-		};
-	});
+	const resourcesQuery = useWorkspaceResourcesQuery(
+		() => get(props.workspaceId),
+		() => get(props.resourceType)
+	);
 
 	const allResources = () => resourcesQuery.data?.pages.flatMap((page) => page.items) ?? [];
 

@@ -1,17 +1,15 @@
-import { Alert, Button, ButtonVariant, Input, Table, useToast } from "~/components";
-import PermissionSelector from "./permission-selector";
-import { createEffect, createMemo, createSignal, Show, Suspense } from "solid-js";
+import { Alert, Button, ButtonVariant, Input, useToast } from "~/components";
+import PermissionMatrix from "./permission-matrix";
+import { createEffect, createSignal, Show, Suspense } from "solid-js";
 import { useParams } from "@tanstack/solid-router";
 import { httpRequest } from "~/utils/http-request";
 import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
 import { createLoggedInAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { ResourcePermissionType } from "~/bindings";
-import { usePermissionsQuery, useResourcesInfoQuery, useRoleInfoQuery } from "~/hooks/fetch";
+import { useRoleInfoQuery } from "~/hooks/fetch";
 import { roleKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
-import PermissionRow, { removeResourceFromPermissions } from "./permission-row";
-import { parsePermissionName } from "~/utils/func";
 import { validateNameField, validateRoleDescription } from "~/utils/validation";
 
 const EditPermissions = () => {
@@ -36,39 +34,6 @@ const EditPermissions = () => {
 			setRoleDescription(role.description ?? "");
 		}
 	});
-
-	// Fetch all permissions for the workspace to map IDs to names
-	const allPermissionsQuery = usePermissionsQuery(() => workspaceId()!);
-
-	// Create a map of permission ID to permission name
-	const permissionIdToName = createMemo(() => {
-		const perms = allPermissionsQuery.data?.permissions;
-		if (!perms) return new Map<string, string>();
-		return new Map(perms.map((perm) => [perm.id, perm.name]));
-	});
-
-	const permissionEntries = createMemo(() => {
-		const permissions = permissionsData();
-		if (!permissions) return [];
-		const nameMap = permissionIdToName();
-
-		return Object.entries(permissions).map(([permissionId, permissionData]) => {
-			const permissionName = nameMap.get(permissionId) || permissionId;
-			const parsed = parsePermissionName(permissionName);
-			return {
-				permissionId,
-				resourceType: parsed.resourceType,
-				action: parsed.permission,
-				permissionType: permissionData?.permissionType || "exclude",
-				resources: permissionData?.resources || [],
-			};
-		});
-	});
-
-	// Every resource referenced by the table, resolved in a single request so the
-	// rows can show what the stored IDs actually refer to.
-	const allResourceIds = createMemo(() => [...new Set(permissionEntries().flatMap((perm) => perm.resources))]);
-	const resourcesInfoQuery = useResourcesInfoQuery(() => allResourceIds());
 
 	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async () => {
 		const nameError = validateNameField(roleName());
@@ -153,40 +118,18 @@ const EditPermissions = () => {
 					</Show>
 				</div>
 
-				<div class="flex items-center gap-2">
-					<PermissionSelector
-						class="flex-1"
+				<div class="flex flex-col gap-2">
+					<label class="text-white text-sm">Edit Permissions in role</label>
+					<PermissionMatrix
 						workspaceId={workspaceId()!}
 						permissionsData={permissionsData()}
-						onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
+						onChange={(next) => setPermissionsData(next)}
+						// Ticks on load and on the refetch after a save, which is when the
+						// matrix re-ranks its columns. Local edits leave it untouched, so
+						// the cards don't move while you work.
+						sortToken={roleInfoQuery.dataUpdatedAt}
 					/>
 				</div>
-
-				<Table
-					column_grids={["flex-4", "flex-3", "flex-4", "flex-1"]}
-					headings={["Resource Type", "Action", "Resources", ""]}
-					heading_align="left"
-					rows={permissionEntries().sort(
-						(a, b) => a.resourceType.localeCompare(b.resourceType) || a.action.localeCompare(b.action)
-					)}
-					renderRow={(perm) => (
-						<PermissionRow
-							perm={perm}
-							resourceInfo={resourcesInfoQuery.data}
-							isLoadingResources={resourcesInfoQuery.isPending}
-							onRemove={() => {
-								const newPermissionsData = { ...permissionsData() };
-								delete newPermissionsData[perm.permissionId];
-								setPermissionsData(newPermissionsData);
-							}}
-							onRemoveResource={(resourceId) =>
-								setPermissionsData((prev) =>
-									removeResourceFromPermissions(prev, perm.permissionId, resourceId)
-								)
-							}
-						/>
-					)}
-				/>
 			</div>
 		</Suspense>
 	);
