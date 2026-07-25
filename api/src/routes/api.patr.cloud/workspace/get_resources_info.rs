@@ -6,14 +6,14 @@ use models::{api::workspace::*, rbac::ResourceType};
 use crate::prelude::*;
 
 /// The handler to resolve a batch of resource IDs into their names and resource
-/// types. Resource names are not stored centrally — each resource type keeps its
-/// name in its own table — so this joins the central `resource` table against
-/// every name-bearing type table and coalesces the name.
+/// types. Resource names are not stored centrally — each resource type keeps
+/// its name in its own table — so this joins the central `resource` table
+/// against every name-bearing type table and coalesces the name.
 ///
-/// The response contains one entry per requested ID. IDs that don't resolve to a
-/// live resource in this workspace (deleted, or belonging to another workspace)
-/// come back with `null` fields, as do resources whose type has no name (e.g. a
-/// managed URL).
+/// The response contains one entry per requested ID. IDs that don't resolve to
+/// a live resource in this workspace (deleted, or belonging to another
+/// workspace) come back with `null` fields, as do resources whose type has no
+/// name (e.g. a managed URL).
 pub async fn get_resources_info(
 	AuthenticatedAppRequest {
 		request:
@@ -108,7 +108,13 @@ pub async fn get_resources_info(
 		.into_iter()
 		.map(|id| {
 			let (name, resource_type) = resolved.get(&id).cloned().unwrap_or((None, None));
-			WithId::new(id, ResourceInfo { name, resource_type })
+			WithId::new(
+				id,
+				ResourceInfo {
+					name,
+					resource_type,
+				},
+			)
 		})
 		.collect();
 

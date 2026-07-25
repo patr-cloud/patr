@@ -156,13 +156,7 @@ async fn other_workspace_resource_is_null() {
 		.create_test_runner(&user.access_token, workspace_b.id)
 		.await;
 
-	let response = resolve(
-		&setup,
-		&user.access_token,
-		workspace_a.id,
-		[runner_in_b.id],
-	)
-	.await;
+	let response = resolve(&setup, &user.access_token, workspace_a.id, [runner_in_b.id]).await;
 
 	assert_eq!(1, response.resources.len());
 	let resolved = &response.resources[0];
