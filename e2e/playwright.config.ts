@@ -20,7 +20,25 @@ export default defineConfig({
 	// (test-results/*/trace.zip) so the upload-artifact step actually captures
 	// them. Without this the workflow's "Upload Playwright report" step has
 	// nothing to upload — the reporter default never creates playwright-report/.
-	reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+	//
+	// `just test` invokes playwright twice (non-@racy, then @racy). Both the
+	// report folder and outputDir are wiped at the start of every run, so the
+	// second pass used to destroy the first pass's failure traces before they
+	// could be uploaded — which is why CI flakes were undebuggable. Each pass
+	// now gets its own folder via PW_REPORT_DIR (paired with `--output` in the
+	// Justfile), keeping both passes' artifacts.
+	reporter: process.env.CI
+		? [
+				['list'],
+				[
+					'html',
+					{
+						open: 'never',
+						outputFolder: process.env.PW_REPORT_DIR ?? 'playwright-report',
+					},
+				],
+			]
+		: 'list',
 	use: {
 		baseURL: DASHBOARD_URL,
 		// Unset, actions retry forever: a click on an element removed by a
