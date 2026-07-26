@@ -20,6 +20,45 @@ use tokio_tungstenite::tungstenite::{Message, client::IntoClientRequest};
 
 use crate::prelude::*;
 
+/// Open a fresh consent link as the CLI would (via an API token), returning the
+/// link details and the API bearer needed to later verify it.
+async fn open_runner_link(
+	setup: &TestSetup,
+	admin: &BearerToken,
+	workspace_id: Uuid,
+) -> (CreateRunnerLinkResponse, BearerToken) {
+	let api_token = setup
+		.create_test_api_token(
+			admin,
+			BTreeMap::from([(workspace_id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	let api_bearer = BearerToken::from_str(&api_token.token).unwrap();
+
+	let link = setup
+		.make_api_call(
+			ApiRequest::<CreateRunnerLinkRequest>::builder()
+				.path(CreateRunnerLinkPath { workspace_id })
+				.headers(CreateRunnerLinkRequestHeaders {
+					authorization: api_bearer.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateRunnerLinkRequest {
+					version: "0.1.0".parse().unwrap(),
+					os: "linux".to_string(),
+					arch: "x86_64".to_string(),
+					hostname: random_name(8),
+					private_ip: "127.0.0.1".parse().unwrap(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateRunnerLinkResponse>>()
+		.response;
+
+	(link, api_bearer)
+}
+
 #[tokio::test]
 async fn add_runner_works() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -944,5 +983,155 @@ async fn runner_cannot_update_status_of_another_workspaces_deployment() {
 			.await,
 		victim_kv_writes,
 		"another workspace's runner must not rewrite the deployment's KV entry"
+	);
+}
+
+#[tokio::test]
+async fn reconnect_runner_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	// Open a fresh link and reconnect the existing runner onto it.
+	let (link, api_bearer) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ReconnectRunnerLinkRequest>::builder()
+				.path(ReconnectRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code.clone(),
+				})
+				.headers(ReconnectRunnerLinkRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ReconnectRunnerLinkRequest {
+					runner_id: runner.id,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ReconnectRunnerLinkResponse));
+
+	// The CLI claims the rotated credentials — same runner, a different token.
+	let verify = setup
+		.make_api_call(
+			ApiRequest::<VerifyRunnerLinkRequest>::builder()
+				.path(VerifyRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code,
+				})
+				.headers(VerifyRunnerLinkRequestHeaders {
+					authorization: api_bearer,
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(VerifyRunnerLinkRequest {
+					device_code: link.device_code,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<VerifyRunnerLinkResponse>>()
+		.response;
+
+	match verify.result {
+		VerifyRunnerLinkResult::Approved {
+			runner_id, token, ..
+		} => {
+			assert_eq!(
+				runner_id, runner.id,
+				"reconnect must target the same runner"
+			);
+			assert_ne!(token, runner.token, "reconnect must rotate the token");
+		}
+		VerifyRunnerLinkResult::Pending => panic!("link should be approved after reconnect"),
+	}
+}
+
+#[tokio::test]
+async fn reconnect_nonexistent_runner() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let (link, _api_bearer) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ReconnectRunnerLinkRequest>::builder()
+				.path(ReconnectRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code,
+				})
+				.headers(ReconnectRunnerLinkRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ReconnectRunnerLinkRequest {
+					runner_id: Uuid::nil(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"reconnecting a nonexistent runner should be rejected"
+	);
+}
+
+#[tokio::test]
+async fn reconnect_twice_is_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let (link, _api_bearer) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ReconnectRunnerLinkRequest>::builder()
+				.path(ReconnectRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code.clone(),
+				})
+				.headers(ReconnectRunnerLinkRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ReconnectRunnerLinkRequest {
+					runner_id: runner.id,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ReconnectRunnerLinkResponse));
+
+	// The link is single-use — a second reconnect on the same code is rejected.
+	let second = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ReconnectRunnerLinkRequest>::builder()
+				.path(ReconnectRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code,
+				})
+				.headers(ReconnectRunnerLinkRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ReconnectRunnerLinkRequest {
+					runner_id: runner.id,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		second.status_code().is_client_error(),
+		"a link that's already been claimed should not reconnect again"
 	);
 }
