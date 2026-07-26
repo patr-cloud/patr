@@ -14,6 +14,8 @@ mod get_runner_logs;
 mod get_runner_metrics;
 /// The endpoint to list all the runners in a workspace
 mod list_runners_for_workspace;
+/// Reconnect an existing runner to a new machine (rotate its SA token)
+mod reconnect_runner_link;
 /// The endpoint to remove a runner from a workspace
 mod remove_runner_from_workspace;
 /// The endpoint to stream the runner data for a workspace
@@ -37,6 +39,7 @@ pub use self::{
 	get_runner_logs::*,
 	get_runner_metrics::*,
 	list_runners_for_workspace::*,
+	reconnect_runner_link::*,
 	remove_runner_from_workspace::*,
 	stream_runner_data_for_workspace::*,
 	stream_runner_logs::*,

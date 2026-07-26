@@ -10,6 +10,7 @@ mod get_runner_link;
 mod get_runner_logs;
 mod get_runner_metrics;
 mod list_runners_for_workspace;
+mod reconnect_runner_link;
 mod remove_runner_from_workspace;
 mod stream_runner_data_for_workspace;
 mod stream_runner_logs;
@@ -24,6 +25,7 @@ use self::{
 	get_runner_logs::*,
 	get_runner_metrics::*,
 	list_runners_for_workspace::*,
+	reconnect_runner_link::*,
 	remove_runner_from_workspace::*,
 	stream_runner_data_for_workspace::*,
 	stream_runner_logs::*,
@@ -49,4 +51,5 @@ pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType])
 		.mount_auth_endpoint(verify_runner_link, state, allowed_client_types)
 		.mount_auth_endpoint(get_runner_link, state, allowed_client_types)
 		.mount_auth_endpoint(approve_runner_link, state, allowed_client_types)
+		.mount_auth_endpoint(reconnect_runner_link, state, allowed_client_types)
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT service_account_id AS \"service_account_id: Uuid\" FROM runner WHERE id = $1;",
+  "query": "SELECT service_account_id AS \"service_account_id: Uuid\" FROM runner WHERE id = $1 AND workspace_id = $2;",
   "describe": {
     "columns": [
       {
@@ -11,6 +11,7 @@
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Uuid"
       ]
     },
@@ -18,5 +19,5 @@
       false
     ]
   },
-  "hash": "2d2bbc464112dc2e09fb6788fde3ad9d3d59fd6f1146eb66c1163d7e5c880cfa"
+  "hash": "afcdf8cc6b86965cdc7a771bdb5078374d4dbf87a47b8bd6c21ebac04b8d6847"
 }
