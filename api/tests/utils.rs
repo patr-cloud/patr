@@ -1,7 +1,9 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::FromStr};
 
 use headers::UserAgent;
 use models::{
+	ApiRequest,
+	ApiSuccessResponseBody,
 	api::{
 		auth::*,
 		user::*,
@@ -17,12 +19,12 @@ use models::{
 			*,
 		},
 	},
-	rbac::{Permission, ResourcePermissionType, WorkspacePermission},
+	rbac::{ResourcePermissionType, WorkspacePermission},
 	utils::{BearerToken, Uuid},
 };
 use rand::RngExt as _;
 
-use crate::prelude::*;
+use crate::setup::TestSetup;
 
 /// The User-Agent header value to use for all test API calls, which includes
 /// the cargo-test identifier and the current package version.
@@ -54,6 +56,9 @@ pub struct TestWorkspace {
 pub struct TestRunner {
 	pub id: Uuid,
 	pub name: String,
+	/// The runner's service account token (`patrv1.{refresh}.{sa_id}`), issued
+	/// when the consent link was verified.
+	pub token: String,
 }
 
 /// A test deployment.
@@ -131,16 +136,10 @@ impl TestSetup {
 	/// Create a new test user account (CreateAccount + CompleteSignUp),
 	/// returning the user's credentials and tokens.
 	pub async fn create_test_user(&self) -> TestUser {
-		self.create_test_user_with_username(&random_name(8)).await
-	}
-
-	/// Like [`create_test_user`] but with a caller-chosen username. Useful for
-	/// search/listing tests that need usernames sharing a known substring.
-	pub async fn create_test_user_with_username(&self, username: &str) -> TestUser {
-		let username = username.to_string();
+		let username = random_name(8);
 		let password = random_password();
 
-		self.make_web_dashboard_call(
+		self.make_api_call(
 			ApiRequest::<CreateAccountRequest>::builder()
 				.headers(CreateAccountRequestHeaders {
 					user_agent: TEST_USER_AGENT,
@@ -161,7 +160,7 @@ impl TestSetup {
 		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
 
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<CompleteSignUpRequest>::builder()
 					.headers(CompleteSignUpRequestHeaders {
 						user_agent: TEST_USER_AGENT,
@@ -178,7 +177,7 @@ impl TestSetup {
 			.response;
 
 		let user_info = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<GetUserInfoRequest>::builder()
 					.headers(GetUserInfoRequestHeaders {
 						authorization: BearerToken::from_str(&response.access_token).unwrap(),
@@ -188,6 +187,8 @@ impl TestSetup {
 			)
 			.await
 			.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+
+		self.clear_rate_limits().await;
 
 		TestUser {
 			user_id: user_info.response.basic_user_info.id,
@@ -201,7 +202,7 @@ impl TestSetup {
 	/// Login an existing test user, returning new access and refresh tokens.
 	pub async fn login_test_user(&self, username: &str, password: &str) -> (String, String) {
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<LoginRequest>::builder()
 					.headers(LoginRequestHeaders {
 						user_agent: TEST_USER_AGENT,
@@ -218,6 +219,8 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<LoginResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		(response.access_token, response.refresh_token)
 	}
 
@@ -226,7 +229,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<CreateWorkspaceRequest>::builder()
 					.headers(CreateWorkspaceRequestHeaders {
 						authorization: token.clone(),
@@ -239,34 +242,105 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<CreateWorkspaceResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		TestWorkspace {
 			id: response.id.id,
 			name,
 		}
 	}
 
-	/// Add a runner to a workspace, returning its ID and name.
+	/// Create a runner via the consent-link flow, returning its ID, name, and
+	/// service account token.
+	///
+	/// Mirrors what the CLI + browser do: an API token drives `create_link` and
+	/// `verify` (CLI client type), while the passed `token` (a web-dashboard
+	/// session) drives `approve`. The runner, its role, and its service account
+	/// are all created by the approve step.
 	pub async fn create_test_runner(&self, token: &BearerToken, workspace_id: Uuid) -> TestRunner {
 		let name = random_name(8);
 
-		let response = self
-			.make_web_dashboard_call(
-				ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-					.path(AddRunnerToWorkspacePath { workspace_id })
-					.headers(AddRunnerToWorkspaceRequestHeaders {
-						authorization: token.clone(),
+		// The CLI half of the flow authenticates with an API token.
+		let api_token = self
+			.create_test_api_token(
+				token,
+				BTreeMap::from([(workspace_id, WorkspacePermission::SuperAdmin)]),
+			)
+			.await;
+		let api_token = BearerToken::from_str(&api_token.token).unwrap();
+
+		let link = self
+			.make_api_call(
+				ApiRequest::<CreateRunnerLinkRequest>::builder()
+					.path(CreateRunnerLinkPath { workspace_id })
+					.headers(CreateRunnerLinkRequestHeaders {
+						authorization: api_token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
-					.body(AddRunnerToWorkspaceRequest { name: name.clone() })
+					.body(CreateRunnerLinkRequest {
+						version: "0.1.0".parse().unwrap(),
+						os: "linux".to_string(),
+						arch: "x86_64".to_string(),
+						hostname: name.clone(),
+						private_ip: "127.0.0.1".parse().unwrap(),
+					})
 					.build(),
 			)
 			.await
-			.json::<ApiSuccessResponseBody<AddRunnerToWorkspaceResponse>>()
+			.json::<ApiSuccessResponseBody<CreateRunnerLinkResponse>>()
 			.response;
 
+		// The browser half approves it, creating the runner + service account.
+		self.make_web_dashboard_call(
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
+					workspace_id,
+					user_code: link.user_code.clone(),
+				})
+				.headers(ApproveRunnerLinkRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ApproveRunnerLinkRequest {
+					runner_name: name.clone(),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ApproveRunnerLinkResponse));
+
+		// The CLI claims the issued credentials.
+		let verify = self
+			.make_api_call(
+				ApiRequest::<VerifyRunnerLinkRequest>::builder()
+					.path(VerifyRunnerLinkPath { workspace_id })
+					.headers(VerifyRunnerLinkRequestHeaders {
+						authorization: api_token,
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(VerifyRunnerLinkRequest {
+						user_code: link.user_code,
+						device_code: link.device_code,
+					})
+					.build(),
+			)
+			.await
+			.json::<ApiSuccessResponseBody<VerifyRunnerLinkResponse>>()
+			.response;
+
+		let (id, runner_token) = match verify.result {
+			VerifyRunnerLinkResult::Approved {
+				runner_id, token, ..
+			} => (runner_id, token),
+			VerifyRunnerLinkResult::Pending => panic!("runner link should be approved by now"),
+		};
+
+		self.clear_rate_limits().await;
+
 		TestRunner {
-			id: response.id.id,
+			id,
 			name,
+			token: runner_token,
 		}
 	}
 
@@ -320,7 +394,7 @@ impl TestSetup {
 
 		// First get a valid machine type
 		let machine_types = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
 					.path(ListAllDeploymentMachineTypePath { workspace_id })
 					.headers(ListAllDeploymentMachineTypeRequestHeaders {
@@ -339,7 +413,7 @@ impl TestSetup {
 			.id;
 
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<CreateDeploymentRequest>::builder()
 					.path(CreateDeploymentPath { workspace_id })
 					.headers(CreateDeploymentRequestHeaders {
@@ -374,32 +448,12 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		TestDeployment {
 			id: response.id.id,
 			name,
 		}
-	}
-
-	/// Force-mark a domain as verified by flipping the `is_verified` flag
-	/// directly in the DB, skipping the real TXT-record + Cloudflare
-	/// verification flow. Used by tests that depend on a verified domain (e.g.
-	/// managed URL creation) but don't exercise the verification flow itself.
-	pub async fn mark_test_domain_verified(&self, domain_id: Uuid) {
-		query!(
-			r#"
-			UPDATE
-				workspace_domain
-			SET
-				is_verified = TRUE,
-				last_verified = NOW()
-			WHERE
-				id = $1;
-			"#,
-			domain_id as _,
-		)
-		.execute(self.database())
-		.await
-		.expect("failed to mark test domain as verified");
 	}
 
 	/// Add a domain to a workspace, returning its ID and domain name.
@@ -407,7 +461,7 @@ impl TestSetup {
 		let domain = format!("{}.com", random_name(8));
 
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<AddDomainToWorkspaceRequest>::builder()
 					.path(AddDomainToWorkspacePath { workspace_id })
 					.headers(AddDomainToWorkspaceRequestHeaders {
@@ -416,12 +470,15 @@ impl TestSetup {
 					})
 					.body(AddDomainToWorkspaceRequest {
 						domain: domain.clone(),
+						nameserver_type: DomainNameserverType::External,
 					})
 					.build(),
 			)
 			.await
 			.json::<ApiSuccessResponseBody<AddDomainToWorkspaceResponse>>()
 			.response;
+
+		self.clear_rate_limits().await;
 
 		TestDomain {
 			id: response.id.id,
@@ -434,7 +491,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<CreateVolumeRequest>::builder()
 					.path(CreateVolumePath { workspace_id })
 					.headers(CreateVolumeRequestHeaders {
@@ -451,6 +508,8 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<CreateVolumeResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		TestVolume {
 			id: response.id.id,
 			name,
@@ -466,7 +525,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<CreateContainerRepositoryRequest>::builder()
 					.path(CreateContainerRepositoryPath { workspace_id })
 					.headers(CreateContainerRepositoryRequestHeaders {
@@ -480,26 +539,44 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<CreateContainerRepositoryResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		TestContainerRepo {
 			id: response.id.id,
 			name,
 		}
 	}
 
-	/// Create a role in a workspace with a minimal harmless permission
-	/// (ViewRoles), returning its ID and name. The handler rejects empty
-	/// permission maps with `WrongParameters`, so we always seed one.
+	/// Create a role in a workspace with the given permissions, returning its
+	/// ID and name.
 	pub async fn create_test_role(&self, token: &BearerToken, workspace_id: Uuid) -> TestRole {
-		// The `create_new_role` handler rejects empty permissions with
-		// `WrongParameters`, so seed one harmless permission. Tests that care
-		// about specific permissions should use `create_role_with_permissions`.
-		let mut permissions = BTreeMap::new();
-		permissions.insert(
-			self.get_permission_id(Permission::ViewRoles),
-			ResourcePermissionType::Include(Default::default()),
-		);
-		self.create_role_with_permissions(token, workspace_id, permissions)
+		let name = random_name(8);
+
+		let response = self
+			.make_api_call(
+				ApiRequest::<CreateNewRoleRequest>::builder()
+					.path(CreateNewRolePath { workspace_id })
+					.headers(CreateNewRoleRequestHeaders {
+						authorization: token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(CreateNewRoleRequest {
+						name: name.clone(),
+						description: "test role".to_string(),
+						permissions: BTreeMap::new(),
+					})
+					.build(),
+			)
 			.await
+			.json::<ApiSuccessResponseBody<CreateNewRoleResponse>>()
+			.response;
+
+		self.clear_rate_limits().await;
+
+		TestRole {
+			id: response.id.id,
+			name,
+		}
 	}
 
 	/// Create a role with specific permissions.
@@ -512,7 +589,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<CreateNewRoleRequest>::builder()
 					.path(CreateNewRolePath { workspace_id })
 					.headers(CreateNewRoleRequestHeaders {
@@ -520,10 +597,8 @@ impl TestSetup {
 						user_agent: TEST_USER_AGENT,
 					})
 					.body(CreateNewRoleRequest {
-						role: Role {
-							name: name.clone(),
-							description: "test role with permissions".to_string(),
-						},
+						name: name.clone(),
+						description: "test role with permissions".to_string(),
 						permissions,
 					})
 					.build(),
@@ -531,6 +606,8 @@ impl TestSetup {
 			.await
 			.json::<ApiSuccessResponseBody<CreateNewRoleResponse>>()
 			.response;
+
+		self.clear_rate_limits().await;
 
 		TestRole {
 			id: response.id.id,
@@ -548,7 +625,7 @@ impl TestSetup {
 		let name = random_name(8);
 
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<CreateApiTokenRequest>::builder()
 					.headers(CreateApiTokenRequestHeaders {
 						authorization: token.clone(),
@@ -570,6 +647,8 @@ impl TestSetup {
 			.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
 			.response;
 
+		self.clear_rate_limits().await;
+
 		TestApiToken {
 			id: response.id,
 			token: response.token,
@@ -587,7 +666,7 @@ impl TestSetup {
 	) -> TestUser {
 		let user_b = self.create_test_user().await;
 
-		self.make_web_dashboard_call(
+		self.make_api_call(
 			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
 				.path(UpdateUserRolesInWorkspacePath {
 					workspace_id,
@@ -607,6 +686,8 @@ impl TestSetup {
 			UpdateUserRolesInWorkspaceResponse,
 		));
 
+		self.clear_rate_limits().await;
+
 		user_b
 	}
 
@@ -618,7 +699,7 @@ impl TestSetup {
 		domain_id: Uuid,
 	) -> Uuid {
 		let response = self
-			.make_web_dashboard_call(
+			.make_api_call(
 				ApiRequest::<CreateManagedURLRequest>::builder()
 					.path(CreateManagedURLPath { workspace_id })
 					.headers(CreateManagedURLRequestHeaders {
@@ -640,6 +721,8 @@ impl TestSetup {
 			.await
 			.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>()
 			.response;
+
+		self.clear_rate_limits().await;
 
 		response.id.id
 	}

@@ -13,6 +13,7 @@ use cloudflare::{
 use models::cloudflare::kv::*;
 use models::{api::workspace::runner::*, prelude::*};
 use rustis::commands::StringCommands;
+use time::OffsetDateTime;
 
 use crate::{
 	models::{
@@ -133,27 +134,60 @@ pub async fn approve_runner_link(
 	.await?
 	.id;
 
-	// Per-runner role
+	// Per-runner role. A role is itself a resource, so the resource row must be
+	// created first to satisfy role(id, owner_id) -> resource(id, owner_id).
+	let now = OffsetDateTime::now_utc();
 	let role_id = query!(
 		r#"
 		INSERT INTO
-			role(id, name, description, owner_id)
+			resource(
+				id,
+				resource_type_id,
+				owner_id,
+				created,
+				deleted
+			)
 		VALUES
 			(
-				gen_random_uuid(),
+				GENERATE_RESOURCE_ID(),
+				(SELECT id FROM resource_type WHERE name = 'role'),
 				$1,
 				$2,
-				$3
+				NULL
 			)
 		RETURNING id AS "id: Uuid";
 		"#,
-		format!("runner-{runner_id}"),
-		format!("Auto-generated role for runner '{runner_name}' service account"),
 		workspace_id as _,
+		now as _,
 	)
 	.fetch_one(&mut **database)
 	.await?
 	.id;
+
+	query!(
+		r#"
+		INSERT INTO
+			role(
+				id,
+				owner_id,
+				name,
+				description
+			)
+		VALUES
+			(
+				$1,
+				$2,
+				$3,
+				$4
+			);
+		"#,
+		role_id as _,
+		workspace_id as _,
+		format!("runner-{runner_id}") as _,
+		format!("Auto-generated role for runner '{runner_name}' service account") as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
 	// Workspace-wide grants — `permission_type = 'exclude'` with no rows in
 	// `role_resource_permissions_exclude` means "all resources allowed".

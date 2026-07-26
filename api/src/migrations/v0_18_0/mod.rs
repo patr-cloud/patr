@@ -11,3 +11,4 @@ mod m008_simplify_workspace_name_index;
 mod m009_add_service_accounts;
 mod m010_runner_version;
 mod m011_runner_service_account_link;
+mod m012_seed_runner_regenerate_token_permission;
