@@ -15,9 +15,9 @@ pub async fn initialize_runner_tables(
 			last_seen TIMESTAMPTZ,
 			workspace_id UUID NOT NULL,
 			cloudflare_tunnel_id TEXT NOT NULL,
+			deleted TIMESTAMPTZ,
 			version TEXT NOT NULL,
-			service_account_id UUID NOT NULL,
-			deleted TIMESTAMPTZ
+			service_account_id UUID NOT NULL
 		);
 		"#
 	)
