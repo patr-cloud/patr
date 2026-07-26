@@ -15,9 +15,12 @@ pub async fn initialize_runner_tables(
 			last_seen TIMESTAMPTZ,
 			workspace_id UUID NOT NULL,
 			cloudflare_tunnel_id TEXT NOT NULL,
+			deleted TIMESTAMPTZ,
+			/* Column order matters: `query!` decodes `SELECT *` by index, so a
+			fresh database must lay this table out exactly as the migrations
+			do — added columns go at the end, in migration order. */
 			version TEXT NOT NULL,
-			service_account_id UUID NOT NULL,
-			deleted TIMESTAMPTZ
+			service_account_id UUID NOT NULL
 		);
 		"#
 	)
