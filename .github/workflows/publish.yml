@@ -189,6 +189,7 @@ jobs:
           done
 
           docker build $TAG_FLAGS \
+            --build-arg VITE_CLOUD_MODE=true \
             --build-arg VITE_TURNSTILE_SITE_KEY=${{ secrets.VITE_TURNSTILE_SITE_KEY }} \
             --build-arg VITE_BASE_URL=${{ secrets.VITE_BASE_URL }} \
             -f frontend/Dockerfile .
