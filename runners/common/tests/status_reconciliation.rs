@@ -64,13 +64,7 @@ async fn deploying_in_db_running_from_executor_updates_db() {
 		setup_with_statuses(DeploymentStatus::Deploying, DeploymentStatus::Running).await;
 
 	// DB should be updated to Running.
-	let row = sqlx::query("SELECT status FROM deployment WHERE id = $1")
-		.bind(id)
-		.fetch_one(&setup.database)
-		.await
-		.unwrap();
-	let status: String = row.get("status");
-	assert_eq!(status, "running");
+	wait_for_deployment_status(&setup.database, id, "running", Duration::from_secs(5)).await;
 }
 
 #[tokio::test]
@@ -78,13 +72,7 @@ async fn errored_in_db_running_from_executor_updates_db() {
 	let (setup, id) =
 		setup_with_statuses(DeploymentStatus::Errored, DeploymentStatus::Running).await;
 
-	let row = sqlx::query("SELECT status FROM deployment WHERE id = $1")
-		.bind(id)
-		.fetch_one(&setup.database)
-		.await
-		.unwrap();
-	let status: String = row.get("status");
-	assert_eq!(status, "running");
+	wait_for_deployment_status(&setup.database, id, "running", Duration::from_secs(5)).await;
 }
 
 #[tokio::test]
@@ -145,13 +133,7 @@ async fn duplicate_status_not_re_reported() {
 	.await;
 
 	// DB should now be Running.
-	let row = sqlx::query("SELECT status FROM deployment WHERE id = $1")
-		.bind(id)
-		.fetch_one(&setup.database)
-		.await
-		.unwrap();
-	let status: String = row.get("status");
-	assert_eq!(status, "running");
+	wait_for_deployment_status(&setup.database, id, "running", Duration::from_secs(5)).await;
 
 	// Wait for a second status check — status is still Running, so
 	// the actor should NOT send another ResourceStatusChanged (no-op).
@@ -184,11 +166,5 @@ async fn deploying_in_db_errored_from_executor_updates_db() {
 	let (setup, id) =
 		setup_with_statuses(DeploymentStatus::Deploying, DeploymentStatus::Errored).await;
 
-	let row = sqlx::query("SELECT status FROM deployment WHERE id = $1")
-		.bind(id)
-		.fetch_one(&setup.database)
-		.await
-		.unwrap();
-	let status: String = row.get("status");
-	assert_eq!(status, "errored");
+	wait_for_deployment_status(&setup.database, id, "errored", Duration::from_secs(5)).await;
 }
