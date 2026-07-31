@@ -16,6 +16,9 @@ export const RESOURCE_PAGE_SIZE = 20;
 /** A single resource as returned by the per-type list endpoints. */
 export type ListedResource = { id: string; name: string };
 
+/** Loosely-typed list item — each endpoint's array carries its own shape. */
+type RawListItem = { id: string; name?: string; subDomain?: string; path?: string };
+
 type ResourcePage = {
 	items: ListedResource[];
 	totalCount: number;
@@ -23,11 +26,13 @@ type ResourcePage = {
 };
 
 /**
- * Each resource type's list endpoint names its array differently, so the first
- * array-shaped key that is present wins.
+ * Each resource type's list endpoint names its array differently, and not all
+ * of them return a ready-made `name`. The first array-shaped key present wins;
+ * domains already carry their full `name.tld`, while managed URLs have no name
+ * and get a best-effort label composed from what the list returns.
  */
-const extractItems = (data: Record<string, ListedResource[]>) => {
-	return (
+const extractItems = (data: Record<string, RawListItem[]>): ListedResource[] => {
+	const named =
 		data.deployments ||
 		data.runners ||
 		data.repositories ||
@@ -35,8 +40,22 @@ const extractItems = (data: Record<string, ListedResource[]>) => {
 		data.volumes ||
 		data.databases ||
 		data.secrets ||
-		[]
-	);
+		data.domains;
+	if (named) {
+		return named.map((r) => ({ id: r.id, name: r.name ?? "" }));
+	}
+
+	// Managed URLs return no `name`, and the domain itself isn't in the response
+	// (only its id), so the label is the subdomain + path — apex (`@`) drops to
+	// just the path.
+	if (data.urls) {
+		return data.urls.map((u) => ({
+			id: u.id,
+			name: (u.subDomain && u.subDomain !== "@" ? u.subDomain : "") + (u.path ?? ""),
+		}));
+	}
+
+	return [];
 };
 
 /**
@@ -63,7 +82,7 @@ export const useWorkspaceResourcesQuery = (
 			meta: { errorMessage: `Failed to fetch ${type}` },
 			initialPageParam: 0,
 			queryFn: async ({ pageParam }: { pageParam: number }): Promise<ResourcePage> => {
-				const response = await httpRequest<Record<string, ListedResource[]>>(
+				const response = await httpRequest<Record<string, RawListItem[]>>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/${endpoint}?page=${pageParam}&count=${RESOURCE_PAGE_SIZE}`,
 					{ method: "GET" }
 				);
