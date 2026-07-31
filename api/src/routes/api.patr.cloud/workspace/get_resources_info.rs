@@ -53,7 +53,7 @@ pub async fn get_resources_info(
 				deployment_volume.name,
 				managed_database.name::TEXT,
 				secret.name::TEXT,
-				CONCAT(workspace_domain.name, '.', workspace_domain.tld),
+				workspace_domain.name || '.' || workspace_domain.tld,
 				runner.name
 			) AS "name?"
 		FROM
