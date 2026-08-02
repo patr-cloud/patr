@@ -24,8 +24,8 @@ pub mod runner;
 /// This module contains all the models that corresponds to a deployment volume
 pub mod volume;
 
-// /// This module contains all the models that corresponds to Patr secrets
-// pub mod secret;
+/// This module contains all the models that corresponds to Patr secrets
+pub mod secret;
 
 /// The endpoint to create a workspace
 mod create_workspace;

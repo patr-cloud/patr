@@ -28,6 +28,7 @@ services:
       - tracing
       - logs
       - metrics
+      - secrets
     hostname: backend
     networks:
       vpc:
@@ -108,6 +109,20 @@ services:
       vpc:
         aliases:
           - metrics
+
+  secrets:
+    image: openbao/openbao:2.5.0
+    restart: unless-stopped
+    command: server -dev -dev-listen-address=0.0.0.0:8200
+    environment:
+      - BAO_DEV_ROOT_TOKEN_ID=dev-root-token
+    expose:
+      - 8200
+    hostname: secrets
+    networks:
+      vpc:
+        aliases:
+          - secrets
 
   grafana:
     image: grafana/grafana-enterprise:12.0.2-ubuntu
