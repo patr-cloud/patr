@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT secret.id AS \"id: Uuid\", secret.name AS \"name: String\", COUNT(*) OVER() AS \"total_count!\" FROM secret JOIN resource ON secret.id = resource.id WHERE secret.workspace_id = $1 AND secret.deleted IS NULL ORDER BY resource.created DESC LIMIT $2 OFFSET $3;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name: String",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "31bec7faff629c4d02cd2a43b39304e4389152339cb95ecbedb2254bcca3e859"
+}

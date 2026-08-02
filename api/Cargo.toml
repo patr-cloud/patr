@@ -85,6 +85,7 @@ tracing-opentelemetry          = { workspace = true, features = ["default"] }
 tracing-subscriber             = { workspace = true, features = ["default"] }
 typed-builder                  = { workspace = true, features = [] }
 woothee                        = { workspace = true, features = ["default"] }
+zeroize                        = { workspace = true, features = ["alloc"] }
 
 [dev-dependencies]
 anyhow    = { workspace = true, features = ["default"] }

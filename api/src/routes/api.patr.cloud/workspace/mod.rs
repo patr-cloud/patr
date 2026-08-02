@@ -8,7 +8,8 @@ mod domain;
 mod managed_url;
 mod rbac;
 mod runner;
-// mod secret;
+#[cfg(feature = "cloud")]
+mod secret;
 mod volume;
 
 /// The handler to create a new workspace. The workspace name must be unique.
@@ -46,14 +47,13 @@ use self::{
 
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
-	Router::new()
+	let router = Router::new()
 		.merge(container_registry::setup_routes(state, allowed_client_type).await)
 		.merge(deployment::setup_routes(state, allowed_client_type).await)
 		.merge(domain::setup_routes(state, allowed_client_type).await)
 		.merge(managed_url::setup_routes(state, allowed_client_type).await)
 		.merge(rbac::setup_routes(state, allowed_client_type).await)
 		.merge(runner::setup_routes(state, allowed_client_type).await)
-		// .merge(secret::setup_routes(state, allowed_client_type).await)
 		.merge(volume::setup_routes(state, allowed_client_type).await)
 		.mount_auth_endpoint(create_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(delete_workspace, state, allowed_client_type)
@@ -61,5 +61,10 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_auth_endpoint(get_workspace_info, state, allowed_client_type)
 		.mount_auth_endpoint(leave_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(is_name_available, state, allowed_client_type)
-		.mount_auth_endpoint(update_workspace_info, state, allowed_client_type)
+		.mount_auth_endpoint(update_workspace_info, state, allowed_client_type);
+
+	#[cfg(feature = "cloud")]
+	let router = router.merge(secret::setup_routes(state, allowed_client_type).await);
+
+	router
 }

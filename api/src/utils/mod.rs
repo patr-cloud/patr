@@ -21,6 +21,9 @@ pub mod extractors;
 /// [1]: tower::Layer
 /// [2]: axum::Router
 pub mod layers;
+/// A minimal client for OpenBao, the store for resource secrets.
+#[cfg(feature = "cloud")]
+pub mod openbao;
 
 /// Contains the extension traits that will be used to add functionality to
 /// existing types.
