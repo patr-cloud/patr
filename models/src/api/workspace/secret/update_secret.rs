@@ -29,5 +29,10 @@ macros::declare_api_endpoint!(
 		/// The updated value of the secret
 		#[preprocess(none)]
 		pub value: String,
-	}
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::Secret,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.secret_id),
+	},
 );
