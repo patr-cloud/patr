@@ -280,18 +280,22 @@ async fn add_runner_duplicate_name() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
+	// The name uniqueness check now lives in the approve step of the link flow.
+	let (link, _) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
 	let response = setup
 		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
 					workspace_id: workspace.id,
+					user_code: link.user_code,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: runner.name.clone(),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: runner.name.clone(),
 				})
 				.build(),
 		)
@@ -299,7 +303,7 @@ async fn add_runner_duplicate_name() {
 
 	assert!(
 		response.status_code().is_client_error(),
-		"adding a runner with a taken name should fail"
+		"approving a link with a taken runner name should fail"
 	);
 }
 
@@ -309,18 +313,21 @@ async fn add_runner_invalid_name() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
+	let (link, _) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
 	let response = setup
 		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
 					workspace_id: workspace.id,
+					user_code: link.user_code,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: "!!!".to_string(),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: "!!!".to_string(),
 				})
 				.build(),
 		)
@@ -475,18 +482,20 @@ async fn add_runner_reusable_after_delete() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
+	let (dup_link, _) = open_runner_link(&setup, &user.access_token, workspace.id).await;
 	let dup = setup
 		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
 					workspace_id: workspace.id,
+					user_code: dup_link.user_code,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: runner.name.clone(),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: runner.name.clone(),
 				})
 				.build(),
 		)
@@ -513,18 +522,20 @@ async fn add_runner_reusable_after_delete() {
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(DeleteRunnerResponse));
 
+	let (reuse_link, _) = open_runner_link(&setup, &user.access_token, workspace.id).await;
 	let recreate = setup
 		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
 					workspace_id: workspace.id,
+					user_code: reuse_link.user_code,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: runner.name.clone(),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: runner.name.clone(),
 				})
 				.build(),
 		)
@@ -546,15 +557,21 @@ async fn add_runner_same_name_across_workspaces() {
 	let name = random_name(8);
 
 	for ws in [workspace_a.id, workspace_b.id] {
+		let (link, _) = open_runner_link(&setup, &user.access_token, ws).await;
 		let response = setup
 			.make_web_dashboard_call(
-				ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-					.path(AddRunnerToWorkspacePath { workspace_id: ws })
-					.headers(AddRunnerToWorkspaceRequestHeaders {
+				ApiRequest::<ApproveRunnerLinkRequest>::builder()
+					.path(ApproveRunnerLinkPath {
+						workspace_id: ws,
+						user_code: link.user_code,
+					})
+					.headers(ApproveRunnerLinkRequestHeaders {
 						authorization: user.access_token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
-					.body(AddRunnerToWorkspaceRequest { name: name.clone() })
+					.body(ApproveRunnerLinkRequest {
+						runner_name: name.clone(),
+					})
 					.build(),
 			)
 			.await;

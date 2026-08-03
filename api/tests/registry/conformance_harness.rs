@@ -58,7 +58,11 @@ async fn conformance_harness() {
 	// Build a combined router sharing the seeded state. Registry auth reads the
 	// same DB/redis the token was written to.
 	let state = setup.state().clone();
-	let api_router = api::routes::api_patr_cloud::setup_routes(&state, ClientType::ApiToken).await;
+	let api_router = api::routes::api_patr_cloud::setup_routes(
+		&state,
+		&[ClientType::ApiToken, ClientType::ServiceAccount],
+	)
+	.await;
 	let registry_router = api::routes::registry_patr_cloud::setup_routes(&state).await;
 
 	let app = Router::new().fallback(any(move |request: Request<Body>| {
