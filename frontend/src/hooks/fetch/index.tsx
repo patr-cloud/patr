@@ -7,6 +7,7 @@ import { useRunnersQuery, useRunnerInfoQuery, useRunnersListQuery, useRunnerDepl
 import { useWorkspaceInfoQuery } from "./workspace";
 import { useRolesQuery, useAllRolesQuery, useRoleInfoQuery, useRoleUsersQuery } from "./roles";
 import { useMembersQuery, useWorkspaceOwnerQuery } from "./members";
+import { useInvitesQuery } from "./invitations";
 import { useApiTokensQuery, useApiTokenInfoQuery } from "./api-tokens";
 import {
 	useContainerRegistriesQuery,
@@ -42,6 +43,7 @@ export {
 	useRoleUsersQuery,
 	useMembersQuery,
 	useWorkspaceOwnerQuery,
+	useInvitesQuery,
 	useApiTokensQuery,
 	useApiTokenInfoQuery,
 	useContainerRegistriesQuery,

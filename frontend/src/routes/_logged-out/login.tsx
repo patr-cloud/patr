@@ -133,7 +133,13 @@ const Login = () => {
 				},
 			});
 			await router.invalidate();
-			navigate({ to: "/", replace: true });
+			// If the user arrived here from a workspace invite link, resume that
+			// flow instead of dropping them on the dashboard.
+			if (sessionStorage.getItem("pendingWorkspaceInvite")) {
+				navigate({ to: "/accept-invite", replace: true });
+			} else {
+				navigate({ to: "/", replace: true });
+			}
 		} else {
 			console.error("Error during login:", loginResp);
 			switch (loginResp.data.error) {

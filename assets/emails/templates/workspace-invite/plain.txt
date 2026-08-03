@@ -1,0 +1,17 @@
+Hi,
+
+{{ invited_by }} has invited you to join the {{ workspace_name }} workspace on Patr.
+
+Accept the invite by visiting:
+{{ accept_url }}
+
+If you don't have a Patr account yet, you'll be able to create one first.
+
+This invite will expire in {{ expiry }}.
+
+If you weren't expecting this invite, you can safely ignore this email. If you have any questions or need assistance, please contact our support team at support@patr.cloud.
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

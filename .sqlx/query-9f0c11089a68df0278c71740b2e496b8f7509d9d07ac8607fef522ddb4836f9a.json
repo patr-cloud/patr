@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS(SELECT 1 FROM workspace WHERE id = $1 AND super_admin_id = $2) AS \"is_owner!: bool\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "is_owner!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9f0c11089a68df0278c71740b2e496b8f7509d9d07ac8607fef522ddb4836f9a"
+}

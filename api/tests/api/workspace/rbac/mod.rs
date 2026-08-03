@@ -8,6 +8,7 @@ use models::{
 
 use crate::prelude::*;
 
+pub mod invite;
 pub mod permissions;
 
 #[tokio::test]

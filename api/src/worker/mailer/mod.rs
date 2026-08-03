@@ -61,6 +61,8 @@ mod sign_up_completed;
 mod unverified_domain_delete;
 /// The user sign-up email template.
 mod user_sign_up;
+/// The workspace invite email template.
+mod workspace_user_invite;
 
 pub use self::{
 	add_new_email_notification::*,
@@ -87,6 +89,7 @@ pub use self::{
 	sign_up_completed::*,
 	unverified_domain_delete::*,
 	user_sign_up::*,
+	workspace_user_invite::*,
 };
 
 /// The struct representing an email to be sent by the worker. This struct
@@ -195,6 +198,10 @@ pub enum EmailTemplateType {
 	/// The user sign-up email template. This email is sent to the user when
 	/// they sign up, and contains an OTP for verification.
 	UserSignUp(user_sign_up::UserSignUpEmail),
+	/// The workspace invite email template. This email is sent to an email
+	/// address that has been invited to join a workspace, and contains a link
+	/// to accept the invite.
+	WorkspaceInvite(workspace_user_invite::WorkspaceInviteEmail),
 }
 
 impl EmailTemplateType {
@@ -225,6 +232,7 @@ impl EmailTemplateType {
 			Self::SignUpCompleted(template) => template.render_subject(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_subject(globals),
 			Self::UserSignUp(template) => template.render_subject(globals),
+			Self::WorkspaceInvite(template) => template.render_subject(globals),
 		}
 	}
 
@@ -254,6 +262,7 @@ impl EmailTemplateType {
 			Self::SignUpCompleted(template) => template.render_html(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_html(globals),
 			Self::UserSignUp(template) => template.render_html(globals),
+			Self::WorkspaceInvite(template) => template.render_html(globals),
 		}
 	}
 
@@ -283,6 +292,7 @@ impl EmailTemplateType {
 			Self::SignUpCompleted(template) => template.render_text(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_text(globals),
 			Self::UserSignUp(template) => template.render_text(globals),
+			Self::WorkspaceInvite(template) => template.render_text(globals),
 		}
 	}
 }

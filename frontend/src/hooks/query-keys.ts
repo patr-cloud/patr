@@ -49,6 +49,11 @@ export const memberKeys = {
 		[...memberKeys.all(workspaceId), "list", page, count] as const,
 };
 
+export const inviteKeys = {
+	all: (workspaceId: string) => ["invites", workspaceId] as const,
+	list: (workspaceId: string) => [...inviteKeys.all(workspaceId), "list"] as const,
+};
+
 export const apiTokenKeys = {
 	all: () => ["apiTokens"] as const,
 	list: (page: string | undefined, count: string | undefined) =>

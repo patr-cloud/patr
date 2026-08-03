@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS(SELECT 1 FROM user_email WHERE user_id = $1 AND email = $2) AS \"owns_email!: bool\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owns_email!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e5bc587bc8b2b1fc14b1d10ef1b2b93c553ab17b19d6be691df211d1abf1a64a"
+}

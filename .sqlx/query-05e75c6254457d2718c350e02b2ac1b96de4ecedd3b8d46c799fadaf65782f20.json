@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO workspace_user_invite_role(invite_id, role_id) SELECT $1, role.id FROM role WHERE role.id = ANY($2::UUID[]) AND role.owner_id = $3;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "05e75c6254457d2718c350e02b2ac1b96de4ecedd3b8d46c799fadaf65782f20"
+}

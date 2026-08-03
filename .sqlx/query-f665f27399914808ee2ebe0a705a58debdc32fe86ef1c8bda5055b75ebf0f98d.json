@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workspace_user_invite SET invite_attempts = invite_attempts + 1 WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f665f27399914808ee2ebe0a705a58debdc32fe86ef1c8bda5055b75ebf0f98d"
+}

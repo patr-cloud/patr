@@ -4,27 +4,36 @@ import { createEffect, createMemo, createSignal, For, Show, Suspense } from "sol
 import {
 	Button,
 	ButtonVariant,
+	Input,
+	InputType,
 	InputDropdownCheckBox,
 	PageContainer,
 	PageContainerBody,
 	Pagination,
 	useToast,
-	UserSearchInput,
 	Initials,
 } from "~/components";
-import { FiCheck, FiChevronRight, FiEdit2, FiPlus, FiTrash, FiX } from "solid-icons/fi";
+import { FiCheck, FiChevronRight, FiCopy, FiEdit2, FiPlus, FiTrash, FiX } from "solid-icons/fi";
 import { useNavigate } from "@tanstack/solid-router";
 import { createAuthenticatedAction, createFormAction, createPaginationState, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
 import { RemoveUserFromWorkspaceResponse } from "~/bindings/RemoveUserFromWorkspaceResponse";
-import { WithId } from "~/bindings/WithId";
-import { BasicUserInfo } from "~/bindings/BasicUserInfo";
+import { InviteUserToWorkspaceRequest } from "~/bindings/InviteUserToWorkspaceRequest";
+import { InviteUserToWorkspaceResponse } from "~/bindings/InviteUserToWorkspaceResponse";
+import { ResendWorkspaceInviteResponse } from "~/bindings/ResendWorkspaceInviteResponse";
+import { UpdateWorkspaceInviteRolesRequest } from "~/bindings/UpdateWorkspaceInviteRolesRequest";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
-import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery, useWorkspaceOwnerQuery } from "~/hooks/fetch";
+import {
+	useWorkspaceInfoQuery,
+	useAllRolesQuery,
+	useMembersQuery,
+	useWorkspaceOwnerQuery,
+	useInvitesQuery,
+} from "~/hooks/fetch";
 import { useQueryClient } from "@tanstack/solid-query";
-import { memberKeys } from "~/hooks/query-keys";
+import { memberKeys, inviteKeys } from "~/hooks/query-keys";
 
 const ManageWorkspace = () => {
 	const [workspaceId] = useLastWorkspaceId();
@@ -50,6 +59,7 @@ const ManageWorkspace = () => {
 		() => search().page,
 		() => search().count
 	);
+	const invitesQuery = useInvitesQuery();
 	const ownerQuery = useWorkspaceOwnerQuery(() => workspaceInfoQuery.data?.superAdminId);
 	const canModifyMembers = useIsAllowed("modifyRoles", "edit");
 
@@ -78,8 +88,15 @@ const ManageWorkspace = () => {
 		}
 	};
 
-	const [selectedUser, setSelectedUser] = createSignal<WithId<BasicUserInfo> | null>(null);
-	const [currentRoleIds, setCurrentRoleIds] = createSignal<string[]>([]);
+	const refetchInvites = () => {
+		const wsId = workspaceId();
+		if (wsId) {
+			queryClient.invalidateQueries({ queryKey: inviteKeys.all(wsId) });
+		}
+	};
+
+	const [inviteEmail, setInviteEmail] = createSignal("");
+	const [inviteRoleIds, setInviteRoleIds] = createSignal<string[]>([]);
 	const [selectedMemberId, setSelectedMemberId] = createSignal<string | null>(null);
 	const [isEditingRoles, setIsEditingRoles] = createSignal(false);
 	const [editingRoleIds, setEditingRoleIds] = createSignal<string[]>([]);
@@ -159,21 +176,15 @@ const ManageWorkspace = () => {
 		return displayedMembers().find((m) => m.userId === id) ?? null;
 	});
 
-	const handleUserSelect = (user: WithId<BasicUserInfo>) => {
-		setSelectedUser(user);
-	};
-
-	const { onSubmit: handleAddMember, isLoading: isSubmitting } = createFormAction(
+	const { onSubmit: handleInvite, isLoading: isSubmitting } = createFormAction(
 		async ({ workspaceId }) => {
-			const user = selectedUser();
-			const roleIds = currentRoleIds();
-
-			const requestBody: UpdateUserRolesInWorkspaceRequest = {
-				roles: roleIds,
+			const requestBody: InviteUserToWorkspaceRequest = {
+				email: inviteEmail().trim(),
+				roles: inviteRoleIds(),
 			};
 
-			const response = await httpRequest(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/${user!.id}`,
+			const response = await httpRequest<InviteUserToWorkspaceResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/invite`,
 				{
 					method: "POST",
 					body: JSON.stringify(requestBody),
@@ -181,25 +192,132 @@ const ManageWorkspace = () => {
 			);
 
 			if (!response.ok) {
-				console.error("Failed to add user:", response.data.error);
-				toast(response.data.error || "Failed to add user to workspace", "error");
+				console.error("Failed to invite user:", response.data.error);
+				const err = response.data.error;
+				toast(
+					err === "userAlreadyMember"
+						? "That email already belongs to a member of this workspace"
+						: err === "inviteAlreadyExists"
+							? "That email has already been invited — edit or revoke it below"
+							: "Failed to send invite",
+					"error"
+				);
 				return;
 			}
 
-			toast("User added successfully", "success");
-			setCurrentRoleIds([]);
-			refetchMembers();
+			// Stash the returned link so a "copy link" button can appear on the
+			// new invite. The token is only returned here (it's stored hashed).
+			setInviteLinks((prev) => ({ ...prev, [response.data.id]: response.data.acceptUrl }));
+			toast("Invite sent", "success");
+			setInviteEmail("");
+			setInviteRoleIds([]);
+			refetchInvites();
 		},
 		() => {
-			const user = selectedUser();
-			const roleIds = currentRoleIds();
-			if (!user || roleIds.length === 0) {
-				toast("Please select a user and at least one role", "error");
+			if (!inviteEmail().trim() || inviteRoleIds().length === 0) {
+				toast("Please enter an email and select at least one role", "error");
 				return false;
 			}
 			return true;
 		}
 	);
+
+	const [pendingRevokeId, setPendingRevokeId] = createSignal<string | null>(null);
+
+	const { execute: revokeInvite } = createAuthenticatedAction(async ({ workspaceId }) => {
+		const inviteId = pendingRevokeId();
+		if (!inviteId) return;
+
+		const response = await httpRequest(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/invite/${inviteId}`,
+			{ method: "DELETE" }
+		);
+
+		if (!response.ok) {
+			console.error("Failed to revoke invite:", response.data.error);
+			toast("Failed to revoke invite", "error");
+			return;
+		}
+
+		toast("Invite revoked", "success");
+		setPendingRevokeId(null);
+		refetchInvites();
+	});
+
+	const [editingInviteId, setEditingInviteId] = createSignal<string | null>(null);
+	const [editingInviteRoleIds, setEditingInviteRoleIds] = createSignal<string[]>([]);
+
+	const beginEditInvite = (inviteId: string, roleIds: string[]) => {
+		setPendingRevokeId(null);
+		setEditingInviteId(inviteId);
+		setEditingInviteRoleIds([...roleIds]);
+	};
+
+	const cancelEditInvite = () => {
+		setEditingInviteId(null);
+		setEditingInviteRoleIds([]);
+	};
+
+	const { execute: saveInviteRoles, isLoading: isSavingInvite } = createAuthenticatedAction(
+		async ({ workspaceId }) => {
+			const inviteId = editingInviteId();
+			if (!inviteId) return;
+
+			const body: UpdateWorkspaceInviteRolesRequest = { roles: editingInviteRoleIds() };
+			const response = await httpRequest(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/invite/${inviteId}`,
+				{ method: "PATCH", body: JSON.stringify(body) }
+			);
+
+			if (!response.ok) {
+				console.error("Failed to update invite roles:", response.data.error);
+				toast("Failed to update invite", "error");
+				return;
+			}
+
+			toast("Invite updated", "success");
+			cancelEditInvite();
+			refetchInvites();
+		}
+	);
+
+	// Accept links keyed by invite id, populated when an invite is created or
+	// resent (the only times the plaintext token is returned). Lets us show a
+	// "copy link" button for those invites; it's not available after a reload.
+	const [inviteLinks, setInviteLinks] = createSignal<Record<string, string>>({});
+
+	const resendInvite = async (inviteId: string) => {
+		const wsId = workspaceId();
+		if (!wsId) return;
+
+		const response = await httpRequest<ResendWorkspaceInviteResponse>(
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/user/invite/${inviteId}/resend`,
+			{ method: "POST" }
+		);
+
+		if (!response.ok) {
+			console.error("Failed to resend invite:", response.data.error);
+			toast("Failed to resend invite", "error");
+			return;
+		}
+
+		setInviteLinks((prev) => ({ ...prev, [inviteId]: response.data.acceptUrl }));
+		toast("Invite resent", "success");
+		refetchInvites();
+	};
+
+	const copyInviteLink = async (inviteId: string) => {
+		const link = inviteLinks()[inviteId];
+		if (!link) return;
+		try {
+			await navigator.clipboard.writeText(link);
+			toast("Invite link copied", "success");
+		} catch {
+			toast("Couldn't copy the link", "error");
+		}
+	};
+
+	const inviteRoleNames = (roleIds: string[]) => roleIds.map((id) => roleNameMap().get(id) || id);
 
 	return (
 		<>
@@ -209,19 +327,21 @@ const ManageWorkspace = () => {
 				<PageContainerBody class="flex flex-col justify-between gap-4">
 					<div class="flex flex-col gap-6 flex-1">
 						<Show when={canModifyMembers()}>
-							<form class="p-lg bg-secondary-light rounded-xs" onSubmit={handleAddMember}>
-								<h1 class="text-lg mb-3">Add Someone to {workspaceInfoQuery.data?.name}</h1>
+							<form class="p-lg bg-secondary-light rounded-xs" onSubmit={handleInvite}>
+								<h1 class="text-lg mb-3">Invite Someone to {workspaceInfoQuery.data?.name}</h1>
 
 								<div class="flex items-center justify-center gap-3 w-full">
-									<UserSearchInput
-										placeholder="Search for user by name or username..."
+									<Input
+										type={InputType.Email}
+										placeholder="Email address to invite..."
 										class="flex-2"
-										onUserSelect={handleUserSelect}
+										value={inviteEmail()}
+										onInput={(e) => setInviteEmail(e.currentTarget.value)}
 									/>
 									<InputDropdownCheckBox
 										placeholder={
-											currentRoleIds().length > 0
-												? `${currentRoleIds().length} role${currentRoleIds().length === 1 ? "" : "s"} selected`
+											inviteRoleIds().length > 0
+												? `${inviteRoleIds().length} role${inviteRoleIds().length === 1 ? "" : "s"} selected`
 												: "Add roles..."
 										}
 										styleVariant="medium"
@@ -232,9 +352,9 @@ const ManageWorkspace = () => {
 												value: role.id,
 											})) || []
 										}
-										checked={currentRoleIds()}
+										checked={inviteRoleIds()}
 										onToggle={(value) =>
-											setCurrentRoleIds((prev) =>
+											setInviteRoleIds((prev) =>
 												prev.includes(value)
 													? prev.filter((id) => id !== value)
 													: [...prev, value]
@@ -247,13 +367,138 @@ const ManageWorkspace = () => {
 										class="h-full flex items-center gap-2"
 										disabled={isSubmitting()}
 										loading={isSubmitting()}
-										loadingContent={() => <span>Adding...</span>}
+										loadingContent={() => <span>Sending...</span>}
 									>
 										<FiPlus size={16} />
-										Add Member
+										Send Invite
 									</Button>
 								</div>
 							</form>
+						</Show>
+
+						<Show when={(invitesQuery.data?.length ?? 0) > 0}>
+							<div class="flex flex-col gap-3 p-lg bg-secondary-light rounded-xs">
+								<h2 class="text-lg">Pending invitations</h2>
+								<ul class="flex flex-col gap-2">
+									<For each={invitesQuery.data ?? []}>
+										{(invite) => {
+											const isEditing = () => editingInviteId() === invite.id;
+											const isPendingRevoke = () => pendingRevokeId() === invite.id;
+											return (
+												<li class="flex flex-col gap-3 px-lg py-3 rounded-xs border border-border-color">
+													<div class="flex items-center gap-4">
+														<div class="flex flex-col min-w-0 flex-1">
+															<span class="text-white font-medium truncate">
+																{invite.email}
+															</span>
+															<span class="text-grey text-xs truncate">
+																{inviteRoleNames(invite.roles).join(", ") || "No roles"}
+															</span>
+														</div>
+														<Show when={canModifyMembers() && !isEditing()}>
+															<Show
+																when={isPendingRevoke()}
+																fallback={
+																	<div class="flex items-center gap-2">
+																		<Show when={inviteLinks()[invite.id]}>
+																			<Button
+																				variant={ButtonVariant.Outlined}
+																				class="flex items-center gap-2"
+																				onClick={() => copyInviteLink(invite.id)}
+																			>
+																				<FiCopy size={14} />
+																				Copy link
+																			</Button>
+																		</Show>
+																		<Button
+																			variant={ButtonVariant.Outlined}
+																			class="flex items-center gap-2"
+																			onClick={() =>
+																				beginEditInvite(invite.id, invite.roles)
+																			}
+																		>
+																			<FiEdit2 size={14} />
+																			Edit roles
+																		</Button>
+																		<Button
+																			variant={ButtonVariant.Outlined}
+																			onClick={() => resendInvite(invite.id)}
+																		>
+																			Resend
+																		</Button>
+																		<button
+																			aria-label="Revoke invite"
+																			onClick={() => setPendingRevokeId(invite.id)}
+																			class="text-error border border-border-color hover:bg-white/10 p-2 rounded-xs transition-colors cursor-pointer"
+																		>
+																			<FiTrash size={16} />
+																		</button>
+																	</div>
+																}
+															>
+																<div class="flex items-center gap-2">
+																	<Button
+																		variant={ButtonVariant.Contained}
+																		onClick={() => revokeInvite().catch(() => {})}
+																	>
+																		Revoke
+																	</Button>
+																	<Button
+																		variant={ButtonVariant.Outlined}
+																		onClick={() => setPendingRevokeId(null)}
+																	>
+																		Cancel
+																	</Button>
+																</div>
+															</Show>
+														</Show>
+													</div>
+													<Show when={isEditing()}>
+														<div class="flex items-center gap-2">
+															<InputDropdownCheckBox
+																placeholder={
+																	editingInviteRoleIds().length > 0
+																		? `${editingInviteRoleIds().length} role${editingInviteRoleIds().length === 1 ? "" : "s"} selected`
+																		: "Select roles..."
+																}
+																styleVariant="medium"
+																class="flex-1"
+																options={
+																	rolesQuery.data?.roles.map((role) => ({
+																		label: role.name,
+																		value: role.id,
+																	})) || []
+																}
+																checked={editingInviteRoleIds()}
+																onToggle={(value) =>
+																	setEditingInviteRoleIds((prev) =>
+																		prev.includes(value)
+																			? prev.filter((id) => id !== value)
+																			: [...prev, value]
+																	)
+																}
+															/>
+															<Button
+																variant={ButtonVariant.Contained}
+																loading={isSavingInvite()}
+																onClick={() => saveInviteRoles().catch(() => {})}
+															>
+																Save
+															</Button>
+															<Button
+																variant={ButtonVariant.Outlined}
+																onClick={cancelEditInvite}
+															>
+																Cancel
+															</Button>
+														</div>
+													</Show>
+												</li>
+											);
+										}}
+									</For>
+								</ul>
+							</div>
 						</Show>
 
 						<Suspense
