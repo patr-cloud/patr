@@ -224,6 +224,185 @@ async fn update_rejects_a_registry_change() {
 	assert_no_writes(server).await;
 }
 
+/// A Patr-registry deployment is named in the error the way a user would write
+/// it — `registry/workspace/repository`, not the repository's UUID.
+#[tokio::test]
+async fn registry_change_error_spells_out_a_patr_repository() {
+	let ids = Ids::new();
+	let server = setup::reset().await;
+
+	let repository_id = Uuid::parse_str("00000000000000000000000000000007").unwrap();
+
+	// The deployment is on Patr's registry; the config file says docker.io.
+	let existing = WithId::new(
+		ids.deployment,
+		Deployment {
+			registry: DeploymentRegistry::PatrRegistry {
+				registry: PatrRegistry,
+				repository_id,
+			},
+			..external_deployment("test-deployment", ids.runner, ids.machine_type, "1.26")
+		},
+	);
+
+	mount_runner(server, ids.workspace, ids.runner).await;
+	mount_deployment_list(server, ids.workspace, vec![existing.clone()]).await;
+	mount_deployment_info(
+		server,
+		ids.workspace,
+		existing,
+		running_details_with_volume(ids.volume),
+	)
+	.await;
+	mount_repository_info(server, ids.workspace, repository_id, "my-app").await;
+
+	let error = setup::apply(setup::state(ids.workspace), CONFIG, &[])
+		.await
+		.expect_err("apply should have rejected the registry change");
+
+	let message = error.to_string();
+	assert!(
+		message.contains(&format!("registry.patr.cloud/{}/my-app", ids.workspace)),
+		"the Patr registry should be spelled out as registry/workspace/repository, got: {message}"
+	);
+	assert!(
+		!message.contains(&repository_id.to_string()),
+		"the repository UUID shouldn't leak into the message, got: {message}"
+	);
+
+	assert_no_writes(server).await;
+}
+
+/// A Patr image is written `registry.patr.cloud/{workspace}/{repo}`, but a
+/// repository's name is only the part after the workspace — the workspace
+/// segment has to be stripped before looking it up.
+#[tokio::test]
+async fn patr_image_resolves_the_repository_after_the_workspace() {
+	let ids = Ids::new();
+	let server = setup::reset().await;
+
+	let repository_id = Uuid::parse_str("00000000000000000000000000000007").unwrap();
+
+	mount_runner(server, ids.workspace, ids.runner).await;
+	mount_machine_types(
+		server,
+		ids.workspace,
+		ids.other_machine_type,
+		ids.machine_type,
+	)
+	.await;
+	mount_deployment_list(server, ids.workspace, vec![]).await;
+	mount_repository_list(server, ids.workspace, repository_id, "my-app").await;
+	mount_deployment_create(server, ids.workspace, ids.deployment).await;
+
+	let config = CONFIG.replace(
+		r#"image: "docker.io/library/nginx:1.27""#,
+		&format!(
+			r#"image: "registry.patr.cloud/{}/my-app:1.27""#,
+			ids.workspace
+		),
+	);
+
+	setup::apply(setup::state(ids.workspace), &config, &[])
+		.await
+		.expect("apply failed");
+
+	let body = sole_body::<CreateDeploymentRequest>(
+		server,
+		"POST",
+		&format!("/workspace/{}/deployment", ids.workspace),
+	)
+	.await;
+
+	assert_eq!(
+		body.registry,
+		DeploymentRegistry::PatrRegistry {
+			registry: PatrRegistry,
+			repository_id,
+		}
+	);
+	assert_eq!(body.image_tag, "1.27");
+}
+
+/// An image belonging to another workspace can't be resolved here, and saying
+/// so beats letting the repository lookup fail with a confusing name.
+#[tokio::test]
+async fn patr_image_from_another_workspace_is_rejected() {
+	let ids = Ids::new();
+	let server = setup::reset().await;
+
+	let other_workspace = Uuid::parse_str("000000000000000000000000000000ff").unwrap();
+	let repository_id = Uuid::parse_str("00000000000000000000000000000007").unwrap();
+
+	mount_runner(server, ids.workspace, ids.runner).await;
+	mount_deployment_list(server, ids.workspace, vec![]).await;
+	mount_repository_list(server, ids.workspace, repository_id, "my-app").await;
+
+	let config = CONFIG.replace(
+		r#"image: "docker.io/library/nginx:1.27""#,
+		&format!(r#"image: "registry.patr.cloud/{other_workspace}/my-app:1.27""#),
+	);
+
+	let error = setup::apply(setup::state(ids.workspace), &config, &[])
+		.await
+		.expect_err("apply should have rejected another workspace's image");
+
+	let message = error.to_string();
+	assert!(
+		message.contains(&other_workspace.to_string()) &&
+			message.contains(&ids.workspace.to_string()),
+		"the error should name both workspaces, got: {message}"
+	);
+
+	assert_no_writes(server).await;
+}
+
+/// Repository names can contain slashes, so a leading segment that isn't a
+/// workspace ID stays part of the name.
+#[tokio::test]
+async fn patr_image_keeps_a_slashed_repository_name() {
+	let ids = Ids::new();
+	let server = setup::reset().await;
+
+	let repository_id = Uuid::parse_str("00000000000000000000000000000007").unwrap();
+
+	mount_runner(server, ids.workspace, ids.runner).await;
+	mount_machine_types(
+		server,
+		ids.workspace,
+		ids.other_machine_type,
+		ids.machine_type,
+	)
+	.await;
+	mount_deployment_list(server, ids.workspace, vec![]).await;
+	mount_repository_list(server, ids.workspace, repository_id, "team/my-app").await;
+	mount_deployment_create(server, ids.workspace, ids.deployment).await;
+
+	let config = CONFIG.replace(
+		r#"image: "docker.io/library/nginx:1.27""#,
+		r#"image: "registry.patr.cloud/team/my-app:1.27""#,
+	);
+
+	setup::apply(setup::state(ids.workspace), &config, &[])
+		.await
+		.expect("apply failed");
+
+	let body = sole_body::<CreateDeploymentRequest>(
+		server,
+		"POST",
+		&format!("/workspace/{}/deployment", ids.workspace),
+	)
+	.await;
+
+	assert_eq!(
+		body.registry,
+		DeploymentRegistry::PatrRegistry {
+			registry: PatrRegistry,
+			repository_id,
+		}
+	);
+}
+
 /// With no matching deployment, apply creates one and asks for it to be
 /// deployed straight away.
 #[tokio::test]

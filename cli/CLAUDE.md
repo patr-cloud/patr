@@ -58,6 +58,12 @@ reverted. Concretely:
   describe must do the same, or applying will wipe them.
 - **The registry can't change after create** — `UpdateDeployment` has no `registry` field. Apply
   compares against the existing deployment and errors on mismatch.
+- **Patr images are `registry.patr.cloud/{workspace}/{repository}`** — that's the path the
+  registry serves (`/v2/{workspace_id}/{repo_name}`), but `container_registry_repository.name`
+  is only the part *after* the workspace. `IaacDeploymentImage` parses the whole thing into
+  `repository`, so apply strips the workspace segment before looking the repository up. A
+  leading segment that isn't a workspace UUID stays part of the name — names can contain
+  slashes.
 - `--dry-run` resolves every reference (so unresolvable names still fail) but issues no
   create/update call.
 

@@ -8,7 +8,8 @@ pub mod schema;
 use std::collections::BTreeMap;
 
 use cli::prelude::*;
-use models::api::workspace::{deployment::*, runner::*};
+use models::api::workspace::{container_registry::*, deployment::*, runner::*};
+use time::OffsetDateTime;
 use wiremock::{
 	Mock,
 	MockServer,
@@ -111,6 +112,55 @@ pub async fn mount_deployment_info(
 		}))
 		.mount(server)
 		.await;
+}
+
+/// Mount `GET /workspace/{id}/container-registry/{repository_id}`.
+pub async fn mount_repository_info(
+	server: &MockServer,
+	workspace_id: Uuid,
+	repository_id: Uuid,
+	name: &str,
+) {
+	Mock::given(method("GET"))
+		.and(path(format!(
+			"/workspace/{workspace_id}/container-registry/{repository_id}"
+		)))
+		.respond_with(setup::success(GetContainerRepositoryInfoResponse {
+			repository: repository(name),
+		}))
+		.mount(server)
+		.await;
+}
+
+/// Mount `GET /workspace/{id}/container-registry` returning one repository.
+pub async fn mount_repository_list(
+	server: &MockServer,
+	workspace_id: Uuid,
+	repository_id: Uuid,
+	name: &str,
+) {
+	Mock::given(method("GET"))
+		.and(path(format!(
+			"/workspace/{workspace_id}/container-registry"
+		)))
+		.respond_with(setup::success_list(
+			ListContainerRepositoriesResponse {
+				repositories: vec![WithId::new(repository_id, repository(name))],
+			},
+			1,
+		))
+		.mount(server)
+		.await;
+}
+
+/// A container repository with the given name.
+pub fn repository(name: &str) -> ContainerRepository {
+	ContainerRepository {
+		name: name.to_string(),
+		size: 0,
+		last_updated: OffsetDateTime::UNIX_EPOCH,
+		created: OffsetDateTime::UNIX_EPOCH,
+	}
 }
 
 /// Mount `PATCH /workspace/{id}/deployment/{deployment_id}`.

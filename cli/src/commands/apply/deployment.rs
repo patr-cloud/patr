@@ -8,19 +8,46 @@ use models::{
 
 use crate::prelude::*;
 
-/// Render a [`DeploymentRegistry`] for error messages — `registry/image` for
-/// external registries, `registry/<repository id>` for Patr's.
-fn describe_registry(registry: &DeploymentRegistry) -> String {
-	match registry {
+/// Render a [`DeploymentRegistry`] as the image reference a user would write —
+/// `registry/image` for external registries, `registry/workspace/repository`
+/// for Patr's.
+///
+/// A [`DeploymentRegistry`] only carries the repository's ID, so this looks the
+/// name up.
+async fn describe_registry(
+	workspace_id: Uuid,
+	token: &BearerToken,
+	registry: &DeploymentRegistry,
+) -> Result<String, AppError> {
+	Ok(match registry {
 		DeploymentRegistry::PatrRegistry {
 			registry,
 			repository_id,
-		} => format!("{registry}/{repository_id}"),
+		} => {
+			let repository = make_request(
+				ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
+					.path(GetContainerRepositoryInfoPath {
+						workspace_id,
+						repository_id: *repository_id,
+					})
+					.headers(GetContainerRepositoryInfoRequestHeaders {
+						authorization: token.clone(),
+						user_agent: constants::USER_AGENT,
+					})
+					.build(),
+			)
+			.await?
+			.body
+			.repository
+			.name;
+
+			format!("{registry}/{workspace_id}/{repository}")
+		}
 		DeploymentRegistry::ExternalRegistry {
 			registry,
 			image_name,
 		} => format!("{registry}/{image_name}"),
-	}
+	})
 }
 
 /// Apply an IaaC deployment resource — creating the deployment on Patr and
@@ -50,6 +77,33 @@ pub async fn apply(
 			repository,
 			tag,
 		} => {
+			// A Patr image is written `registry.patr.cloud/{workspace}/{repo}`
+			// (that's the path the registry itself serves), but a repository's
+			// name is only the part after the workspace. Strip the workspace
+			// segment when there is one — leaving it in would look for a
+			// repository named `{workspace}/{repo}`, which never matches.
+			let repository = match repository.split_once('/') {
+				Some((prefix, rest)) => match Uuid::parse_str(prefix) {
+					Ok(prefix) if prefix == workspace_id => rest.to_string(),
+					// Applying a file to a workspace it wasn't written for. The
+					// image doesn't exist here, so say that rather than letting
+					// the lookup fail with a confusing name.
+					Ok(prefix) => {
+						return Err(AppError::IaacError(IaacError::ResourceNotFound(format!(
+							concat!(
+								"the image for `{}` is in workspace `{}`, ",
+								"but this is being applied to workspace `{}`"
+							),
+							rest, prefix, workspace_id
+						))));
+					}
+					// Repository names can contain slashes, so anything that
+					// isn't a workspace ID is part of the name.
+					Err(_) => repository,
+				},
+				None => repository,
+			};
+
 			let repository_id = make_request(
 				ApiRequest::<ListContainerRepositoriesRequest>::builder()
 					.path(ListContainerRepositoriesPath { workspace_id })
@@ -217,8 +271,8 @@ pub async fn apply(
 					"delete the deployment and apply again to move it."
 				),
 				name,
-				describe_registry(&existing.deployment.registry),
-				describe_registry(&registry),
+				describe_registry(workspace_id, &token, &existing.deployment.registry).await?,
+				describe_registry(workspace_id, &token, &registry).await?,
 			))));
 		}
 
