@@ -85,28 +85,41 @@ pub async fn execute(
 	let file = fs::read_to_string(&args.file)
 		.await
 		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
-	let resources = serde_path_to_error::deserialize::<_, Vec<IaacResource>>(
-		&mut YamlDeserializer::from_str(&file).unwrap(),
-	)
-	.map_err(|err| AppError::IaacParseError(err.to_string()))?;
+
+	// A config file is a list of resources, and the whole file is the source of
+	// truth for the resources it declares — unknown keys and missing required
+	// fields are both errors, so a file can't silently mean something other
+	// than what it says.
+	let mut deserializer = YamlDeserializer::from_str(&file)
+		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
+	let resources = serde_path_to_error::deserialize::<_, Vec<IaacResource>>(&mut deserializer)
+		.map_err(|err| AppError::IaacParseError(err.to_string()))?;
 
 	for resource in resources {
-		// Apply the resource
+		// Apply the resource. A dry run still resolves every reference in the
+		// file, so anything unresolvable is reported — it just stops short of
+		// the create/update call.
 		match resource.data {
 			IaacResourceData::Deployment(deployment) => {
-				deployment::apply(workspace_id, token.clone(), deployment).await?;
+				deployment::apply(workspace_id, token.clone(), args.dry_run, deployment).await?;
 			}
 			IaacResourceData::Domain(domain) => {
-				domain::apply(workspace_id, token.clone(), domain).await?;
+				domain::apply(workspace_id, token.clone(), args.dry_run, domain).await?;
 			}
 			IaacResourceData::ManagedUrl(managed_url) => {
-				managed_url::apply(workspace_id, token.clone(), managed_url).await?;
+				managed_url::apply(workspace_id, token.clone(), args.dry_run, managed_url).await?;
 			}
 		}
 	}
 
 	CommandOutput::builder()
-		.text(format!("File `{}` applied successfully", args.file))
+		.text(
+			if args.dry_run {
+				format!("File `{}` is valid, no changes applied", args.file)
+			} else {
+				format!("File `{}` applied successfully", args.file)
+			},
+		)
 		.json(ApiSuccessResponseBody::empty().to_json_value())
 		.build()
 		.into_result()

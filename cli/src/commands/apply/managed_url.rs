@@ -11,6 +11,7 @@ use crate::prelude::*;
 pub async fn apply(
 	workspace_id: Uuid,
 	token: BearerToken,
+	dry_run: bool,
 	IaacManagedUrl {
 		id,
 		sub_domain,
@@ -198,6 +199,14 @@ pub async fn apply(
 	// If an ID is provided, specifically use that. Otherwise, use the found
 	// managed URL ID by subdomain and domain.
 	if let Some(managed_url_id) = id.or(managed_url_id) {
+		if dry_run {
+			eprintln!(
+				"Would update existing managed URL `{}.{}/{}` with ID `{}`",
+				sub_domain, domain, path, managed_url_id
+			);
+			return Ok(());
+		}
+
 		eprintln!(
 			"Updating existing managed URL `{}.{}/{}` with ID `{}`",
 			sub_domain, domain, path, managed_url_id
@@ -227,6 +236,14 @@ pub async fn apply(
 		);
 	} else {
 		// If no ID is provided and no managed URL is found, create a new one.
+		if dry_run {
+			eprintln!(
+				"Would create new managed URL `{}.{}/{}`",
+				sub_domain, domain, path
+			);
+			return Ok(());
+		}
+
 		eprintln!(
 			"Creating new managed URL `{}.{}/{}`",
 			sub_domain, domain, path

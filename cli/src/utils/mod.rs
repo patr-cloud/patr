@@ -29,11 +29,21 @@ pub enum RunnerType {
 pub mod constants {
 	use headers::UserAgent;
 
-	/// The base URL for the Patr API
-	pub const API_BASE_URL: &str = if cfg!(debug_assertions) {
-		"http://localhost:3000"
-	} else {
-		"https://api.patr.cloud"
+	/// The base URL for the Patr API.
+	///
+	/// `PATR_TEST_API_BASE_URL` is a test-only hook: the integration suite sets
+	/// it so the CLI talks to a stub server instead of a real API. CI never
+	/// sets it for release builds, so shipped binaries always get the values
+	/// below.
+	pub const API_BASE_URL: &str = match option_env!("PATR_TEST_API_BASE_URL") {
+		Some(url) => url,
+		None => {
+			if cfg!(debug_assertions) {
+				"http://localhost:3000"
+			} else {
+				"https://api.patr.cloud"
+			}
+		}
 	};
 
 	/// The base URL for the Patr Frontend
