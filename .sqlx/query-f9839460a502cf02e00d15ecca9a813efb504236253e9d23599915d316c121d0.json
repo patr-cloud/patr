@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE \"user\" SET password_reset_attempts = COALESCE(password_reset_attempts, 0) + 1 WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f9839460a502cf02e00d15ecca9a813efb504236253e9d23599915d316c121d0"
+}

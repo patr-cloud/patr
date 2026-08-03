@@ -116,18 +116,26 @@ pub async fn reset_password(
 		return Err(ErrorType::InvalidPasswordResetToken);
 	}
 
+	// Two things keep the ceiling above reachable, and it needs both:
+	//
+	// - Counted on the pool, not the request transaction. Every path below that
+	//   rejects the attempt returns an `Err`, which rolls the transaction back;
+	//   an increment written there would be discarded along with it.
+	// - COALESCE, because the column is nullable and rests at NULL — nothing
+	//   initialises it on sign-up, and a successful reset nulls it again. `NULL
+	//   + 1` is `NULL`, so a bare increment would never leave NULL.
 	query!(
 		r#"
 		UPDATE
 			"user"
 		SET
-			password_reset_attempts = password_reset_attempts + 1
+			password_reset_attempts = COALESCE(password_reset_attempts, 0) + 1
 		WHERE
 			id = $1;
 		"#,
 		user_data.id
 	)
-	.execute(&mut **database)
+	.execute(&state.database)
 	.await?;
 
 	let Some(password_reset_token) = user_data.password_reset_token else {

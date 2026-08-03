@@ -50,3 +50,6 @@ export const DEBUG_OTP = '000000';
  * invite link without a mail sink to read the emailed token from.
  */
 export const DEBUG_INVITE_TOKEN = '0'.repeat(64);
+
+/** Mirrors `api/src/utils/mod.rs::MAX_PASSWORD_RESET_ATTEMPTS`. */
+export const MAX_PASSWORD_RESET_ATTEMPTS = 5;

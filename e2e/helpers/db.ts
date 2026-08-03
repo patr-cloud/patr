@@ -72,15 +72,6 @@ export async function backdatePasswordResetToken(username: string, age: string):
 	);
 }
 
-export async function exhaustPasswordResetAttempts(username: string, count: number): Promise<void> {
-	await pool.query(
-		`UPDATE "user"
-     SET password_reset_attempts = $1
-     WHERE username = $2`,
-		[count, username],
-	);
-}
-
 // Backdate a web_login row's token_expiry to force the SPA's refresh path
 // on the next authenticated request.
 export async function backdateWebLoginExpiry(loginId: string, age: string): Promise<void> {

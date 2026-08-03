@@ -85,7 +85,10 @@ pub async fn accept_workspace_invite(
 
 	if !token_valid {
 		// Count the failed attempt, then return a not-found so we don't leak
-		// whether the invite exists.
+		// whether the invite exists. Counted on the pool rather than the request
+		// transaction, which the `Err` below rolls back — an increment written
+		// there would be discarded with it, leaving the ceiling above
+		// permanently unreachable.
 		query!(
 			r#"
 			UPDATE
@@ -97,7 +100,7 @@ pub async fn accept_workspace_invite(
 			"#,
 			invite_id as _,
 		)
-		.execute(&mut **database)
+		.execute(&state.database)
 		.await?;
 
 		return Err(ErrorType::InviteNotFound);
