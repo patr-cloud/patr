@@ -43,3 +43,10 @@ export const TURNSTILE_TOKEN = '1x00000000000000000000AA';
  * OTP can use this verbatim instead of reading it from the database.
  */
 export const DEBUG_OTP = '000000';
+
+/**
+ * Debug builds also make the workspace-invite token deterministic (see
+ * `api/src/utils/mod.rs::WORKSPACE_INVITE_DEBUG_TOKEN`), so specs can follow an
+ * invite link without a mail sink to read the emailed token from.
+ */
+export const DEBUG_INVITE_TOKEN = '0'.repeat(64);

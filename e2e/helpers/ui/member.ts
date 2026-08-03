@@ -5,29 +5,47 @@ import { expect } from '@playwright/test';
 
 export async function openMembersPage(page: Page): Promise<void> {
 	await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
-	// UserSearchInput is the stable anchor on this page.
+	// Anchor on the workspace header's Members tab rather than the invite form:
+	// the form is gated behind modifyRoles, so anchoring on it would hang for a
+	// viewer-only member.
 	await page
-		.getByPlaceholder('Search for user by name or username...')
+		.getByRole('link', { name: 'Members', exact: true })
 		.first()
 		.waitFor({ state: 'visible', timeout: 15_000 });
 }
 
-// UserSearchInput is a custom <input type=text> with placeholder
-// "Search for user by name or username...". Search triggers at >=3 chars.
-export async function searchUser(page: Page, query: string): Promise<void> {
-	await page.getByPlaceholder('Search for user by name or username...').fill(query);
+// The invite form's email field. Rendered only for members with modifyRoles.
+export async function fillInviteEmail(page: Page, email: string): Promise<void> {
+	await page.getByPlaceholder('Email address to invite...').fill(email);
 }
 
-export async function selectUserFromSearch(page: Page, username: string): Promise<void> {
-	// The search dropdown wraps each result in a <button>. The members list
-	// renders rows as <li role="button"> and also shows "@username", so a
-	// plain getByText().first() races between the two when the user is already
-	// a member. Scoping to <button> picks only the search-dropdown result.
-	await page
-		.locator('button')
-		.filter({ hasText: `@${username}` })
-		.first()
+export async function submitInvite(page: Page): Promise<void> {
+	await page.getByRole('button', { name: /^(Send Invite|Sending\.\.\.)$/ }).click();
+}
+
+// A pending invite's row in the "Pending invitations" list, located by the
+// invited email address.
+export function inviteRow(page: Page, email: string) {
+	return page.locator('li').filter({ hasText: email }).first();
+}
+
+export async function copyInviteLink(page: Page, email: string): Promise<void> {
+	await inviteRow(page, email)
+		.getByRole('button', { name: /Copy link/i })
 		.click();
+}
+
+export async function resendInvite(page: Page, email: string): Promise<void> {
+	await inviteRow(page, email)
+		.getByRole('button', { name: /^Resend$/ })
+		.click();
+}
+
+// Revoke is a two-step confirm: the trash icon arms it, then "Revoke" commits.
+export async function revokeInvite(page: Page, email: string): Promise<void> {
+	const row = inviteRow(page, email);
+	await row.getByRole('button', { name: 'Revoke invite' }).click();
+	await row.getByRole('button', { name: /^Revoke$/ }).click();
 }
 
 export async function openRolesDropdown(page: Page): Promise<void> {
@@ -58,10 +76,6 @@ export async function toggleRoleOption(page: Page, roleName: string): Promise<vo
 		.first();
 	await option.scrollIntoViewIfNeeded({ timeout: 10_000 });
 	await option.click();
-}
-
-export async function submitAddMember(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /^(Add Member|Adding\.\.\.)$/ }).click();
 }
 
 export async function openMemberDetail(page: Page, fullName: string): Promise<void> {

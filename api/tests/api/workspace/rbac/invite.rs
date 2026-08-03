@@ -6,6 +6,9 @@ use models::{
 			AcceptWorkspaceInviteRequest,
 			AcceptWorkspaceInviteRequestHeaders,
 			AcceptWorkspaceInviteResponse,
+			PreviewWorkspaceInviteRequest,
+			PreviewWorkspaceInviteRequestHeaders,
+			PreviewWorkspaceInviteResponse,
 		},
 		workspace::rbac::user::*,
 	},
@@ -67,6 +70,29 @@ async fn accept(
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(AcceptWorkspaceInviteRequest {
+					invite_id,
+					token: invite_token.to_string(),
+				})
+				.build(),
+		)
+		.await
+}
+
+/// Preview an invite as the given user, without consuming it.
+async fn preview(
+	setup: &TestSetup,
+	token: &BearerToken,
+	invite_id: Uuid,
+	invite_token: &str,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<PreviewWorkspaceInviteRequest>::builder()
+				.headers(PreviewWorkspaceInviteRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(PreviewWorkspaceInviteRequest {
 					invite_id,
 					token: invite_token.to_string(),
 				})
@@ -504,4 +530,131 @@ async fn resend_invite_works() {
 			.get(&invitee.user_id),
 		Some(&vec![role.id])
 	);
+}
+
+#[tokio::test]
+async fn preview_returns_workspace_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let invitee = setup.create_test_user().await;
+
+	let invite_id = invite_returning_id(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		&user_email(&invitee),
+		vec![role.id],
+	)
+	.await;
+
+	let response = preview(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	assert_eq!(response.status_code(), StatusCode::OK);
+	assert_eq!(
+		response
+			.json::<ApiSuccessResponseBody<PreviewWorkspaceInviteResponse>>()
+			.response
+			.workspace_name,
+		workspace.name,
+		"preview should name the workspace being joined"
+	);
+
+	// Preview is read-only: the invite is still pending and still acceptable.
+	assert_eq!(
+		list_invites(&setup, &admin.access_token, workspace.id)
+			.await
+			.len(),
+		1,
+		"preview must not consume the invite"
+	);
+	let accept_response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	assert_eq!(accept_response.status_code(), StatusCode::ACCEPTED);
+}
+
+#[tokio::test]
+async fn preview_bad_token_fails() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let invitee = setup.create_test_user().await;
+
+	let invite_id = invite_returning_id(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		&user_email(&invitee),
+		vec![role.id],
+	)
+	.await;
+
+	let response = preview(&setup, &invitee.access_token, invite_id, "not-the-real-token").await;
+	assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
+
+	// An unknown invite id looks the same as a bad token.
+	let unknown = preview(&setup, &invitee.access_token, Uuid::new_v4(), &debug_token()).await;
+	assert_eq!(unknown.status_code(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn preview_expired_fails() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let invitee = setup.create_test_user().await;
+
+	let invite_id = invite_returning_id(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		&user_email(&invitee),
+		vec![role.id],
+	)
+	.await;
+
+	setup
+		.execute_sql(&format!(
+			"UPDATE workspace_user_invite SET token_expiry = NOW() - INTERVAL '1 day' WHERE id = '{invite_id}'"
+		))
+		.await;
+
+	let response = preview(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn preview_does_not_burn_accept_attempts() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let invitee = setup.create_test_user().await;
+
+	let invite_id = invite_returning_id(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		&user_email(&invitee),
+		vec![role.id],
+	)
+	.await;
+
+	// Preview deliberately does not count attempts, so hammering it must not
+	// lock the invite out of being accepted.
+	for _ in 0..(constants::MAX_WORKSPACE_INVITE_ATTEMPTS + 2) {
+		let response = preview(&setup, &invitee.access_token, invite_id, "wrong-token").await;
+		assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
+	}
+
+	let attempts = setup
+		.query_one_i32(&format!(
+			"SELECT invite_attempts FROM workspace_user_invite WHERE id = '{invite_id}'"
+		))
+		.await;
+	assert_eq!(attempts, 0, "preview must not increment invite_attempts");
+
+	let accept_response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	assert_eq!(accept_response.status_code(), StatusCode::ACCEPTED);
 }
