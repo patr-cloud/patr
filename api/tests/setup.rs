@@ -148,6 +148,34 @@ impl TestSetup {
 		req.json(&request.body).await
 	}
 
+	/// Open a websocket request against the web-dashboard server, copying the
+	/// typed request headers (auth, user-agent). Returns the raw `TestResponse`
+	/// so the caller can either upgrade it (`.into_websocket()`) or assert a
+	/// rejection status for the negative cases.
+	pub async fn open_web_dashboard_websocket<H: Headers>(
+		&self,
+		path: &str,
+		headers: H,
+	) -> TestResponse {
+		let mut req = self.web.get_websocket(path);
+		req = req.add_header("X-Real-IP", random_ipv4().to_string());
+		for (name, value) in headers.to_header_map().iter() {
+			req = req.add_header(name.clone(), value.to_str().unwrap());
+		}
+		req.await
+	}
+
+	/// Same as [`open_web_dashboard_websocket`] but against the API-token
+	/// server.
+	pub async fn open_api_websocket<H: Headers>(&self, path: &str, headers: H) -> TestResponse {
+		let mut req = self.api.get_websocket(path);
+		req = req.add_header("X-Real-IP", random_ipv4().to_string());
+		for (name, value) in headers.to_header_map().iter() {
+			req = req.add_header(name.clone(), value.to_str().unwrap());
+		}
+		req.await
+	}
+
 	/// Same as [`make_api_call`] but pins the request's `X-Real-IP` to a
 	/// specific IP. Used by tests that exercise IP-keyed behaviour like API
 	/// token IP restrictions.

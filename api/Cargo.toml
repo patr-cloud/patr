@@ -88,7 +88,7 @@ woothee                        = { workspace = true, features = ["default"] }
 
 [dev-dependencies]
 anyhow    = { workspace = true, features = ["default"] }
-axum-test = { workspace = true, features = ["default"] }
+axum-test = { workspace = true, features = ["default", "ws"] }
 flate2    = { workspace = true, features = ["rust_backend"] }
 ipnetwork = { workspace = true, features = ["default"] }
 tar       = { workspace = true, features = [] }

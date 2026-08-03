@@ -74,6 +74,9 @@ pub struct WebSocketActorArgs<E: RunnerExecutor> {
 	pub database: sqlx::Pool<DatabaseType>,
 	/// Reference to the ResourceSupervisor for sending resource notifications.
 	pub supervisor_ref: ActorRef<ResourceSupervisorMessage>,
+	/// The executor's initialized state, needed to construct an executor for
+	/// interactive shell sessions.
+	pub runner_state: E::InitializedState,
 }
 
 /// The mutable state held by a running [`WebSocketActor`].
@@ -84,6 +87,9 @@ pub struct WebSocketActorState<E: RunnerExecutor> {
 	pub database: sqlx::Pool<DatabaseType>,
 	/// Reference to the ResourceSupervisor for sending resource notifications.
 	pub supervisor_ref: ActorRef<ResourceSupervisorMessage>,
+	/// The executor's initialized state, used to construct an executor for
+	/// interactive shell sessions.
+	pub runner_state: E::InitializedState,
 	/// Current reconnection backoff duration. Reset on successful connect.
 	pub reconnect_backoff: Duration,
 	/// Write half of the active WS connection. `None` when disconnected.
@@ -131,6 +137,7 @@ where
 			config: args.config,
 			database: args.database,
 			supervisor_ref: args.supervisor_ref,
+			runner_state: args.runner_state,
 			reconnect_backoff: Duration::from_secs(1),
 			ws_sink: None,
 		})
@@ -468,6 +475,22 @@ where
 					resource_id: id,
 					resource_type: ResourceType::ManagedURL,
 				});
+		}
+		ShellSessionRequested {
+			session_id,
+			deployment_id,
+		} => {
+			// Spawn the session as a detached, unlinked task: a shell ending or
+			// erroring must never tear down this control socket, and sessions
+			// don't restart (the user reconnects).
+			let config = state.config.clone();
+			let executor = E::new(&config, state.runner_state.clone()).await;
+			tokio::spawn(crate::shell_session::run_shell_session::<E>(
+				config,
+				session_id,
+				deployment_id,
+				executor,
+			));
 		}
 		ExposureTypeRequired => {
 			warn!("Server requested exposure type to be set again");

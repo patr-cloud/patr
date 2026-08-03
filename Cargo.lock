@@ -920,11 +920,13 @@ checksum = "3ce104337e4cced59ded9c61f9f18dab0a4670fd339e84f334312686440a9958"
 dependencies = [
  "anyhow",
  "axum",
+ "base64 0.22.1",
  "bytes",
  "bytesize",
  "cookie",
  "educe",
  "expect-json",
+ "futures-util",
  "http 1.4.2",
  "http-body-util",
  "hyper 1.10.1",
@@ -937,8 +939,10 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "tokio",
+ "tokio-tungstenite 0.29.0",
  "tower",
  "url",
+ "uuid",
 ]
 
 [[package]]
@@ -1305,6 +1309,7 @@ dependencies = [
  "thiserror 2.0.18",
  "time",
  "tokio",
+ "tokio-tungstenite 0.30.0",
  "tracing",
  "tracing-log",
  "tracing-subscriber",

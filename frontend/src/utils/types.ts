@@ -70,6 +70,7 @@ export type ActionTypes =
 	| "restore"
 	| "start"
 	| "stop"
+	| "shell"
 	| "add"
 	| "verify"
 	| "regenerateToken"

@@ -173,6 +173,12 @@ pub enum DeploymentPermission {
 	/// The user will only be able to stop the deployment with no other updates
 	/// allowed.
 	Stop,
+	/// This permission allows the user to open an interactive shell inside the
+	/// running deployment (like `docker exec -it`), streaming stdin/stdout to
+	/// and from the container. It grants direct runtime access to the
+	/// deployment's container, so it should be treated as a sensitive
+	/// permission.
+	Shell,
 }
 
 /// A list of all permissions that can be granted on a container registry
@@ -487,5 +493,32 @@ where
 	fn decode(value: <DB as sqlx::Database>::ValueRef<'q>) -> Result<Self, BoxDynError> {
 		let permission = <String as Decode<'q, DB>>::decode(value)?;
 		Ok(FromStr::from_str(&permission)?)
+	}
+}
+
+#[cfg(test)]
+mod shell_permission_tests {
+	use std::str::FromStr;
+
+	use super::*;
+
+	#[test]
+	fn shell_permission_serializes_to_canonical_string() {
+		let permission = Permission::Deployment(DeploymentPermission::Shell);
+		assert_eq!(permission.to_string(), "deployment::shell");
+	}
+
+	#[test]
+	fn shell_permission_round_trips_from_str() {
+		let parsed = Permission::from_str("deployment::shell").unwrap();
+		assert_eq!(parsed, Permission::Deployment(DeploymentPermission::Shell));
+	}
+
+	#[test]
+	fn shell_permission_is_listed() {
+		assert!(
+			Permission::list_all().contains(&Permission::Deployment(DeploymentPermission::Shell)),
+			"deployment::shell must be enumerated so fresh installs seed it"
+		);
 	}
 }

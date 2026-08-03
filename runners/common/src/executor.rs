@@ -112,4 +112,18 @@ pub trait RunnerExecutor: Sized {
 	fn list_running_managed_urls(
 		&self,
 	) -> impl Future<Output = Result<Vec<Uuid>, RunnerError>> + Send;
+
+	/// Open an interactive shell (`exec` with a TTY) inside the running
+	/// deployment and pump bytes to/from it via [`ShellIo`]. Runs until the
+	/// shell exits, [`ShellIo::inbound`] closes, or an error occurs; returns
+	/// the shell's exit code. No bollard/Docker types cross this boundary so
+	/// `runners/common` stays substrate-agnostic.
+	///
+	/// [`ShellIo`]: crate::shell_session::ShellIo
+	/// [`ShellIo::inbound`]: crate::shell_session::ShellIo::inbound
+	fn open_deployment_shell(
+		&self,
+		deployment_id: Uuid,
+		io: crate::shell_session::ShellIo,
+	) -> impl Future<Output = Result<i32, RunnerError>> + Send;
 }

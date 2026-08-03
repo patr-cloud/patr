@@ -10,6 +10,7 @@ use prost::Message;
 use crate::prelude::*;
 
 pub mod deploy_history;
+pub mod shell;
 
 /// Fetch the first available deployment machine type for a workspace.
 async fn first_machine_type(setup: &TestSetup, workspace_id: Uuid) -> Uuid {

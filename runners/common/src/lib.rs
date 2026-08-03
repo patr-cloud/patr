@@ -28,6 +28,9 @@ pub mod migrations;
 pub mod routes;
 /// All the runner related structs and functions.
 pub mod runner;
+/// The runner side of the interactive deployment-shell feature: dialing the
+/// per-session websocket back to the API and pumping bytes to/from the exec.
+pub mod shell_session;
 /// This module contains all the utilities used by the API. This includes things
 /// like the config parser, the [`tower::Layer`]s that are used to parse the
 /// requests, etc.
