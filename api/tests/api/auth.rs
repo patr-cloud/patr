@@ -548,7 +548,7 @@ async fn docker_login_works() {
 		.await;
 
 	let response = setup
-		.make_web_dashboard_call(
+		.make_api_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
 					authorization: Authorization::basic("patr", &api_token.token),
@@ -574,7 +574,7 @@ async fn docker_login_wrong_credentials() {
 	let _user = setup.create_test_user().await;
 
 	let response = setup
-		.make_web_dashboard_call(
+		.make_api_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
 					authorization: Authorization::basic("wronguser", "wrongpassword"),
@@ -602,7 +602,7 @@ async fn docker_login_invalid_token() {
 	// token. The handler now validates it, so this must be rejected instead of
 	// echoed back as a bearer credential.
 	let response = setup
-		.make_web_dashboard_call(
+		.make_api_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
 					authorization: Authorization::basic(
