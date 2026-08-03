@@ -34,6 +34,7 @@ pub mod prelude {
 			clear_screen,
 			constants,
 			make_request,
+			stream_request,
 		},
 	};
 }

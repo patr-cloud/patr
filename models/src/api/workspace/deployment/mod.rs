@@ -29,6 +29,8 @@ mod start_deployment;
 mod stop_deployment;
 /// The endpoint to stream the logs of a deployment
 mod stream_deployment_logs;
+/// The endpoint to open an interactive shell inside a deployment
+mod stream_deployment_shell;
 /// The endpoint to update a deployment's details
 mod update_deployment;
 
@@ -43,6 +45,7 @@ pub use self::{
 	start_deployment::*,
 	stop_deployment::*,
 	stream_deployment_logs::*,
+	stream_deployment_shell::*,
 	update_deployment::*,
 };
 use crate::{prelude::*, utils::constants};

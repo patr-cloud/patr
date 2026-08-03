@@ -147,6 +147,14 @@ macros::declare_stream_endpoint!(
 			/// The ID of the managed URL that was deleted
 			id: Uuid,
 		},
+		/// The API is asking this runner to open an interactive shell session
+		/// by dialing back `StreamRunnerShellConnection` with this session ID.
+		ShellSessionRequested {
+			/// The session ID to dial back with
+			session_id: Uuid,
+			/// The deployment to open the shell into
+			deployment_id: Uuid,
+		},
 	},
 	client_msg = {
 		/// Set the exposure type for the runner

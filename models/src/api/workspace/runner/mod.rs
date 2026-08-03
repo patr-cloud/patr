@@ -16,6 +16,8 @@ mod remove_runner_from_workspace;
 mod stream_runner_data_for_workspace;
 /// The endpoint to stream runner process logs in real time
 mod stream_runner_logs;
+/// The endpoint the runner dials back to open an interactive deployment shell
+mod stream_runner_shell_connection;
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -31,6 +33,7 @@ pub use self::{
 	remove_runner_from_workspace::*,
 	stream_runner_data_for_workspace::*,
 	stream_runner_logs::*,
+	stream_runner_shell_connection::*,
 };
 use crate::prelude::*;
 
