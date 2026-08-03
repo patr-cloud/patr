@@ -1,6 +1,6 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
-use models::rbac::{Permission, RunnerPermission, WorkspacePermission};
+use models::rbac::WorkspacePermission;
 
 use super::helpers::*;
 use crate::prelude::*;
@@ -67,20 +67,53 @@ async fn loki_push_no_execute_permission_returns_403() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	// Create an API token for the admin whose ceiling carries only a
-	// harmless permission (no Runner::Execute).
+	// A service account with no roles at all, so it authenticates fine but
+	// holds no Runner::Execute on this (or any) runner. Using the runner's own
+	// service account would pass, since approve grants it Execute on itself.
+	let service_account = setup
+		.create_test_service_account(&admin.access_token, workspace.id, Vec::new())
+		.await;
+
+	let body = make_loki_push_body(r#"{job="test"}"#, &["hello"]);
+	let response = setup
+		.make_loki_call(
+			http::Method::POST,
+			"/loki/api/v1/push",
+			vec![
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
+				(
+					http::header::AUTHORIZATION,
+					&basic_auth(&runner.id, &service_account.token),
+				),
+			],
+			body,
+		)
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::FORBIDDEN,
+		"expected 403 without Runner::Execute permission"
+	);
+}
+
+#[tokio::test]
+async fn loki_push_user_api_token_returns_401() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+
+	// A workspace super-admin API token has every permission, but log push is
+	// restricted to service accounts (runners) — a human credential must not
+	// be able to write logs on a runner's behalf. The route only authenticates
+	// service accounts, so an API token fails authentication outright.
 	let api_token = setup
 		.create_test_api_token(
 			&admin.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(
-						setup.get_permission_id(Permission::ViewRoles),
-						BTreeSet::from([workspace.id]),
-					)]),
-				},
-			)]),
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
 		)
 		.await;
 
@@ -102,8 +135,8 @@ async fn loki_push_no_execute_permission_returns_403() {
 
 	assert_eq!(
 		response.status_code(),
-		StatusCode::FORBIDDEN,
-		"expected 403 without Runner::Execute permission"
+		StatusCode::UNAUTHORIZED,
+		"log push must be rejected for non-service-account clients"
 	);
 }
 
@@ -121,22 +154,8 @@ async fn loki_push_unknown_runner_matches_missing_permission() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	// Runner::Execute on `runner` only, so `other_runner` exists but is denied.
-	let api_token = setup
-		.create_test_api_token(
-			&admin.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(
-						setup.get_permission_id(Permission::Runner(RunnerPermission::Execute)),
-						BTreeSet::from([runner.id]),
-					)]),
-				},
-			)]),
-		)
-		.await;
-
+	// `runner`'s own service account holds Runner::Execute on `runner` only,
+	// so `other_runner` exists but is denied.
 	let mut responses = Vec::new();
 	for runner_id in [other_runner.id, Uuid::new_v4()] {
 		let response = setup
@@ -147,7 +166,7 @@ async fn loki_push_unknown_runner_matches_missing_permission() {
 					(http::header::CONTENT_TYPE, "application/x-protobuf"),
 					(
 						http::header::AUTHORIZATION,
-						&basic_auth(&runner_id, &api_token.token),
+						&basic_auth(&runner_id, &runner.token),
 					),
 				],
 				make_loki_push_body(r#"{job="test"}"#, &["hello"]),
@@ -175,13 +194,6 @@ async fn loki_push_valid_auth_succeeds() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	let labels = format!(
 		r#"{{job="test", runner_id="{}", workspace_id="{}", deployment_id="{}"}}"#,
 		runner.id, workspace.id, deployment.id,
@@ -196,7 +208,7 @@ async fn loki_push_valid_auth_succeeds() {
 				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			body,
@@ -222,13 +234,6 @@ async fn loki_push_label_rewriting() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	// Push with spoofed runner_id and workspace_id — the server should rewrite
 	// them to the actual values derived from auth.
 	let spoofed_runner = Uuid::new_v4();
@@ -247,7 +252,7 @@ async fn loki_push_label_rewriting() {
 				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			body,
@@ -300,13 +305,6 @@ async fn loki_push_wrong_deployment_returns_403() {
 		.create_test_deployment(&user.access_token, workspace.id, runner_b.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	// Runner A tries to push logs with runner B's deployment_id
 	let labels = format!(
 		r#"{{job="test", runner_id="{}", workspace_id="{}", deployment_id="{}"}}"#,
@@ -322,7 +320,7 @@ async fn loki_push_wrong_deployment_returns_403() {
 				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner_a.id, &api_token.token),
+					&basic_auth(&runner_a.id, &runner_a.token),
 				),
 			],
 			body,
@@ -345,13 +343,6 @@ async fn loki_push_invalid_snappy_returns_400() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	// Send garbage bytes (not valid snappy)
 	let response = setup
 		.make_loki_call(
@@ -361,7 +352,7 @@ async fn loki_push_invalid_snappy_returns_400() {
 				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			vec![0xDE, 0xAD, 0xBE, 0xEF],
@@ -384,13 +375,6 @@ async fn loki_push_invalid_protobuf_returns_400() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	// Valid snappy of garbage (not valid protobuf)
 	let garbage = vec![0x01, 0x02, 0x03, 0x04, 0x05];
 	let compressed = snap::raw::Encoder::new()
@@ -405,7 +389,7 @@ async fn loki_push_invalid_protobuf_returns_400() {
 				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			compressed,
