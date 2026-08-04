@@ -404,7 +404,9 @@ const ManageWorkspace = () => {
 																			<Button
 																				variant={ButtonVariant.Outlined}
 																				class="flex items-center gap-2"
-																				onClick={() => copyInviteLink(invite.id)}
+																				onClick={() =>
+																					copyInviteLink(invite.id)
+																				}
 																			>
 																				<FiCopy size={14} />
 																				Copy link
@@ -428,7 +430,9 @@ const ManageWorkspace = () => {
 																		</Button>
 																		<button
 																			aria-label="Revoke invite"
-																			onClick={() => setPendingRevokeId(invite.id)}
+																			onClick={() =>
+																				setPendingRevokeId(invite.id)
+																			}
 																			class="text-error border border-border-color hover:bg-white/10 p-2 rounded-xs transition-colors cursor-pointer"
 																		>
 																			<FiTrash size={16} />

@@ -5,13 +5,13 @@ use crate::prelude::*;
 /// The endpoint to accept a workspace invite
 mod accept_workspace_invite;
 mod api_token;
-/// The endpoint to preview a workspace invite before accepting
-mod preview_workspace_invite;
 mod change_password;
 mod get_user_details;
 mod get_user_info;
 mod list_workspaces;
 mod mfa;
+/// The endpoint to preview a workspace invite before accepting
+mod preview_workspace_invite;
 #[expect(unused_variables)]
 mod recovery_options;
 mod search_for_user;
@@ -23,11 +23,11 @@ mod web_logins;
 
 use self::{
 	accept_workspace_invite::*,
-	preview_workspace_invite::*,
 	change_password::*,
 	get_user_details::*,
 	get_user_info::*,
 	list_workspaces::*,
+	preview_workspace_invite::*,
 	search_for_user::*,
 	update_user_info::*,
 };

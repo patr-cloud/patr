@@ -38,10 +38,10 @@ mod delete_workspace;
 /// The endpoint to get the details of a workspace
 mod get_workspace_info;
 
-/// The endpoint for a user to leave a workspace they are a member of
-mod leave_workspace;
 /// The endpoint to check if a workspace name is available
 mod is_name_available;
+/// The endpoint for a user to leave a workspace they are a member of
+mod leave_workspace;
 /// The endpoint to update the details of a workspace
 mod update_workspace_info;
 
@@ -49,8 +49,8 @@ pub use self::{
 	create_workspace::*,
 	delete_workspace::*,
 	get_workspace_info::*,
-	leave_workspace::*,
 	is_name_available::*,
+	leave_workspace::*,
 	update_workspace_info::*,
 };
 

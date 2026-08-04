@@ -7,8 +7,6 @@ use crate::prelude::*;
 mod accept_workspace_invite;
 /// All endpoints related to API tokens
 mod api_token;
-/// The endpoint to preview a workspace invite before accepting
-mod preview_workspace_invite;
 /// The endpoint to change the password of a user
 mod change_password;
 /// The endpoint to get the details of any user, based on their userId
@@ -19,6 +17,8 @@ mod get_user_info;
 mod list_user_workspaces;
 /// All endpoints related to MFA
 mod mfa;
+/// The endpoint to preview a workspace invite before accepting
+mod preview_workspace_invite;
 /// All endpoints related to recovery options
 mod recovery_options;
 /// The endpoint to search for users
@@ -33,12 +33,12 @@ mod web_logins;
 pub use self::{
 	accept_workspace_invite::*,
 	api_token::*,
-	preview_workspace_invite::*,
 	change_password::*,
 	get_user_details::*,
 	get_user_info::*,
 	list_user_workspaces::*,
 	mfa::*,
+	preview_workspace_invite::*,
 	recovery_options::*,
 	search_for_user::*,
 	social_logins::*,

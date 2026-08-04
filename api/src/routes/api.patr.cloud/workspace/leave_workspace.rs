@@ -5,9 +5,9 @@ use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-/// The handler for the authenticated user to leave a workspace. The owner (super
-/// admin) of a workspace cannot leave it — they must transfer or delete it
-/// instead.
+/// The handler for the authenticated user to leave a workspace. The owner
+/// (super admin) of a workspace cannot leave it — they must transfer or delete
+/// it instead.
 pub async fn leave_workspace(
 	AuthenticatedAppRequest {
 		request:

@@ -150,7 +150,9 @@ async fn invite_and_accept_adds_member_with_role() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_response = invite(
@@ -227,7 +229,9 @@ async fn invite_existing_member_fails() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
 		.await;
@@ -269,7 +273,9 @@ async fn list_and_revoke_invite() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite(
@@ -323,7 +329,9 @@ async fn accept_wrong_account_fails() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 	let other = setup.create_test_user().await;
 
@@ -350,7 +358,9 @@ async fn accept_expired_fails() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite(
@@ -382,7 +392,9 @@ async fn accept_bad_token_fails() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite(
@@ -398,7 +410,13 @@ async fn accept_bad_token_fails() {
 	.id
 	.id;
 
-	let response = accept(&setup, &invitee.access_token, invite_id, "not-the-real-token").await;
+	let response = accept(
+		&setup,
+		&invitee.access_token,
+		invite_id,
+		"not-the-real-token",
+	)
+	.await;
 	assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 
 	// The real token still works after a failed attempt.
@@ -427,15 +445,31 @@ async fn invite_duplicate_email_fails() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 	let email = user_email(&invitee);
 
-	let first = invite(&setup, &admin.access_token, workspace.id, &email, vec![role.id]).await;
+	let first = invite(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		&email,
+		vec![role.id],
+	)
+	.await;
 	assert_eq!(first.status_code(), StatusCode::CREATED);
 
 	// A second invite to the same pending email is rejected.
-	let second = invite(&setup, &admin.access_token, workspace.id, &email, vec![role.id]).await;
+	let second = invite(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		&email,
+		vec![role.id],
+	)
+	.await;
 	assert_eq!(second.status_code(), StatusCode::CONFLICT);
 }
 
@@ -444,8 +478,12 @@ async fn update_invite_roles_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role_a = setup.create_test_role(&admin.access_token, workspace.id).await;
-	let role_b = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role_a = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+	let role_b = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite_returning_id(
@@ -493,7 +531,9 @@ async fn resend_invite_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite_returning_id(
@@ -537,7 +577,9 @@ async fn preview_returns_workspace_name() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite_returning_id(
@@ -577,7 +619,9 @@ async fn preview_bad_token_fails() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite_returning_id(
@@ -589,11 +633,23 @@ async fn preview_bad_token_fails() {
 	)
 	.await;
 
-	let response = preview(&setup, &invitee.access_token, invite_id, "not-the-real-token").await;
+	let response = preview(
+		&setup,
+		&invitee.access_token,
+		invite_id,
+		"not-the-real-token",
+	)
+	.await;
 	assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 
 	// An unknown invite id looks the same as a bad token.
-	let unknown = preview(&setup, &invitee.access_token, Uuid::new_v4(), &debug_token()).await;
+	let unknown = preview(
+		&setup,
+		&invitee.access_token,
+		Uuid::new_v4(),
+		&debug_token(),
+	)
+	.await;
 	assert_eq!(unknown.status_code(), StatusCode::BAD_REQUEST);
 }
 
@@ -602,7 +658,9 @@ async fn preview_expired_fails() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite_returning_id(
@@ -629,7 +687,9 @@ async fn preview_does_not_burn_accept_attempts() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite_returning_id(
@@ -664,7 +724,9 @@ async fn accept_exceeds_max_attempts_locks_invite() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let invitee = setup.create_test_user().await;
 
 	let invite_id = invite_returning_id(

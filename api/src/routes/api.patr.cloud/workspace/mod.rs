@@ -23,11 +23,11 @@ mod delete_workspace;
 /// The handler to get the information of a workspace. This includes the
 /// workspace's name, the user who created it, and the date it was created.
 mod get_workspace_info;
-/// The handler for a user to leave a workspace they are a member of.
-mod leave_workspace;
 /// The handler to check if a workspace name is available. This is used when
 /// creating a new workspace to ensure that the name is unique.
 mod is_name_available;
+/// The handler for a user to leave a workspace they are a member of.
+mod leave_workspace;
 /// The handler to update the information of a workspace. At the moment, only
 /// the name can be updated. However, this will be expanded in the future. At
 /// least one parameter must be provided for the update.

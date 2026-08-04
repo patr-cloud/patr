@@ -1,9 +1,9 @@
 /// The endpoint to invite a user, by email, to a workspace
 mod invite_user_to_workspace;
-/// The endpoint to list all the pending invites for a workspace
-mod list_workspace_invites;
 /// The endpoint to list all the users in a workspace
 mod list_users_in_workspace;
+/// The endpoint to list all the pending invites for a workspace
+mod list_workspace_invites;
 /// The endpoint to remove a user from a workspace
 mod remove_user_from_workspace;
 /// The endpoint to resend a pending workspace invite

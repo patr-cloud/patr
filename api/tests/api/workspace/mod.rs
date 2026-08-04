@@ -622,7 +622,9 @@ async fn member_can_leave_workspace() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup.create_test_role(&admin.access_token, workspace.id).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
 		.await;
