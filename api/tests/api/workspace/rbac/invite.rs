@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use apalis::prelude::Data;
 use apalis_cron::Tick;
 use models::{
+	ApiErrorResponseBody,
 	api::{
 		user::{
 			AcceptWorkspaceInviteRequest,
@@ -801,4 +802,55 @@ async fn cleanup_removes_only_long_expired_invites() {
 		))
 		.await;
 	assert_eq!(orphaned_roles, 0, "invite role rows must be cleaned up too");
+}
+
+#[tokio::test]
+async fn expired_invite_without_token_looks_missing() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+	let invitee = setup.create_test_user().await;
+
+	let invite_id = invite_returning_id(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		&user_email(&invitee),
+		vec![role.id],
+	)
+	.await;
+
+	setup
+		.execute_sql(&format!(
+			"UPDATE workspace_user_invite SET token_expiry = NOW() - INTERVAL '1 day' \
+			 WHERE id = '{invite_id}'"
+		))
+		.await;
+
+	// Both errors are a 400, so only the error type tells them apart. Someone
+	// holding an invite id but no token must not learn that the invite is real.
+	for response in [
+		accept(&setup, &invitee.access_token, invite_id, "wrong-token").await,
+		preview(&setup, &invitee.access_token, invite_id, "wrong-token").await,
+	] {
+		assert_eq!(
+			response.json::<ApiErrorResponseBody>().error,
+			ErrorType::InviteNotFound,
+			"an expired invite must not announce itself to a caller without the token"
+		);
+	}
+
+	// With the real token the caller has earned the more specific error.
+	for response in [
+		accept(&setup, &invitee.access_token, invite_id, &debug_token()).await,
+		preview(&setup, &invitee.access_token, invite_id, &debug_token()).await,
+	] {
+		assert_eq!(
+			response.json::<ApiErrorResponseBody>().error,
+			ErrorType::InviteExpired
+		);
+	}
 }

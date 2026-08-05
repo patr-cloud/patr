@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT EXISTS(SELECT 1 FROM user_email WHERE user_id = $1 AND email = $2) AS \"owns_email!: bool\";",
+  "query": "SELECT EXISTS(SELECT 1 FROM \"user\" WHERE id = $1 AND recovery_email = $2) AS \"owns_email!: bool\";",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       null
     ]
   },
-  "hash": "e5bc587bc8b2b1fc14b1d10ef1b2b93c553ab17b19d6be691df211d1abf1a64a"
+  "hash": "11e946b7767cf989ced791bc4ee462b898b97309bddc8e135f3105d4a7991cb0"
 }

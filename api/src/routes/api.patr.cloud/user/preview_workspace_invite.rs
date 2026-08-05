@@ -56,20 +56,7 @@ pub async fn preview_workspace_invite(
 		return Err(ErrorType::InviteNotFound);
 	};
 
-	if invite.token_expiry <= now {
-		return Err(ErrorType::InviteExpired);
-	}
-
-	let parsed_hash = PasswordHash::new(&invite.token_hash)
-		.inspect_err(|err| {
-			error!("Error parsing stored invite token hash: `{err}`");
-		})
-		.map_err(ErrorType::server_error)?;
-
-	// A read-only check: don't count attempts here, the accept endpoint does the
-	// brute-force gating. The token keyspace is large enough that the rate
-	// limiter is sufficient protection for this preview.
-	let token_valid = argon2::Argon2::new_with_secret(
+	let success = argon2::Argon2::new_with_secret(
 		state.config.password_pepper.as_ref(),
 		Algorithm::Argon2id,
 		Version::V0x13,
@@ -79,11 +66,23 @@ pub async fn preview_workspace_invite(
 		error!("Error creating Argon2: `{err}`");
 	})
 	.map_err(ErrorType::server_error)?
-	.verify_password(token.as_bytes(), &parsed_hash)
+	.verify_password(
+		token.as_bytes(),
+		&PasswordHash::new(&invite.token_hash).map_err(ErrorType::server_error)?,
+	)
+	.inspect_err(|err| {
+		info!("Error verifying invite token: `{err}`");
+	})
 	.is_ok();
 
-	if !token_valid {
+	if !success {
 		return Err(ErrorType::InviteNotFound);
+	}
+
+	// Only past a valid token, so that a caller holding nothing but an invite id
+	// can't tell an expired invite apart from one that never existed.
+	if invite.token_expiry <= now {
+		return Err(ErrorType::InviteExpired);
 	}
 
 	AppResponse::builder()
