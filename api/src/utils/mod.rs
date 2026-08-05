@@ -120,11 +120,6 @@ pub mod constants {
 	/// this, the invitee must be re-invited.
 	pub const WORKSPACE_INVITE_VALIDITY: time::Duration = time::Duration::days(7);
 
-	/// The maximum number of times a workspace invite may be accepted-attempted
-	/// (wrong token) before the invite is effectively locked. Mirrors
-	/// [`MAX_SIGN_UP_ATTEMPTS`].
-	pub const MAX_WORKSPACE_INVITE_ATTEMPTS: i32 = 5;
-
 	/// In debug builds the workspace-invite token is deterministic so that
 	/// integration and e2e tests can accept invites without a mail sink to read
 	/// the emailed token from — the same trick that makes the OTP `000000` via

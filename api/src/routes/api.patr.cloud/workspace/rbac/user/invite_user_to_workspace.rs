@@ -124,12 +124,11 @@ pub async fn invite_user_to_workspace(
 				email,
 				token_hash,
 				token_expiry,
-				invite_attempts,
 				invited_by,
 				created
 			)
 		VALUES
-			($1, $2, $3, $4, $5, 0, $6, $7)
+			($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id AS "id: Uuid";
 		"#,
 		Uuid::new_v4() as _,

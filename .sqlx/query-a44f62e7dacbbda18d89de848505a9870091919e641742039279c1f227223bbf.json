@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE workspace_user_invite SET token_hash = $1, token_expiry = $2, invite_attempts = 0, invited_by = $3, created = $4 WHERE id = $5;",
+  "query": "UPDATE workspace_user_invite SET token_hash = $1, token_expiry = $2, invited_by = $3, created = $4 WHERE id = $5;",
   "describe": {
     "columns": [],
     "parameters": {
@@ -14,5 +14,5 @@
     },
     "nullable": []
   },
-  "hash": "0889e61360878d5b0f37a06c371962b58ebfa30d948428f674056cb5988acac1"
+  "hash": "a44f62e7dacbbda18d89de848505a9870091919e641742039279c1f227223bbf"
 }

@@ -39,8 +39,7 @@ pub async fn accept_workspace_invite(
 			workspace_id AS "workspace_id: Uuid",
 			email,
 			token_hash,
-			token_expiry,
-			invite_attempts
+			token_expiry
 		FROM
 			workspace_user_invite
 		WHERE
@@ -56,12 +55,6 @@ pub async fn accept_workspace_invite(
 
 	if invite.token_expiry <= now {
 		return Err(ErrorType::InviteExpired);
-	}
-
-	// A locked invite (too many wrong-token attempts) is treated as
-	// non-existent so it can't be brute-forced further.
-	if invite.invite_attempts >= constants::MAX_WORKSPACE_INVITE_ATTEMPTS {
-		return Err(ErrorType::InviteNotFound);
 	}
 
 	let parsed_hash = PasswordHash::new(&invite.token_hash)
@@ -84,25 +77,7 @@ pub async fn accept_workspace_invite(
 	.is_ok();
 
 	if !token_valid {
-		// Count the failed attempt, then return a not-found so we don't leak
-		// whether the invite exists. Counted on the pool rather than the request
-		// transaction, which the `Err` below rolls back — an increment written
-		// there would be discarded with it, leaving the ceiling above
-		// permanently unreachable.
-		query!(
-			r#"
-			UPDATE
-				workspace_user_invite
-			SET
-				invite_attempts = invite_attempts + 1
-			WHERE
-				id = $1;
-			"#,
-			invite_id as _,
-		)
-		.execute(&state.database)
-		.await?;
-
+		// Reported as a not-found so we don't leak whether the invite exists.
 		return Err(ErrorType::InviteNotFound);
 	}
 

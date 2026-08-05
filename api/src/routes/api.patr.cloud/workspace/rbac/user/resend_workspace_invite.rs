@@ -90,7 +90,6 @@ pub async fn resend_workspace_invite(
 		SET
 			token_hash = $1,
 			token_expiry = $2,
-			invite_attempts = 0,
 			invited_by = $3,
 			created = $4
 		WHERE

@@ -683,7 +683,7 @@ async fn preview_expired_fails() {
 }
 
 #[tokio::test]
-async fn preview_does_not_burn_accept_attempts() {
+async fn repeated_wrong_tokens_do_not_lock_invite() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
@@ -701,65 +701,20 @@ async fn preview_does_not_burn_accept_attempts() {
 	)
 	.await;
 
-	// Preview deliberately does not count attempts, so hammering it must not
-	// lock the invite out of being accepted.
-	for _ in 0..(constants::MAX_WORKSPACE_INVITE_ATTEMPTS + 2) {
+	// A ceiling on a 256-bit token would only let a third party who knows the
+	// `invite_id` lock the invitee out, so there deliberately isn't one.
+	for _ in 0..8 {
+		let response = accept(&setup, &invitee.access_token, invite_id, "wrong-token").await;
+		assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
+
 		let response = preview(&setup, &invitee.access_token, invite_id, "wrong-token").await;
 		assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 	}
 
-	let attempts = setup
-		.query_one_i32(&format!(
-			"SELECT invite_attempts FROM workspace_user_invite WHERE id = '{invite_id}'"
-		))
-		.await;
-	assert_eq!(attempts, 0, "preview must not increment invite_attempts");
-
 	let accept_response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
-	assert_eq!(accept_response.status_code(), StatusCode::ACCEPTED);
-}
-
-#[tokio::test]
-async fn accept_exceeds_max_attempts_locks_invite() {
-	let setup = setup().await.expect("failed to setup test server");
-	let admin = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let role = setup
-		.create_test_role(&admin.access_token, workspace.id)
-		.await;
-	let invitee = setup.create_test_user().await;
-
-	let invite_id = invite_returning_id(
-		&setup,
-		&admin.access_token,
-		workspace.id,
-		&user_email(&invitee),
-		vec![role.id],
-	)
-	.await;
-
-	// Burn through the allowance with wrong tokens.
-	for _ in 0..constants::MAX_WORKSPACE_INVITE_ATTEMPTS {
-		let response = accept(&setup, &invitee.access_token, invite_id, "wrong-token").await;
-		assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
-	}
-
-	let attempts = setup
-		.query_one_i32(&format!(
-			"SELECT invite_attempts FROM workspace_user_invite WHERE id = '{invite_id}'"
-		))
-		.await;
 	assert_eq!(
-		attempts,
-		constants::MAX_WORKSPACE_INVITE_ATTEMPTS,
-		"each failed accept should count an attempt"
-	);
-
-	// Once the ceiling is hit the invite is locked, even with the right token.
-	let response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
-	assert_eq!(
-		response.status_code(),
-		StatusCode::BAD_REQUEST,
-		"a locked invite must not be acceptable even with the correct token"
+		accept_response.status_code(),
+		StatusCode::ACCEPTED,
+		"wrong-token attempts must not lock a valid invite"
 	);
 }

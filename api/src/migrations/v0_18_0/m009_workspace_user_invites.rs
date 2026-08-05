@@ -1,9 +1,8 @@
 //! Adds the `workspace_user_invite` and `workspace_user_invite_role` tables
 //! that back the email-based "invite a user to a workspace" flow. An invite
-//! stores the invited email plus an argon2 hash of the emailed token (with an
-//! expiry and an attempt counter, exactly like the sign-up OTP), and the roles
-//! the invitee will be granted are held in the companion table until they
-//! accept.
+//! stores the invited email plus an argon2 hash of the emailed token and its
+//! expiry, and the roles the invitee will be granted are held in the companion
+//! table until they accept.
 
 use crate::prelude::*;
 
@@ -18,7 +17,6 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 
 			token_hash TEXT NOT NULL,
 			token_expiry TIMESTAMPTZ NOT NULL,
-			invite_attempts INTEGER NOT NULL,
 
 			invited_by UUID NOT NULL,
 			created TIMESTAMPTZ NOT NULL

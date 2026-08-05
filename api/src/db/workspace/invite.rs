@@ -15,7 +15,6 @@ pub async fn initialize_workspace_user_invite_tables(
 
 			token_hash TEXT NOT NULL,
 			token_expiry TIMESTAMPTZ NOT NULL,
-			invite_attempts INTEGER NOT NULL,
 
 			invited_by UUID NOT NULL,
 			created TIMESTAMPTZ NOT NULL
