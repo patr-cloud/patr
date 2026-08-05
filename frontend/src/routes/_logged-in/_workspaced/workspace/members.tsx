@@ -319,6 +319,10 @@ const ManageWorkspace = () => {
 
 	const inviteRoleNames = (roleIds: string[]) => roleIds.map((id) => roleNameMap().get(id) || id);
 
+	// An expired invite is still listed for a while so it can be resent, but its
+	// link no longer works — say so rather than showing it as merely pending.
+	const isExpired = (expiry: Date) => new Date(expiry).getTime() <= Date.now();
+
 	return (
 		<>
 			<Title>Workspace Members | Patr</Title>
@@ -388,8 +392,15 @@ const ManageWorkspace = () => {
 												<li class="flex flex-col gap-3 px-lg py-3 rounded-xs border border-border-color">
 													<div class="flex items-center gap-4">
 														<div class="flex flex-col min-w-0 flex-1">
-															<span class="text-white font-medium truncate">
-																{invite.email}
+															<span class="flex items-center gap-2 min-w-0">
+																<span class="text-white font-medium truncate">
+																	{invite.email}
+																</span>
+																<Show when={isExpired(invite.expiry)}>
+																	<span class="shrink-0 text-warning text-xs border border-warning-light rounded-xs px-2 py-px">
+																		Expired
+																	</span>
+																</Show>
 															</span>
 															<span class="text-grey text-xs truncate">
 																{inviteRoleNames(invite.roles).join(", ") || "No roles"}

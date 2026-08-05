@@ -120,6 +120,11 @@ pub mod constants {
 	/// this, the invitee must be re-invited.
 	pub const WORKSPACE_INVITE_VALIDITY: time::Duration = time::Duration::days(7);
 
+	/// How long an expired workspace invite is kept around before the cleanup
+	/// cron deletes it. The row is dead the moment it expires; this window only
+	/// exists so an admin can still see it in the pending list and resend it.
+	pub const WORKSPACE_INVITE_RETENTION: time::Duration = time::Duration::days(7);
+
 	/// In debug builds the workspace-invite token is deterministic so that
 	/// integration and e2e tests can accept invites without a mail sink to read
 	/// the emailed token from — the same trick that makes the OTP `000000` via

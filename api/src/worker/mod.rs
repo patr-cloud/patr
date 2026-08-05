@@ -1,5 +1,9 @@
+use std::str::FromStr;
+
 use apalis::prelude::*;
-use apalis_postgres::PostgresStorage;
+use apalis_cron::CronStream;
+use apalis_postgres::{PostgresStorage, shared::SharedPostgresStorage};
+use cron::Schedule;
 use futures::FutureExt;
 use serde::{Deserialize, Serialize};
 
@@ -8,14 +12,15 @@ use crate::prelude::*;
 /// The background workers for rendering, and sending emails.
 pub mod mailer;
 
+/// The cron job that deletes workspace invites that have been expired for
+/// longer than the retention window. Public so the integration tests can drive
+/// it directly.
+pub mod cleanup_expired_invites;
+
+use self::cleanup_expired_invites::cleanup_expired_invites;
+
 cfg_if! {
 	if #[cfg(feature = "cloud")] {
-		use std::str::FromStr;
-
-		use apalis_cron::CronStream;
-		use apalis_postgres::shared::SharedPostgresStorage;
-		use cron::Schedule;
-
 		/// The cron job that cleans up managed URLs whose FQDN has been
 		/// inactive for more than 7 days.
 		mod cleanup_inactive_managed_urls;
@@ -184,6 +189,30 @@ pub async fn run(state: &AppState) {
 	// TODO worker to clean up users who have signed up but haven't verified their
 	// email TODO worker to clean up password reset tokens that have expired
 	monitor
+		.register({
+			// Registered outside the `cloud` gate, unlike the crons above —
+			// those are all Cloudflare/domain jobs, but workspace invites exist
+			// in both flavors.
+			let state = state.clone();
+			move |_| {
+				let backend = SharedPostgresStorage::new(state.database.clone())
+					.make_shared()
+					.expect("Failed to create shared postgres storage for worker");
+
+				WorkerBuilder::new("cleanup-expired-invites")
+					.backend(
+						CronStream::new(
+							// Every day at 03:00
+							Schedule::from_str("0 0 3 * * *").expect(
+								"Failed to parse cron schedule for cleanup-expired-invites",
+							),
+						)
+						.pipe_to(backend),
+					)
+					.data(state.clone())
+					.build(cleanup_expired_invites)
+			}
+		})
 		.register({
 			let state = state.clone();
 			move |_| {

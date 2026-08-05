@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use apalis::prelude::Data;
+use apalis_cron::Tick;
 use models::{
 	api::{
 		user::{
@@ -717,4 +719,86 @@ async fn repeated_wrong_tokens_do_not_lock_invite() {
 		StatusCode::ACCEPTED,
 		"wrong-token attempts must not lock a valid invite"
 	);
+}
+
+#[tokio::test]
+async fn cleanup_removes_only_long_expired_invites() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+
+	let live = invite_returning_id(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		"live@example.com",
+		vec![role.id],
+	)
+	.await;
+	let recently_expired = invite_returning_id(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		"recent@example.com",
+		vec![role.id],
+	)
+	.await;
+	let long_expired = invite_returning_id(
+		&setup,
+		&admin.access_token,
+		workspace.id,
+		"stale@example.com",
+		vec![role.id],
+	)
+	.await;
+
+	// One expired yesterday (still inside the retention window, so the admin
+	// can resend it) and one expired well beyond it.
+	setup
+		.execute_sql(&format!(
+			"UPDATE workspace_user_invite SET token_expiry = NOW() - INTERVAL '1 day' \
+			 WHERE id = '{recently_expired}'"
+		))
+		.await;
+	setup
+		.execute_sql(&format!(
+			"UPDATE workspace_user_invite SET token_expiry = NOW() - INTERVAL '30 days' \
+			 WHERE id = '{long_expired}'"
+		))
+		.await;
+
+	api::worker::cleanup_expired_invites::cleanup_expired_invites(
+		Tick::default(),
+		Data::new(setup.state().clone()),
+	)
+	.await
+	.expect("cleanup failed");
+
+	let remaining = list_invites(&setup, &admin.access_token, workspace.id)
+		.await
+		.into_iter()
+		.map(|invite| invite.id)
+		.collect::<Vec<_>>();
+
+	assert!(remaining.contains(&live), "a live invite must survive");
+	assert!(
+		remaining.contains(&recently_expired),
+		"an invite inside the retention window must survive so it can be resent"
+	);
+	assert!(
+		!remaining.contains(&long_expired),
+		"a long-expired invite must be cleaned up"
+	);
+
+	// The role rows have no ON DELETE CASCADE, so the cron has to clear them
+	// itself or they leak.
+	let orphaned_roles = setup
+		.query_one_i32(&format!(
+			"SELECT COUNT(*)::INT FROM workspace_user_invite_role WHERE invite_id = '{long_expired}'"
+		))
+		.await;
+	assert_eq!(orphaned_roles, 0, "invite role rows must be cleaned up too");
 }

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM workspace_user_invite WHERE token_expiry < $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3f1ceb8386edaffe10d4e3b95923d68199fe948ff85eb562dfe95d104b06c0de"
+}
