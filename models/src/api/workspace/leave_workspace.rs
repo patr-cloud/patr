@@ -19,5 +19,6 @@ macros::declare_api_endpoint!(
 			extract_workspace_id: |req| req.path.workspace_id,
 		}
 	},
+	api = false,
 	audit_log = NoAuditLogger,
 );

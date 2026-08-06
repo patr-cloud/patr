@@ -23,5 +23,6 @@ macros::declare_api_endpoint!(
 			permission: Permission::ModifyRoles,
 		}
 	},
+	api = false,
 	audit_log = NoAuditLogger,
 );

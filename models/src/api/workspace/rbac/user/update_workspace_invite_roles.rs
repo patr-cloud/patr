@@ -24,6 +24,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::ModifyRoles,
 		}
 	},
+	api = false,
 	request = {
 		/// The new set of roles the invitee will be granted on acceptance
 		#[preprocess(none)]

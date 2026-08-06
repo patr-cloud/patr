@@ -44,6 +44,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::ViewRoles,
 		}
 	},
+	api = false,
 	response = {
 		/// The list of pending invites, each with its invite ID
 		pub invites: Vec<WithId<WorkspaceInvite>>,

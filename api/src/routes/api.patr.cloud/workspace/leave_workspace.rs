@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::api::workspace::*;
+use models::{api::workspace::*, rbac::WorkspacePermission};
 use rustis::commands::StringCommands;
 use time::OffsetDateTime;
 
@@ -30,26 +30,11 @@ pub async fn leave_workspace(
 ) -> Result<AppResponse<LeaveWorkspaceRequest>, ErrorType> {
 	info!("User `{}` leaving workspace `{workspace_id}`", user_data.id);
 
-	let is_owner = query!(
-		r#"
-		SELECT EXISTS(
-			SELECT
-				1
-			FROM
-				workspace
-			WHERE
-				id = $1 AND
-				super_admin_id = $2
-		) AS "is_owner!: bool";
-		"#,
-		workspace_id as _,
-		user_data.id as _,
-	)
-	.fetch_one(&mut **database)
-	.await?
-	.is_owner;
-
-	if is_owner {
+	if user_data
+		.permissions
+		.get(&workspace_id)
+		.is_some_and(WorkspacePermission::is_super_admin)
+	{
 		return Err(ErrorType::CannotLeaveWorkspaceAsOwner);
 	}
 

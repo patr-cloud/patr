@@ -24,6 +24,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::ModifyRoles,
 		}
 	},
+	api = false,
 	response = {
 		/// The refreshed accept link for this invite, containing the new
 		/// plaintext token, so the caller can offer a "copy link" affordance.

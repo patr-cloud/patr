@@ -15,6 +15,7 @@ macros::declare_api_endpoint!(
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
 	},
+	api = false,
 	request = {
 		/// The ID of the invite being accepted
 		#[preprocess(none)]
