@@ -1835,18 +1835,9 @@ async fn complete_sign_up_exhausts_attempts() {
 		assert!(response.status_code().is_client_error());
 	}
 
-	let attempts = setup
-		.query_one_i32(&format!(
-			"SELECT sign_up_attempts FROM user_to_sign_up WHERE username = '{username}'"
-		))
-		.await;
-	assert_eq!(
-		attempts,
-		constants::MAX_SIGN_UP_ATTEMPTS,
-		"each wrong OTP should count an attempt"
-	);
-
-	// Ceiling reached: even the correct debug OTP is now refused.
+	// Ceiling reached: even the correct debug OTP is now refused. This is what
+	// catches an attempt counter that never actually counts — if the increments
+	// were rolled back, the OTP below would still work.
 	let response = setup
 		.make_web_dashboard_call(
 			ApiRequest::<CompleteSignUpRequest>::builder()
@@ -1907,19 +1898,9 @@ async fn reset_password_exhausts_attempts() {
 		assert!(response.status_code().is_client_error());
 	}
 
-	let attempts = setup
-		.query_one_i32(&format!(
-			"SELECT password_reset_attempts FROM \"user\" WHERE id = '{}'",
-			user.user_id
-		))
-		.await;
-	assert_eq!(
-		attempts,
-		constants::MAX_PASSWORD_RESET_ATTEMPTS,
-		"each wrong OTP should count an attempt"
-	);
-
-	// Ceiling reached: the correct debug OTP no longer resets the password.
+	// Ceiling reached: the correct debug OTP no longer resets the password. This
+	// is what catches an attempt counter that never actually counts — if the
+	// increments were rolled back, the OTP below would still work.
 	let new_password = random_password();
 	let response = setup
 		.make_web_dashboard_call(

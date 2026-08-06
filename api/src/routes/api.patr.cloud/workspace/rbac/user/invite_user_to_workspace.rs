@@ -84,14 +84,9 @@ pub async fn invite_user_to_workspace(
 
 	let now = OffsetDateTime::now_utc();
 
-	// In debug builds the token is a fixed known value so tests/e2e can accept
-	// invites without a mail sink to read it from. In release it is a strong
-	// random value (two v4 UUIDs = 256 bits, non-hyphenated hex).
-	let token = if cfg!(debug_assertions) {
-		constants::WORKSPACE_INVITE_DEBUG_TOKEN.to_string()
-	} else {
-		format!("{}{}", Uuid::new_v4(), Uuid::new_v4())
-	};
+	// Two v4 UUIDs = 256 bits, non-hyphenated hex. Only its hash is stored, so
+	// the `accept_url` below is the one and only time it can be read back.
+	let token = format!("{}{}", Uuid::new_v4(), Uuid::new_v4());
 
 	let token_hash = argon2::Argon2::new_with_secret(
 		state.config.password_pepper.as_ref(),

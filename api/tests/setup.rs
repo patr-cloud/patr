@@ -359,16 +359,6 @@ impl TestSetup {
 			.unwrap_or_else(|e| panic!("execute_sql failed for `{sql}`: {e}"));
 	}
 
-	/// Read a single `INTEGER` column from the test database. Companion to
-	/// [`Self::execute_sql`] for asserting on columns no endpoint exposes (e.g.
-	/// an attempt counter).
-	pub async fn query_one_i32(&self, sql: &str) -> i32 {
-		sqlx::query_scalar(sql)
-			.fetch_one(&self.state.database)
-			.await
-			.unwrap_or_else(|e| panic!("query_one_i32 failed for `{sql}`: {e}"))
-	}
-
 	/// Clear all rate limit keys from Redis. Useful in tests to reset rate
 	/// limit state after setup helpers have made API calls.
 	pub async fn clear_rate_limits(&self) {

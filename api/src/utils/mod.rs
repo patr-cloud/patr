@@ -125,13 +125,6 @@ pub mod constants {
 	/// exists so an admin can still see it in the pending list and resend it.
 	pub const WORKSPACE_INVITE_RETENTION: time::Duration = time::Duration::days(7);
 
-	/// In debug builds the workspace-invite token is deterministic so that
-	/// integration and e2e tests can accept invites without a mail sink to read
-	/// the emailed token from — the same trick that makes the OTP `000000` via
-	/// [`OTP_RANGE`]. Never used in release builds, where the token is random.
-	pub const WORKSPACE_INVITE_DEBUG_TOKEN: &str =
-		"0000000000000000000000000000000000000000000000000000000000000000";
-
 	/// The issuer to be used for TOTP generation
 	pub const TOTP_ISSUER: &str = "app.patr.cloud";
 

@@ -8,7 +8,7 @@ import {
 	loginAs,
 	getOwnUserId,
 } from '@/prelude';
-import { DEBUG_INVITE_TOKEN, DEBUG_OTP } from '@/helpers/config';
+import { DEBUG_OTP } from '@/helpers/config';
 import { sql } from '@/helpers/db';
 import {
 	openMembersPage,
@@ -28,6 +28,8 @@ import { fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login'
 
 type InviteRow = { id: string; email: string; workspace_id: string };
 
+type Invite = { id: string; acceptPath: string };
+
 // Patr UUIDs are non-hyphenated everywhere (URLs, API payloads), but Postgres
 // renders `uuid` columns hyphenated — so strip them here or the id won't match
 // what the API expects.
@@ -37,10 +39,6 @@ async function inviteRowsFor(email: string): Promise<InviteRow[]> {
 		 FROM workspace_user_invite WHERE email = $1`,
 		[email],
 	);
-}
-
-function acceptUrl(inviteId: string): string {
-	return `/accept-invite?inviteId=${inviteId}&token=${DEBUG_INVITE_TOKEN}`;
 }
 
 async function withUI(
@@ -59,21 +57,34 @@ async function withUI(
 	}
 }
 
-// Sends an invite through the UI and returns the created invite's id.
+// Sends an invite through the UI and returns the created invite's id plus the
+// path of its accept link. The token is stored hashed, so the link the API hands
+// back on invite is the only place it can ever be read.
 async function inviteViaUI(
 	page: import('@playwright/test').Page,
 	email: string,
 	roleName: string,
-): Promise<string> {
+): Promise<Invite> {
 	await fillInviteEmail(page, email);
 	await openRolesDropdown(page);
 	await toggleRoleOption(page, roleName);
-	await submitInvite(page);
+
+	const [response] = await Promise.all([
+		page.waitForResponse(
+			(r) =>
+				r.request().method() === 'POST' &&
+				new URL(r.url()).pathname.endsWith('/rbac/user/invite'),
+		),
+		submitInvite(page),
+	]);
 	await expectToast(page, /Invite sent/i);
+
+	const { acceptUrl } = (await response.json()) as { acceptUrl: string };
+	const { pathname, search } = new URL(acceptUrl);
 
 	const rows = await inviteRowsFor(email);
 	expect(rows).toHaveLength(1);
-	return rows[0]!.id;
+	return { id: rows[0]!.id, acceptPath: `${pathname}${search}` };
 }
 
 test.describe('member > invite [UI]', () => {
@@ -96,9 +107,9 @@ test.describe('member > invite [UI]', () => {
 		const roles = await listRolesAPI(api, owner, owner.workspaceId);
 		const viewerRole = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
 
-		let inviteId = '';
+		let invite: Invite;
 		await withUI(browser, owner, async (page) => {
-			inviteId = await inviteViaUI(page, invitee.email, viewerRole.name);
+			invite = await inviteViaUI(page, invitee.email, viewerRole.name);
 		});
 
 		// The invitee opens the emailed link while logged in.
@@ -106,7 +117,7 @@ test.describe('member > invite [UI]', () => {
 		await loginAs(context, invitee);
 		const page = await context.newPage();
 		try {
-			await page.goto(acceptUrl(inviteId), { waitUntil: 'domcontentloaded' });
+			await page.goto(invite!.acceptPath, { waitUntil: 'domcontentloaded' });
 
 			// Confirmation screen names the workspace and does NOT auto-join.
 			await expect(
@@ -178,7 +189,7 @@ test.describe('member > invite [UI]', () => {
 		const page = await context.newPage();
 		try {
 			await openMembersPage(page);
-			const inviteId = await inviteViaUI(page, invitee.email, viewerRole.name);
+			const { id: inviteId } = await inviteViaUI(page, invitee.email, viewerRole.name);
 
 			await copyInviteLink(page, invitee.email);
 			const copied = await page.evaluate(() => navigator.clipboard.readText());
@@ -196,7 +207,7 @@ test.describe('member > invite [UI]', () => {
 		const viewerRole = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
 
 		await withUI(browser, owner, async (page) => {
-			const inviteId = await inviteViaUI(page, invitee.email, viewerRole.name);
+			const { id: inviteId } = await inviteViaUI(page, invitee.email, viewerRole.name);
 			await resendInvite(page, invitee.email);
 			// Deliberately not matching "Invite sent" too — that toast is still on
 			// screen from the invite above, so an alternation would pass without
@@ -215,9 +226,9 @@ test.describe('member > invite [UI]', () => {
 		const roles = await listRolesAPI(api, owner, owner.workspaceId);
 		const viewerRole = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
 
-		let inviteId = '';
+		let invite: Invite;
 		await withUI(browser, owner, async (page) => {
-			inviteId = await inviteViaUI(page, invitee.email, viewerRole.name);
+			invite = await inviteViaUI(page, invitee.email, viewerRole.name);
 			await revokeInvite(page, invitee.email);
 			await expectToast(page, /Invite revoked/i);
 			await expect
@@ -229,7 +240,7 @@ test.describe('member > invite [UI]', () => {
 		await loginAs(context, invitee);
 		const page = await context.newPage();
 		try {
-			await page.goto(acceptUrl(inviteId), { waitUntil: 'domcontentloaded' });
+			await page.goto(invite!.acceptPath, { waitUntil: 'domcontentloaded' });
 			await expect(page.getByRole('heading', { name: /Invalid invite/i })).toBeVisible({
 				timeout: 15_000,
 			});
@@ -245,16 +256,16 @@ test.describe('member > invite [UI]', () => {
 		const roles = await listRolesAPI(api, owner, owner.workspaceId);
 		const viewerRole = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
 
-		let inviteId = '';
+		let invite: Invite;
 		await withUI(browser, owner, async (page) => {
-			inviteId = await inviteViaUI(page, invitee.email, viewerRole.name);
+			invite = await inviteViaUI(page, invitee.email, viewerRole.name);
 		});
 
 		const context = await newContext(browser, bystander.clientIp);
 		await loginAs(context, bystander);
 		const page = await context.newPage();
 		try {
-			await page.goto(acceptUrl(inviteId), { waitUntil: 'domcontentloaded' });
+			await page.goto(invite!.acceptPath, { waitUntil: 'domcontentloaded' });
 			// Preview succeeds (the token is valid) — the ownership check bites on join.
 			await page.getByRole('button', { name: /^Join /i }).click();
 			await expect(page.getByRole('heading', { name: /Wrong account/i })).toBeVisible({
@@ -292,15 +303,15 @@ test.describe('member > invite > sign-up handoff [UI] @racy', () => {
 		const email = `${username}@example.com`;
 		const password = 'E2eTest!1Password';
 
-		let inviteId = '';
+		let invite: Invite;
 		await withUI(browser, owner, async (page) => {
-			inviteId = await inviteViaUI(page, email, viewerRole.name);
+			invite = await inviteViaUI(page, email, viewerRole.name);
 		});
 
 		const context = await newContext(browser);
 		const page = await context.newPage();
 		try {
-			await page.goto(acceptUrl(inviteId), { waitUntil: 'domcontentloaded' });
+			await page.goto(invite!.acceptPath, { waitUntil: 'domcontentloaded' });
 
 			// Signed out: the page offers sign-up and stashes the invite.
 			await expect(
@@ -309,7 +320,7 @@ test.describe('member > invite > sign-up handoff [UI] @racy', () => {
 			const stashed = await page.evaluate(() =>
 				sessionStorage.getItem('pendingWorkspaceInvite'),
 			);
-			expect(stashed).toContain(inviteId);
+			expect(stashed).toContain(invite!.id);
 
 			await page.getByRole('button', { name: /Create an account/i }).click();
 

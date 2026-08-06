@@ -20,11 +20,15 @@ use models::{
 
 use crate::prelude::*;
 
-/// The deterministic invite token used in debug builds (matches
-/// `WORKSPACE_INVITE_DEBUG_TOKEN`), so tests can accept invites without a mail
-/// sink to read the emailed token from.
-fn debug_token() -> String {
-	api::utils::constants::WORKSPACE_INVITE_DEBUG_TOKEN.to_string()
+/// Pull the plaintext invite token out of an accept link. The token is stored
+/// hashed, so the link handed back on invite/resend is the only place it can be
+/// read — the same affordance the dashboard's "copy link" button uses.
+fn token_from_accept_url(accept_url: &str) -> String {
+	accept_url
+		.split_once("token=")
+		.expect("accept_url should carry the invite token")
+		.1
+		.to_string()
 }
 
 /// The recovery email a `create_test_user` account is created with.
@@ -167,13 +171,13 @@ async fn invite_and_accept_adds_member_with_role() {
 	)
 	.await;
 	assert_eq!(invite_response.status_code(), StatusCode::CREATED);
-	let invite_id = invite_response
+	let created = invite_response
 		.json::<ApiSuccessResponseBody<InviteUserToWorkspaceResponse>>()
-		.response
-		.id
-		.id;
+		.response;
+	let invite_id = created.id.id;
+	let invite_token = token_from_accept_url(&created.accept_url);
 
-	let accept_response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	let accept_response = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(accept_response.status_code(), StatusCode::ACCEPTED);
 	assert_eq!(
 		accept_response
@@ -281,18 +285,14 @@ async fn list_and_revoke_invite() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
 		&user_email(&invitee),
 		vec![role.id],
 	)
-	.await
-	.json::<ApiSuccessResponseBody<InviteUserToWorkspaceResponse>>()
-	.response
-	.id
-	.id;
+	.await;
 
 	let invites = list_invites(&setup, &admin.access_token, workspace.id).await;
 	assert_eq!(invites.len(), 1);
@@ -323,7 +323,7 @@ async fn list_and_revoke_invite() {
 	);
 
 	// A revoked invite can no longer be accepted.
-	let accept_response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	let accept_response = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(accept_response.status_code(), StatusCode::BAD_REQUEST);
 }
 
@@ -338,21 +338,17 @@ async fn accept_wrong_account_fails() {
 	let invitee = setup.create_test_user().await;
 	let other = setup.create_test_user().await;
 
-	let invite_id = invite(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
 		&user_email(&invitee),
 		vec![role.id],
 	)
-	.await
-	.json::<ApiSuccessResponseBody<InviteUserToWorkspaceResponse>>()
-	.response
-	.id
-	.id;
+	.await;
 
 	// A different logged-in user (not the invited email) cannot accept.
-	let response = accept(&setup, &other.access_token, invite_id, &debug_token()).await;
+	let response = accept(&setup, &other.access_token, invite_id, &invite_token).await;
 	assert_eq!(response.status_code(), StatusCode::FORBIDDEN);
 }
 
@@ -366,18 +362,14 @@ async fn accept_expired_fails() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
 		&user_email(&invitee),
 		vec![role.id],
 	)
-	.await
-	.json::<ApiSuccessResponseBody<InviteUserToWorkspaceResponse>>()
-	.response
-	.id
-	.id;
+	.await;
 
 	// Backdate the expiry so the invite is stale.
 	setup
@@ -386,7 +378,7 @@ async fn accept_expired_fails() {
 		))
 		.await;
 
-	let response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	let response = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 }
 
@@ -400,18 +392,14 @@ async fn accept_bad_token_fails() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
 		&user_email(&invitee),
 		vec![role.id],
 	)
-	.await
-	.json::<ApiSuccessResponseBody<InviteUserToWorkspaceResponse>>()
-	.response
-	.id
-	.id;
+	.await;
 
 	let response = accept(
 		&setup,
@@ -423,7 +411,7 @@ async fn accept_bad_token_fails() {
 	assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 
 	// The real token still works after a failed attempt.
-	let ok = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	let ok = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(ok.status_code(), StatusCode::ACCEPTED);
 }
 
@@ -435,12 +423,26 @@ async fn invite_returning_id(
 	email: &str,
 	roles: Vec<Uuid>,
 ) -> Uuid {
-	invite(setup, token, workspace_id, email, roles)
+	invite_returning_id_and_token(setup, token, workspace_id, email, roles)
+		.await
+		.0
+}
+
+/// Invite an email and return the created invite's id along with its plaintext
+/// token.
+async fn invite_returning_id_and_token(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	email: &str,
+	roles: Vec<Uuid>,
+) -> (Uuid, String) {
+	let response = invite(setup, token, workspace_id, email, roles)
 		.await
 		.json::<ApiSuccessResponseBody<InviteUserToWorkspaceResponse>>()
-		.response
-		.id
-		.id
+		.response;
+
+	(response.id.id, token_from_accept_url(&response.accept_url))
 }
 
 #[tokio::test]
@@ -489,7 +491,7 @@ async fn update_invite_roles_works() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite_returning_id(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
@@ -522,7 +524,7 @@ async fn update_invite_roles_works() {
 	assert_eq!(invites[0].data.roles, vec![role_b.id]);
 
 	// The original link still works and grants the updated role.
-	let accept_response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	let accept_response = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(accept_response.status_code(), StatusCode::ACCEPTED);
 
 	let members = members(&setup, &admin.access_token, workspace.id).await;
@@ -539,7 +541,7 @@ async fn resend_invite_works() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite_returning_id(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
@@ -563,9 +565,19 @@ async fn resend_invite_works() {
 		)
 		.await;
 	assert_eq!(resend.status_code(), StatusCode::OK);
+	let resent_token = token_from_accept_url(
+		&resend
+			.json::<ApiSuccessResponseBody<ResendWorkspaceInviteResponse>>()
+			.response
+			.accept_url,
+	);
 
-	// The (regenerated, still-debug) token accepts and grants the roles.
-	let accept_response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	// Resending mints a fresh token, so the one from the original invite is dead.
+	let stale = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;
+	assert_eq!(stale.status_code(), StatusCode::BAD_REQUEST);
+
+	// The regenerated token accepts and grants the roles.
+	let accept_response = accept(&setup, &invitee.access_token, invite_id, &resent_token).await;
 	assert_eq!(accept_response.status_code(), StatusCode::ACCEPTED);
 	assert_eq!(
 		members(&setup, &admin.access_token, workspace.id)
@@ -585,7 +597,7 @@ async fn preview_returns_workspace_name() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite_returning_id(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
@@ -594,7 +606,7 @@ async fn preview_returns_workspace_name() {
 	)
 	.await;
 
-	let response = preview(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	let response = preview(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(response.status_code(), StatusCode::OK);
 	assert_eq!(
 		response
@@ -613,7 +625,7 @@ async fn preview_returns_workspace_name() {
 		1,
 		"preview must not consume the invite"
 	);
-	let accept_response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	let accept_response = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(accept_response.status_code(), StatusCode::ACCEPTED);
 }
 
@@ -627,7 +639,7 @@ async fn preview_bad_token_fails() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite_returning_id(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
@@ -646,13 +658,7 @@ async fn preview_bad_token_fails() {
 	assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 
 	// An unknown invite id looks the same as a bad token.
-	let unknown = preview(
-		&setup,
-		&invitee.access_token,
-		Uuid::new_v4(),
-		&debug_token(),
-	)
-	.await;
+	let unknown = preview(&setup, &invitee.access_token, Uuid::new_v4(), &invite_token).await;
 	assert_eq!(unknown.status_code(), StatusCode::BAD_REQUEST);
 }
 
@@ -666,7 +672,7 @@ async fn preview_expired_fails() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite_returning_id(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
@@ -681,7 +687,7 @@ async fn preview_expired_fails() {
 		))
 		.await;
 
-	let response = preview(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	let response = preview(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 }
 
@@ -695,7 +701,7 @@ async fn repeated_wrong_tokens_do_not_lock_invite() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite_returning_id(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
@@ -714,7 +720,7 @@ async fn repeated_wrong_tokens_do_not_lock_invite() {
 		assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
 	}
 
-	let accept_response = accept(&setup, &invitee.access_token, invite_id, &debug_token()).await;
+	let accept_response = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(
 		accept_response.status_code(),
 		StatusCode::ACCEPTED,
@@ -796,11 +802,12 @@ async fn cleanup_removes_only_long_expired_invites() {
 
 	// The role rows have no ON DELETE CASCADE, so the cron has to clear them
 	// itself or they leak.
-	let orphaned_roles = setup
-		.query_one_i32(&format!(
-			"SELECT COUNT(*)::INT FROM workspace_user_invite_role WHERE invite_id = '{long_expired}'"
-		))
-		.await;
+	let orphaned_roles = sqlx::query_scalar::<_, i64>(&format!(
+		"SELECT COUNT(*) FROM workspace_user_invite_role WHERE invite_id = '{long_expired}'"
+	))
+	.fetch_one(&setup.state().database)
+	.await
+	.expect("failed to count invite role rows");
 	assert_eq!(orphaned_roles, 0, "invite role rows must be cleaned up too");
 }
 
@@ -814,7 +821,7 @@ async fn expired_invite_without_token_looks_missing() {
 		.await;
 	let invitee = setup.create_test_user().await;
 
-	let invite_id = invite_returning_id(
+	let (invite_id, invite_token) = invite_returning_id_and_token(
 		&setup,
 		&admin.access_token,
 		workspace.id,
@@ -845,8 +852,8 @@ async fn expired_invite_without_token_looks_missing() {
 
 	// With the real token the caller has earned the more specific error.
 	for response in [
-		accept(&setup, &invitee.access_token, invite_id, &debug_token()).await,
-		preview(&setup, &invitee.access_token, invite_id, &debug_token()).await,
+		accept(&setup, &invitee.access_token, invite_id, &invite_token).await,
+		preview(&setup, &invitee.access_token, invite_id, &invite_token).await,
 	] {
 		assert_eq!(
 			response.json::<ApiErrorResponseBody>().error,

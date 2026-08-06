@@ -44,12 +44,5 @@ export const TURNSTILE_TOKEN = '1x00000000000000000000AA';
  */
 export const DEBUG_OTP = '000000';
 
-/**
- * Debug builds also make the workspace-invite token deterministic (see
- * `api/src/utils/mod.rs::WORKSPACE_INVITE_DEBUG_TOKEN`), so specs can follow an
- * invite link without a mail sink to read the emailed token from.
- */
-export const DEBUG_INVITE_TOKEN = '0'.repeat(64);
-
 /** Mirrors `api/src/utils/mod.rs::MAX_PASSWORD_RESET_ATTEMPTS`. */
 export const MAX_PASSWORD_RESET_ATTEMPTS = 5;
