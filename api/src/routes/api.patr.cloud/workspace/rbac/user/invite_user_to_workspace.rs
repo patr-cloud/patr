@@ -32,14 +32,12 @@ pub async fn invite_user_to_workspace(
 ) -> Result<AppResponse<InviteUserToWorkspaceRequest>, ErrorType> {
 	info!("Inviting `{email}` to workspace `{workspace_id}`");
 
-	// An invite with no roles would add a member with no permissions (and in
-	// fact no `workspace_user` rows at all), so reject it.
+	let roles = roles.into_iter().collect::<BTreeSet<_>>();
+
 	if roles.is_empty() {
 		return Err(ErrorType::WrongParameters);
 	}
 
-	// If the email already belongs to a member (or the owner) of this
-	// workspace, there is nothing to invite.
 	let already_member = query!(
 		r#"
 		SELECT
@@ -84,8 +82,6 @@ pub async fn invite_user_to_workspace(
 
 	let now = OffsetDateTime::now_utc();
 
-	// Two v4 UUIDs = 256 bits, non-hyphenated hex. Only its hash is stored, so
-	// the `accept_url` below is the one and only time it can be read back.
 	let token = format!("{}{}", Uuid::new_v4(), Uuid::new_v4());
 
 	let token_hash = argon2::Argon2::new_with_secret(
@@ -107,9 +103,7 @@ pub async fn invite_user_to_workspace(
 
 	let token_expiry = now.add(constants::WORKSPACE_INVITE_VALIDITY);
 
-	// Create the invite. A pending invite for the same email already existing
-	// is surfaced as InviteAlreadyExists so the caller edits or revokes it
-	// instead of silently resetting the token and resending.
+	// Re-inviting is surfaced as a conflict rather than silently reissuing.
 	let invite_id = query!(
 		r#"
 		INSERT INTO
@@ -144,10 +138,7 @@ pub async fn invite_user_to_workspace(
 	})?
 	.id;
 
-	// Only roles that actually belong to this workspace are inserted. If any
-	// requested role is missing or owned by another workspace, fewer rows land
-	// than requested — surface that as RoleDoesNotExist (rolls back the invite).
-	let inserted = query!(
+	query!(
 		r#"
 		INSERT INTO
 			workspace_user_invite_role(
@@ -156,28 +147,22 @@ pub async fn invite_user_to_workspace(
 				role_id
 			)
 		SELECT
-			$1,
-			$3,
-			role.id
+			$1, $2, *
 		FROM
-			role
-		WHERE
-			role.id = ANY($2::UUID[]) AND
-			role.owner_id = $3;
+			UNNEST($3::UUID[]);
 		"#,
 		invite_id as _,
-		roles as _,
 		workspace_id as _,
+		&roles.into_iter().collect::<Vec<_>>() as _,
 	)
 	.execute(&mut **database)
-	.await?
-	.rows_affected();
-
-	// Distinct, because the SELECT matches each role once — a repeated id would
-	// otherwise land fewer rows than asked for and look like a missing role.
-	if inserted != roles.iter().collect::<BTreeSet<_>>().len() as u64 {
-		return Err(ErrorType::RoleDoesNotExist);
-	}
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			ErrorType::RoleDoesNotExist
+		}
+		other => ErrorType::server_error(other),
+	})?;
 
 	let workspace_name = query!(
 		r#"
@@ -196,9 +181,7 @@ pub async fn invite_user_to_workspace(
 
 	info!("Invite `{invite_id}` created. Sending invite email");
 
-	// The link that goes in the email, also returned once so the caller can
-	// offer a "copy link" affordance. Cloud serves the dashboard on the `app.`
-	// subdomain; self-hosted path-routes it off the base domain itself.
+	// Cloud serves the dashboard on `app.`; self-hosted off the base domain.
 	let base_domain = &state.config.server.base_domain;
 	let dashboard_url = if cfg!(feature = "cloud") {
 		format!("https://app.{base_domain}")

@@ -79,8 +79,7 @@ pub async fn delete_role(
 
 	info!("Removed role from {} users", users_removed);
 
-	// Pending invites reference the role by (role_id, workspace_id), so they
-	// have to be cleared before the role row can go.
+	// Pending invites reference the role too, and the FK won't let it go first.
 	query!(
 		r#"
 		DELETE FROM

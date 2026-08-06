@@ -33,13 +33,12 @@ pub async fn update_workspace_invite_roles(
 ) -> Result<AppResponse<UpdateWorkspaceInviteRolesRequest>, ErrorType> {
 	info!("Updating roles for invite `{invite_id}` in workspace `{workspace_id}`");
 
-	// An invite with no roles would be meaningless (accepting it adds no
-	// membership), so reject it.
+	let roles = roles.into_iter().collect::<BTreeSet<_>>();
+
 	if roles.is_empty() {
 		return Err(ErrorType::WrongParameters);
 	}
 
-	// The invite must exist and belong to this workspace.
 	let exists = query!(
 		r#"
 		SELECT EXISTS(
@@ -63,9 +62,7 @@ pub async fn update_workspace_invite_roles(
 		return Err(ErrorType::InviteNotFound);
 	}
 
-	// Replace the role set. On failure (a role that doesn't belong to the
-	// workspace) the whole request rolls back, so the invite keeps its old
-	// roles.
+	// The request rolls back on failure, so the invite keeps its old roles.
 	query!(
 		r#"
 		DELETE FROM
@@ -78,7 +75,7 @@ pub async fn update_workspace_invite_roles(
 	.execute(&mut **database)
 	.await?;
 
-	let inserted = query!(
+	query!(
 		r#"
 		INSERT INTO
 			workspace_user_invite_role(
@@ -87,28 +84,22 @@ pub async fn update_workspace_invite_roles(
 				role_id
 			)
 		SELECT
-			$1,
-			$3,
-			role.id
+			$1, $2, *
 		FROM
-			role
-		WHERE
-			role.id = ANY($2::UUID[]) AND
-			role.owner_id = $3;
+			UNNEST($3::UUID[]);
 		"#,
 		invite_id as _,
-		roles as _,
 		workspace_id as _,
+		&roles.into_iter().collect::<Vec<_>>() as _,
 	)
 	.execute(&mut **database)
-	.await?
-	.rows_affected();
-
-	// Distinct, because the SELECT matches each role once — a repeated id would
-	// otherwise land fewer rows than asked for and look like a missing role.
-	if inserted != roles.iter().collect::<BTreeSet<_>>().len() as u64 {
-		return Err(ErrorType::RoleDoesNotExist);
-	}
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			ErrorType::RoleDoesNotExist
+		}
+		other => ErrorType::server_error(other),
+	})?;
 
 	AppResponse::builder()
 		.body(UpdateWorkspaceInviteRolesResponse)

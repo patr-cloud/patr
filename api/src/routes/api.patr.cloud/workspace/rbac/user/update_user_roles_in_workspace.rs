@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use axum::http::StatusCode;
 use models::api::workspace::rbac::user::*;
 use rustis::commands::StringCommands;
@@ -33,7 +35,7 @@ pub async fn update_user_roles_in_workspace(
 ) -> Result<AppResponse<UpdateUserRolesInWorkspaceRequest>, ErrorType> {
 	info!("Updating user `{user_id}`'s roles in workspace `{workspace_id}`");
 
-	let expected_role_count = roles.len();
+	let roles = roles.into_iter().collect::<BTreeSet<_>>();
 
 	// When the caller passes an empty roles list, the intent is "remove this
 	// user from the workspace". The DELETE below silently no-ops on a
@@ -78,20 +80,8 @@ pub async fn update_user_roles_in_workspace(
 	.execute(&mut **database)
 	.await?;
 
-	// Use a CTE that filters role_ids by workspace ownership before inserting.
-	// If any role_id is missing or belongs to a different workspace, fewer rows
-	// will be inserted than requested — surface that as RoleDoesNotExist.
-	let inserted = query!(
+	query!(
 		r#"
-		WITH valid_roles AS (
-			SELECT
-				id
-			FROM
-				role
-			WHERE
-				id = ANY($3::UUID[]) AND
-				owner_id = $1
-		)
 		INSERT INTO
 			workspace_user(
 				workspace_id,
@@ -99,31 +89,28 @@ pub async fn update_user_roles_in_workspace(
 				role_id
 			)
 		SELECT
-			$1, $2, id
+			$1, $2, *
 		FROM
-			valid_roles;
+			UNNEST($3::UUID[]);
 		"#,
 		workspace_id as _,
 		user_id as _,
-		roles as _,
+		&roles.into_iter().collect::<Vec<_>>() as _,
 	)
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
 			match db_err.constraint() {
-				Some(c) if c == "workspace_user_fk_role_id" => ErrorType::RoleDoesNotExist,
+				Some(c) if c == "workspace_user_fk_role_id_workspace_id" => {
+					ErrorType::RoleDoesNotExist
+				}
 				Some(c) if c == "workspace_user_fk_user_id" => ErrorType::UserNotFound,
 				_ => ErrorType::server_error(sqlx::Error::Database(db_err)),
 			}
 		}
 		other => ErrorType::server_error(other),
-	})?
-	.rows_affected() as usize;
-
-	if inserted != expected_role_count {
-		return Err(ErrorType::RoleDoesNotExist);
-	}
+	})?;
 
 	info!("User's roles updated. Setting revocation timestamp");
 

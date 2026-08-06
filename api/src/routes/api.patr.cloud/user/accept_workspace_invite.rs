@@ -83,8 +83,6 @@ pub async fn accept_workspace_invite(
 		return Err(ErrorType::InviteExpired);
 	}
 
-	// The invite was addressed to an email; only the owner of that email may
-	// accept it, even if a third party somehow has the link.
 	let owns_email = query!(
 		r#"
 		SELECT EXISTS(
@@ -110,8 +108,6 @@ pub async fn accept_workspace_invite(
 
 	let workspace_id = invite.workspace_id;
 
-	// Grant the invited roles, re-validating each against the workspace so a
-	// role deleted since the invite was sent is simply skipped.
 	query!(
 		r#"
 		INSERT INTO
@@ -122,29 +118,22 @@ pub async fn accept_workspace_invite(
 			)
 		SELECT
 			$1,
-			$2,
-			workspace_user_invite_role.role_id
+			workspace_id,
+			role_id
 		FROM
 			workspace_user_invite_role
-		INNER JOIN
-			role
-		ON
-			role.id = workspace_user_invite_role.role_id AND
-			role.owner_id = $2
 		WHERE
-			workspace_user_invite_role.invite_id = $3
+			invite_id = $2
 		ON CONFLICT
 			(user_id, workspace_id, role_id)
 		DO NOTHING;
 		"#,
 		user_data.id as _,
-		workspace_id as _,
 		invite_id as _,
 	)
 	.execute(&mut **database)
 	.await?;
 
-	// The invite has been consumed — remove it and its role rows.
 	query!(
 		r#"
 		DELETE FROM
