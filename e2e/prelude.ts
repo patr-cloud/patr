@@ -55,7 +55,6 @@ export {
 	queryUser,
 	backdateSignupOtp,
 	backdatePasswordResetToken,
-	exhaustPasswordResetAttempts,
 	backdateWebLoginExpiry,
 	deleteWebLogin,
 	sql,

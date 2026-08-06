@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX workspace_user_invite_uq_workspace_id_email ON workspace_user_invite(workspace_id, email);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "46bc1cee88bb80ac0f7a2dca6218bd2510d52ed3b14d11ac8520f1a7f1c4e316"
+}

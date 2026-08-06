@@ -6,6 +6,8 @@ mod audit_log;
 mod container_registry;
 /// The list of domains that are added to a workspace
 mod domain;
+/// The pending email invites to join a workspace
+mod invite;
 
 /// The list of deployments that are present in a workspace
 mod deployment;
@@ -45,6 +47,7 @@ pub async fn initialize_workspace_tables(
 	audit_log::initialize_workspace_tables(connection).await?;
 	container_registry::initialize_container_registry_tables(connection).await?;
 	domain::initialize_domain_tables(connection).await?;
+	invite::initialize_workspace_user_invite_tables(connection).await?;
 
 	deployment::initialize_deployment_tables(connection).await?;
 	managed_database::initialize_managed_database_tables(connection).await?;
@@ -103,6 +106,7 @@ pub async fn initialize_workspace_indices(
 	audit_log::initialize_workspace_indices(connection).await?;
 	container_registry::initialize_container_registry_indices(connection).await?;
 	domain::initialize_domain_indices(connection).await?;
+	invite::initialize_workspace_user_invite_indices(connection).await?;
 
 	deployment::initialize_deployment_indices(connection).await?;
 	managed_database::initialize_managed_database_indices(connection).await?;
@@ -137,6 +141,7 @@ pub async fn initialize_workspace_constraints(
 	audit_log::initialize_workspace_constraints(connection).await?;
 	container_registry::initialize_container_registry_constraints(connection).await?;
 	domain::initialize_domain_constraints(connection).await?;
+	invite::initialize_workspace_user_invite_constraints(connection).await?;
 
 	deployment::initialize_deployment_constraints(connection).await?;
 	managed_database::initialize_managed_database_constraints(connection).await?;

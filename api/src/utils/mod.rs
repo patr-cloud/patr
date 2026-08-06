@@ -116,6 +116,15 @@ pub mod constants {
 	/// wait for the OTP to expire and re-trigger sign-up to try again.
 	pub const MAX_SIGN_UP_ATTEMPTS: i32 = 5;
 
+	/// How long a workspace invite is valid for before its link expires. After
+	/// this, the invitee must be re-invited.
+	pub const WORKSPACE_INVITE_VALIDITY: time::Duration = time::Duration::days(7);
+
+	/// How long an expired workspace invite is kept around before the cleanup
+	/// cron deletes it. The row is dead the moment it expires; this window only
+	/// exists so an admin can still see it in the pending list and resend it.
+	pub const WORKSPACE_INVITE_RETENTION: time::Duration = time::Duration::days(7);
+
 	/// The issuer to be used for TOTP generation
 	pub const TOTP_ISSUER: &str = "app.patr.cloud";
 

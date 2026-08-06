@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE workspace_user_invite_role ADD CONSTRAINT workspace_user_invite_role_pk PRIMARY KEY(invite_id, role_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "93da12f484cfe105615789f40f1154e01bd8a6ab3f8b80bddc830331503ea709"
+}

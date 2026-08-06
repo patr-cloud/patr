@@ -3,6 +3,8 @@ use ts_rs::TS;
 
 use crate::prelude::*;
 
+/// The endpoint to accept a workspace invite
+mod accept_workspace_invite;
 /// All endpoints related to API tokens
 mod api_token;
 /// The endpoint to change the password of a user
@@ -15,6 +17,8 @@ mod get_user_info;
 mod list_user_workspaces;
 /// All endpoints related to MFA
 mod mfa;
+/// The endpoint to preview a workspace invite before accepting
+mod preview_workspace_invite;
 /// All endpoints related to recovery options
 mod recovery_options;
 /// The endpoint to search for users
@@ -27,12 +31,14 @@ mod update_user_info;
 mod web_logins;
 
 pub use self::{
+	accept_workspace_invite::*,
 	api_token::*,
 	change_password::*,
 	get_user_details::*,
 	get_user_info::*,
 	list_user_workspaces::*,
 	mfa::*,
+	preview_workspace_invite::*,
 	recovery_options::*,
 	search_for_user::*,
 	social_logins::*,

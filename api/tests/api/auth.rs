@@ -1781,3 +1781,144 @@ async fn reset_password_rejects_missing_turnstile_token() {
 		response.status_code()
 	);
 }
+
+// ---------------------------------------------------------------------------
+// Attempt ceilings
+//
+// These drive the counter through real failed requests rather than seeding it
+// via SQL. Seeding only proves the `>= MAX` check rejects; it says nothing
+// about whether anything ever increments the counter, which is the half that
+// actually gates brute force.
+
+#[tokio::test]
+async fn complete_sign_up_exhausts_attempts() {
+	let setup = setup().await.expect("failed to setup test server");
+	let username = random_name(8);
+	let password = random_password();
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateAccountRequest>::builder()
+				.headers(CreateAccountRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateAccountRequest {
+					username: username.clone(),
+					password: password.clone(),
+					first_name: "OTP".to_string(),
+					last_name: "Test".to_string(),
+					recovery_method: RecoveryMethod::Email {
+						recovery_email: format!("{}@example.com", &username),
+					},
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
+
+	for _ in 0..constants::MAX_SIGN_UP_ATTEMPTS {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<CompleteSignUpRequest>::builder()
+					.headers(CompleteSignUpRequestHeaders {
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(CompleteSignUpRequest {
+						username: username.clone(),
+						verification_token: "999999".to_string(),
+						cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+					})
+					.build(),
+			)
+			.await;
+		assert!(response.status_code().is_client_error());
+	}
+
+	// Ceiling reached: even the correct debug OTP is now refused. This is what
+	// catches an attempt counter that never actually counts — if the increments
+	// were rolled back, the OTP below would still work.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CompleteSignUpRequest>::builder()
+				.headers(CompleteSignUpRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CompleteSignUpRequest {
+					username: username.clone(),
+					verification_token: "000000".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"a locked sign-up must not complete even with the correct OTP"
+	);
+}
+
+#[tokio::test]
+async fn reset_password_exhausts_attempts() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ForgotPasswordRequest>::builder()
+				.headers(ForgotPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ForgotPasswordRequest {
+					user_id: user.username.clone(),
+					preferred_recovery_option: PreferredRecoveryOption::RecoveryEmail,
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ForgotPasswordResponse));
+
+	for _ in 0..constants::MAX_PASSWORD_RESET_ATTEMPTS {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ResetPasswordRequest>::builder()
+					.headers(ResetPasswordRequestHeaders {
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(ResetPasswordRequest {
+						user_id: user.username.clone(),
+						password: random_password(),
+						verification_token: "999999".to_string(),
+						cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+					})
+					.build(),
+			)
+			.await;
+		assert!(response.status_code().is_client_error());
+	}
+
+	// Ceiling reached: the correct debug OTP no longer resets the password. This
+	// is what catches an attempt counter that never actually counts — if the
+	// increments were rolled back, the OTP below would still work.
+	let new_password = random_password();
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ResetPasswordRequest>::builder()
+				.headers(ResetPasswordRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ResetPasswordRequest {
+					user_id: user.username.clone(),
+					password: new_password,
+					verification_token: "000000".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"a locked reset must not succeed even with the correct OTP"
+	);
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM workspace_user_invite_role WHERE workspace_id = $1 AND role_id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dd27aee75df2f80da74f2c1a59e611385b48997423ee8cc68ca08c88c4b854c0"
+}

@@ -113,7 +113,7 @@ test.describe('rbac > app-wide UI gating (useIsAllowed)', () => {
 		}
 	});
 
-	test('hides Add Member from a member with only viewRoles on /workspace/members', async ({
+	test('hides the invite form from a member with only viewRoles on /workspace/members', async ({
 		browser,
 		api,
 	}) => {
@@ -134,7 +134,7 @@ test.describe('rbac > app-wide UI gating (useIsAllowed)', () => {
 		try {
 			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
 			await expect(
-				page.getByRole('button', { name: /^(Add Member|Adding\.\.\.)$/ }),
+				page.getByRole('button', { name: /^(Send Invite|Sending\.\.\.)$/ }),
 			).toBeHidden({
 				timeout: 10_000,
 			});

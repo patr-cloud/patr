@@ -597,3 +597,81 @@ async fn concurrent_create_same_resource() {
 		"expected exactly 1 success and 4 client errors from 5 concurrent same-name create_workspace; got {statuses:?}"
 	);
 }
+
+/// Call `LeaveWorkspace` as the given user.
+async fn leave_workspace(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<LeaveWorkspaceRequest>::builder()
+				.path(LeaveWorkspacePath { workspace_id })
+				.headers(LeaveWorkspaceRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+}
+
+#[tokio::test]
+async fn member_can_leave_workspace() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = leave_workspace(&setup, &member.access_token, workspace.id).await;
+	assert_eq!(response.status_code(), StatusCode::ACCEPTED);
+
+	// Having left, the member can no longer access the workspace.
+	let after = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetWorkspaceInfoRequest>::builder()
+				.path(GetWorkspaceInfoPath {
+					workspace_id: workspace.id,
+				})
+				.headers(GetWorkspaceInfoRequestHeaders {
+					authorization: member.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		after.status_code().is_client_error(),
+		"a user who left should lose access to the workspace"
+	);
+}
+
+#[tokio::test]
+async fn owner_cannot_leave_workspace() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+
+	let response = leave_workspace(&setup, &admin.access_token, workspace.id).await;
+	assert_eq!(response.status_code(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn non_member_cannot_leave_workspace() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let stranger = setup.create_test_user().await;
+
+	let response = leave_workspace(&setup, &stranger.access_token, workspace.id).await;
+	assert!(
+		response.status_code().is_client_error(),
+		"a non-member should not be able to leave a workspace"
+	);
+}

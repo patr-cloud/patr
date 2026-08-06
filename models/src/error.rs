@@ -132,6 +132,21 @@ pub enum ErrorType {
 	/// for example, when a self-hosted deployment is asked to perform an action
 	/// that requires cloud-only infrastructure.
 	FeatureNotSupported,
+	/// The workspace invite does not exist. Also returned when the invite token
+	/// is wrong, to avoid leaking whether an invite exists.
+	InviteNotFound,
+	/// The workspace invite has expired and can no longer be accepted.
+	InviteExpired,
+	/// The logged-in user does not own the email address the invite was sent
+	/// to, so they are not allowed to accept it.
+	InviteEmailMismatch,
+	/// The email being invited already belongs to a member of the workspace.
+	UserAlreadyMember,
+	/// A pending invite already exists for that email in the workspace. Edit or
+	/// revoke the existing invite instead of creating a new one.
+	InviteAlreadyExists,
+	/// The owner (super admin) of a workspace cannot leave it.
+	CannotLeaveWorkspaceAsOwner,
 }
 
 impl ErrorType {
@@ -186,6 +201,12 @@ impl ErrorType {
 			Self::RateLimitExceeded => StatusCode::TOO_MANY_REQUESTS,
 			Self::SocialLoginFailed => StatusCode::BAD_REQUEST,
 			Self::FeatureNotSupported => StatusCode::NOT_IMPLEMENTED,
+			Self::InviteNotFound => StatusCode::BAD_REQUEST,
+			Self::InviteExpired => StatusCode::BAD_REQUEST,
+			Self::InviteEmailMismatch => StatusCode::FORBIDDEN,
+			Self::UserAlreadyMember => StatusCode::CONFLICT,
+			Self::InviteAlreadyExists => StatusCode::CONFLICT,
+			Self::CannotLeaveWorkspaceAsOwner => StatusCode::FORBIDDEN,
 		}
 	}
 
@@ -278,6 +299,18 @@ impl ErrorType {
 				)
 			}
 			Self::FeatureNotSupported => "This feature is not available in this build of Patr",
+			Self::InviteNotFound => "The invite is invalid or has already been used",
+			Self::InviteExpired => "The invite has expired. Please ask for a new invite",
+			Self::InviteEmailMismatch => {
+				"This invite was sent to a different email address than the one you're signed in with"
+			}
+			Self::UserAlreadyMember => "That user is already a member of the workspace",
+			Self::InviteAlreadyExists => {
+				"That email has already been invited. Edit or revoke the existing invite instead"
+			}
+			Self::CannotLeaveWorkspaceAsOwner => {
+				"The owner of a workspace cannot leave it. Transfer or delete the workspace instead"
+			}
 		}
 	}
 

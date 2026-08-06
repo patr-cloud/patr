@@ -4,9 +4,10 @@ import {
 	newContext,
 	createUserAccount,
 	backdatePasswordResetToken,
-	exhaustPasswordResetAttempts,
 	DEBUG_OTP,
 } from '@/prelude';
+import { MAX_PASSWORD_RESET_ATTEMPTS } from '@/helpers/config';
+import { sql } from '@/helpers/db';
 import {
 	openForgotPassword,
 	fillForgotEmail,
@@ -237,27 +238,48 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
 		});
 	});
 
-	test('attempts exhausted (>5) → InvalidPasswordResetToken even on correct OTP', async ({
+	// Drives the counter with real wrong-OTP submissions rather than seeding it
+	// via SQL. Seeding only proves the ceiling check rejects; it says nothing
+	// about whether failed attempts ever increment the counter — which is the
+	// half that actually gates brute force, and the half that was broken.
+	test('attempts exhausted by wrong OTPs → rejected even on correct OTP', async ({
 		browser,
 		api,
 	}) => {
 		await using user = await createUserAccount(api);
 		await requestResetFor(browser, user.email);
-		await exhaustPasswordResetAttempts(user.username, 6);
-		await withContext(browser, async (page) => {
-			await openResetPassword(page);
-			await fillResetForm(page, {
-				userId: user.username,
-				otp: DEBUG_OTP,
-				newPassword: 'NewPassw0rd!Test',
+
+		const submitOtp = async (otp: string) => {
+			let ok = true;
+			await withContext(browser, async (page) => {
+				await openResetPassword(page);
+				await fillResetForm(page, {
+					userId: user.username,
+					otp,
+					newPassword: 'NewPassw0rd!Test',
+				});
+				const respPromise = page.waitForResponse(
+					(r) =>
+						r.url().includes('/auth/reset-password') && r.request().method() === 'POST',
+				);
+				await submitReset(page);
+				ok = (await respPromise).ok();
 			});
-			const respPromise = page.waitForResponse(
-				(r) => r.url().includes('/auth/reset-password') && r.request().method() === 'POST',
-			);
-			await submitReset(page);
-			const resp = await respPromise;
-			expect(resp.ok()).toBe(false);
-		});
+			return ok;
+		};
+
+		for (let i = 0; i < MAX_PASSWORD_RESET_ATTEMPTS; i++) {
+			expect(await submitOtp('999999')).toBe(false);
+		}
+
+		const [row] = await sql<{ attempts: number }>(
+			'SELECT password_reset_attempts AS attempts FROM "user" WHERE username = $1',
+			[user.username],
+		);
+		expect(row?.attempts).toBe(MAX_PASSWORD_RESET_ATTEMPTS);
+
+		// Ceiling reached: the correct OTP no longer resets the password.
+		expect(await submitOtp(DEBUG_OTP)).toBe(false);
 	});
 });
 

@@ -69,10 +69,7 @@ test.describe('rbac > permission gating [UI]', () => {
 
 	// members.tsx is not yet gated by useIsAllowed; these assert the end behavior
 	// (controls hidden for a viewRoles-only member) which passes today.
-	test('hides the Add Member form from a member without modifyRoles', async ({
-		browser,
-		api,
-	}) => {
+	test('hides the invite form from a member without modifyRoles', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		const viewId = await getPermissionId(
 			api,
@@ -90,7 +87,7 @@ test.describe('rbac > permission gating [UI]', () => {
 		try {
 			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
 			await expect(
-				page.getByRole('button', { name: /^(Add Member|Adding\.\.\.)$/ }),
+				page.getByRole('button', { name: /^(Send Invite|Sending\.\.\.)$/ }),
 			).toBeHidden({
 				timeout: 10_000,
 			});

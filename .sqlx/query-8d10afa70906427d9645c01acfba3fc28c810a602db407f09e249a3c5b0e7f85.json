@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX workspace_user_invite_idx_token_expiry ON workspace_user_invite(token_expiry);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8d10afa70906427d9645c01acfba3fc28c810a602db407f09e249a3c5b0e7f85"
+}

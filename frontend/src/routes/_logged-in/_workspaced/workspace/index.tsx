@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/solid-router";
+import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import {
 	Button,
+	ButtonVariant,
 	CopyableField,
 	Input,
 	InputType,
@@ -13,26 +14,64 @@ import {
 import WorkspaceHeader from "./-components/workspace-header";
 import { useAuthState } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useWorkspaceInfoQuery } from "~/hooks/fetch";
+import { useWorkspaceInfoQuery, useUserInfoQuery } from "~/hooks/fetch";
 import { workspaceKeys, workspacesKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 import { GetWorkspaceInfoResponse } from "~/bindings/GetWorkspaceInfoResponse";
 import { UpdateWorkspaceInfoRequest } from "~/bindings/UpdateWorkspaceInfoRequest";
 import { EventT } from "~/utils/types";
+import { Color } from "~/utils/color";
 
 const General = () => {
 	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
+	const [workspaceId, setLastWorkspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const queryClient = useQueryClient();
 
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
+	const userInfoQuery = useUserInfoQuery();
+	const navigate = useNavigate();
 
 	const [name, setName] = createSignal("");
 	const [_hasUpdated, setHasUpdated] = createSignal(false);
 	const [isUpdating, setIsUpdating] = createSignal(false);
+	const [isConfirmingLeave, setIsConfirmingLeave] = createSignal(false);
+	const [isLeaving, setIsLeaving] = createSignal(false);
+
+	// The owner (super admin) cannot leave their own workspace.
+	const canLeave = () =>
+		!!userInfoQuery.data?.id &&
+		!!workspaceInfoQuery.data?.superAdminId &&
+		userInfoQuery.data.id !== workspaceInfoQuery.data.superAdminId;
+
+	const onLeave = async () => {
+		const id = workspaceId();
+		if (!id || isLeaving()) return;
+		setIsLeaving(true);
+		try {
+			const response = await httpRequest(`${import.meta.env.VITE_BASE_URL}/api/workspace/${id}/leave`, {
+				method: "POST",
+			});
+
+			if (!response.ok) {
+				console.error("Failed to leave workspace:", response.data);
+				toast("Failed to leave workspace", "error");
+				return;
+			}
+
+			toast("You've left the workspace", "success");
+			setLastWorkspaceId(null);
+			await queryClient.invalidateQueries({ queryKey: workspacesKeys.list() });
+			navigate({ to: "/", replace: true });
+		} catch (error) {
+			console.error("Failed to leave workspace:", error);
+			toast("Failed to leave workspace", "error");
+		} finally {
+			setIsLeaving(false);
+		}
+	};
 
 	createEffect(() => {
 		const info = workspaceInfoQuery.data;
@@ -93,7 +132,7 @@ const General = () => {
 			<PageContainer>
 				<WorkspaceHeader workspaceName={workspaceInfoQuery.data?.name} activeTab="general" />
 				<PageContainerBody class="flex flex-col gap-8">
-					<form onSubmit={onSubmit} class="flex flex-col gap-6 justify-between w-full flex-1">
+					<form onSubmit={onSubmit} class="flex flex-col gap-6 w-full">
 						<div class="flex flex-col gap-4 items-start w-full">
 							<div class="flex gap-8 items-center w-full">
 								<Label parentClass="flex-2" label="Workspace ID" />
@@ -134,6 +173,49 @@ const General = () => {
 							</Button>
 						</div>
 					</form>
+
+					<Show when={canLeave()}>
+						<div class="flex gap-8 items-start w-full">
+							<Label parentClass="flex-2" label="Leave Workspace" />
+							<div class="flex-10 flex flex-col gap-3 items-start">
+								<p class="text-grey text-sm">
+									You'll lose access to this workspace and all its resources. You will need to be
+									invited again to join this workspace.
+								</p>
+								<Show
+									when={isConfirmingLeave()}
+									fallback={
+										<Button
+											variant={ButtonVariant.Outlined}
+											color={Color.Error}
+											onClick={() => setIsConfirmingLeave(true)}
+										>
+											Leave workspace
+										</Button>
+									}
+								>
+									<div class="flex items-center gap-2">
+										<Button
+											variant={ButtonVariant.Contained}
+											color={Color.Error}
+											disabled={isLeaving()}
+											loading={isLeaving()}
+											loadingContent={() => <span>Leaving...</span>}
+											onClick={() => onLeave()}
+										>
+											Confirm leave
+										</Button>
+										<Button
+											variant={ButtonVariant.Outlined}
+											onClick={() => setIsConfirmingLeave(false)}
+										>
+											Cancel
+										</Button>
+									</div>
+								</Show>
+							</div>
+						</div>
+					</Show>
 				</PageContainerBody>
 			</PageContainer>
 		</>

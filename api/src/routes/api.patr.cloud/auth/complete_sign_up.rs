@@ -108,6 +108,10 @@ pub async fn complete_sign_up(
 				return Err(ErrorType::UserNotFound);
 			}
 
+			// Counted on the pool, not the request transaction: a wrong OTP
+			// returns an `Err`, which rolls the transaction back. An increment
+			// written there would be discarded along with it, leaving the
+			// ceiling above permanently unreachable.
 			query!(
 				r#"
 				UPDATE
@@ -119,7 +123,7 @@ pub async fn complete_sign_up(
 				"#,
 				&username,
 			)
-			.execute(&mut **database)
+			.execute(&state.database)
 			.await?;
 
 			let success = argon2::Argon2::new_with_secret(

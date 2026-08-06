@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE workspace_user_invite SET token_hash = $1, token_expiry = $2, invited_by = $3, created = $4 WHERE id = $5;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Uuid",
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a44f62e7dacbbda18d89de848505a9870091919e641742039279c1f227223bbf"
+}

@@ -43,3 +43,6 @@ export const TURNSTILE_TOKEN = '1x00000000000000000000AA';
  * OTP can use this verbatim instead of reading it from the database.
  */
 export const DEBUG_OTP = '000000';
+
+/** Mirrors `api/src/utils/mod.rs::MAX_PASSWORD_RESET_ATTEMPTS`. */
+export const MAX_PASSWORD_RESET_ATTEMPTS = 5;

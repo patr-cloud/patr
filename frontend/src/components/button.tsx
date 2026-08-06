@@ -62,7 +62,7 @@ const Button = (rawProps: ParentProps<ButtonProps>) => {
 
 			switch (props.variant) {
 				case ButtonVariant.Outlined:
-					return `border-2 font-medium ${colors.border} py-xs px-md ${colors.text} rounded-xs ${colors.hoverBg} enabled:hover:text-secondary enabled:hover:cursor-pointer transition-all duration-200`;
+					return `border-2 font-thin ${colors.border} py-xs px-md ${colors.text} rounded-xs ${colors.hoverBg} enabled:hover:text-secondary enabled:hover:cursor-pointer transition-all duration-200`;
 				case ButtonVariant.Plain:
 					return `bg-transparent ${colors.text}`;
 				case ButtonVariant.Contained:

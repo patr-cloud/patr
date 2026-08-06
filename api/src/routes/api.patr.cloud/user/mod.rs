@@ -2,12 +2,16 @@ use axum::Router;
 
 use crate::prelude::*;
 
+/// The endpoint to accept a workspace invite
+mod accept_workspace_invite;
 mod api_token;
 mod change_password;
 mod get_user_details;
 mod get_user_info;
 mod list_workspaces;
 mod mfa;
+/// The endpoint to preview a workspace invite before accepting
+mod preview_workspace_invite;
 #[expect(unused_variables)]
 mod recovery_options;
 mod search_for_user;
@@ -18,10 +22,12 @@ mod update_user_info;
 mod web_logins;
 
 use self::{
+	accept_workspace_invite::*,
 	change_password::*,
 	get_user_details::*,
 	get_user_info::*,
 	list_workspaces::*,
+	preview_workspace_invite::*,
 	search_for_user::*,
 	update_user_info::*,
 };
@@ -44,6 +50,8 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 			},
 		)
 		.merge(web_logins::setup_routes(state, allowed_client_type).await)
+		.mount_auth_endpoint(accept_workspace_invite, state, allowed_client_type)
+		.mount_auth_endpoint(preview_workspace_invite, state, allowed_client_type)
 		.mount_auth_endpoint(change_password, state, allowed_client_type)
 		.mount_auth_endpoint(get_user_details, state, allowed_client_type)
 		.mount_auth_endpoint(get_user_info, state, allowed_client_type)
