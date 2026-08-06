@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use axum::http::StatusCode;
 use models::api::workspace::rbac::user::*;
@@ -29,10 +29,6 @@ pub async fn list_workspace_invites(
 ) -> Result<AppResponse<ListWorkspaceInvitesRequest>, ErrorType> {
 	info!("Listing pending invites for workspace `{workspace_id}`");
 
-	// Collect each invite's roles into a map keyed by invite id, preserving the
-	// invite metadata alongside.
-	let mut invites = BTreeMap::<Uuid, WithId<WorkspaceInvite>>::new();
-
 	let rows = query!(
 		r#"
 		SELECT
@@ -59,28 +55,39 @@ pub async fn list_workspace_invites(
 	.fetch_all(&mut **database)
 	.await?;
 
-	for row in rows {
-		let invite = invites.entry(row.id).or_insert_with(|| {
-			WithId::new(
-				row.id,
-				WorkspaceInvite {
-					email: row.email.clone(),
-					roles: Vec::new(),
-					invited_by: row.invited_by,
-					created: row.created,
-					expiry: row.token_expiry,
-				},
-			)
-		});
-		if let Some(role_id) = row.role_id {
-			invite.data.roles.push(role_id);
-		}
-	}
+	// The LEFT JOIN gives one row per (invite, role), so fold them back into one
+	// entry per invite.
+	let invites = rows
+		.into_iter()
+		.fold(
+			BTreeMap::<Uuid, WithId<WorkspaceInvite>>::new(),
+			|mut invites, row| {
+				invites
+					.entry(row.id)
+					.or_insert_with(|| {
+						WithId::new(
+							row.id,
+							WorkspaceInvite {
+								email: row.email,
+								roles: BTreeSet::new(),
+								invited_by: row.invited_by,
+								created: row.created,
+								expiry: row.token_expiry,
+							},
+						)
+					})
+					.data
+					.roles
+					.extend(row.role_id);
+
+				invites
+			},
+		)
+		.into_values()
+		.collect();
 
 	AppResponse::builder()
-		.body(ListWorkspaceInvitesResponse {
-			invites: invites.into_values().collect(),
-		})
+		.body(ListWorkspaceInvitesResponse { invites })
 		.headers(())
 		.status_code(StatusCode::OK)
 		.build()

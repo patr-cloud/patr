@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use apalis::prelude::Data;
 use apalis_cron::Tick;
@@ -521,7 +521,7 @@ async fn update_invite_roles_works() {
 	assert_eq!(update.status_code(), StatusCode::OK);
 
 	let invites = list_invites(&setup, &admin.access_token, workspace.id).await;
-	assert_eq!(invites[0].data.roles, vec![role_b.id]);
+	assert_eq!(invites[0].data.roles, BTreeSet::from([role_b.id]));
 
 	// The original link still works and grants the updated role.
 	let accept_response = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;

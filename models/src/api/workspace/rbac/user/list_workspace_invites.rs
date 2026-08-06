@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use ts_rs::TS;
@@ -13,7 +15,7 @@ pub struct WorkspaceInvite {
 	/// The email address the invite was sent to
 	pub email: String,
 	/// The roles the invitee will be granted once they accept
-	pub roles: Vec<Uuid>,
+	pub roles: BTreeSet<Uuid>,
 	/// The user who sent the invite
 	pub invited_by: Uuid,
 	/// When the invite was created
