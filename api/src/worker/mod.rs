@@ -87,7 +87,7 @@ pub async fn run(state: &AppState) {
 							.backend(
 								CronStream::new(
 									// Every 2 hours
-									Schedule::from_str("0 */2 * * * *").expect(
+									Schedule::from_str("0 0 */2 * * *").expect(
 										"Failed to parse cron schedule for verify-unverified-domains",
 									),
 								)
@@ -108,7 +108,7 @@ pub async fn run(state: &AppState) {
 							.backend(
 								CronStream::new(
 									// Every 6 hours
-									Schedule::from_str("0 */6 * * * *").expect(
+									Schedule::from_str("0 0 */6 * * *").expect(
 										"Failed to parse cron schedule for reverify-verified-domains",
 									),
 								)
@@ -129,7 +129,7 @@ pub async fn run(state: &AppState) {
 							.backend(
 								CronStream::new(
 									// Every 2 hours
-									Schedule::from_str("0 */2 * * * *").expect(
+									Schedule::from_str("0 0 */2 * * *").expect(
 										"Failed to parse cron schedule for verify-managed-url-active",
 									),
 								)
@@ -150,7 +150,7 @@ pub async fn run(state: &AppState) {
 							.backend(
 								CronStream::new(
 									// Every 6 hours
-									Schedule::from_str("0 */6 * * * *").expect(
+									Schedule::from_str("0 0 */6 * * *").expect(
 										"Failed to parse cron schedule for cleanup-unverified-domains",
 									),
 								)
@@ -171,7 +171,7 @@ pub async fn run(state: &AppState) {
 							.backend(
 								CronStream::new(
 									// Every 6 hours
-									Schedule::from_str("0 */6 * * * *").expect(
+									Schedule::from_str("0 0 */6 * * *").expect(
 										"Failed to parse cron schedule for cleanup-inactive-managed-urls",
 									),
 								)
