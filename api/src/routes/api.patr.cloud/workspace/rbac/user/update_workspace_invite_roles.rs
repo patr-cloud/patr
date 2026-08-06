@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use axum::http::StatusCode;
 use models::api::workspace::rbac::user::*;
 
@@ -81,10 +83,12 @@ pub async fn update_workspace_invite_roles(
 		INSERT INTO
 			workspace_user_invite_role(
 				invite_id,
+				workspace_id,
 				role_id
 			)
 		SELECT
 			$1,
+			$3,
 			role.id
 		FROM
 			role
@@ -100,7 +104,9 @@ pub async fn update_workspace_invite_roles(
 	.await?
 	.rows_affected();
 
-	if inserted != roles.len() as u64 {
+	// Distinct, because the SELECT matches each role once — a repeated id would
+	// otherwise land fewer rows than asked for and look like a missing role.
+	if inserted != roles.iter().collect::<BTreeSet<_>>().len() as u64 {
 		return Err(ErrorType::RoleDoesNotExist);
 	}
 

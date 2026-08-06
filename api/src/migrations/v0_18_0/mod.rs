@@ -9,3 +9,4 @@ mod m006_normalize_registry_schema;
 mod m007_unify_domains;
 mod m008_simplify_workspace_name_index;
 mod m009_workspace_user_invites;
+mod m010_scope_roles_to_workspace;

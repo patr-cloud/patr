@@ -168,7 +168,9 @@ pub async fn initialize_rbac_indices(
 			ADD CONSTRAINT role_fk_id_owner_id
 				FOREIGN KEY(id, owner_id) REFERENCES resource(id, owner_id),
 			ADD CONSTRAINT role_uq_name_owner_id
-				UNIQUE(name, owner_id);
+				UNIQUE(name, owner_id),
+			ADD CONSTRAINT role_uq_id_owner_id
+				UNIQUE(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -298,8 +300,8 @@ pub async fn initialize_rbac_constraints(
 				FOREIGN KEY(user_id) REFERENCES "user"(id),
 			ADD CONSTRAINT workspace_user_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
-			ADD CONSTRAINT workspace_user_fk_role_id
-				FOREIGN KEY(role_id) REFERENCES role(id);
+			ADD CONSTRAINT workspace_user_fk_role_id_workspace_id
+				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, owner_id);
 		"#
 	)
 	.execute(&mut *connection)

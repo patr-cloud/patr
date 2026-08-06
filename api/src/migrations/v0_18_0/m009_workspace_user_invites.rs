@@ -30,6 +30,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		r#"
 		CREATE TABLE workspace_user_invite_role(
 			invite_id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
 			role_id UUID NOT NULL
 		);
 		"#,
@@ -40,8 +41,10 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 	sqlx::query(
 		r#"
 		ALTER TABLE workspace_user_invite
-		ADD CONSTRAINT workspace_user_invite_pk
-		PRIMARY KEY(id);
+			ADD CONSTRAINT workspace_user_invite_pk
+				PRIMARY KEY(id),
+			ADD CONSTRAINT workspace_user_invite_uq_id_workspace_id
+				UNIQUE(id, workspace_id);
 		"#,
 	)
 	.execute(&mut *connection)
@@ -97,8 +100,11 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 	sqlx::query(
 		r#"
 		ALTER TABLE workspace_user_invite_role
-			ADD CONSTRAINT workspace_user_invite_role_fk_invite_id
-				FOREIGN KEY(invite_id) REFERENCES workspace_user_invite(id);
+			ADD CONSTRAINT workspace_user_invite_role_fk_invite_id_workspace_id
+				FOREIGN KEY(invite_id, workspace_id)
+					REFERENCES workspace_user_invite(id, workspace_id),
+			ADD CONSTRAINT workspace_user_invite_role_fk_role_id_workspace_id
+				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, owner_id);
 		"#,
 	)
 	.execute(&mut *connection)

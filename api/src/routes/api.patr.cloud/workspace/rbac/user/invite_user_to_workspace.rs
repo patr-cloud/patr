@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::{collections::BTreeSet, ops::Add};
 
 use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
@@ -152,10 +152,12 @@ pub async fn invite_user_to_workspace(
 		INSERT INTO
 			workspace_user_invite_role(
 				invite_id,
+				workspace_id,
 				role_id
 			)
 		SELECT
 			$1,
+			$3,
 			role.id
 		FROM
 			role
@@ -171,7 +173,9 @@ pub async fn invite_user_to_workspace(
 	.await?
 	.rows_affected();
 
-	if inserted != roles.len() as u64 {
+	// Distinct, because the SELECT matches each role once — a repeated id would
+	// otherwise land fewer rows than asked for and look like a missing role.
+	if inserted != roles.iter().collect::<BTreeSet<_>>().len() as u64 {
 		return Err(ErrorType::RoleDoesNotExist);
 	}
 
