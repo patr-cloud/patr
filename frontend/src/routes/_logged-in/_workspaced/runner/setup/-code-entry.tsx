@@ -66,6 +66,7 @@ export const CodeEntry = (props: { onSubmit: (code: string) => void }) => {
 					sanitize={sanitizeUserCode}
 					inputType={InputType.Text}
 					name="runner-setup-code"
+					idPrefix="runner-setup-code"
 					inputMode="text"
 					autocomplete="off"
 					separatorAt={3}
