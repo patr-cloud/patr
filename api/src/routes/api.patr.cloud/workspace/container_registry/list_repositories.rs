@@ -153,7 +153,7 @@ pub async fn list_repositories(
 		FROM
 			repos
 		INNER JOIN
-			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS permission_resource
+			RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID($2, $3) AS permission_resource
 		ON
 			repos.id = permission_resource.id
 		WHERE

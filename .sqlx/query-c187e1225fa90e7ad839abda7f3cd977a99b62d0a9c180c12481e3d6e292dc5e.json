@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM workspace_member WHERE workspace_id = $1 AND identity_id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c187e1225fa90e7ad839abda7f3cd977a99b62d0a9c180c12481e3d6e292dc5e"
+}

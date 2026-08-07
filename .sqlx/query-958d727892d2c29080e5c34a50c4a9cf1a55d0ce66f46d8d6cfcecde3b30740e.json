@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO identity(id, type) VALUES ($1, 'service_account');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "958d727892d2c29080e5c34a50c4a9cf1a55d0ce66f46d8d6cfcecde3b30740e"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE audit_log ADD CONSTRAINT audit_log_pkey PRIMARY KEY(id), ADD CONSTRAINT audit_log_workspace_id_fkey FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT audit_log_resource_id_fkey FOREIGN KEY(resource_id) REFERENCES resource(id), ADD CONSTRAINT audit_log_credential_id_fkey FOREIGN KEY(credential_id) REFERENCES credential(credential_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "adba510540cf1e21cf5a4d10b45951d8a9c32ddd99c6041ed469ab3fc6d13844"
+}

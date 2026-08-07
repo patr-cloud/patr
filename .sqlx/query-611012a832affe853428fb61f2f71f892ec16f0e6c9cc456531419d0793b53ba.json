@@ -1,0 +1,133 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT deployment.id, name, registry, repository_id, image_name, image_tag, status AS \"status: DeploymentStatus\", runner, machine_type, current_live_digest, COUNT(*) OVER() AS \"total_count!\" FROM deployment INNER JOIN RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID($2, $3) AS resource ON deployment.id = resource.id WHERE workspace_id = $1 AND deployment.deleted IS NULL AND ($4::TEXT IS NULL OR deployment.name ILIKE '%' || $4 || '%') AND ($5::TEXT IS NULL OR deployment.image_tag = $5) AND ($6::DEPLOYMENT_STATUS[] IS NULL OR deployment.status = ANY($6)) AND ($7::UUID IS NULL OR deployment.runner = $7) AND ($8::TEXT IS NULL OR deployment.current_live_digest = $8) ORDER BY resource.created DESC LIMIT $9 OFFSET $10;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "registry",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "repository_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "image_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "image_tag",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "status: DeploymentStatus",
+        "type_info": {
+          "Custom": {
+            "name": "deployment_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "pushed",
+                "deploying",
+                "running",
+                "stopped",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "runner",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "machine_type",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 9,
+        "name": "current_live_digest",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "deployment_status[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "deployment_status",
+                  "kind": {
+                    "Enum": [
+                      "created",
+                      "pushed",
+                      "deploying",
+                      "running",
+                      "stopped",
+                      "errored",
+                      "deleted"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Uuid",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "611012a832affe853428fb61f2f71f892ec16f0e6c9cc456531419d0793b53ba"
+}

@@ -61,7 +61,7 @@ test.describe('workspace > navigation @racy', () => {
 
 			// Navigate to members (active workspace is alpha).
 			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
-			// Alpha has 1 invitee in workspace_user (owner not in list).
+			// Alpha has 1 invitee in workspace_member (owner not in list).
 			await expect(page.getByText(`@${invitee.username}`).first()).toBeVisible({
 				timeout: 10_000,
 			});

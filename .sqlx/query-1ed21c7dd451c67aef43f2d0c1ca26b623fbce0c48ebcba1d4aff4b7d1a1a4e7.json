@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_api_token.token_id AS \"token_id: Uuid\", user_api_token.user_id AS \"user_id: Uuid\", user_api_token.token_hash, user_api_token.token_nbf, user_api_token.token_exp, user_api_token.allowed_ips, user_api_token.revoked, \"user\".username, \"user\".first_name, \"user\".last_name, \"user\".created FROM user_api_token INNER JOIN credential ON user_api_token.token_id = credential.credential_id INNER JOIN \"user\" ON user_api_token.user_id = \"user\".id WHERE user_api_token.token_id = $1 AND credential.type = 'api_token';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "token_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "token_nbf",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "token_exp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "allowed_ips",
+        "type_info": "InetArray"
+      },
+      {
+        "ordinal": 6,
+        "name": "revoked",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1ed21c7dd451c67aef43f2d0c1ca26b623fbce0c48ebcba1d4aff4b7d1a1a4e7"
+}

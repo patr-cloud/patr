@@ -33,9 +33,9 @@ pub async fn delete_service_account(
 	query!(
 		r#"
 		DELETE FROM
-			service_account_role
+			workspace_member
 		WHERE
-			service_account_id = $1;
+			identity_id = $1;
 		"#,
 		service_account_id as _,
 	)
@@ -43,6 +43,10 @@ pub async fn delete_service_account(
 	.await?;
 
 	// Hard-delete the service account row
+	// The `identity` and `credential` rows deliberately outlive the service
+	// account: audit entries reference the credential, and an audit trail whose
+	// actor has vanished is worthless. Authentication still fails for a deleted
+	// service account because the token lookup requires `deleted IS NULL`.
 	query!(
 		r#"
 		DELETE FROM

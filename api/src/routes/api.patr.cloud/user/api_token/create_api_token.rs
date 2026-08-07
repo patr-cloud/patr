@@ -80,20 +80,20 @@ pub async fn create_api_token(
 	let token_id = query!(
 		r#"
 		INSERT INTO
-			user_login(
-				login_id,
-				user_id,
-				login_type,
+			credential(
+				credential_id,
+				identity_id,
+				type,
 				created
 			)
 		VALUES
 			(
-				GENERATE_LOGIN_ID(),
+				GENERATE_CREDENTIAL_ID(),
 				$1,
 				'api_token',
 				$2
 			)
-		RETURNING login_id;
+		RETURNING credential_id AS "login_id";
 		"#,
 		user_data.id as _,
 		now,

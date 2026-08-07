@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX workspace_member_idx_identity_id_workspace_id ON workspace_member (identity_id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "eb8d8b41680fc3a5f82ac1cff2a144d0facc15eec5f6b38ad75e232affbd522d"
+}

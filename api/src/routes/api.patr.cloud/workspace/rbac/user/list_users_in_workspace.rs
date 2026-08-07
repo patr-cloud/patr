@@ -49,44 +49,44 @@ pub async fn list_users_in_workspace(
 		r#"
 		WITH matched_users AS (
 			SELECT DISTINCT
-				workspace_user.user_id
+				workspace_member.identity_id
 			FROM
-				workspace_user
+				workspace_member
 			INNER JOIN
 				"user"
 			ON
-				workspace_user.user_id = "user".id
+				workspace_member.identity_id = "user".id
 			WHERE
-				workspace_user.workspace_id = $1 AND
+				workspace_member.workspace_id = $1 AND
 				($2::TEXT IS NULL OR "user".username ILIKE '%' || $2::TEXT || '%') AND
 				($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
 				($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
 		),
 		users_page AS (
 			SELECT
-				user_id
+				identity_id
 			FROM
 				matched_users
 			ORDER BY
-				user_id
+				identity_id
 			LIMIT $5
 			OFFSET $6
 		)
 		SELECT
-			workspace_user.user_id AS "user_id!",
-			workspace_user.role_id AS "role_id!",
+			workspace_member.identity_id AS "identity_id!",
+			workspace_member.role_id AS "role_id!",
 			(SELECT COUNT(*) FROM matched_users) AS "total_count!"
 		FROM
-			workspace_user
+			workspace_member
 		INNER JOIN
 			users_page
 		ON
-			users_page.user_id = workspace_user.user_id
+			users_page.identity_id = workspace_member.identity_id
 		WHERE
-			workspace_user.workspace_id = $1
+			workspace_member.workspace_id = $1
 		ORDER BY
-			workspace_user.user_id,
-			workspace_user.role_id;
+			workspace_member.identity_id,
+			workspace_member.role_id;
 		"#,
 		workspace_id as _,
 		username_filter,
@@ -101,7 +101,7 @@ pub async fn list_users_in_workspace(
 	.fold(BTreeMap::<Uuid, Vec<Uuid>>::new(), |mut users, row| {
 		total_count = row.total_count;
 		users
-			.entry(row.user_id.into())
+			.entry(row.identity_id.into())
 			.or_default()
 			.push(row.role_id.into());
 		users

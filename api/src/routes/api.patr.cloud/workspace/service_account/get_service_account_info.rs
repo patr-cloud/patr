@@ -50,9 +50,9 @@ pub async fn get_service_account_info(
 		SELECT
 			role_id AS "role_id: Uuid"
 		FROM
-			service_account_role
+			workspace_member
 		WHERE
-			service_account_id = $1;
+			identity_id = $1;
 		"#,
 		service_account_id as _,
 	)

@@ -61,7 +61,7 @@ pub async fn list_deployment(
 		FROM
 			deployment
 		INNER JOIN
-			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
+			RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID($2, $3) AS resource
 		ON
 			deployment.id = resource.id
 		WHERE

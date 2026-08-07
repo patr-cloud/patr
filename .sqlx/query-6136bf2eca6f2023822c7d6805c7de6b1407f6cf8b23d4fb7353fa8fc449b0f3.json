@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH valid_roles AS (SELECT id FROM role WHERE id = ANY($3::UUID[]) AND owner_id = $1) INSERT INTO workspace_member(workspace_id, identity_id, role_id) SELECT $1, $2, id FROM valid_roles;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6136bf2eca6f2023822c7d6805c7de6b1407f6cf8b23d4fb7353fa8fc449b0f3"
+}

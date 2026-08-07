@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO credential(credential_id, identity_id, type, created) VALUES (GENERATE_CREDENTIAL_ID(), $1, 'web_login', $2) RETURNING credential_id AS \"login_id: Uuid\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "login_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7908de95edeb0249ace368c544d77382eb8ac0dc5724a3c7aef827e86de4b69d"
+}

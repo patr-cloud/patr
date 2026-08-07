@@ -34,7 +34,7 @@ pub async fn initialize_workspace_tables(
 			city TEXT NOT NULL,
 			timezone TEXT NOT NULL,
 
-			login_id UUID NOT NULL,
+			credential_id UUID NOT NULL,
 			action AUDIT_LOG_TYPE NOT NULL,
 			/* workspace_id is kept in case the resource is moved to another workspace */
 			workspace_id UUID NOT NULL,
@@ -75,9 +75,9 @@ pub async fn initialize_workspace_constraints(
 			ADD CONSTRAINT audit_log_resource_id_fkey
 				FOREIGN KEY(resource_id)
 					REFERENCES resource(id),
-			ADD CONSTRAINT audit_log_login_id_fkey
-				FOREIGN KEY(login_id)
-					REFERENCES user_login(login_id);
+			ADD CONSTRAINT audit_log_credential_id_fkey
+				FOREIGN KEY(credential_id)
+					REFERENCES credential(credential_id);
 		"#
 	)
 	.execute(&mut *connection)

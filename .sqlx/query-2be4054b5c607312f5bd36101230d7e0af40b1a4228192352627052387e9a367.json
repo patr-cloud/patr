@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE identity(id UUID NOT NULL, type IDENTITY_TYPE NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2be4054b5c607312f5bd36101230d7e0af40b1a4228192352627052387e9a367"
+}

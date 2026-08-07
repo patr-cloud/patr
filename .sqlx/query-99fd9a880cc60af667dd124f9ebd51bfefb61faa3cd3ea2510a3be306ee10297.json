@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE web_login ADD CONSTRAINT web_login_fk FOREIGN KEY(login_id, user_id, login_type) REFERENCES credential(credential_id, identity_id, type);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "99fd9a880cc60af667dd124f9ebd51bfefb61faa3cd3ea2510a3be306ee10297"
+}

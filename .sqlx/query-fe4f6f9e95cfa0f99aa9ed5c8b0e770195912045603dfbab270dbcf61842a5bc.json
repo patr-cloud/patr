@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".id, \"user\".username, \"user\".first_name, \"user\".last_name, \"user\".created FROM \"user\" INNER JOIN credential ON \"user\".id = credential.identity_id INNER JOIN web_login ON credential.credential_id = web_login.login_id WHERE credential.credential_id = $1 AND credential.type = 'web_login';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fe4f6f9e95cfa0f99aa9ed5c8b0e770195912045603dfbab270dbcf61842a5bc"
+}

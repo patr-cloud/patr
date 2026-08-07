@@ -61,9 +61,9 @@ pub(crate) async fn get_permissions(
 	//
 	// Service account tokens share the `patrv1.{refresh_token}.{id}` shape with
 	// user API tokens, so we try user_api_token first, then fall back to
-	// service_account. A UUIDv4 collision between user_login.login_id and
-	// service_account.id is vanishingly unlikely, but even if it happened the
-	// worst case is the SA can't authenticate (the user_api_token branch
+	// service_account. A UUIDv4 collision between an API token's credential ID
+	// and a service account's ID is vanishingly unlikely, but even if it happened
+	// the worst case is the SA can't authenticate (the user_api_token branch
 	// matches first, then the hash check fails because the hashes don't match).
 	// No unauthorized access is possible — just a soft-bricked SA.
 	info!("Extracting information about API token");
@@ -84,20 +84,23 @@ pub(crate) async fn get_permissions(
 			user_api_token.token_exp,
 			user_api_token.allowed_ips,
 			user_api_token.revoked,
-			"user".*
+			"user".username,
+			"user".first_name,
+			"user".last_name,
+			"user".created
 		FROM
 			user_api_token
 		INNER JOIN
-			user_login
+			credential
 		ON
-			user_api_token.token_id = user_login.login_id
+			user_api_token.token_id = credential.credential_id
 		INNER JOIN
 			"user"
 		ON
 			user_api_token.user_id = "user".id
 		WHERE
 			user_api_token.token_id = $1 AND
-			user_login.login_type = 'api_token';
+			credential.type = 'api_token';
 		"#,
 		login_id as _
 	)
@@ -260,145 +263,10 @@ pub async fn get_permissions_for_api_token(
 	login_id: &Uuid,
 	user_id: &Uuid,
 ) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
-	// User's current role-derived permissions (the upper bound for the
-	// token). Read directly from the DB — the token's cache slot is keyed
-	// on its own login_id, so reusing the user's cached perms doesn't apply.
-	let mut user_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
-
-	query!(
-		r#"
-		SELECT
-			id AS "workspace_id!"
-		FROM
-			workspace
-		WHERE
-			super_admin_id = $1;
-		"#,
-		user_id as _,
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| row.workspace_id)
-	.for_each(|workspace_id| {
-		user_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
-	});
-
-	query!(
-		r#"
-		SELECT
-			workspace_user.workspace_id AS "workspace_id!",
-			role_resource_permissions_type.permission_id AS "permission_id!",
-			role_resource_permissions_exclude.resource_id AS "resource_id?"
-		FROM
-			workspace_user
-		INNER JOIN
-			role_resource_permissions_type
-		ON
-			role_resource_permissions_type.role_id = workspace_user.role_id AND
-			role_resource_permissions_type.permission_type = 'exclude'
-		LEFT JOIN
-			role_resource_permissions_exclude
-		ON
-			role_resource_permissions_exclude.role_id = workspace_user.role_id
-		WHERE
-			workspace_user.user_id = $1;
-		"#,
-		user_id as _,
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
-	.for_each(|(workspace_id, permission_id, resource_id)| {
-		let permissions = user_permissions
-			.entry(workspace_id.into())
-			.or_insert_with(|| WorkspacePermission::Member {
-				permissions: BTreeMap::new(),
-			});
-
-		match permissions {
-			WorkspacePermission::SuperAdmin => {
-				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
-			}
-			WorkspacePermission::Member { permissions } => {
-				let permission_type = permissions
-					.entry(permission_id.into())
-					.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
-				match permission_type {
-					ResourcePermissionType::Include(_) => {
-						error!(
-							"Found include permissions before include is even called. This should be possible!"
-						);
-					}
-					ResourcePermissionType::Exclude(resources) => {
-						let Some(resource_id) = resource_id else {
-							return;
-						};
-
-						resources.insert(resource_id.into());
-					}
-				}
-			}
-		}
-	});
-
-	query!(
-		r#"
-		SELECT
-			workspace_user.workspace_id AS "workspace_id!",
-			role_resource_permissions_type.permission_id AS "permission_id!",
-			role_resource_permissions_include.resource_id AS "resource_id?"
-		FROM
-			workspace_user
-		INNER JOIN
-			role_resource_permissions_type
-		ON
-			role_resource_permissions_type.role_id = workspace_user.role_id AND
-			role_resource_permissions_type.permission_type = 'include'
-		LEFT JOIN
-			role_resource_permissions_include
-		ON
-			role_resource_permissions_include.role_id = workspace_user.role_id
-		WHERE
-			workspace_user.user_id = $1;
-		"#,
-		user_id as _,
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
-	.for_each(|(workspace_id, permission_id, resource_id)| {
-		let permissions = user_permissions
-			.entry(workspace_id.into())
-			.or_insert_with(|| WorkspacePermission::Member {
-				permissions: BTreeMap::new(),
-			});
-
-		let Some(resource_id) = resource_id else {
-			return;
-		};
-
-		match permissions {
-			WorkspacePermission::SuperAdmin => {
-				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
-			}
-			WorkspacePermission::Member { permissions } => {
-				let permission_type = permissions
-					.entry(permission_id.into())
-					.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
-				match permission_type {
-					ResourcePermissionType::Include(resources) => {
-						resources.insert(resource_id.into());
-					}
-					ResourcePermissionType::Exclude(resources) => {
-						resources.remove(&resource_id.into());
-					}
-				}
-			}
-		}
-	});
+	// The user's current role-derived permissions are the upper bound for the
+	// token. Read directly from the DB — the token's cache slot is keyed on its
+	// own login_id, so reusing the identity's cached perms doesn't apply.
+	let user_permissions = super::role_derived_permissions(&mut *db_connection, user_id).await?;
 
 	// Token's declared permissions (the snapshot at mint/patch time).
 	let mut token_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO credential(credential_id, identity_id, type, created) VALUES ($1, $1, 'service_account', NOW());",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "040f5a70835e9117fc5332453c91631a821a3b8ba5c77f96bca154c98c82b340"
+}

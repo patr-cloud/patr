@@ -51,7 +51,7 @@ pub async fn list_runners_for_workspace(
 		FROM
 			runner
 		INNER JOIN
-			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
+			RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID($2, $3) AS resource
 		ON
 			runner.id = resource.id
 		WHERE

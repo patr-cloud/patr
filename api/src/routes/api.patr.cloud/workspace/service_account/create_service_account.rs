@@ -73,6 +73,21 @@ pub async fn create_service_account(
 	})?
 	.id;
 
+	// A service account is an identity, and holds exactly one non-rotating
+	// credential keyed on its own ID — which is what lets it authenticate and
+	// author audit entries the same way a human credential does.
+	query!(
+		r#"
+		INSERT INTO
+			identity(id, type)
+		VALUES
+			($1, 'service_account');
+		"#,
+		id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
 	// Create service account
 	query!(
 		r#"
@@ -101,13 +116,25 @@ pub async fn create_service_account(
 		other => other.into(),
 	})?;
 
+	query!(
+		r#"
+		INSERT INTO
+			credential(credential_id, identity_id, type, created)
+		VALUES
+			($1, $1, 'service_account', NOW());
+		"#,
+		id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
 	// Assign roles
 	for role_id in &roles {
 		query!(
 			r#"
 			INSERT INTO
-				service_account_role(
-					service_account_id,
+				workspace_member(
+					identity_id,
 					workspace_id,
 					role_id
 				)

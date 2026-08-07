@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE IDENTITY_TYPE AS ENUM('user', 'service_account');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "261b2694fb6a016f912bf2d3b217329b299dd55eb4e028222a89b2c5777035bc"
+}

@@ -28,7 +28,7 @@ pub async fn initialize_web_login_tables(
 			created_city TEXT NOT NULL,
 			created_timezone TEXT NOT NULL,
 
-			login_type USER_LOGIN_TYPE NOT NULL GENERATED ALWAYS AS ('web_login') STORED
+			login_type CREDENTIAL_TYPE NOT NULL GENERATED ALWAYS AS ('web_login') STORED
 		);
 		"#
 	)
@@ -124,10 +124,10 @@ pub async fn initialize_web_login_constraints(
 			login_id,
 			user_id,
 			login_type
-		) REFERENCES user_login(
-			login_id,
-			user_id,
-			login_type
+		) REFERENCES credential(
+			credential_id,
+			identity_id,
+			type
 		);
 		"#
 	)

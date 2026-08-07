@@ -344,15 +344,15 @@ pub async fn social_login_callback(
 	let login_id = query!(
 		r#"
 		INSERT INTO
-			user_login(
-				login_id,
-				user_id,
-				login_type,
+			credential(
+				credential_id,
+				identity_id,
+				type,
 				created
 			)
 		VALUES
-			(GENERATE_LOGIN_ID(), $1, 'web_login', $2)
-		RETURNING login_id AS "login_id: Uuid";
+			(GENERATE_CREDENTIAL_ID(), $1, 'web_login', $2)
+		RETURNING credential_id AS "login_id: Uuid";
 		"#,
 		user_id as _,
 		now,

@@ -34,13 +34,13 @@ pub async fn list_workspaces(
 		FROM
 			workspace
 		LEFT JOIN
-			workspace_user
+			workspace_member
 		ON
-			workspace.id = workspace_user.workspace_id
+			workspace.id = workspace_member.workspace_id
 		WHERE
 			(
 				workspace.super_admin_id = $1 OR
-				workspace_user.user_id = $1
+				workspace_member.identity_id = $1
 			) AND
 			workspace.deleted IS NULL;
 		"#,

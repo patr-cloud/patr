@@ -35,10 +35,10 @@ pub async fn remove_user_from_workspace(
 	let rows_removed = query!(
 		r#"
 		DELETE FROM
-			workspace_user
+			workspace_member
 		WHERE
 			workspace_id = $1 AND
-			user_id = $2;
+			identity_id = $2;
 		"#,
 		workspace_id as _,
 		user_id as _

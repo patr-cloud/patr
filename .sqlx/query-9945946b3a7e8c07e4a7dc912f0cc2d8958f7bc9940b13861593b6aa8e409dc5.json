@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE CREDENTIAL_TYPE AS ENUM('web_login', 'api_token', 'service_account');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9945946b3a7e8c07e4a7dc912f0cc2d8958f7bc9940b13861593b6aa8e409dc5"
+}
