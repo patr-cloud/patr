@@ -1,6 +1,14 @@
-use std::{collections::BTreeMap, net::IpAddr, str::FromStr as _};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	net::IpAddr,
+	str::FromStr as _,
+};
 
-use models::{RequestUserData, rbac::WorkspacePermission, utils::ClientType};
+use models::{
+	RequestUserData,
+	rbac::{ResourcePermissionType, WorkspacePermission},
+	utils::ClientType,
+};
 use rustis::{
 	client::Client as RedisClient,
 	commands::{GenericCommands as _, StringCommands as _},
@@ -52,8 +60,6 @@ pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Pe
 
 /// Contains the functions to extract permissions for an API token.
 mod api_token;
-/// Contains the functions to extract permissions for a service account token.
-mod service_account;
 /// Contains the functions to extract permissions for a web dashboard JWT.
 mod web_dashboard;
 
@@ -83,15 +89,13 @@ pub async fn get_permissions_for_identity(
 	}
 
 	let permissions = match client_type {
-		ClientType::WebDashboard => {
-			web_dashboard::get_permissions_for_web_login(&mut *db_connection, identity_id).await?
+		// A web session and a service account both authenticate as themselves,
+		// so they resolve to whatever their identity holds.
+		ClientType::WebDashboard | ClientType::ServiceAccount => {
+			role_derived_permissions(&mut *db_connection, identity_id).await?
 		}
 		ClientType::ApiToken => {
 			api_token::get_permissions_for_api_token(&mut *db_connection, login_id, identity_id)
-				.await?
-		}
-		ClientType::ServiceAccount => {
-			service_account::get_permissions_for_service_account(&mut *db_connection, identity_id)
 				.await?
 		}
 	};
@@ -262,4 +266,161 @@ async fn get_cached_permissions(
 			.await;
 		Ok(None)
 	}
+}
+
+/// Compute the permission map an identity holds in its own right: workspaces it
+/// owns outright, plus everything granted by the roles it is assigned through
+/// `workspace_member`.
+///
+/// Shared by web logins and service accounts, which differ only in that a
+/// service account never owns a workspace (`workspace.super_admin_id`
+/// references a user), so the ownership query simply returns nothing for one.
+/// API tokens deliberately do *not* use this directly — a token carries the
+/// scope captured when it was minted — but they intersect against it, so this
+/// is also the upper bound in [`api_token::get_permissions_for_api_token`].
+///
+/// Caching is the caller's job — see [`get_permissions_for_identity`].
+#[tracing::instrument(skip(db_connection))]
+pub async fn role_derived_permissions(
+	db_connection: &mut DatabaseConnection,
+	identity_id: &Uuid,
+) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
+	let mut identity_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
+
+	query!(
+		r#"
+		SELECT
+			id AS "workspace_id!"
+		FROM
+			workspace
+		WHERE
+			super_admin_id = $1;
+		"#,
+		identity_id as _,
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.map(|row| row.workspace_id)
+	.for_each(|workspace_id| {
+		identity_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
+	});
+
+	query!(
+		r#"
+		SELECT
+			workspace_member.workspace_id AS "workspace_id!",
+			role_resource_permissions_type.permission_id AS "permission_id!",
+			role_resource_permissions_exclude.resource_id AS "resource_id?"
+		FROM
+			workspace_member
+		INNER JOIN
+			role_resource_permissions_type
+		ON
+			role_resource_permissions_type.role_id = workspace_member.role_id AND
+			role_resource_permissions_type.permission_type = 'exclude'
+		LEFT JOIN
+			role_resource_permissions_exclude
+		ON
+			role_resource_permissions_exclude.role_id = workspace_member.role_id
+		WHERE
+			workspace_member.identity_id = $1;
+		"#,
+		identity_id as _,
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
+	.for_each(|(workspace_id, permission_id, resource_id)| {
+		let permissions = identity_permissions
+			.entry(workspace_id.into())
+			.or_insert_with(|| WorkspacePermission::Member {
+				permissions: BTreeMap::new(),
+			});
+
+		match permissions {
+			WorkspacePermission::SuperAdmin => {
+				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
+			}
+			WorkspacePermission::Member { permissions } => {
+				let permission_type = permissions
+					.entry(permission_id.into())
+					.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
+				match permission_type {
+					ResourcePermissionType::Include(_) => {
+						error!(
+							"Found include permissions before include is even called. This should be possible!"
+						);
+					}
+					ResourcePermissionType::Exclude(resources) => {
+						let Some(resource_id) = resource_id else {
+							return;
+						};
+
+						resources.insert(resource_id.into());
+					}
+				}
+			}
+		}
+	});
+
+	query!(
+		r#"
+		SELECT
+			workspace_member.workspace_id AS "workspace_id!",
+			role_resource_permissions_type.permission_id AS "permission_id!",
+			role_resource_permissions_include.resource_id AS "resource_id?"
+		FROM
+			workspace_member
+		INNER JOIN
+			role_resource_permissions_type
+		ON
+			role_resource_permissions_type.role_id = workspace_member.role_id AND
+			role_resource_permissions_type.permission_type = 'include'
+		LEFT JOIN
+			role_resource_permissions_include
+		ON
+			role_resource_permissions_include.role_id = workspace_member.role_id
+		WHERE
+			workspace_member.identity_id = $1;
+		"#,
+		identity_id as _,
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
+	.for_each(|(workspace_id, permission_id, resource_id)| {
+		let permissions = identity_permissions
+			.entry(workspace_id.into())
+			.or_insert_with(|| WorkspacePermission::Member {
+				permissions: BTreeMap::new(),
+			});
+
+		let Some(resource_id) = resource_id else {
+			return;
+		};
+
+		match permissions {
+			WorkspacePermission::SuperAdmin => {
+				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
+			}
+			WorkspacePermission::Member { permissions } => {
+				let permission_type = permissions
+					.entry(permission_id.into())
+					.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
+				match permission_type {
+					ResourcePermissionType::Include(resources) => {
+						resources.insert(resource_id.into());
+					}
+					ResourcePermissionType::Exclude(resources) => {
+						resources.remove(&resource_id.into());
+					}
+				}
+			}
+		}
+	});
+
+	Ok(identity_permissions)
 }

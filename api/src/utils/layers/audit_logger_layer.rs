@@ -143,7 +143,9 @@ where
 			};
 
 			let user_agent = request.headers.get_header().as_str().to_owned();
-			let login_id = user_data.login_id;
+			// Whatever credential authenticated this request — a web login, an
+			// API token, or a service account's single token.
+			let credential_id = user_data.login_id;
 			let ip_details = ip::lookup(client_ip, &state).await?;
 			let client_ip_network = IpNetwork::from(client_ip);
 
@@ -220,7 +222,7 @@ where
 						city,
 						timezone,
 
-						login_id,
+						credential_id,
 						action,
 						workspace_id,
 						resource_id
@@ -252,7 +254,7 @@ where
 				region,
 				city,
 				timezone,
-				login_id as _,
+				credential_id as _,
 				audit_log_type as _,
 				resource_id as _,
 			)

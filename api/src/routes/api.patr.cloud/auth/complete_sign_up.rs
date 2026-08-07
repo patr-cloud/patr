@@ -163,6 +163,20 @@ pub async fn complete_sign_up(
 
 			trace!("Constraints deferred");
 
+			// Every user is an identity; the row has to exist before the user's
+			// composite FK can point at it.
+			query!(
+				r#"
+				INSERT INTO
+					identity(id, type)
+				VALUES
+					($1, 'user');
+				"#,
+				user_id as _,
+			)
+			.execute(&mut **database)
+			.await?;
+
 			query!(
 				r#"
 				INSERT INTO
@@ -351,20 +365,20 @@ pub async fn complete_sign_up(
 			let login_id = query!(
 				r#"
 				INSERT INTO
-					user_login(
-						login_id,
-						user_id,
-						login_type,
+					credential(
+						credential_id,
+						identity_id,
+						type,
 						created
 					)
 				VALUES
 					(
-						GENERATE_LOGIN_ID(),
+						GENERATE_CREDENTIAL_ID(),
 						$1,
 						'web_login',
 						$2
 					)
-				RETURNING login_id;
+				RETURNING credential_id AS "login_id";
 				"#,
 				user_id as _,
 				now,

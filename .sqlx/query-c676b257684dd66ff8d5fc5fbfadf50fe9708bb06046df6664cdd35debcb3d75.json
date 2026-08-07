@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE credential(credential_id UUID NOT NULL, identity_id UUID NOT NULL, type CREDENTIAL_TYPE NOT NULL, created TIMESTAMPTZ NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c676b257684dd66ff8d5fc5fbfadf50fe9708bb06046df6664cdd35debcb3d75"
+}

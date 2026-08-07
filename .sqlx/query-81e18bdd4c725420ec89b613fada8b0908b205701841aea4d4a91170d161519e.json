@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_api_token ADD CONSTRAINT user_api_token_token_id_user_id_login_type_fk FOREIGN KEY(token_id, user_id, login_type) REFERENCES credential(credential_id, identity_id, type);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "81e18bdd4c725420ec89b613fada8b0908b205701841aea4d4a91170d161519e"
+}

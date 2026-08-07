@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_domain.id, CONCAT(name, '.', tld) AS \"name!\", is_verified, last_verified, COUNT(*) OVER() AS \"total_count!\" FROM workspace_domain INNER JOIN RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID($2, $3) AS resource ON workspace_domain.id = resource.id WHERE workspace_id = $1 AND workspace_domain.deleted IS NULL AND ($4::TEXT IS NULL OR CONCAT(name, tld) ILIKE '%' || $4::TEXT || '%') AND ($5::BOOLEAN IS NULL OR is_verified = $5) AND ($6::TIMESTAMPTZ IS NULL OR last_verified >= $6) AND ($7::TIMESTAMPTZ IS NULL OR last_verified <= $7) ORDER BY resource.created DESC LIMIT $8 OFFSET $9;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_verified",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Bool",
+        "Timestamptz",
+        "Timestamptz",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "dbf73e172d559ed10bf3e39628ea6888c921f88caeb2d703e7357f903a4833d1"
+}

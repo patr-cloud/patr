@@ -29,6 +29,8 @@ mod geo_location;
 /// headers are present in a struct as well as provide what headers are required
 /// for an endpoint.
 mod headers;
+/// Discriminates the two kinds of identity: users and service accounts.
+mod identity_type;
 /// Extension traits for iterators.
 mod iterator_ext;
 /// A set of utilities to parse a query param for the list route API. This route
@@ -66,6 +68,7 @@ pub use self::{
 	ext_trait::*,
 	geo_location::*,
 	headers::*,
+	identity_type::*,
 	iterator_ext::*,
 	list_resource_query::*,
 	middlewares::*,

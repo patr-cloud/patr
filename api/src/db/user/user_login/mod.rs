@@ -14,9 +14,10 @@ pub async fn initialize_user_login_tables(
 	info!("Setting up user login tables");
 	query!(
 		r#"
-		CREATE TYPE USER_LOGIN_TYPE AS ENUM(
+		CREATE TYPE CREDENTIAL_TYPE AS ENUM(
+			'web_login',
 			'api_token',
-			'web_login'
+			'service_account'
 		);
 		"#
 	)
@@ -25,10 +26,10 @@ pub async fn initialize_user_login_tables(
 
 	query!(
 		r#"
-		CREATE TABLE user_login(
-			login_id UUID NOT NULL,
-			user_id UUID NOT NULL,
-			login_type USER_LOGIN_TYPE NOT NULL,
+		CREATE TABLE credential(
+			credential_id UUID NOT NULL,
+			identity_id UUID NOT NULL,
+			type CREDENTIAL_TYPE NOT NULL,
 			created TIMESTAMPTZ NOT NULL
 		);
 		"#
@@ -50,12 +51,29 @@ pub async fn initialize_user_login_indices(
 	info!("Setting up user login indices");
 	query!(
 		r#"
-		ALTER TABLE user_login
-			ADD CONSTRAINT user_login_pk PRIMARY KEY(login_id),
-			ADD CONSTRAINT user_login_uq_login_id_user_id UNIQUE(login_id, user_id),
-			ADD CONSTRAINT user_login_uq_login_id_user_id_login_type UNIQUE(
-				login_id, user_id, login_type
+		ALTER TABLE credential
+			ADD CONSTRAINT credential_pk PRIMARY KEY(credential_id),
+			ADD CONSTRAINT credential_uq_credential_id_identity_id UNIQUE(
+				credential_id, identity_id
+			),
+			ADD CONSTRAINT credential_uq_credential_id_identity_id_type UNIQUE(
+				credential_id, identity_id, type
 			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Web sessions and API tokens are many-per-identity; a service account
+	// holds exactly one non-rotating credential.
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			credential_uq_identity_id_service_account
+		ON
+			credential(identity_id)
+		WHERE
+			type = 'service_account';
 		"#
 	)
 	.execute(&mut *connection)
@@ -75,9 +93,9 @@ pub async fn initialize_user_login_constraints(
 	info!("Setting up user login constraints");
 	query!(
 		r#"
-		ALTER TABLE user_login
-		ADD CONSTRAINT user_login_fk_user_id
-		FOREIGN KEY(user_id) REFERENCES "user"(id);
+		ALTER TABLE credential
+		ADD CONSTRAINT credential_fk_identity_id
+		FOREIGN KEY(identity_id) REFERENCES identity(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -88,7 +106,7 @@ pub async fn initialize_user_login_constraints(
 
 	query!(
 		r#"
-		CREATE FUNCTION GENERATE_LOGIN_ID() RETURNS UUID AS $$
+		CREATE FUNCTION GENERATE_CREDENTIAL_ID() RETURNS UUID AS $$
 		DECLARE
 			id UUID;
 		BEGIN
@@ -97,9 +115,9 @@ pub async fn initialize_user_login_constraints(
 				SELECT
 					1
 				FROM
-					user_login
+					credential
 				WHERE
-					login_id = id
+					credential_id = id
 			) LOOP
 				id := gen_random_uuid();
 			END LOOP;

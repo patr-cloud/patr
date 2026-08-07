@@ -40,7 +40,7 @@ pub async fn initialize_api_token_tables(
 			allowed_ips INET[],
 			created TIMESTAMPTZ NOT NULL,
 			revoked TIMESTAMPTZ,
-			login_type USER_LOGIN_TYPE GENERATED ALWAYS AS ('api_token') STORED
+			login_type CREDENTIAL_TYPE NOT NULL GENERATED ALWAYS AS ('api_token') STORED
 		);
 		"#
 	)
@@ -231,8 +231,8 @@ pub async fn initialize_api_token_constraints(
 		r#"
 		ALTER TABLE user_api_token
 		ADD CONSTRAINT user_api_token_token_id_user_id_login_type_fk
-		FOREIGN KEY(token_id, user_id, login_type) REFERENCES user_login(
-			login_id, user_id, login_type
+		FOREIGN KEY(token_id, user_id, login_type) REFERENCES credential(
+			credential_id, identity_id, type
 		);
 		"#
 	)

@@ -87,20 +87,24 @@ pub(crate) async fn get_permissions(
 	let Some(user) = query! {
 		r#"
 		SELECT
-			"user".*
+			"user".id,
+			"user".username,
+			"user".first_name,
+			"user".last_name,
+			"user".created
 		FROM
 			"user"
 		INNER JOIN
-			user_login
+			credential
 		ON
-			"user".id = user_login.user_id
+			"user".id = credential.identity_id
 		INNER JOIN
 			web_login
 		ON
-			user_login.login_id = web_login.login_id
+			credential.credential_id = web_login.login_id
 		WHERE
-			user_login.login_id = $1 AND
-			user_login.login_type = 'web_login';
+			credential.credential_id = $1 AND
+			credential.type = 'web_login';
 		"#,
 		sub as _
 	}
@@ -157,156 +161,4 @@ pub(crate) async fn get_permissions(
 		.login_id(sub)
 		.permissions(permissions)
 		.build())
-}
-
-/// Compute the permission map for a web-login session: the user's current
-/// role-derived permissions, read from the database (workspace ownership +
-/// per-role includes/excludes for the workspaces they're a member of).
-///
-/// Caching is the caller's job — see [`get_permissions_for_identity`][1].
-///
-/// [1]: super::get_permissions_for_identity
-#[tracing::instrument(skip(db_connection))]
-pub async fn get_permissions_for_web_login(
-	db_connection: &mut DatabaseConnection,
-	user_id: &Uuid,
-) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
-	let mut user_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
-
-	query!(
-		r#"
-		SELECT
-			id AS "workspace_id!"
-		FROM
-			workspace
-		WHERE
-			super_admin_id = $1;
-		"#,
-		user_id as _,
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| row.workspace_id)
-	.for_each(|workspace_id| {
-		user_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
-	});
-
-	query!(
-		r#"
-		SELECT
-			workspace_user.workspace_id AS "workspace_id!",
-			role_resource_permissions_type.permission_id AS "permission_id!",
-			role_resource_permissions_exclude.resource_id AS "resource_id?"
-		FROM
-			workspace_user
-		INNER JOIN
-			role_resource_permissions_type
-		ON
-			role_resource_permissions_type.role_id = workspace_user.role_id AND
-			role_resource_permissions_type.permission_type = 'exclude'
-		LEFT JOIN
-			role_resource_permissions_exclude
-		ON
-			role_resource_permissions_exclude.role_id = workspace_user.role_id
-		WHERE
-			workspace_user.user_id = $1;
-		"#,
-		user_id as _,
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
-	.for_each(|(workspace_id, permission_id, resource_id)| {
-		let permissions = user_permissions
-			.entry(workspace_id.into())
-			.or_insert_with(|| WorkspacePermission::Member {
-				permissions: BTreeMap::new(),
-			});
-
-		match permissions {
-			WorkspacePermission::SuperAdmin => {
-				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
-			}
-			WorkspacePermission::Member { permissions } => {
-				let permission_type = permissions
-					.entry(permission_id.into())
-					.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
-				match permission_type {
-					ResourcePermissionType::Include(_) => {
-						error!(
-							"Found include permissions before include is even called. This should be possible!"
-						);
-					}
-					ResourcePermissionType::Exclude(resources) => {
-						let Some(resource_id) = resource_id else {
-							return;
-						};
-
-						resources.insert(resource_id.into());
-					}
-				}
-			}
-		}
-	});
-
-	query!(
-		r#"
-		SELECT
-			workspace_user.workspace_id AS "workspace_id!",
-			role_resource_permissions_type.permission_id AS "permission_id!",
-			role_resource_permissions_include.resource_id AS "resource_id?"
-		FROM
-			workspace_user
-		INNER JOIN
-			role_resource_permissions_type
-		ON
-			role_resource_permissions_type.role_id = workspace_user.role_id AND
-			role_resource_permissions_type.permission_type = 'include'
-		LEFT JOIN
-			role_resource_permissions_include
-		ON
-			role_resource_permissions_include.role_id = workspace_user.role_id
-		WHERE
-			workspace_user.user_id = $1;
-		"#,
-		user_id as _,
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
-	.for_each(|(workspace_id, permission_id, resource_id)| {
-		let permissions = user_permissions
-			.entry(workspace_id.into())
-			.or_insert_with(|| WorkspacePermission::Member {
-				permissions: BTreeMap::new(),
-			});
-
-		let Some(resource_id) = resource_id else {
-			return;
-		};
-
-		match permissions {
-			WorkspacePermission::SuperAdmin => {
-				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
-			}
-			WorkspacePermission::Member { permissions } => {
-				let permission_type = permissions
-					.entry(permission_id.into())
-					.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
-				match permission_type {
-					ResourcePermissionType::Include(resources) => {
-						resources.insert(resource_id.into());
-					}
-					ResourcePermissionType::Exclude(resources) => {
-						resources.remove(&resource_id.into());
-					}
-				}
-			}
-		}
-	});
-
-	Ok(user_permissions)
 }

@@ -15,19 +15,9 @@ pub async fn initialize_service_account_tables(
 			created TIMESTAMPTZ NOT NULL,
 			description TEXT,
 			token_hash TEXT NOT NULL,
-			deleted TIMESTAMPTZ
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE service_account_role(
-			service_account_id UUID NOT NULL,
-			workspace_id UUID NOT NULL,
-			role_id UUID NOT NULL
+			deleted TIMESTAMPTZ,
+			identity_type IDENTITY_TYPE NOT NULL
+				GENERATED ALWAYS AS ('service_account') STORED
 		);
 		"#
 	)
@@ -68,16 +58,6 @@ pub async fn initialize_service_account_indices(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		ALTER TABLE service_account_role
-		ADD CONSTRAINT service_account_role_pk
-		PRIMARY KEY(service_account_id, role_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 
@@ -94,21 +74,9 @@ pub async fn initialize_service_account_constraints(
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
 			ADD CONSTRAINT service_account_fk_id_workspace_id
 				FOREIGN KEY(id, workspace_id, deleted)
-					REFERENCES resource(id, owner_id, deleted);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE service_account_role
-			ADD CONSTRAINT service_account_role_fk_service_account_id_workspace_id
-				FOREIGN KEY(service_account_id, workspace_id)
-					REFERENCES service_account(id, workspace_id),
-			ADD CONSTRAINT service_account_role_fk_role_id_workspace_id
-				FOREIGN KEY(role_id, workspace_id)
-					REFERENCES role(id, owner_id);
+					REFERENCES resource(id, owner_id, deleted),
+			ADD CONSTRAINT service_account_fk_id_identity_type
+				FOREIGN KEY(id, identity_type) REFERENCES identity(id, type);
 		"#
 	)
 	.execute(&mut *connection)

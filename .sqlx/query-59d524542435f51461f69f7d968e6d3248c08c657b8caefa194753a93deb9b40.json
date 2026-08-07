@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX credential_uq_identity_id_service_account ON credential(identity_id) WHERE type = 'service_account';",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "59d524542435f51461f69f7d968e6d3248c08c657b8caefa194753a93deb9b40"
+}

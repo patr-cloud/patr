@@ -95,9 +95,9 @@ pub async fn logout(
 	query!(
 		r#"
 		DELETE FROM
-			user_login
+			credential
 		WHERE
-			login_id = $1;
+			credential_id = $1;
 		"#,
 		login_id as _,
 	)

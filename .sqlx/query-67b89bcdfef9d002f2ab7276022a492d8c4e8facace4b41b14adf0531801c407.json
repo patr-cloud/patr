@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE credential ADD CONSTRAINT credential_fk_identity_id FOREIGN KEY(identity_id) REFERENCES identity(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "67b89bcdfef9d002f2ab7276022a492d8c4e8facace4b41b14adf0531801c407"
+}

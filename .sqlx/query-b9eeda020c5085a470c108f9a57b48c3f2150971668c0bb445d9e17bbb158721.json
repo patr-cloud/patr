@@ -1,0 +1,39 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH matched_users AS (SELECT DISTINCT workspace_member.identity_id FROM workspace_member INNER JOIN \"user\" ON workspace_member.identity_id = \"user\".id WHERE workspace_member.workspace_id = $1 AND ($2::TEXT IS NULL OR \"user\".username ILIKE '%' || $2::TEXT || '%') AND ($3::TEXT IS NULL OR \"user\".first_name ILIKE '%' || $3::TEXT || '%') AND ($4::TEXT IS NULL OR \"user\".last_name ILIKE '%' || $4::TEXT || '%')), users_page AS (SELECT identity_id FROM matched_users ORDER BY identity_id LIMIT $5 OFFSET $6) SELECT workspace_member.identity_id AS \"identity_id!\", workspace_member.role_id AS \"role_id!\", (SELECT COUNT(*) FROM matched_users) AS \"total_count!\" FROM workspace_member INNER JOIN users_page ON users_page.identity_id = workspace_member.identity_id WHERE workspace_member.workspace_id = $1 ORDER BY workspace_member.identity_id, workspace_member.role_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "identity_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "role_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "b9eeda020c5085a470c108f9a57b48c3f2150971668c0bb445d9e17bbb158721"
+}

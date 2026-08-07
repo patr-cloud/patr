@@ -62,7 +62,7 @@ pub async fn remove_runner_from_workspace(
 
 	// Per-runner role we auto-created in approve_runner_link, identified by
 	// its name convention. Manually-attached roles (if any) are not deleted —
-	// just unlinked when service_account_role rows go.
+	// just unlinked when workspace_member rows go.
 	let runner_role_name = format!("runner-{runner_id}");
 	let role_row = query!(
 		r#"
@@ -119,9 +119,9 @@ pub async fn remove_runner_from_workspace(
 	query!(
 		r#"
 		DELETE FROM
-			service_account_role
+			workspace_member
 		WHERE
-			service_account_id = $1;
+			identity_id = $1;
 		"#,
 		sa_id as _,
 	)
@@ -145,6 +145,10 @@ pub async fn remove_runner_from_workspace(
 		err => err.into(),
 	})?;
 
+	// The `identity` and `credential` rows deliberately outlive the service
+	// account: audit entries reference the credential, and an audit trail whose
+	// actor has vanished is worthless. Authentication still fails for a deleted
+	// service account because the token lookup requires `deleted IS NULL`.
 	query!(
 		r#"
 		DELETE FROM

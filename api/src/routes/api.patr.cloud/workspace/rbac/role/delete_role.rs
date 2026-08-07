@@ -45,7 +45,7 @@ pub async fn delete_role(
 			SELECT
 				COUNT(*) AS "count!: i64"
 			FROM
-				workspace_user
+				workspace_member
 			WHERE
 				workspace_id = $1 AND
 				role_id = $2;
@@ -65,7 +65,7 @@ pub async fn delete_role(
 	let users_removed = query!(
 		r#"
 		DELETE FROM
-			workspace_user
+			workspace_member
 		WHERE
 			workspace_id = $1 AND
 			role_id = $2;

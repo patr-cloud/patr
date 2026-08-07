@@ -46,10 +46,10 @@ pub async fn update_user_roles_in_workspace(
 				SELECT
 					1
 				FROM
-					workspace_user
+					workspace_member
 				WHERE
 					workspace_id = $1 AND
-					user_id = $2
+					identity_id = $2
 			) AS "exists!: bool";
 			"#,
 			workspace_id as _,
@@ -67,10 +67,10 @@ pub async fn update_user_roles_in_workspace(
 	query!(
 		r#"
 		DELETE FROM
-			workspace_user
+			workspace_member
 		WHERE
 			workspace_id = $1 AND
-			user_id = $2;
+			identity_id = $2;
 		"#,
 		workspace_id as _,
 		user_id as _
@@ -93,9 +93,9 @@ pub async fn update_user_roles_in_workspace(
 				owner_id = $1
 		)
 		INSERT INTO
-			workspace_user(
+			workspace_member(
 				workspace_id,
-				user_id,
+				identity_id,
 				role_id
 			)
 		SELECT
@@ -112,8 +112,10 @@ pub async fn update_user_roles_in_workspace(
 	.map_err(|err| match err {
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
 			match db_err.constraint() {
-				Some(c) if c == "workspace_user_fk_role_id" => ErrorType::RoleDoesNotExist,
-				Some(c) if c == "workspace_user_fk_user_id" => ErrorType::UserNotFound,
+				Some(c) if c == "workspace_member_fk_role_id_workspace_id" => {
+					ErrorType::RoleDoesNotExist
+				}
+				Some(c) if c == "workspace_member_fk_identity_id" => ErrorType::UserNotFound,
 				_ => ErrorType::server_error(sqlx::Error::Database(db_err)),
 			}
 		}

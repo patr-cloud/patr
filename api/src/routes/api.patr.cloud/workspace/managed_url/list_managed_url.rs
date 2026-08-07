@@ -63,7 +63,7 @@ pub async fn list_managed_url(
 		FROM
 			managed_url
 		INNER JOIN
-			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
+			RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID($2, $3) AS resource
 		ON
 			managed_url.id = resource.id
 		INNER JOIN

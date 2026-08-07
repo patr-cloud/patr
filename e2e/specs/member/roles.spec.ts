@@ -57,7 +57,7 @@ test.describe('member > roles [UI]', () => {
 		});
 		const inviteeId = await getOwnUserId(api, invitee);
 		const rows = await sql<{ role_id: string }>(
-			`SELECT role_id FROM workspace_user WHERE workspace_id = $1 AND user_id = $2`,
+			`SELECT role_id FROM workspace_member WHERE workspace_id = $1 AND identity_id = $2`,
 			[owner.workspaceId, inviteeId],
 		);
 		expect(rows.length).toBe(2);
@@ -79,7 +79,7 @@ test.describe('member > roles [UI]', () => {
 		});
 		const inviteeId = await getOwnUserId(api, invitee);
 		const rows = await sql<{ role_id: string }>(
-			`SELECT role_id FROM workspace_user WHERE workspace_id = $1 AND user_id = $2`,
+			`SELECT role_id FROM workspace_member WHERE workspace_id = $1 AND identity_id = $2`,
 			[owner.workspaceId, inviteeId],
 		);
 		expect(rows.length).toBe(1);
@@ -99,7 +99,7 @@ test.describe('member > roles [UI]', () => {
 		});
 		const inviteeId = await getOwnUserId(api, invitee);
 		const rows = await sql(
-			`SELECT 1 FROM workspace_user WHERE workspace_id = $1 AND user_id = $2`,
+			`SELECT 1 FROM workspace_member WHERE workspace_id = $1 AND identity_id = $2`,
 			[owner.workspaceId, inviteeId],
 		);
 		expect(rows.length).toBe(1);

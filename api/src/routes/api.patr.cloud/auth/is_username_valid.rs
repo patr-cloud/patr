@@ -26,7 +26,7 @@ pub async fn is_username_valid(
 	let is_user_exists = query!(
 		r#"
 		SELECT
-			*
+			id
 		FROM
 			"user"
 		WHERE

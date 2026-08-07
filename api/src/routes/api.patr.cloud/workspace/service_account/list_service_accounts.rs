@@ -47,7 +47,7 @@ pub async fn list_service_accounts(
 		FROM
 			service_account
 		INNER JOIN
-			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
+			RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID($2, $3) AS resource
 		ON
 			service_account.id = resource.id
 		WHERE
@@ -91,9 +91,9 @@ pub async fn list_service_accounts(
 			SELECT
 				role_id AS "role_id: Uuid"
 			FROM
-				service_account_role
+				workspace_member
 			WHERE
-				service_account_id = $1;
+				identity_id = $1;
 			"#,
 			service_account.id as _,
 		)

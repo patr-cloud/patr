@@ -283,6 +283,20 @@ pub async fn approve_runner_link(
 	.await?
 	.id;
 
+	// A service account is an identity holding exactly one non-rotating
+	// credential keyed on its own ID.
+	query!(
+		r#"
+		INSERT INTO
+			identity(id, type)
+		VALUES
+			($1, 'service_account');
+		"#,
+		sa_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
 	query!(
 		r#"
 		INSERT INTO
@@ -309,8 +323,20 @@ pub async fn approve_runner_link(
 	query!(
 		r#"
 		INSERT INTO
-			service_account_role(
-				service_account_id,
+			credential(credential_id, identity_id, type, created)
+		VALUES
+			($1, $1, 'service_account', NOW());
+		"#,
+		sa_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			workspace_member(
+				identity_id,
 				workspace_id,
 				role_id
 			)

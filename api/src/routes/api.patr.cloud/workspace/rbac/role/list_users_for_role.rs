@@ -49,14 +49,14 @@ pub async fn list_users_for_role(
 	let users = query!(
 		r#"
 		SELECT
-			workspace_user.*,
+			workspace_member.identity_id,
 			COUNT(*) OVER() AS "total_count!"
 		FROM
-			workspace_user
+			workspace_member
 		INNER JOIN
 			"user"
 		ON
-			workspace_user.user_id = "user".id
+			workspace_member.identity_id = "user".id
 		WHERE
 			workspace_id = $1 AND
 			role_id = $2 AND
@@ -64,7 +64,7 @@ pub async fn list_users_for_role(
 			($4::TEXT IS NULL OR "user".first_name ILIKE '%' || $4::TEXT || '%') AND
 			($5::TEXT IS NULL OR "user".last_name ILIKE '%' || $5::TEXT || '%')
 		ORDER BY
-			workspace_user.user_id
+			workspace_member.identity_id
 		LIMIT $6
 		OFFSET $7;
 		"#,
@@ -81,7 +81,7 @@ pub async fn list_users_for_role(
 	.into_iter()
 	.map(|row| {
 		total_count = row.total_count;
-		row.user_id.into()
+		row.identity_id.into()
 	})
 	.collect();
 

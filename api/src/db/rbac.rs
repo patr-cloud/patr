@@ -62,11 +62,11 @@ pub async fn initialize_rbac_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	// Users belong to an workspace through a role
+	// Identities belong to a workspace through a role
 	query!(
 		r#"
-		CREATE TABLE workspace_user(
-			user_id UUID NOT NULL,
+		CREATE TABLE workspace_member(
+			identity_id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
 			role_id UUID NOT NULL
 		);
@@ -186,12 +186,12 @@ pub async fn initialize_rbac_indices(
 	.execute(&mut *connection)
 	.await?;
 
-	// Users belong to an workspace through a role
+	// Identities belong to a workspace through a role
 	query!(
 		r#"
-		ALTER TABLE workspace_user
-		ADD CONSTRAINT workspace_user_pk
-		PRIMARY KEY(user_id, workspace_id, role_id);
+		ALTER TABLE workspace_member
+		ADD CONSTRAINT workspace_member_pk
+		PRIMARY KEY(identity_id, workspace_id, role_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -200,10 +200,10 @@ pub async fn initialize_rbac_indices(
 	query!(
 		r#"
 		CREATE INDEX
-			workspace_user_idx_user_id
+			workspace_member_idx_identity_id
 		ON
-			workspace_user
-		(user_id);
+			workspace_member
+		(identity_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -212,10 +212,10 @@ pub async fn initialize_rbac_indices(
 	query!(
 		r#"
 		CREATE INDEX
-			workspace_user_idx_user_id_workspace_id
+			workspace_member_idx_identity_id_workspace_id
 		ON
-			workspace_user
-		(user_id, workspace_id);
+			workspace_member
+		(identity_id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -292,15 +292,15 @@ pub async fn initialize_rbac_constraints(
 	.execute(&mut *connection)
 	.await?;
 
-	// Users belong to an workspace through a role
+	// Identities belong to a workspace through a role
 	query!(
 		r#"
-		ALTER TABLE workspace_user
-			ADD CONSTRAINT workspace_user_fk_user_id
-				FOREIGN KEY(user_id) REFERENCES "user"(id),
-			ADD CONSTRAINT workspace_user_fk_workspace_id
+		ALTER TABLE workspace_member
+			ADD CONSTRAINT workspace_member_fk_identity_id
+				FOREIGN KEY(identity_id) REFERENCES identity(id),
+			ADD CONSTRAINT workspace_member_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
-			ADD CONSTRAINT workspace_user_fk_role_id_workspace_id
+			ADD CONSTRAINT workspace_member_fk_role_id_workspace_id
 				FOREIGN KEY(role_id, workspace_id)
 					REFERENCES role(id, owner_id);
 		"#
@@ -427,8 +427,8 @@ pub async fn initialize_rbac_constraints(
 
 	query!(
 		r#"
-		CREATE FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(
-			login_id UUID,
+		CREATE OR REPLACE FUNCTION RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID(
+			credential_id UUID,
 			permission_name TEXT
 		) RETURNS TABLE(
 			id UUID,
@@ -455,45 +455,50 @@ pub async fn initialize_rbac_constraints(
 			END IF;
 
 			RETURN QUERY
-			/* Workspaces where this login has super admin access */
+			/* Workspaces where this credential has super admin access */
 			WITH super_admin_workspaces AS (
 				SELECT
 					workspace.id AS workspace_id
 				FROM
-					web_login
+					credential
 				INNER JOIN
 					workspace
 				ON
-					workspace.super_admin_id = web_login.user_id
+					workspace.super_admin_id = credential.identity_id
 				WHERE
-					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					credential.credential_id =
+						RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID.credential_id AND
+					credential.type = 'web_login'
 				UNION ALL
 				SELECT
 					user_api_token_workspace_super_admin.workspace_id
 				FROM
 					user_api_token_workspace_super_admin
 				WHERE
-					user_api_token_workspace_super_admin.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					user_api_token_workspace_super_admin.token_id =
+						RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID.credential_id
 			),
-			/* Resources explicitly granted via include lists,
-			scoped to the workspace the role belongs to */
+			/* Resources explicitly granted via include lists, scoped to the workspace
+			the role belongs to */
 			included_resources AS (
 				SELECT
 					role_resource_permissions_include.resource_id,
-					workspace_user.workspace_id
+					workspace_member.workspace_id
 				FROM
-					web_login
+					credential
 				INNER JOIN
-					workspace_user
+					workspace_member
 				ON
-					workspace_user.user_id = web_login.user_id
+					workspace_member.identity_id = credential.identity_id
 				INNER JOIN
 					role_resource_permissions_include
 				ON
-					role_resource_permissions_include.role_id = workspace_user.role_id AND
+					role_resource_permissions_include.role_id = workspace_member.role_id AND
 					role_resource_permissions_include.permission_id = local_permission_id
 				WHERE
-					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					credential.credential_id =
+						RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID.credential_id AND
+					credential.type <> 'api_token'
 				UNION ALL
 				SELECT
 					user_api_token_resource_permissions_include.resource_id,
@@ -502,43 +507,28 @@ pub async fn initialize_rbac_constraints(
 					user_api_token_resource_permissions_include
 				WHERE
 					user_api_token_resource_permissions_include.permission_id = local_permission_id AND
-					user_api_token_resource_permissions_include.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
-				UNION ALL
-				/* Service account role-based include permissions */
-				SELECT
-					role_resource_permissions_include.resource_id,
-					service_account.workspace_id
-				FROM
-					service_account_role
-				INNER JOIN
-					service_account
-				ON
-					service_account.id = service_account_role.service_account_id
-				INNER JOIN
-					role_resource_permissions_include
-				ON
-					role_resource_permissions_include.role_id = service_account_role.role_id AND
-					role_resource_permissions_include.permission_id = local_permission_id
-				WHERE
-					service_account_role.service_account_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					user_api_token_resource_permissions_include.token_id =
+						RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID.credential_id
 			),
 			/* Resources explicitly denied via exclude lists */
 			excluded_resources AS (
 				SELECT
 					role_resource_permissions_exclude.resource_id
 				FROM
-					web_login
+					credential
 				INNER JOIN
-					workspace_user
+					workspace_member
 				ON
-					workspace_user.user_id = web_login.user_id
+					workspace_member.identity_id = credential.identity_id
 				INNER JOIN
 					role_resource_permissions_exclude
 				ON
-					role_resource_permissions_exclude.role_id = workspace_user.role_id AND
+					role_resource_permissions_exclude.role_id = workspace_member.role_id AND
 					role_resource_permissions_exclude.permission_id = local_permission_id
 				WHERE
-					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					credential.credential_id =
+						RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID.credential_id AND
+					credential.type <> 'api_token'
 				UNION ALL
 				SELECT
 					user_api_token_resource_permissions_exclude.resource_id
@@ -546,39 +536,29 @@ pub async fn initialize_rbac_constraints(
 					user_api_token_resource_permissions_exclude
 				WHERE
 					user_api_token_resource_permissions_exclude.permission_id = local_permission_id AND
-					user_api_token_resource_permissions_exclude.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
-				UNION ALL
-				/* Service account role-based exclude permissions */
-				SELECT
-					role_resource_permissions_exclude.resource_id
-				FROM
-					service_account_role
-				INNER JOIN
-					role_resource_permissions_exclude
-				ON
-					role_resource_permissions_exclude.role_id = service_account_role.role_id AND
-					role_resource_permissions_exclude.permission_id = local_permission_id
-				WHERE
-					service_account_role.service_account_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					user_api_token_resource_permissions_exclude.token_id =
+						RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID.credential_id
 			),
-			/* Workspaces where this login has any exclude-type permission */
+			/* Workspaces where this credential has any exclude-type permission */
 			exclude_workspaces AS (
 				SELECT
-					workspace_user.workspace_id
+					workspace_member.workspace_id
 				FROM
-					web_login
+					credential
 				INNER JOIN
-					workspace_user
+					workspace_member
 				ON
-					workspace_user.user_id = web_login.user_id
+					workspace_member.identity_id = credential.identity_id
 				INNER JOIN
 					role_resource_permissions_type
 				ON
-					role_resource_permissions_type.role_id = workspace_user.role_id AND
+					role_resource_permissions_type.role_id = workspace_member.role_id AND
 					role_resource_permissions_type.permission_id = local_permission_id AND
 					role_resource_permissions_type.permission_type = 'exclude'
 				WHERE
-					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					credential.credential_id =
+						RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID.credential_id AND
+					credential.type <> 'api_token'
 				UNION ALL
 				SELECT
 					user_api_token_resource_permissions_type.workspace_id
@@ -586,26 +566,9 @@ pub async fn initialize_rbac_constraints(
 					user_api_token_resource_permissions_type
 				WHERE
 					user_api_token_resource_permissions_type.permission_id = local_permission_id AND
-					user_api_token_resource_permissions_type.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+					user_api_token_resource_permissions_type.token_id =
+						RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID.credential_id AND
 					user_api_token_resource_permissions_type.resource_permission_type = 'exclude'
-				UNION ALL
-				/* Service account workspaces with exclude-type permission */
-				SELECT
-					service_account.workspace_id
-				FROM
-					service_account_role
-				INNER JOIN
-					service_account
-				ON
-					service_account.id = service_account_role.service_account_id
-				INNER JOIN
-					role_resource_permissions_type
-				ON
-					role_resource_permissions_type.role_id = service_account_role.role_id AND
-					role_resource_permissions_type.permission_id = local_permission_id AND
-					role_resource_permissions_type.permission_type = 'exclude'
-				WHERE
-					service_account_role.service_account_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			)
 			/*
 			We are basically doing:

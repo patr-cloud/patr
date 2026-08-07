@@ -49,7 +49,7 @@ pub async fn list_domains_in_workspace(
 		FROM
 			workspace_domain
 		INNER JOIN
-			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
+			RESOURCES_WITH_PERMISSION_FOR_CREDENTIAL_ID($2, $3) AS resource
 		ON
 			workspace_domain.id = resource.id
 		WHERE

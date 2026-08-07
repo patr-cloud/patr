@@ -23,7 +23,9 @@ pub async fn initialize_user_data_tables(
 			password_reset_token TEXT,
 			password_reset_token_expiry TIMESTAMPTZ NULL,
 			password_reset_attempts INT NULL,
-			mfa_secret TEXT
+			mfa_secret TEXT,
+			identity_type IDENTITY_TYPE NOT NULL
+				GENERATED ALWAYS AS ('user') STORED
 		);
 		"#
 	)
@@ -76,6 +78,8 @@ pub async fn initialize_user_data_constraints(
 	query!(
 		r#"
 		ALTER TABLE "user"
+			ADD CONSTRAINT user_fk_id_identity_type
+				FOREIGN KEY(id, identity_type) REFERENCES identity(id, type),
 			ADD CONSTRAINT user_chk_username_is_valid CHECK(
 				/* Username is a-z, 0-9, _, cannot begin or end with a . or - */
 				username ~ '^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$' AND

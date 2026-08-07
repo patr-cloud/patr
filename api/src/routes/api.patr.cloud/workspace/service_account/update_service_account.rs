@@ -54,9 +54,9 @@ pub async fn update_service_account(
 		query!(
 			r#"
 			DELETE FROM
-				service_account_role
+				workspace_member
 			WHERE
-				service_account_id = $1;
+				identity_id = $1;
 			"#,
 			service_account_id as _,
 		)
@@ -67,8 +67,8 @@ pub async fn update_service_account(
 			query!(
 				r#"
 				INSERT INTO
-					service_account_role(
-						service_account_id,
+					workspace_member(
+						identity_id,
 						workspace_id,
 						role_id
 					)
