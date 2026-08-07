@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/solid-query";
 import { createSignal, Show } from "solid-js";
 import { ApproveRunnerLinkRequest, ApproveRunnerLinkResponse } from "~/bindings";
-import { Alert, Button, ButtonVariant, Input, Label, InputType, useToast } from "~/components";
+import { Alert, Button, ButtonVariant, Input, InputWithLabel, InputType, useToast } from "~/components";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 
@@ -49,9 +49,8 @@ export const NewRunnerForm = (props: { code: string; onApproved: () => void }) =
 
 	return (
 		<form noValidate onSubmit={onApprove} class="flex flex-col gap-6">
-			<div class="flex items-center gap-4">
-				<Label parentClass="flex-2" for="runner-name" label="Name" />
-				<div class="flex-10 flex flex-col gap-2">
+			<InputWithLabel for="runner-name" label="Name">
+				<div class="flex flex-col gap-2">
 					<Input
 						id="runner-name"
 						name="runner-name"
@@ -67,7 +66,7 @@ export const NewRunnerForm = (props: { code: string; onApproved: () => void }) =
 						<Alert type="error" message={nameError()} />
 					</Show>
 				</div>
-			</div>
+			</InputWithLabel>
 
 			<div class="flex justify-end">
 				<Button
