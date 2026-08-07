@@ -1,7 +1,15 @@
 import { Show, For, createSignal, ErrorBoundary } from "solid-js";
 import { lt } from "semver";
 import { FiAlertTriangle } from "solid-icons/fi";
-import { CopyableField, CopyableFieldVariant, Input, InputDropdown, Label, InputType, Tooltip } from "~/components";
+import {
+	CopyableField,
+	CopyableFieldVariant,
+	Input,
+	InputDropdown,
+	InputWithLabel,
+	InputType,
+	Tooltip,
+} from "~/components";
 import MetricCard, { INTERVALS, type ChartDef } from "~/components/metric-card";
 import { useRunnerMetricsQuery } from "~/hooks/fetch";
 import { formatDate, formatRelativeTime } from "~/utils/func";
@@ -78,19 +86,12 @@ const RunnerMetrics = (props: RunnerMetricsProps) => {
 		<div class="flex flex-col gap-lg">
 			{/* Identity block */}
 			<div class="flex flex-col space-y-4 py-lg">
-				<div class="flex items-center gap-4">
-					<Label parentClass="flex-2" for="runner-id" label="ID" />
-					<CopyableField
-						variant={CopyableFieldVariant.Input}
-						value={props.runnerId}
-						buttonPosition="start"
-						class="flex-10"
-					/>
-				</div>
+				<InputWithLabel for="runner-id" label="ID">
+					<CopyableField variant={CopyableFieldVariant.Input} value={props.runnerId} buttonPosition="start" />
+				</InputWithLabel>
 
 				<div class="flex flex-col gap-xs">
-					<div class="flex items-center gap-4">
-						<Label parentClass="flex-2" for="runner-version" label="Version" />
+					<InputWithLabel for="runner-version" label="Version">
 						<Input
 							value={
 								versionUnknown()
@@ -100,7 +101,6 @@ const RunnerMetrics = (props: RunnerMetricsProps) => {
 										: props.version
 							}
 							disabled={true}
-							class="flex-10"
 							innerClass={outdated() ? "disabled:text-warning" : ""}
 							name="runner-version"
 							placeholder="Runner version"
@@ -117,20 +117,20 @@ const RunnerMetrics = (props: RunnerMetricsProps) => {
 									: undefined
 							}
 						/>
-					</div>
+					</InputWithLabel>
 					<Show when={outdated()}>
-						<div class="flex items-center gap-4">
-							<div class="flex-2" />
-							<p class="flex-10 text-xs text-grey">
+						{/* Aligned under the input on md+, full-width when stacked. */}
+						<div class="flex flex-col md:flex-row md:gap-4">
+							<div class="hidden md:block md:flex-2" />
+							<p class="w-full md:flex-10 text-xs text-grey">
 								Run <code class="text-white font-log">patr upgrade</code> on the runner host to update.
 							</p>
 						</div>
 					</Show>
 				</div>
 
-				<div class="flex items-center gap-4">
-					<Label parentClass="flex-2" for="runner-last-connected" label="Last Connected" />
-					<Tooltip content={props.lastSeen ? formatDate(props.lastSeen) : ""} class="flex-10 text-white">
+				<InputWithLabel for="runner-last-connected" label="Last Connected">
+					<Tooltip content={props.lastSeen ? formatDate(props.lastSeen) : ""} class="text-white">
 						<Input
 							value={
 								props.connected ? "Now" : props.lastSeen ? formatRelativeTime(props.lastSeen) : "Never"
@@ -142,7 +142,7 @@ const RunnerMetrics = (props: RunnerMetricsProps) => {
 							type={InputType.Text}
 						/>
 					</Tooltip>
-				</div>
+				</InputWithLabel>
 			</div>
 
 			<hr class="border-border-color" />
