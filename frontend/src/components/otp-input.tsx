@@ -33,6 +33,12 @@ interface OtpInputProps {
 	 * them.
 	 */
 	autocomplete?: "one-time-code" | "off";
+	/**
+	 * Prefix for each box's `id`, rendered as `{idPrefix}-{index}`. Defaults to
+	 * `otp`. Focus is driven by refs, not ids — these exist so labels can point
+	 * at a box and so callers have a stable hook to address them.
+	 */
+	idPrefix?: string;
 }
 
 const OtpInput = (props: OtpInputProps) => {
@@ -106,6 +112,7 @@ const OtpInput = (props: OtpInputProps) => {
 					<>
 						<input
 							ref={(el) => (inputs[index()] = el)}
+							id={`${props.idPrefix ?? "otp"}-${index()}`}
 							name={props.name ?? "otp"}
 							type={props.inputType ?? InputType.Tel}
 							inputMode={props.inputMode ?? "numeric"}
