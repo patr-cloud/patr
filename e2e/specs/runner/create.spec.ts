@@ -1,22 +1,42 @@
-import { test, expect, newContext, createUserWithWorkspace, loginAs } from '@/prelude';
-import { expectToast, expectUrl } from '@/helpers/ui/workspace';
-import { randomRunnerName } from '@/helpers/runner-api';
 import {
-	openRunnerCreate,
+	test,
+	expect,
+	newContext,
+	createUserWithWorkspace,
+	loginAs,
+	createApiTokenAPI,
+} from '@/prelude';
+import type { ApiClient } from '@/prelude';
+import { expectUrl } from '@/helpers/ui/workspace';
+import { openRunnerLinkAPI, randomRunnerName, createRunnerAPI } from '@/helpers/runner-api';
+import {
+	openRunnerSetupInstructions,
+	setupCommandField,
+	openRunnerSetup,
+	codeEntryHeading,
+	codeEntryBoxes,
+	fillSetupCode,
+	linkUnavailableHeading,
+	modeChoiceHeading,
+	chooseNewRunner,
+	chooseReconnect,
 	fillRunnerName,
-	submitCreateRunner,
+	submitApprove,
 	nameErrorAlert,
+	approvedHeading,
+	rotationWarning,
+	reconnectRunnerOption,
+	submitReconnect,
 	openRunnerList,
 	runnerRow,
 } from '@/helpers/ui/runner';
 
-// Runner creation is exercised through the dashboard. The create form only
-// blocks empty/whitespace client-side; every other invalid name is POSTed and
-// the server failure surfaces as a generic inline alert. Exact status codes,
-// duplicate→409/reusable-after-delete and cross-workspace uniqueness live in the
-// Rust API suite (api/tests/api/workspace/runner.rs).
+// Runners are no longer created from a dashboard form. The CLI opens a consent
+// link and the browser approves it; `/runners/new` is just instructions now.
+// Name rules (duplicate → 409, reusable after delete, cross-workspace
+// uniqueness) live in the Rust API suite — api/tests/api/workspace/runner.rs.
 
-async function withCreatePage(
+async function withPage(
 	browser: import('@playwright/test').Browser,
 	user: Awaited<ReturnType<typeof createUserWithWorkspace>>,
 	fn: (page: import('@playwright/test').Page) => Promise<void>,
@@ -25,98 +45,159 @@ async function withCreatePage(
 	await loginAs(context, user, { workspaceId: user.workspaceId });
 	const page = await context.newPage();
 	try {
-		await openRunnerCreate(page);
 		await fn(page);
 	} finally {
 		await context.close();
 	}
 }
 
-function trackCreatePosts(page: import('@playwright/test').Page): () => number {
-	let count = 0;
-	page.on('request', (req) => {
-		if (req.method() === 'POST' && /\/api\/workspace\/[^/]+\/runner$/.test(req.url())) {
-			count += 1;
-		}
+// Open a consent link as the CLI would, returning the code the browser needs.
+async function openLink(
+	api: ApiClient,
+	user: Awaited<ReturnType<typeof createUserWithWorkspace>>,
+): Promise<string> {
+	const apiToken = await createApiTokenAPI(api, user, {
+		permissions: { [user.workspaceId]: { type: 'superAdmin' } },
 	});
-	return () => count;
+	const link = await openRunnerLinkAPI(user, user.workspaceId, apiToken.token);
+	return link.userCode;
 }
 
-test.describe('runner > create [UI]', () => {
-	test('creates a runner: success toast, navigate to /runners, row visible', async ({
+test.describe('runner > setup instructions [UI]', () => {
+	test('/runners/new shows the CLI command instead of a create form', async ({
 		browser,
 		api,
 	}) => {
 		await using user = await createUserWithWorkspace(api);
+		await withPage(browser, user, async (page) => {
+			await openRunnerSetupInstructions(page);
+			await expect(setupCommandField(page)).toBeVisible({ timeout: 10_000 });
+			// The old create form is gone.
+			await expect(page.locator('#runner-name')).toHaveCount(0);
+		});
+	});
+});
+
+test.describe('runner > consent link [UI]', () => {
+	test('without a code, prompts for one', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		await withPage(browser, user, async (page) => {
+			await openRunnerSetup(page);
+			await expect(codeEntryHeading(page)).toBeVisible({ timeout: 10_000 });
+			await expect(codeEntryBoxes(page)).toHaveCount(8);
+		});
+	});
+
+	test('entering a code navigates to it', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		const code = await openLink(api, user);
+		await withPage(browser, user, async (page) => {
+			await openRunnerSetup(page);
+			await expect(codeEntryHeading(page)).toBeVisible({ timeout: 10_000 });
+			await fillSetupCode(page, code);
+			await page.getByRole('button', { name: /^Continue$/ }).click();
+			await expectUrl(page, new RegExp(`code=${code}`), { timeout: 10_000 });
+		});
+	});
+
+	test('an unknown code reports the link is unusable', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		await withPage(browser, user, async (page) => {
+			// Valid alphabet, but no such link exists.
+			await openRunnerSetup(page, 'ABCDEFGH');
+			await expect(linkUnavailableHeading(page)).toBeVisible({ timeout: 10_000 });
+		});
+	});
+
+	test('a live code lands on the new-vs-reconnect choice', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		const code = await openLink(api, user);
+		await withPage(browser, user, async (page) => {
+			await openRunnerSetup(page, code);
+			await expect(modeChoiceHeading(page)).toBeVisible({ timeout: 10_000 });
+			// Neither form is pre-rendered — the choice is explicit.
+			await expect(page.locator('#runner-name')).toHaveCount(0);
+		});
+	});
+});
+
+test.describe('runner > approve as new [UI]', () => {
+	test('approves a new runner and shows it in the list', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		const code = await openLink(api, user);
 		const name = randomRunnerName();
-		await withCreatePage(browser, user, async (page) => {
+		await withPage(browser, user, async (page) => {
+			await openRunnerSetup(page, code);
+			await chooseNewRunner(page);
 			await fillRunnerName(page, name);
-			await submitCreateRunner(page);
-			await expectToast(page, /Runner created successfully/i);
-			await expectUrl(page, /\/runners$/, { timeout: 10_000 });
+			await submitApprove(page);
+			await expect(approvedHeading(page)).toBeVisible({ timeout: 10_000 });
+
+			await openRunnerList(page);
 			await expect(runnerRow(page, name)).toBeVisible({ timeout: 10_000 });
 		});
 	});
 
 	test('accepts an uppercase / space / dot name', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
+		const code = await openLink(api, user);
 		const name = `My Runner.${crypto.randomUUID().slice(0, 6)}`;
-		await withCreatePage(browser, user, async (page) => {
+		await withPage(browser, user, async (page) => {
+			await openRunnerSetup(page, code);
+			await chooseNewRunner(page);
 			await fillRunnerName(page, name);
-			await submitCreateRunner(page);
-			await expectToast(page, /Runner created successfully/i);
-			await expect(runnerRow(page, name)).toBeVisible({ timeout: 10_000 });
+			await submitApprove(page);
+			await expect(approvedHeading(page)).toBeVisible({ timeout: 10_000 });
 		});
 	});
 
-	test('trims surrounding whitespace from the stored name', async ({ browser, api }) => {
+	test('empty name: inline error, no approve call', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
-		const name = randomRunnerName();
-		await withCreatePage(browser, user, async (page) => {
-			await fillRunnerName(page, `  ${name}  `);
-			await submitCreateRunner(page);
-			await expectUrl(page, /\/runners$/, { timeout: 10_000 });
-			// The row shows the trimmed name.
-			await expect(runnerRow(page, name)).toBeVisible({ timeout: 10_000 });
-		});
-	});
-
-	test('empty name: inline error and no network call', async ({ browser, api }) => {
-		await using user = await createUserWithWorkspace(api);
-		await withCreatePage(browser, user, async (page) => {
-			const posts = trackCreatePosts(page);
-			await submitCreateRunner(page);
-			await expect(nameErrorAlert(page)).toBeVisible();
-			await page.waitForTimeout(500);
-			expect(posts()).toBe(0);
-		});
-	});
-
-	test('whitespace-only name: blocked client-side, no network call', async ({ browser, api }) => {
-		await using user = await createUserWithWorkspace(api);
-		await withCreatePage(browser, user, async (page) => {
-			const posts = trackCreatePosts(page);
-			await fillRunnerName(page, '   ');
-			await submitCreateRunner(page);
-			await expect(nameErrorAlert(page)).toBeVisible();
-			await page.waitForTimeout(500);
-			expect(posts()).toBe(0);
-		});
-	});
-
-	test('a server-rejected invalid name shows a generic failure alert, no navigation', async ({
-		browser,
-		api,
-	}) => {
-		await using user = await createUserWithWorkspace(api);
-		await withCreatePage(browser, user, async (page) => {
-			// Non-empty but regex-invalid → passes the client guard, POSTs, 400s.
-			await fillRunnerName(page, 'ab/cd');
-			await submitCreateRunner(page);
-			await expect(page.getByText(/Failed to create runner/i)).toBeVisible({
-				timeout: 10_000,
+		const code = await openLink(api, user);
+		await withPage(browser, user, async (page) => {
+			await openRunnerSetup(page, code);
+			await chooseNewRunner(page);
+			let approves = 0;
+			page.on('request', (req) => {
+				if (req.method() === 'POST' && /\/runner\/link\/[^/]+\/approve$/.test(req.url())) {
+					approves += 1;
+				}
 			});
-			await expectUrl(page, /\/runners\/new$/, { timeout: 3_000 });
+			await submitApprove(page);
+			await expect(nameErrorAlert(page)).toBeVisible();
+			await page.waitForTimeout(500);
+			expect(approves).toBe(0);
+		});
+	});
+
+	test('whitespace-only name: blocked client-side', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		const code = await openLink(api, user);
+		await withPage(browser, user, async (page) => {
+			await openRunnerSetup(page, code);
+			await chooseNewRunner(page);
+			await fillRunnerName(page, '   ');
+			await submitApprove(page);
+			await expect(nameErrorAlert(page)).toBeVisible();
+		});
+	});
+});
+
+test.describe('runner > reconnect [UI]', () => {
+	test('reconnect warns about rotation and re-issues credentials', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		// An existing, never-connected runner is eligible for reconnect.
+		const runner = await createRunnerAPI(api, user, user.workspaceId);
+		const code = await openLink(api, user);
+
+		await withPage(browser, user, async (page) => {
+			await openRunnerSetup(page, code);
+			await chooseReconnect(page);
+			await expect(rotationWarning(page)).toBeVisible({ timeout: 10_000 });
+
+			await reconnectRunnerOption(page, runner.name).click();
+			await submitReconnect(page).click();
+			await expect(approvedHeading(page)).toBeVisible({ timeout: 10_000 });
 		});
 	});
 });

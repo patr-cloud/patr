@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { ApiClient } from '@/helpers/api';
 import { createApiTokenAPI } from '@/helpers/api-token';
+import { createRunnerAPI } from '@/helpers/runner-api';
 import { DindHandle, type DockerVersion } from '@/helpers/dind';
 import { FauxEdge } from '@/helpers/faux-edge';
 import { onExit, waitFor } from '@/helpers/process';
@@ -51,7 +52,7 @@ export class RunnerHandle implements AsyncDisposable {
 		const dind = await DindHandle.spawn(opts.dockerVersion);
 
 		try {
-			const { runnerId, apiToken } = await provisionRunner(opts);
+			const { runnerId, serviceAccountToken, apiToken } = await provisionRunner(opts);
 
 			const bindPort = allocateBindPort();
 			const workDir = mkdtempSync(join(tmpdir(), 'patr-e2e-runner-'));
@@ -68,7 +69,9 @@ export class RunnerHandle implements AsyncDisposable {
 					PATR__MODE: 'managed',
 					PATR__WORKSPACE_ID: opts.workspaceId,
 					PATR__RUNNER_ID: runnerId,
-					PATR__API_TOKEN: apiToken,
+					// The runner authenticates as its own service account, exactly
+					// as a real `patr runner setup` leaves it configured.
+					PATR__API_TOKEN: serviceAccountToken,
 					PATR__BIND_ADDRESS: `127.0.0.1:${bindPort}`,
 					PATR__DATABASE__FILE: dbPath,
 					PATR__DATABASE__CONNECTION_LIMIT: '5',
@@ -138,21 +141,30 @@ export class RunnerHandle implements AsyncDisposable {
 	}
 }
 
-async function provisionRunner(opts: RunnerOpts): Promise<{ runnerId: string; apiToken: string }> {
+async function provisionRunner(
+	opts: RunnerOpts,
+): Promise<{ runnerId: string; serviceAccountToken: string; apiToken: string }> {
 	const name = opts.name ?? `e2e-runner-${crypto.randomUUID().slice(0, 8)}`;
-	const runner = await opts.api.request<{ id: string }>(
-		'POST',
-		`/workspace/${opts.workspaceId}/runner`,
-		{ token: opts.user.accessToken, clientIp: opts.user.clientIp, body: { name } },
-	);
-	// A workspace-wide superAdmin token: the runner needs runner::execute to open
-	// the stream and containerRegistry pull to fetch images; superAdmin covers
-	// both without per-permission bookkeeping. RBAC-scoped tokens are minted
-	// explicitly by the tests that exercise permissions.
-	const token = await createApiTokenAPI(opts.api, opts.user, {
+	// Go through the consent-link flow, which is the only way to mint a runner
+	// now. It hands back the runner's own service account token — the same
+	// credential a real `patr runner setup` writes to disk. The role approve
+	// creates carries runner::execute on this runner plus workspace-wide
+	// containerRegistry pull, which is what the runner needs to open the stream
+	// and fetch images.
+	const runner = await createRunnerAPI(opts.api, opts.user, opts.workspaceId, name);
+
+	// Pushing an image is a developer/CI action, not something the runner does —
+	// and the runner's service account deliberately has pull but not push. So
+	// tests that push need a separate workspace-wide user token.
+	const pushToken = await createApiTokenAPI(opts.api, opts.user, {
 		permissions: { [opts.workspaceId]: { type: 'superAdmin' } },
 	});
-	return { runnerId: runner.id, apiToken: token.token };
+
+	return {
+		runnerId: runner.id,
+		serviceAccountToken: runner.token,
+		apiToken: pushToken.token,
+	};
 }
 
 export async function isRunnerConnected(

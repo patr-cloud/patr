@@ -25,7 +25,7 @@ export const MachineDetails = (props: { link: GetRunnerLinkResponse }) => {
 				<MapView lat={props.link.latitude!} lng={props.link.longitude!} />
 			</Show>
 
-			<section class="grid grid-cols-2 gap-x-8 gap-y-4">
+			<section class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
 				<DetailCell label="Version" value={props.link.version} />
 				<DetailCell label="Started" value={formatRelativeTime(props.link.createdAt as unknown as string)} />
 				<DetailCell label="OS" value={props.link.os} />
