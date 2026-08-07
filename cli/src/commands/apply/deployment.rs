@@ -8,17 +8,59 @@ use models::{
 
 use crate::prelude::*;
 
+/// Render a [`DeploymentRegistry`] as the image reference a user would write —
+/// `registry/image` for external registries, `registry/workspace/repository`
+/// for Patr's.
+///
+/// A [`DeploymentRegistry`] only carries the repository's ID, so this looks the
+/// name up.
+async fn describe_registry(
+	workspace_id: Uuid,
+	token: &BearerToken,
+	registry: &DeploymentRegistry,
+) -> Result<String, AppError> {
+	Ok(match registry {
+		DeploymentRegistry::PatrRegistry {
+			registry,
+			repository_id,
+		} => {
+			let repository = make_request(
+				ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
+					.path(GetContainerRepositoryInfoPath {
+						workspace_id,
+						repository_id: *repository_id,
+					})
+					.headers(GetContainerRepositoryInfoRequestHeaders {
+						authorization: token.clone(),
+						user_agent: constants::USER_AGENT,
+					})
+					.build(),
+			)
+			.await?
+			.body
+			.repository
+			.name;
+
+			format!("{registry}/{workspace_id}/{repository}")
+		}
+		DeploymentRegistry::ExternalRegistry {
+			registry,
+			image_name,
+		} => format!("{registry}/{image_name}"),
+	})
+}
+
 /// Apply an IaaC deployment resource — creating the deployment on Patr and
 /// associating it with a runner + registry image.
 pub async fn apply(
 	workspace_id: Uuid,
 	token: BearerToken,
+	dry_run: bool,
 	IaacDeployment {
 		id,
 		name,
 		image,
 		runner,
-		machine_type: _,
 		deploy_on_push,
 		min_horizontal_scale,
 		max_horizontal_scale,
@@ -35,6 +77,33 @@ pub async fn apply(
 			repository,
 			tag,
 		} => {
+			// A Patr image is written `registry.patr.cloud/{workspace}/{repo}`
+			// (that's the path the registry itself serves), but a repository's
+			// name is only the part after the workspace. Strip the workspace
+			// segment when there is one — leaving it in would look for a
+			// repository named `{workspace}/{repo}`, which never matches.
+			let repository = match repository.split_once('/') {
+				Some((prefix, rest)) => match Uuid::parse_str(prefix) {
+					Ok(prefix) if prefix == workspace_id => rest.to_string(),
+					// Applying a file to a workspace it wasn't written for. The
+					// image doesn't exist here, so say that rather than letting
+					// the lookup fail with a confusing name.
+					Ok(prefix) => {
+						return Err(AppError::IaacError(IaacError::ResourceNotFound(format!(
+							concat!(
+								"the image for `{}` is in workspace `{}`, ",
+								"but this is being applied to workspace `{}`"
+							),
+							rest, prefix, workspace_id
+						))));
+					}
+					// Repository names can contain slashes, so anything that
+					// isn't a workspace ID is part of the name.
+					Err(_) => repository,
+				},
+				None => repository,
+			};
+
 			let repository_id = make_request(
 				ApiRequest::<ListContainerRepositoriesRequest>::builder()
 					.path(ListContainerRepositoriesPath { workspace_id })
@@ -118,26 +187,6 @@ pub async fn apply(
 		)))
 	})?;
 
-	let machine_type = make_request(
-		ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
-			.path(ListAllDeploymentMachineTypePath { workspace_id })
-			.headers(ListAllDeploymentMachineTypeRequestHeaders {
-				user_agent: constants::USER_AGENT,
-			})
-			.build(),
-	)
-	.await?
-	.body
-	.machine_types
-	.into_iter()
-	.next()
-	.ok_or_else(|| {
-		AppError::IaacError(IaacError::ResourceNotFound(
-			"No deployment machine types found in workspace".to_string(),
-		))
-	})?
-	.id;
-
 	let name = name.resolve_value()?;
 
 	let deployment_id = make_request(
@@ -193,6 +242,56 @@ pub async fn apply(
 	// If an ID is provided, specifically use that. Otherwise, use the found
 	// deployment ID by name.
 	if let Some(deployment_id) = id.or(deployment_id) {
+		// The update route takes the whole object and rewrites every field, so
+		// anything the config file can't describe has to be read back and sent
+		// as-is, or applying would revert it. Machine type and volumes aren't
+		// part of the IaaC schema.
+		let existing = make_request(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id,
+					deployment_id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: token.clone(),
+					user_agent: constants::USER_AGENT,
+				})
+				.build(),
+		)
+		.await?
+		.body;
+
+		// The update route has no registry field — an image can only move
+		// within the registry the deployment was created against.
+		if existing.deployment.registry != registry {
+			return Err(AppError::IaacError(IaacError::Unsupported(format!(
+				concat!(
+					"deployment `{}` runs `{}`, but the config file asks for `{}`. ",
+					"A deployment's registry can't be changed after it is created — ",
+					"delete the deployment and apply again to move it."
+				),
+				name,
+				describe_registry(workspace_id, &token, &existing.deployment.registry).await?,
+				describe_registry(workspace_id, &token, &registry).await?,
+			))));
+		}
+
+		let body = UpdateDeploymentRequest {
+			name: name.clone(),
+			image_tag,
+			runner,
+			machine_type: existing.deployment.machine_type,
+			running_details: DeploymentRunningDetails {
+				volumes: existing.running_details.volumes,
+				..running_details
+			},
+		};
+
+		if dry_run {
+			eprintln!("Would update existing deployment `{name}` with ID `{deployment_id}`");
+			return Ok(());
+		}
+
 		eprintln!("Updating existing deployment `{name}` with ID `{deployment_id}`");
 
 		make_request(
@@ -205,13 +304,7 @@ pub async fn apply(
 					authorization: token.clone(),
 					user_agent: constants::USER_AGENT,
 				})
-				.body(UpdateDeploymentRequest {
-					name: name.clone(),
-					image_tag,
-					runner,
-					machine_type,
-					running_details,
-				})
+				.body(body)
 				.build(),
 		)
 		.await?;
@@ -219,7 +312,33 @@ pub async fn apply(
 		eprintln!("Deployment `{name}` (with ID `{deployment_id}`) updated");
 	} else {
 		// If no ID is provided and no deployment is found by name, create a new
-		// deployment.
+		// deployment. The machine type isn't part of the IaaC schema, so a new
+		// deployment lands on whichever one the workspace lists first.
+		let machine_type = make_request(
+			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
+				.path(ListAllDeploymentMachineTypePath { workspace_id })
+				.headers(ListAllDeploymentMachineTypeRequestHeaders {
+					user_agent: constants::USER_AGENT,
+				})
+				.build(),
+		)
+		.await?
+		.body
+		.machine_types
+		.into_iter()
+		.next()
+		.ok_or_else(|| {
+			AppError::IaacError(IaacError::ResourceNotFound(
+				"No deployment machine types found in workspace".to_string(),
+			))
+		})?
+		.id;
+
+		if dry_run {
+			eprintln!("Would create new deployment `{name}`");
+			return Ok(());
+		}
+
 		eprintln!("Creating new deployment `{name}`");
 
 		let response = make_request(

@@ -370,8 +370,8 @@ jobs:
             e2e/test-results
           retention-days: 7
 
-  cli-check:
-    name: Cargo CLI check
+  cli-tests:
+    name: CLI Tests
     runs-on: ubuntu-latest
     env:
       SQLX_OFFLINE: "true"
@@ -386,8 +386,12 @@ jobs:
       - name: Setup frontend public folder
         run: mkdir -p frontend/.output/public
 
-      - name: Check cli
-        run: cargo check --package cli
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - run: just --justfile cli/tests/Justfile test
 
   ingress-check:
     name: Cargo ingress check
@@ -416,7 +420,7 @@ jobs:
         build,
         integration-tests,
         conformance-tests,
-        cli-check,
+        cli-tests,
         ingress-check,
         ui-tests,
         docker-tests,
@@ -431,7 +435,7 @@ jobs:
              [ "${{ needs.build.result }}" != "success" ] || \
              [ "${{ needs.integration-tests.result }}" != "success" ] || \
              [ "${{ needs.conformance-tests.result }}" != "success" ] || \
-             [ "${{ needs.cli-check.result }}" != "success" ] || \
+             [ "${{ needs.cli-tests.result }}" != "success" ] || \
              [ "${{ needs.ingress-check.result }}" != "success" ] || \
              [ "${{ needs.ui-tests.result }}" != "success" ] || \
              [ "${{ needs.docker-tests.result }}" != "success" ]; then
@@ -440,7 +444,7 @@ jobs:
             echo "build:             ${{ needs.build.result }}"
             echo "integration-tests: ${{ needs.integration-tests.result }}"
             echo "conformance-tests: ${{ needs.conformance-tests.result }}"
-            echo "cli-check:         ${{ needs.cli-check.result }}"
+            echo "cli-tests:         ${{ needs.cli-tests.result }}"
             echo "ingress-check:     ${{ needs.ingress-check.result }}"
             echo "ui-tests:          ${{ needs.ui-tests.result }}"
             echo "docker-tests:      ${{ needs.docker-tests.result }}"

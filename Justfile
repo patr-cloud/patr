@@ -1,6 +1,7 @@
 set shell := ["bash", "-uc"]
 
 mod api 'api/tests/Justfile'
+mod cli 'cli/tests/Justfile'
 mod e2e
 
 # Regenerate the TypeScript bindings: both the per-type files (ts-rs, via the

@@ -6,6 +6,7 @@ use crate::prelude::*;
 pub async fn apply(
 	workspace_id: Uuid,
 	token: BearerToken,
+	dry_run: bool,
 	IaacDomain { id, name }: IaacDomain,
 ) -> Result<(), AppError> {
 	let name = name.resolve_value()?;
@@ -50,6 +51,11 @@ pub async fn apply(
 		return Ok(());
 	} else {
 		// If no ID is provided and no domain is found by name, create a new domain.
+		if dry_run {
+			eprintln!("Would create new domain `{name}`");
+			return Ok(());
+		}
+
 		eprintln!("Creating new domain `{name}`");
 
 		let response = make_request(

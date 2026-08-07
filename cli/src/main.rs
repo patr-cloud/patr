@@ -1,50 +1,14 @@
-#![feature(exitcode_exit_method)]
-
 //! A CLI tool for interacting and managing your Patr resources.
-
-/// All items related to running the CLI goes here
-mod app;
-/// All the commands, arguments and the functionalities for it.
-mod commands;
-/// The errors thrown by the CLI.
-mod error;
-/// Utilities module for helper functions, structs, and enums.
-mod utils;
-
-/// A prelude that re-exports commonly used items.
-pub mod prelude {
-	pub use models::prelude::*;
-	pub use tracing::{debug, error, info, instrument, trace, warn};
-
-	pub use crate::{
-		app::{CommandOutput, OutputType},
-		commands::{AppArgs, GlobalArgs, GlobalCommand},
-		error::AppError,
-		utils::{
-			AppState,
-			AuthState,
-			Channel,
-			IaacResolverExt,
-			RunnerType,
-			SearchAndSelect,
-			ToJsonValue,
-			TtyExpectable,
-			WorkspacedArgs,
-			clear_screen,
-			constants,
-			make_request,
-		},
-	};
-}
+//!
+//! This is a thin wrapper around the `cli` library — see `lib.rs`.
 
 #[tokio::main]
 async fn main() -> std::process::ExitCode {
 	use std::process::ExitCode;
 
 	use clap::Parser;
+	use cli::{commands, prelude::*};
 	use models::{ApiErrorResponseBody, utils::False};
-
-	use crate::prelude::*;
 
 	let AppArgs { args, command } = AppArgs::parse();
 

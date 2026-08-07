@@ -1,7 +1,6 @@
 use std::{
 	collections::BTreeMap,
 	convert::Infallible,
-	fmt::Display,
 	hash::{Hash, Hasher},
 	str::FromStr,
 };
@@ -28,27 +27,21 @@ pub struct IaacDeployment {
 	pub image: MaybeExternallySourced<IaacDeploymentImage>,
 	/// Which runner to deploy the deployment to.
 	pub runner: MaybeExternallySourced<String>,
-	/// The machine type to use for the deployment.
-	#[serde(
-		alias = "spec",
-		alias = "specs",
-		alias = "resources",
-		alias = "limits",
-		default
-	)]
-	pub machine_type: MaybeExternallySourced<IaacDeploymentMachineType>,
 	/// Whether the deployment should be deployed on push to the repository
-	#[serde(default = "default_deploy_on_push")]
 	pub deploy_on_push: MaybeExternallySourced<bool>,
 	/// The minimum number of instances to run for the deployment.
-	#[serde(alias = "min-scale", alias = "minscale", default = "default_min_scale")]
+	#[serde(alias = "min-scale", alias = "minscale")]
 	pub min_horizontal_scale: MaybeExternallySourced<u16>,
 	/// The maximum number of instances to run for the deployment.
-	#[serde(alias = "max-scale", alias = "maxscale", default = "default_max_scale")]
+	#[serde(alias = "max-scale", alias = "maxscale")]
 	pub max_horizontal_scale: MaybeExternallySourced<u16>,
 	/// The ports that the deployment exposes. This is a map of port numbers to
 	/// the type of port (HTTP, HTTPS, TCP, etc.).
-	#[serde(alias = "port")]
+	#[serde(
+		alias = "port",
+		default,
+		skip_serializing_if = "IaacDeploymentPorts::is_empty"
+	)]
 	pub ports: IaacDeploymentPorts,
 	/// The environment variables that the deployment has. This is a map of
 	/// environment variable names to their values.
@@ -85,27 +78,6 @@ impl Hash for IaacDeployment {
 			.map(|id| id.hash(state))
 			.unwrap_or_else(|| self.name.hash(state));
 	}
-}
-
-/// The default value for the `deploy_on_push` field in the IaacDeployment.
-/// This is set to `true` by default, meaning that the deployment will be
-/// deployed on push to the repository.
-fn default_deploy_on_push() -> MaybeExternallySourced<bool> {
-	MaybeExternallySourced::Value(true)
-}
-
-/// The default value for the `min_horizontal_scale` field in the
-/// IaacDeployment. This is set to `1` by default, meaning that the deployment
-/// will have at least one instance running.
-fn default_min_scale() -> MaybeExternallySourced<u16> {
-	MaybeExternallySourced::Value(1)
-}
-
-/// The default value for the `max_horizontal_scale` field in the
-/// IaacDeployment. This is set to `2` by default, meaning that the deployment
-/// will have at most two instances running.
-fn default_max_scale() -> MaybeExternallySourced<u16> {
-	MaybeExternallySourced::Value(2)
 }
 
 /// The Iaac deployment image that is used in the Iaac file. This can either be
@@ -221,239 +193,6 @@ impl From<IaacDeploymentImage> for String {
 	}
 }
 
-/// The machine type for a deployment. This is used to define the CPU and RAM
-/// requirements for the deployment
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(
-	try_from = "String",
-	into = "String",
-	rename_all = "snake_case",
-	deny_unknown_fields
-)]
-pub struct IaacDeploymentMachineType {
-	/// The CPU requirement for the deployment.
-	pub cpu: IaacDeploymentCpu,
-	/// The RAM requirement for the deployment.
-	pub ram: IaacDeploymentRam,
-}
-
-impl TryFrom<String> for IaacDeploymentMachineType {
-	type Error = &'static str;
-
-	fn try_from(value: String) -> Result<Self, Self::Error> {
-		value.parse()
-	}
-}
-
-impl FromStr for IaacDeploymentMachineType {
-	type Err = &'static str;
-
-	fn from_str(value: &str) -> Result<Self, Self::Err> {
-		let Some((cpu, ram)) = value.split_once(' ') else {
-			return Err("machine type must be of the format: `1vCPU 1GB RAM`");
-		};
-
-		Ok(Self {
-			cpu: cpu.to_string().try_into()?,
-			ram: ram.to_string().try_into()?,
-		})
-	}
-}
-
-impl From<IaacDeploymentMachineType> for String {
-	fn from(value: IaacDeploymentMachineType) -> String {
-		format!("{}", value)
-	}
-}
-
-impl Display for IaacDeploymentMachineType {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{} {}", self.cpu, self.ram)
-	}
-}
-
-impl Default for IaacDeploymentMachineType {
-	fn default() -> Self {
-		Self {
-			cpu: IaacDeploymentCpu("1vCPU".to_string()),
-			ram: IaacDeploymentRam(1024 * 1024 * 1024),
-		}
-	}
-}
-
-/// The CPU requirement for a deployment.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(try_from = "String", into = "String", deny_unknown_fields)]
-pub struct IaacDeploymentCpu(String);
-
-impl TryFrom<String> for IaacDeploymentCpu {
-	type Error = &'static str;
-
-	fn try_from(value: String) -> Result<Self, Self::Error> {
-		if let Ok(num) = value.parse::<u8>() {
-			return Ok(Self(format!("{num}vCPU")));
-		}
-
-		if let Ok(num) = value.parse::<f32>() {
-			return Ok(Self(format!("{num:.1}vCPU")));
-		}
-
-		let value = value.to_lowercase();
-
-		if let Some(Ok(num)) = value.strip_suffix("vcpu").map(|num| num.parse::<u8>()) {
-			return Ok(Self(format!("{num}vCPU")));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("vcpu").map(|num| num.parse::<f32>()) {
-			return Ok(Self(format!("{num:.1}vCPU")));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("cpu").map(|num| num.parse::<u8>()) {
-			return Ok(Self(format!("{num}vCPU")));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("cpu").map(|num| num.parse::<f32>()) {
-			return Ok(Self(format!("{num:.1}vCPU")));
-		}
-
-		Err("invalid cpu requirement. Must be of the format `1vCPU`")
-	}
-}
-
-impl From<IaacDeploymentCpu> for String {
-	fn from(cpu: IaacDeploymentCpu) -> String {
-		cpu.0
-	}
-}
-
-impl Display for IaacDeploymentCpu {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.0)
-	}
-}
-
-/// The RAM requirement for a deployment.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(try_from = "String", into = "String", deny_unknown_fields)]
-pub struct IaacDeploymentRam(u64);
-
-impl TryFrom<String> for IaacDeploymentRam {
-	type Error = &'static str;
-
-	fn try_from(value: String) -> Result<Self, Self::Error> {
-		if let Ok(num) = value.parse::<u64>() {
-			return Ok(Self(num));
-		}
-
-		let value = value.to_lowercase();
-
-		let value = if let Some(value) = value.strip_suffix(" ram") {
-			value
-		} else {
-			value.as_str()
-		};
-
-		let value = if let Some(value) = value.strip_suffix("b") {
-			value
-		} else {
-			value
-		};
-
-		if let Some(Ok(num)) = value.strip_suffix("g").map(|num| num.parse::<u16>()) {
-			return Ok(Self((num as u64) * 1000 * 1000 * 1000));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("gi").map(|num| num.parse::<u16>()) {
-			return Ok(Self((num as u64) * 1024 * 1024 * 1024));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("m").map(|num| num.parse::<u32>()) {
-			return Ok(Self((num as u64) * 1000 * 1000));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("mi").map(|num| num.parse::<u32>()) {
-			return Ok(Self((num as u64) * 1024 * 1024));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("k").map(|num| num.parse::<u32>()) {
-			return Ok(Self((num as u64) * 1000));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("ki").map(|num| num.parse::<u32>()) {
-			return Ok(Self((num as u64) * 1024));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("bytes").map(|num| num.parse::<u64>()) {
-			return Ok(Self(num));
-		}
-
-		if let Some(Ok(num)) = value.strip_suffix("b").map(|num| num.parse::<u64>()) {
-			return Ok(Self(num));
-		}
-
-		Err("invalid ram requirement. Must be of the format `1GB/GiB/MB/MiB/KB/KiB/B/Bytes`")
-	}
-}
-
-impl From<IaacDeploymentRam> for String {
-	fn from(ram: IaacDeploymentRam) -> String {
-		let IaacDeploymentRam(bytes) = ram;
-
-		// GB
-		if bytes.is_multiple_of(1_000_000_000) {
-			return format!("{}GB RAM", bytes / 1_000_000_000);
-		}
-
-		// GiB
-		if bytes >= (1024 * 1024 * 1024) {
-			return if bytes.is_multiple_of(1024 * 1024 * 1024) {
-				format!("{}GiB RAM", bytes / (1024 * 1024 * 1024))
-			} else {
-				format!(
-					"{:.1}GiB RAM",
-					(bytes as f64) / (1024f64 * 1024f64 * 1024f64)
-				)
-			};
-		}
-
-		// MB
-		if bytes.is_multiple_of(1_000_000) {
-			return format!("{}MB RAM", bytes / 1_000_000);
-		}
-
-		// MiB
-		if bytes >= (1024 * 1024) {
-			return if bytes.is_multiple_of(1024 * 1024) {
-				format!("{}MiB RAM", bytes / (1024 * 1024))
-			} else {
-				format!("{:.1}MiB RAM", (bytes as f64) / (1024f64 * 1024f64))
-			};
-		}
-
-		// KB
-		if bytes.is_multiple_of(1000) {
-			return format!("{}KB RAM", bytes / 1000);
-		}
-
-		// KiB
-		if bytes >= (1024) {
-			return if bytes.is_multiple_of(1024) {
-				format!("{}KiB RAM", bytes / 1024)
-			} else {
-				format!("{:.1}KiB RAM", (bytes as f64) / 1024f64)
-			};
-		}
-
-		format!("{bytes}B RAM")
-	}
-}
-
-impl Display for IaacDeploymentRam {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", self.0)
-	}
-}
-
 /// A helper type to parse the ports of a deployment. This is a map of port
 /// numbers to the type of port (HTTP, HTTPS, TCP, etc.). The port numbers
 /// are stored as `StringifiedU16`, which is a wrapper around `u16`
@@ -470,13 +209,19 @@ impl Display for IaacDeploymentRam {
 /// - `http`
 /// - `tcp`
 /// - `udp`
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct IaacDeploymentPorts(BTreeMap<StringifiedU16, ExposedPortType>);
 
 impl IaacDeploymentPorts {
 	/// Get the inner map of the IaacDeploymentPorts.
 	pub fn into_inner(self) -> BTreeMap<StringifiedU16, ExposedPortType> {
 		self.0
+	}
+
+	/// Check if the IaacDeploymentPorts is empty. Returns `true` if the inner
+	/// map is empty, `false` otherwise.
+	pub fn is_empty(&self) -> bool {
+		self.0.is_empty()
 	}
 }
 

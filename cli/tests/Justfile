@@ -1,0 +1,21 @@
+set shell := ["bash", "-uc"]
+set positional-arguments := true
+set working-directory := "../.."
+
+# The CLI's API base URL is a compile-time constant, so the stub server's
+# address has to be known before the tests are built. That also means a single
+# fixed port for the whole test binary, hence --test-threads=1.
+export PATR_TEST_API_BASE_URL := "http://127.0.0.1:39123"
+
+# Config files can source values from the environment. `unsafe_code` is
+# forbidden workspace-wide and `std::env::set_var` is unsafe, so the suite
+# can't set this itself.
+export PATR_TEST_APP_NAME := "from-the-environment"
+
+test *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    export SQLX_OFFLINE=true
+
+    cargo test -p cli --test integration-tests "$@" -- --test-threads=1

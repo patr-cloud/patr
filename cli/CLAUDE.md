@@ -43,6 +43,36 @@ When a crate exists for the job, use it: `sha2` (not `sha256sum`), `tar`+`flate2
 
 CI bakes four vars via `build.rs` (`PATR_BUILD_{VERSION,CHANNEL,SHA,DATE}`) using `cargo:rustc-env`. Local `cargo build` leaves them unset → binary reports `<version>-dev`. `Channel::BUILD` is a compile-time const from `PATR_BUILD_CHANNEL` (falls back to `Alpha`).
 
+## `patr apply` and the IaaC schema
+
+A config file is a **top-level list** of resources (`models/src/iaac`), and the file is the
+**source of truth** for everything it declares. Update routes take the whole object and rewrite
+every field, so apply must send a complete object — anything the file omits would otherwise be
+reverted. Concretely:
+
+- The schema mirrors API optionality: required on the API ⇒ required in the file. Unknown keys
+  and missing required fields are both hard parse errors (`deny_unknown_fields`), so a typo can
+  never silently mean "leave it alone".
+- **Machine type and volumes aren't in the schema.** On update, `apply` reads the deployment
+  back with `GetDeploymentInfo` and carries both over verbatim. New fields that the file can't
+  describe must do the same, or applying will wipe them.
+- **The registry can't change after create** — `UpdateDeployment` has no `registry` field. Apply
+  compares against the existing deployment and errors on mismatch.
+- **Patr images are `registry.patr.cloud/{workspace}/{repository}`** — that's the path the
+  registry serves (`/v2/{workspace_id}/{repo_name}`), but `container_registry_repository.name`
+  is only the part *after* the workspace. `IaacDeploymentImage` parses the whole thing into
+  `repository`, so apply strips the workspace segment before looking the repository up. A
+  leading segment that isn't a workspace UUID stays part of the name — names can contain
+  slashes.
+- `--dry-run` resolves every reference (so unresolvable names still fail) but issues no
+  create/update call.
+
 ## Verification
 
 `cargo check -p cli`, `cargo clippy -p cli --no-deps` (per-package), `cargo bindings` after touching `models`.
+
+**Tests: `just cli::test`.** The suite (`cli/tests/`) drives commands against a `wiremock` stub
+API and asserts on the exact request bodies. `constants::API_BASE_URL` is a compile-time
+constant, so the recipe builds the tests with `PATR_TEST_API_BASE_URL` set — plain
+`cargo test -p cli` will point them at a real API and fail. One fixed port means one shared
+server, hence `--test-threads=1`.

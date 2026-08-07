@@ -69,3 +69,10 @@ zip                 = { workspace = true, features = ["deflate"] }
 
 [build-dependencies]
 time = { workspace = true, features = [] }
+
+[dev-dependencies]
+wiremock = { workspace = true, features = [] }
+
+[[test]]
+name = "integration-tests"
+path = "tests/mod.rs"
