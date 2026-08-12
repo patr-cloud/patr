@@ -104,7 +104,6 @@ export const userPermissionKeys = {
 export const userInfoKeys = {
 	all: () => ["userInfo"] as const,
 	current: () => [...userInfoKeys.all(), "current"] as const,
-	search: (query: string) => [...userInfoKeys.all(), "search", query] as const,
 	byId: (userId: string) => [...userInfoKeys.all(), "byId", userId] as const,
 };
 

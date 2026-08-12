@@ -24,7 +24,6 @@ import ContainerGrid from "~/components/container-grid";
 import BgOnboard from "~/components/bg-onboard";
 import { ToastProvider, useToast } from "~/components/toast";
 import Turnstile from "~/components/turnstile";
-import { UserSearchInput } from "~/components/user-search-input";
 import ToggleSwitch from "~/components/toggle-switch";
 import Modal from "~/components/modal";
 import { ModalContainer } from "~/components/modal";
@@ -75,7 +74,6 @@ export {
 	ToastProvider,
 	useToast,
 	Turnstile,
-	UserSearchInput,
 	ToggleSwitch,
 	Modal,
 	ModalContainer,

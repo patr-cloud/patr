@@ -21,8 +21,6 @@ mod mfa;
 mod preview_workspace_invite;
 /// All endpoints related to recovery options
 mod recovery_options;
-/// The endpoint to search for users
-mod search_for_user;
 /// All endpoints related to social-login providers (list, disconnect, connect)
 mod social_logins;
 /// The endpoint to update the information of a user
@@ -40,7 +38,6 @@ pub use self::{
 	mfa::*,
 	preview_workspace_invite::*,
 	recovery_options::*,
-	search_for_user::*,
 	social_logins::*,
 	update_user_info::*,
 	web_logins::*,

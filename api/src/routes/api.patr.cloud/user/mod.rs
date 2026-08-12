@@ -14,7 +14,6 @@ mod mfa;
 mod preview_workspace_invite;
 #[expect(unused_variables)]
 mod recovery_options;
-mod search_for_user;
 #[cfg(feature = "cloud")]
 mod social_logins;
 mod update_user_info;
@@ -28,7 +27,6 @@ use self::{
 	get_user_info::*,
 	list_workspaces::*,
 	preview_workspace_invite::*,
-	search_for_user::*,
 	update_user_info::*,
 };
 
@@ -56,6 +54,5 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_auth_endpoint(get_user_details, state, allowed_client_type)
 		.mount_auth_endpoint(get_user_info, state, allowed_client_type)
 		.mount_auth_endpoint(list_workspaces, state, allowed_client_type)
-		.mount_auth_endpoint(search_for_user, state, allowed_client_type)
 		.mount_auth_endpoint(update_user_info, state, allowed_client_type)
 }
