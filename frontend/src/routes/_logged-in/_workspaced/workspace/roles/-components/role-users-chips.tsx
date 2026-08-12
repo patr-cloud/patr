@@ -1,10 +1,8 @@
 import { useQueryClient } from "@tanstack/solid-query";
-import { FiUserPlus, FiX } from "solid-icons/fi";
+import { FiX } from "solid-icons/fi";
 import { createSignal, For, Show } from "solid-js";
-import { Button, ButtonVariant, Initials, LoadingSpinner, UserSearchInput, useToast } from "~/components";
-import { BasicUserInfo } from "~/bindings/BasicUserInfo";
+import { Initials, LoadingSpinner, useToast } from "~/components";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
-import { WithId } from "~/bindings/WithId";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useMembersQuery, useRoleUsersQuery } from "~/hooks/fetch";
 import { memberKeys, roleKeys } from "~/hooks/query-keys";
@@ -21,9 +19,9 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 	const toast = useToast();
 
 	const usersQuery = useRoleUsersQuery(() => props.roleId);
-	// Unpaginated fetch so we can read any target user's current role set
-	// before mutating it (the backend has no "add/remove single role" endpoint —
-	// only a full replace on POST /rbac/user/:userId).
+	// Unpaginated fetch so we can read the target user's current role set before
+	// dropping this role from it (the backend has no "remove single role"
+	// endpoint — only a full replace on POST /rbac/user/:userId).
 	// TODO: replace with a dedicated single-role add/remove endpoint once the
 	// backend exposes one — pulling every member + N user details per expansion
 	// doesn't scale.
@@ -32,7 +30,6 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 		() => undefined
 	);
 
-	const [pickedUser, setPickedUser] = createSignal<WithId<BasicUserInfo> | null>(null);
 	const [isMutating, setIsMutating] = createSignal(false);
 
 	const getCurrentRoleIds = (userId: string): string[] => {
@@ -70,27 +67,6 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 		const ok = await updateUserRoles(userId, next);
 		setIsMutating(false);
 		if (ok) toast(`Removed ${username} from role`, "success");
-	};
-
-	const addUser = async () => {
-		const user = pickedUser();
-		if (!user || isMutating() || !membersQuery.data) {
-			if (user && !membersQuery.data) toast("Members not loaded yet, try again", "error");
-			return;
-		}
-		setIsMutating(true);
-		const current = getCurrentRoleIds(user.id);
-		if (current.includes(props.roleId)) {
-			toast(`${user.username} already has this role`, "info");
-			setIsMutating(false);
-			return;
-		}
-		const ok = await updateUserRoles(user.id, [...current, props.roleId]);
-		setIsMutating(false);
-		if (ok) {
-			toast(`Added ${user.username} to role`, "success");
-			setPickedUser(null);
-		}
 	};
 
 	const canMutate = () => !isMutating() && !!membersQuery.data;
@@ -137,25 +113,6 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 					</div>
 				</Show>
 			</Show>
-
-			{/* Add user form */}
-			<div class="flex flex-col md:flex-row gap-2 pt-3 border-t border-border-color/40">
-				<UserSearchInput
-					class="flex-1"
-					placeholder="Add user to this role..."
-					onUserSelect={(u) => setPickedUser(u)}
-				/>
-				<Button
-					variant={ButtonVariant.Outlined}
-					onClick={() => addUser().catch(() => {})}
-					disabled={!pickedUser() || !canMutate()}
-					loading={isMutating()}
-					class="flex items-center gap-2"
-				>
-					<FiUserPlus size={14} />
-					Add user
-				</Button>
-			</div>
 		</div>
 	);
 };
