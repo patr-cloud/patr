@@ -12,8 +12,8 @@ use crate::prelude::*;
 ///
 /// The response contains one entry per requested ID. IDs that don't resolve to
 /// a live resource in this workspace (deleted, or belonging to another
-/// workspace) come back with `null` fields, as do resources whose type has no
-/// name (e.g. a managed URL).
+/// workspace) come back as `None` entries. A resolved resource whose type has
+/// no name (e.g. a managed URL) comes back with `name: None`.
 pub async fn get_resources_info(
 	AuthenticatedAppRequest {
 		request:
@@ -96,25 +96,24 @@ pub async fn get_resources_info(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|row| {
-		(
-			row.id,
-			(row.name, ResourceType::from_str(&row.resource_type).ok()),
-		)
+	.filter_map(|row| {
+		let resource_type = ResourceType::from_str(&row.resource_type).ok()?;
+		Some((row.id, (row.name, resource_type)))
 	})
-	.collect::<HashMap<Uuid, (Option<String>, Option<ResourceType>)>>();
+	.collect::<HashMap<Uuid, (Option<String>, ResourceType)>>();
 
 	let resources = resource_ids
 		.into_iter()
 		.map(|id| {
-			let (name, resource_type) = resolved.get(&id).cloned().unwrap_or((None, None));
-			WithId::new(
-				id,
-				ResourceInfo {
-					name,
-					resource_type,
-				},
-			)
+			resolved.get(&id).cloned().map(|(name, resource_type)| {
+				WithId::new(
+					id,
+					ResourceInfo {
+						name,
+						resource_type,
+					},
+				)
+			})
 		})
 		.collect();
 

@@ -46,10 +46,10 @@ async fn resolves_name_and_type() {
 	let response = resolve(&setup, &user.access_token, workspace.id, [runner.id]).await;
 
 	assert_eq!(1, response.resources.len());
-	let resolved = &response.resources[0];
+	let resolved = response.resources[0].as_ref().expect("runner not resolved");
 	assert_eq!(runner.id, resolved.id);
 	assert_eq!(Some(runner.name), resolved.name);
-	assert_eq!(Some(ResourceType::Runner), resolved.resource_type);
+	assert_eq!(ResourceType::Runner, resolved.resource_type);
 }
 
 #[tokio::test]
@@ -67,20 +67,20 @@ async fn container_repo_resolves() {
 	let response = resolve(&setup, &user.access_token, workspace.id, [repo.id]).await;
 
 	assert_eq!(1, response.resources.len());
-	let resolved = &response.resources[0];
+	let resolved = response.resources[0].as_ref().expect("repo not resolved");
 	assert_eq!(repo.id, resolved.id);
 	assert_eq!(Some(repo.name), resolved.name);
 	assert_eq!(
-		Some(ResourceType::ContainerRegistryRepository),
+		ResourceType::ContainerRegistryRepository,
 		resolved.resource_type
 	);
 }
 
 #[tokio::test]
-async fn unresolved_id_returns_nulls() {
+async fn unresolved_id_returns_none() {
 	// The frontend renders one row per requested ID and falls back to showing the
-	// raw ID when it cannot be resolved, so an unknown ID must come back as an
-	// entry with null fields rather than being dropped from the response.
+	// raw ID when it cannot be resolved, so an unknown ID must come back as a
+	// `None` entry rather than being dropped from the response.
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -89,10 +89,7 @@ async fn unresolved_id_returns_nulls() {
 	let response = resolve(&setup, &user.access_token, workspace.id, [unknown]).await;
 
 	assert_eq!(1, response.resources.len());
-	let resolved = &response.resources[0];
-	assert_eq!(unknown, resolved.id);
-	assert_eq!(None, resolved.name);
-	assert_eq!(None, resolved.resource_type);
+	assert!(response.resources[0].is_none());
 }
 
 #[tokio::test]
@@ -121,26 +118,24 @@ async fn one_entry_per_requested_id() {
 	let resolved_runner = response
 		.resources
 		.iter()
+		.flatten()
 		.find(|resource| resource.id == runner.id)
 		.expect("runner missing from response");
-	assert_eq!(Some(ResourceType::Runner), resolved_runner.resource_type);
+	assert_eq!(ResourceType::Runner, resolved_runner.resource_type);
 
 	let resolved_repo = response
 		.resources
 		.iter()
+		.flatten()
 		.find(|resource| resource.id == repo.id)
 		.expect("repo missing from response");
 	assert_eq!(
-		Some(ResourceType::ContainerRegistryRepository),
+		ResourceType::ContainerRegistryRepository,
 		resolved_repo.resource_type
 	);
 
-	let resolved_unknown = response
-		.resources
-		.iter()
-		.find(|resource| resource.id == unknown)
-		.expect("unknown id missing from response");
-	assert_eq!(None, resolved_unknown.resource_type);
+	// The unknown ID resolves to nothing, so exactly one slot comes back `None`.
+	assert_eq!(1, response.resources.iter().filter(|r| r.is_none()).count());
 }
 
 #[tokio::test]
@@ -159,10 +154,7 @@ async fn other_workspace_resource_is_null() {
 	let response = resolve(&setup, &user.access_token, workspace_a.id, [runner_in_b.id]).await;
 
 	assert_eq!(1, response.resources.len());
-	let resolved = &response.resources[0];
-	assert_eq!(runner_in_b.id, resolved.id);
-	assert_eq!(None, resolved.name);
-	assert_eq!(None, resolved.resource_type);
+	assert!(response.resources[0].is_none());
 }
 
 #[tokio::test]

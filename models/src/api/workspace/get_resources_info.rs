@@ -5,17 +5,20 @@ use ts_rs::TS;
 
 use crate::{prelude::*, rbac::ResourceType};
 
-/// Metadata about a single resource, resolved from its ID.
+/// Metadata about a single resource, resolved from its ID. An ID that does not
+/// correspond to a live resource in this workspace (deleted, or owned by
+/// another workspace) is represented by a `None` entry in the response list
+/// rather than by null fields here, so a `ResourceInfo` always carries a real
+/// `resource_type`. `name` stays optional because some resource types are
+/// genuinely nameless (e.g. a managed URL has no name column).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ResourceInfo {
-	/// The human-readable name of the resource. `None` when the resource could
-	/// not be resolved (it was deleted or belongs to a different workspace) or
-	/// when the resource type has no name (e.g. a managed URL).
+	/// The human-readable name of the resource. `None` when the resource type
+	/// has no name (e.g. a managed URL).
 	pub name: Option<String>,
-	/// The type of the resource. `None` when the ID does not correspond to a
-	/// live resource in this workspace.
-	pub resource_type: Option<ResourceType>,
+	/// The type of the resource.
+	pub resource_type: ResourceType,
 }
 
 macros::declare_api_endpoint!(
@@ -44,9 +47,9 @@ macros::declare_api_endpoint!(
 		pub resource_ids: BTreeSet<Uuid>,
 	},
 	response = {
-		/// The resolved resources, one entry per requested ID, with `null`
-		/// fields for any ID that could not be resolved in this workspace.
-		pub resources: Vec<WithId<ResourceInfo>>,
+		/// The resolved resources, one entry per requested ID, with `null` for
+		/// any ID that could not be resolved in this workspace.
+		pub resources: Vec<Option<WithId<ResourceInfo>>>,
 	},
 	audit_log = NoAuditLogger,
 );

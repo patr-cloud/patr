@@ -145,7 +145,7 @@ const PermissionRow = (props: PermissionRowProps) => {
 												}
 											>
 												<span class="text-grey shrink-0">
-													{parseCamelCase(info()!.resourceType ?? "unknown")}:
+													{parseCamelCase(info()!.resourceType)}:
 												</span>
 												<span class="truncate text-white" title={info()!.name!}>
 													{info()!.name}

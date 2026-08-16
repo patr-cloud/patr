@@ -114,10 +114,9 @@ export const useWorkspaceResourcesQuery = (
  * are sorted before use so that the same set of resources — in any order — hits
  * the same cache entry.
  *
- * IDs that don't resolve come back from the API with `null` fields rather than
- * being omitted (a deleted resource, or one whose type has no name), so the map
- * always has an entry for every ID that was asked for. Callers should fall back
- * to showing the raw ID in that case.
+ * IDs that don't resolve come back from the API as `null` entries (a deleted
+ * resource, or one belonging to another workspace), so they're absent from the
+ * map. Callers should fall back to showing the raw ID in that case.
  */
 const useResourcesInfoQuery = (resourceIds: Accessor<string[]>) => {
 	const [authState] = useAuthState();
@@ -143,7 +142,9 @@ const useResourcesInfoQuery = (resourceIds: Accessor<string[]>) => {
 				}
 
 				return new Map<string, ResourceInfo>(
-					(response.data.resources || []).map(({ id, ...info }) => [id, info])
+					(response.data.resources || [])
+						.filter((resource) => resource !== null)
+						.map(({ id, ...info }) => [id, info])
 				);
 			},
 		};
