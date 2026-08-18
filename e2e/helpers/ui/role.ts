@@ -102,3 +102,17 @@ export async function confirmDeleteRoleModal(page: Page): Promise<void> {
 export async function expectToast(page: Page, matcher: RegExp, timeout = 10_000): Promise<void> {
 	await expect(page.getByText(matcher).first()).toBeVisible({ timeout });
 }
+
+// Edit-permissions matrix (edit.tsx + permission-matrix.tsx).
+
+// "Clear All" sits opposite the section label and empties the whole permission
+// map, which re-disables Save Changes.
+export async function clickClearAllPermissions(page: Page): Promise<void> {
+	await page.getByRole('button', { name: /^Clear All$/ }).click();
+}
+
+// The UnsavedChangesGuard modal, shown when navigating away from the edit tab
+// with pending edits. Buttons are "Stay" (dismiss) and "Leave" (discard + go).
+export async function expectUnsavedChangesModal(page: Page): Promise<void> {
+	await expect(page.getByText(/^Unsaved changes$/)).toBeVisible({ timeout: 5_000 });
+}

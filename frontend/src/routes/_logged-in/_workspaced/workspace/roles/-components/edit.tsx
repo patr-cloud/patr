@@ -1,5 +1,6 @@
-import { Alert, Button, ButtonVariant, Input, Table, useToast } from "~/components";
-import PermissionSelector from "./permission-selector";
+import { Alert, Button, ButtonVariant, Input, UnsavedChangesGuard, useToast } from "~/components";
+import { Color } from "~/utils/color";
+import PermissionMatrix from "./permission-matrix";
 import { createEffect, createMemo, createSignal, Show, Suspense } from "solid-js";
 import { useParams } from "@tanstack/solid-router";
 import { httpRequest } from "~/utils/http-request";
@@ -7,11 +8,9 @@ import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
 import { createLoggedInAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { ResourcePermissionType } from "~/bindings";
-import { usePermissionsQuery, useRoleInfoQuery } from "~/hooks/fetch";
+import { useRoleInfoQuery } from "~/hooks/fetch";
 import { roleKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
-import { FiTrash2 } from "solid-icons/fi";
-import { parsePermissionName, parseCamelCase } from "~/utils/func";
 import { validateNameField, validateRoleDescription } from "~/utils/validation";
 
 const EditPermissions = () => {
@@ -37,40 +36,17 @@ const EditPermissions = () => {
 		}
 	});
 
-	// Fetch all permissions for the workspace to map IDs to names
-	const allPermissionsQuery = usePermissionsQuery(() => workspaceId()!);
-
-	// Create a map of permission ID to permission name
-	const permissionIdToName = createMemo(() => {
-		const perms = allPermissionsQuery.data?.permissions;
-		if (!perms) return new Map<string, string>();
-		return new Map(perms.map((perm) => [perm.id, perm.name]));
-	});
-
-	const permissionEntries = createMemo(() => {
-		const permissions = permissionsData();
-		if (!permissions) return [];
-		const nameMap = permissionIdToName();
-
-		return Object.entries(permissions).map(([permissionId, permissionData]) => {
-			const permissionName = nameMap.get(permissionId) || permissionId;
-			const parsed = parsePermissionName(permissionName);
-			return {
-				permissionId,
-				resourceType: parsed.resourceType,
-				action: parsed.permission,
-				permissionType: permissionData?.permissionType || "exclude",
-				resources: permissionData?.resources || [],
-			};
-		});
-	});
-
 	const { execute: handleUpdateRole, isLoading: isUpdating } = createLoggedInAction(async () => {
 		const nameError = validateNameField(roleName());
 		const descError = validateRoleDescription(roleDescription());
 		setRoleNameError(nameError);
 		setRoleDescriptionError(descError);
 		if (nameError || descError) return;
+
+		if (Object.keys(permissionsData()).length === 0) {
+			toast("Add at least one permission before saving", "error");
+			return;
+		}
 
 		const requestBody: UpdateRoleRequest = {
 			name: roleName().trim(),
@@ -97,6 +73,30 @@ const EditPermissions = () => {
 		if (wsId) {
 			queryClient.invalidateQueries({ queryKey: roleKeys.detail(wsId, params().roleId) });
 		}
+	});
+
+	// Order-independent serialization of a permission map, so that toggling a
+	// resource off and on again (which can reorder the arrays) doesn't read as a
+	// change against the loaded snapshot.
+	const canonicalPermissions = (perms: { [key: string]: ResourcePermissionType }) =>
+		JSON.stringify(
+			Object.keys(perms)
+				.sort()
+				.map((id) => [id, perms[id].permissionType, [...perms[id].resources].sort()])
+		);
+
+	// True while the form differs from what the server last returned. Once a save
+	// lands and the query refetches, the seed effect above re-syncs the signals,
+	// so this drops back to false on its own.
+	const isDirty = createMemo(() => {
+		const role = roleInfoQuery.data;
+		if (!role) return false;
+		if (roleName().trim() !== role.name) return true;
+		if (roleDescription().trim() !== (role.description ?? "")) return true;
+		return (
+			canonicalPermissions(permissionsData()) !==
+			canonicalPermissions((role.permissions ?? {}) as { [key: string]: ResourcePermissionType })
+		);
 	});
 
 	return (
@@ -148,55 +148,31 @@ const EditPermissions = () => {
 					</Show>
 				</div>
 
-				<div class="flex items-center gap-2">
-					<PermissionSelector
-						class="flex-1"
+				<div class="flex flex-col gap-2">
+					<div class="flex justify-between items-center">
+						<label class="text-white text-sm">Edit Permissions in role</label>
+						<Button
+							variant={ButtonVariant.Plain}
+							color={Color.Error}
+							onClick={() => setPermissionsData({})}
+						>
+							Clear All
+						</Button>
+					</div>
+					<PermissionMatrix
 						workspaceId={workspaceId()!}
-						onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
+						permissionsData={permissionsData()}
+						onChange={(next) => setPermissionsData(next)}
+						// Ticks on load and on the refetch after a save, which is when the
+						// matrix re-ranks its columns. Local edits leave it untouched, so
+						// the cards don't move while you work.
+						sortToken={roleInfoQuery.dataUpdatedAt}
 					/>
 				</div>
 
-				<Table
-					column_grids={["flex-4", "flex-3", "flex-4", "flex-1"]}
-					headings={["Resource Type", "Action", "Resources", ""]}
-					rows={permissionEntries().sort(
-						(a, b) => a.resourceType.localeCompare(b.resourceType) || a.action.localeCompare(b.action)
-					)}
-					renderRow={(perm) => (
-						<tr role="row" class="table-row">
-							<td role="cell" class="flex-4 flex items-center justify-start">
-								<span class="truncate">{parseCamelCase(perm.resourceType)}</span>
-							</td>
-							<td role="cell" class="flex-3 flex items-center justify-start">
-								<span>{parseCamelCase(perm.action)}</span>
-							</td>
-							<td role="cell" class="flex-4 flex items-center justify-start">
-								<Show
-									when={perm.resources.length > 0}
-									fallback={<span class="text-gray-400">All resources</span>}
-								>
-									<span class="text-sm">
-										{perm.permissionType === "include" ? "Only " : "All except "}
-										{perm.resources.length} resource{perm.resources.length !== 1 ? "s" : ""}
-									</span>
-								</Show>
-							</td>
-							<td role="cell" class="flex-1 flex items-center justify-center">
-								<button
-									type="button"
-									aria-label="Remove permission"
-									class="text-error hover:bg-white/10 p-1 rounded transition-colors cursor-pointer"
-									onClick={() => {
-										const newPermissionsData = { ...permissionsData() };
-										delete newPermissionsData[perm.permissionId];
-										setPermissionsData(newPermissionsData);
-									}}
-								>
-									<FiTrash2 size={16} />
-								</button>
-							</td>
-						</tr>
-					)}
+				<UnsavedChangesGuard
+					when={isDirty}
+					message="You have unsaved changes to this role. If you leave now, they'll be lost."
 				/>
 			</div>
 		</Suspense>

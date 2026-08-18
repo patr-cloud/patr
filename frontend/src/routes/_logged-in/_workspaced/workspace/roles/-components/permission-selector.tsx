@@ -9,6 +9,13 @@ interface PermissionSelectorProps {
 	/** Additional classes for the container */
 	class?: string;
 	workspaceId: string;
+	/**
+	 * The permissions currently granted, keyed by permission ID. Selecting a
+	 * permission that is already in here seeds the scope and resource pickers with
+	 * its existing value, so that adding a resource extends the set instead of
+	 * replacing it.
+	 */
+	permissionsData: { [key: string]: ResourcePermissionType };
 	onPermissionsDataChange: (data: { [key: string]: ResourcePermissionType }) => void;
 }
 
@@ -100,11 +107,24 @@ const PermissionSelector = (props: PermissionSelectorProps) => {
 
 		let resourcePermission: ResourcePermissionType;
 		if (isWorkspaceLevelSelected() || !shouldShowScope() || scopeMode() === "all") {
+			// Choosing "All X" is a deliberate widening, so it clears any existing scoping.
 			resourcePermission = { permissionType: "exclude", resources: [] };
-		} else if (scopeMode() === "include") {
-			resourcePermission = { permissionType: "include", resources: Array.from(selectedResources()) };
 		} else {
-			resourcePermission = { permissionType: "exclude", resources: Array.from(selectedResources()) };
+			const permissionType = scopeMode() === "include" ? "include" : "exclude";
+			const picked = Array.from(selectedResources());
+			const existing = props.permissionsData[permId];
+
+			// The parent applies this value wholesale, so adding to a permission that
+			// already lists resources has to carry the existing ones through — otherwise
+			// they'd be silently dropped. Only union within the same scope type: going
+			// from "only these" to "all except these" inverts the meaning, so an
+			// explicit switch replaces rather than merges.
+			const resources =
+				existing && existing.permissionType === permissionType
+					? Array.from(new Set([...existing.resources, ...picked]))
+					: picked;
+
+			resourcePermission = { permissionType, resources };
 		}
 
 		props.onPermissionsDataChange({ [permId]: resourcePermission });

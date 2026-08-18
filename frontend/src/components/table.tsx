@@ -9,6 +9,9 @@ interface TableProps<TItem> {
 	class?: MaybeAccessor<string>;
 	/** Table Headings */
 	headings: JSX.Element[];
+	/** Horizontal alignment of the headings. Defaults to `center`; use `left` when the
+	 * table's cell contents are themselves left-aligned, so the two line up. */
+	heading_align?: "left" | "center";
 	/** Table Rows */
 	rows: MaybeAccessor<TItem[]>;
 	/** Table Row Render Function */
@@ -44,6 +47,7 @@ const Table = <TItem extends Record<string, unknown>>(rawProps: TableProps<TItem
 	const props = mergeProps(
 		{
 			class: "",
+			heading_align: "center" as const,
 		},
 		rawProps
 	);
@@ -56,7 +60,9 @@ const Table = <TItem extends Record<string, unknown>>(rawProps: TableProps<TItem
 							{(heading, index) => (
 								<th
 									role="columnheader"
-									class={`flex items-center justify-center text-sm font-medium ${props.column_grids.at(index()) ?? ""}`}
+									class={`flex items-center ${
+										props.heading_align === "left" ? "justify-start" : "justify-center"
+									} text-sm font-medium ${props.column_grids.at(index()) ?? ""}`}
 								>
 									{heading}
 								</th>

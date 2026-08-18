@@ -49,6 +49,7 @@ import ChipInput from "~/components/chip-input";
 import PasswordStrength from "~/components/password-strength";
 import Sidebar from "~/components/sidebar";
 import TopBar from "~/components/top-bar";
+import UnsavedChangesGuard from "~/components/unsaved-changes-guard";
 export {
 	Alert,
 	PageContainer,
@@ -102,4 +103,5 @@ export {
 	PasswordStrength,
 	Sidebar,
 	TopBar,
+	UnsavedChangesGuard,
 };

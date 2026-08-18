@@ -20,6 +20,9 @@ mod create_workspace;
 /// other resources. This is a destructive operation and cannot be undone.
 /// The workspace must be empty before it can be deleted.
 mod delete_workspace;
+/// The handler to resolve a batch of resource IDs into their names and resource
+/// types. Used to display which resources a set of stored IDs refer to.
+mod get_resources_info;
 /// The handler to get the information of a workspace. This includes the
 /// workspace's name, the user who created it, and the date it was created.
 mod get_workspace_info;
@@ -36,6 +39,7 @@ mod update_workspace_info;
 use self::{
 	create_workspace::*,
 	delete_workspace::*,
+	get_resources_info::*,
 	get_workspace_info::*,
 	is_name_available::*,
 	leave_workspace::*,
@@ -57,6 +61,7 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.merge(volume::setup_routes(state, allowed_client_type).await)
 		.mount_auth_endpoint(create_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(delete_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(get_resources_info, state, allowed_client_type)
 		.mount_auth_endpoint(get_workspace_info, state, allowed_client_type)
 		.mount_auth_endpoint(leave_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(is_name_available, state, allowed_client_type)
