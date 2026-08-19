@@ -78,6 +78,9 @@ const SignUp = () => {
 		if (!username().trim()) {
 			newErrors.username = "Username is required.";
 			valid = false;
+		} else if (username().trim().length < 2) {
+			newErrors.username = "Must be at least 2 characters.";
+			valid = false;
 		}
 		const firstNameError = validateNameField(firstName());
 		if (firstNameError) {

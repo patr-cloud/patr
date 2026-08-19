@@ -188,6 +188,20 @@ test.describe('sign-up — client-side field validation', () => {
 			await expect(page.getByText(/required/i).first()).toBeVisible();
 		});
 	});
+
+	// Username min-length (2) is enforced client-side, matching login and the
+	// backend's `length(min = 2)`. A single-char username blocks submit without
+	// firing a request.
+	test('single-char username blocks submit', async ({ browser }) => {
+		await withSignupContext(browser, async (page) => {
+			const creds = newCreds();
+			await fillSignupForm(page, { ...creds, username: 'a' });
+			await expectNoSignupRequest(page, async () => {
+				await submitSignup(page);
+			});
+			await expect(page.getByText(/at least 2 characters/i)).toBeVisible();
+		});
+	});
 });
 
 test.describe('sign-up — server-side rejection (bypass client validation)', () => {
@@ -259,7 +273,6 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
 		['leading dot', '.baduser'],
 		['trailing dot', 'baduser.'],
 		['contains space', 'bad user'],
-		['single char', 'a'],
 	] as const) {
 		test(`username regex (${label}) → server rejects`, async ({ browser }) => {
 			await withSignupContext(browser, async (page) => {

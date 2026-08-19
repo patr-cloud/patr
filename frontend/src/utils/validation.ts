@@ -225,7 +225,7 @@ export function validateRoleDescription(value: string): string | undefined {
  */
 export function validateUsernameOrEmail(value: string): string | undefined {
 	if (!value || value.trim().length === 0) return "Required";
-	if (value.length < 4) return "Must be at least 4 characters";
+	if (value.length < 2) return "Must be at least 2 characters";
 	if (value.includes("@")) {
 		if (!value.includes(".") || value.length < 5) {
 			return "Not a valid email address";
