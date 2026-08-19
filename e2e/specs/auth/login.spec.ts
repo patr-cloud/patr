@@ -120,6 +120,25 @@ test.describe('login — server-side rejection', () => {
 		});
 	});
 
+	// Username min-length (2) is enforced client-side, matching sign-up and the
+	// backend's `length(min = 2)`. A single-char username blocks submit without
+	// firing a request.
+	test('single-char username blocks submit (no network request)', async ({ browser }) => {
+		await loginWith(browser, async (page) => {
+			let fired = false;
+			page.on('request', (req) => {
+				if (req.url().includes('/auth/sign-in')) fired = true;
+			});
+			await fillLoginForm(page, { userId: 'a', password: 'E2eTest!1Password' });
+			const submit = page.locator('button[type=submit]', { hasText: /^Login$/ });
+			await expect(submit).toBeEnabled({ timeout: 15_000 });
+			await submit.click();
+			await page.waitForTimeout(500);
+			expect(fired).toBe(false);
+			await expect(page.getByText(/at least 2 characters/i)).toBeVisible();
+		});
+	});
+
 	// SQLi-in-userId and case-sensitive-username rejection are API-contract
 	// behaviors covered in the Rust API suite (api/tests/api/auth.rs).
 });
