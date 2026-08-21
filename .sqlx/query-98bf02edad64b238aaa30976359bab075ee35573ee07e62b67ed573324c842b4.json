@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM workspace WHERE name = $1 AND deleted IS NULL;",
+  "query": "SELECT * FROM workspace WHERE name = $1::CITEXT AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -46,5 +46,5 @@
       true
     ]
   },
-  "hash": "3f1f74734ac6d0083595970b3240bfbc4b7ada8dc56f98de3431d41ce06e525f"
+  "hash": "98bf02edad64b238aaa30976359bab075ee35573ee07e62b67ed573324c842b4"
 }
