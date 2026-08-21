@@ -343,6 +343,13 @@ pub async fn social_login_callback(
 
 	let login_id = query!(
 		r#"
+		WITH client AS (
+			INSERT INTO
+				actor_client(id, client_type)
+			VALUES
+				(GENERATE_LOGIN_ID(), 'user_login')
+			RETURNING id
+		)
 		INSERT INTO
 			user_login(
 				login_id,
@@ -350,9 +357,11 @@ pub async fn social_login_callback(
 				login_type,
 				created
 			)
-		VALUES
-			(GENERATE_LOGIN_ID(), $1, 'web_login', $2)
-		RETURNING login_id AS "login_id: Uuid";
+		SELECT
+			client.id, $1, 'web_login', $2
+		FROM
+			client
+		RETURNING user_login.login_id AS "login_id: Uuid";
 		"#,
 		user_id as _,
 		now,
