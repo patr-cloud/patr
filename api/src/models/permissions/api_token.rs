@@ -232,7 +232,9 @@ pub async fn get_permissions_for_api_token(
 		LEFT JOIN
 			role_resource_permissions_exclude
 		ON
-			role_resource_permissions_exclude.role_id = workspace_user.role_id
+			role_resource_permissions_exclude.role_id = role_resource_permissions_type.role_id AND
+			role_resource_permissions_exclude.permission_id =
+				role_resource_permissions_type.permission_id
 		WHERE
 			workspace_user.user_id = $1;
 		"#,
@@ -291,7 +293,9 @@ pub async fn get_permissions_for_api_token(
 		LEFT JOIN
 			role_resource_permissions_include
 		ON
-			role_resource_permissions_include.role_id = workspace_user.role_id
+			role_resource_permissions_include.role_id = role_resource_permissions_type.role_id AND
+			role_resource_permissions_include.permission_id =
+				role_resource_permissions_type.permission_id
 		WHERE
 			workspace_user.user_id = $1;
 		"#,
@@ -366,7 +370,11 @@ pub async fn get_permissions_for_api_token(
 			user_api_token_resource_permissions_exclude
 		ON
 			user_api_token_resource_permissions_exclude.token_id =
-				user_api_token_resource_permissions_type.token_id
+				user_api_token_resource_permissions_type.token_id AND
+			user_api_token_resource_permissions_exclude.workspace_id =
+				user_api_token_resource_permissions_type.workspace_id AND
+			user_api_token_resource_permissions_exclude.permission_id =
+				user_api_token_resource_permissions_type.permission_id
 		WHERE
 			user_api_token_resource_permissions_type.token_id = $1 AND
 			user_api_token_resource_permissions_type.resource_permission_type = 'exclude';
@@ -422,7 +430,11 @@ pub async fn get_permissions_for_api_token(
 			user_api_token_resource_permissions_include
 		ON
 			user_api_token_resource_permissions_include.token_id =
-				user_api_token_resource_permissions_type.token_id
+				user_api_token_resource_permissions_type.token_id AND
+			user_api_token_resource_permissions_include.workspace_id =
+				user_api_token_resource_permissions_type.workspace_id AND
+			user_api_token_resource_permissions_include.permission_id =
+				user_api_token_resource_permissions_type.permission_id
 		WHERE
 			user_api_token_resource_permissions_type.token_id = $1 AND
 			user_api_token_resource_permissions_type.resource_permission_type = 'include';
