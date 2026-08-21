@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE workspace_domain ADD CONSTRAINT workspace_domain_chk_name_is_valid CHECK(name ~ '^(([a-z0-9])|([a-z0-9][a-z0-9-]*[a-z0-9]))$'), ADD CONSTRAINT workspace_domain_chk_max_domain_name_length CHECK((LENGTH(name) + LENGTH(tld)) < 255), ADD CONSTRAINT workspace_domain_fk_tld FOREIGN KEY(tld) REFERENCES domain_tld(tld), ADD CONSTRAINT workspace_domain_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT workspace_domain_fk_id_deleted FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, workspace_id, deleted) DEFERRABLE INITIALLY IMMEDIATE;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "00205b07c00312b744f82e2f8da5a5f06747cb9bcfef4b63f9416c86ea8a66d0"
+}

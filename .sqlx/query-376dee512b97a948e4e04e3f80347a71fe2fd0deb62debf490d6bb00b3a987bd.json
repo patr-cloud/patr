@@ -13,7 +13,6 @@
             "kind": {
               "Enum": [
                 "proxy_to_deployment",
-                "proxy_to_static_site",
                 "proxy_url",
                 "redirect"
               ]

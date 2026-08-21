@@ -67,7 +67,7 @@ pub async fn create_managed_url(
 		WHERE
 			workspace_domain.id = $1 AND
 			workspace_domain.deleted IS NULL AND
-			resource.owner_id = $2;
+			resource.workspace_id = $2;
 		"#,
 		domain_id as _,
 		workspace_id as _,
@@ -107,7 +107,7 @@ pub async fn create_managed_url(
 					WHERE
 						deployment.id = $1 AND
 						deployment.deleted IS NULL AND
-						resource.owner_id = $2;
+						resource.workspace_id = $2;
 					"#,
 					deployment_id as _,
 					workspace_id as _,
@@ -263,7 +263,7 @@ pub async fn create_managed_url(
 			resource(
 				id,
 				resource_type_id,
-				owner_id,
+				workspace_id,
 				created
 			)
 		VALUES

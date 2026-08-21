@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX resource_idx_workspace_id ON resource (workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "4f5bf2edbee6ad664a51099af7b82abf2312f0eec393fdefe3cfbae00c21187e"
+}

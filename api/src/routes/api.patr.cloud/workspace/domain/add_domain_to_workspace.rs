@@ -34,7 +34,7 @@ pub async fn add_domain_to_workspace(
 			resource(
 				id,
 				resource_type_id,
-				owner_id,
+				workspace_id,
 				created,
 				deleted
 			)
