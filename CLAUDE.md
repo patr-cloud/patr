@@ -13,7 +13,7 @@ Patr is a DevOps automation platform. Rust workspace (backend, CLI, runners, Clo
 - `ingress/` — Cloudflare Worker (wasm32 `cdylib`) that proxies requests to the right cluster. Depends on `models`.
 - `macros/` — proc macros (`declare_api_endpoint!`, `query!`, `migration`).
 - `models/` — DTOs and shared types; source of the frontend's generated TS bindings.
-- `runners/{common,docker}` — deployment runners. `common` is the framework; `docker` is the live runner.
+- `runners/{common,docker}` — deployment runners. `common` is the framework; `docker` is the live runner. `runners/kubernetes` is kept as a reference implementation only — it's excluded from the workspace and never built.
 - `frontend/` — SolidJS dashboard (pnpm). `e2e/` — Playwright suite (pnpm).
 
 ## Cloud vs self-hosted

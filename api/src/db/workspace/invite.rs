@@ -11,7 +11,6 @@ pub async fn initialize_workspace_user_invite_tables(
 		CREATE TABLE workspace_user_invite(
 			id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
-			/* CITEXT to match `"user".email` — see `db/user/user_data.rs` */
 			email CITEXT NOT NULL,
 
 			token_hash TEXT NOT NULL,

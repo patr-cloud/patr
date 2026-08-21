@@ -1,5 +1,8 @@
 [workspace]
 members              = ["api", "cli", "ingress", "macros", "models", "runners/common", "runners/docker"]
+# Kept in-tree as a reference implementation only — it predates the
+# common/actor design, doesn't implement `RunnerExecutor`, and is not built.
+exclude              = ["runners/kubernetes"]
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"

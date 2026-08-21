@@ -99,11 +99,11 @@ pub async fn social_login_setup(
 		INSERT INTO
 			"user"(
 				id,
-				email,
 				password,
 				first_name,
 				last_name,
 				created,
+				email,
 				workspace_limit,
 				password_reset_token,
 				password_reset_token_expiry,
@@ -126,11 +126,11 @@ pub async fn social_login_setup(
 			);
 		"#,
 		user_id as _,
-		&payload.email,
 		hashed_password,
 		&first_name,
 		&last_name,
 		now,
+		&payload.email,
 		constants::DEFAULT_WORKSPACE_LIMIT,
 	)
 	.execute(&mut **database)

@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO \"user\"(id, password, first_name, last_name, created, email, workspace_limit, password_reset_token, password_reset_token_expiry, password_reset_attempts, mfa_secret) VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, NULL, NULL, NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Timestamptz",
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ac049319d3186cc5a898cb6407374ee356fb1903cd89d80ca676853ba7841909"
+}

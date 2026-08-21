@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_to_sign_up(email CITEXT NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL,  otp_hash TEXT NOT NULL, otp_expiry TIMESTAMPTZ NOT NULL, sign_up_attempts INTEGER NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b2be8b7c83b27688780ad1351b0ad6f710bbd8430b4b4fa960e2303d80f827fb"
+}

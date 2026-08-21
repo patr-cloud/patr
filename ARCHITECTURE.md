@@ -73,7 +73,7 @@ Okay, here's a rough architecture of the project. The whole repo is a single mon
 
 Each runner is basically a piece of code that connects to the API via websocket, and listens for changes. When a deployment is created, the API notifies the runner about the deployment. The runner then pulls the docker image, creates the container, and starts the container. The runner then listens for changes to the deployment and updates the container accordingly. It also listens for changes to the container to update the status of the deployment (running, stopped, etc).
 
-The active runner is the Docker runner (`./runners/docker`), which can run your deployments on a VM, Raspberry Pi, etc.
+The active runner is the Docker runner (`./runners/docker`), which can run your deployments on a VM, Raspberry Pi, etc. There's also `./runners/kubernetes`, kept as a reference implementation — it predates the current design and is excluded from the workspace, so it isn't built.
 
 The `./runners/common` library shares code between runners: connecting to the API, listening for changes, storing deployment data in a local SQLite DB, and periodically syncing with the API. It exposes a single `RunnerExecutor` trait — implement it and `common` handles the reconciliation, actor supervision, and syncing.
 

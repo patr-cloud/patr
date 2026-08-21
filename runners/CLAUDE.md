@@ -15,6 +15,10 @@ New crate depending on `common`, implement `RunnerExecutor`, `main = Runner::<E>
 
 Adding a new *resource type* (database, static site) is scaffolded for but not wired: `ResourceSupervisorMessage` carries a `resource_type` field that's currently `#[allow(dead_code)]`.
 
+## `runners/kubernetes` — reference only, not built
+
+Crate name is `controller`. It predates the common-library/actor design, does **not** depend on `common`, doesn't implement `RunnerExecutor`, and its `main` is effectively dead. It's `exclude`d from the workspace, so nothing builds it and its `workspace = true` dependency inheritance no longer resolves — it's kept purely as a reference for a future Kubernetes runner. **Don't extend it or wire it back up without rewriting it against `RunnerExecutor`.**
+
 ## SelfHosted mode → headless executor
 
 SelfHosted mode currently runs standalone: its own auth + workspace HTTP API and an **embedded frontend** (this is the `frontend/.output/public` RustEmbed in `runners/common` — see its `CLAUDE.md`). **That whole surface is being removed.** The runner is becoming a **headless executor** — no embedded UI, no self-hosted API. Self-hosted operation instead runs the central `api` built without the `cloud` feature (`cargo build -p api --no-default-features`), with the runner as a pure executor behind it.

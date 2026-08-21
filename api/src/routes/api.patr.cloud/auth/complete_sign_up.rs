@@ -162,11 +162,11 @@ pub async fn complete_sign_up(
 				INSERT INTO
 					"user"(
 						id,
-						email,
 						password,
 						first_name,
 						last_name,
 						created,
+						email,
 						workspace_limit,
 						password_reset_token,
 						password_reset_token_expiry,
@@ -189,15 +189,14 @@ pub async fn complete_sign_up(
 					);
 				"#,
 				user_id as _,
-				// `row.email`, not the request's — `email` is CITEXT, so the
-				// two match case-insensitively but may differ in casing. Store
-				// what they typed when they signed up rather than whatever
-				// casing they happened to use on the confirmation form.
-				row.email,
 				row.password,
 				row.first_name,
 				row.last_name,
 				now,
+				// `row.email`, not the request's — they match case-insensitively
+				// but may differ in casing, and the address they signed up with
+				// is the one worth keeping.
+				row.email,
 				constants::DEFAULT_WORKSPACE_LIMIT,
 			)
 			.execute(&mut **database)

@@ -9,7 +9,6 @@ pub async fn initialize_user_sign_up_tables(
 	query!(
 		r#"
 		CREATE TABLE user_to_sign_up(
-			/* CITEXT to match `"user".email` — see `user_data.rs` */
 			email CITEXT NOT NULL,
 			password TEXT NOT NULL,
 			first_name VARCHAR(100) NOT NULL,
