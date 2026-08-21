@@ -158,7 +158,7 @@ where
 						r#"
 						SELECT
 							id,
-							owner_id
+							workspace_id
 						FROM
 							resource
 						WHERE
@@ -171,14 +171,14 @@ where
 					.await?;
 
 					let exists = if let Some(resource) = resource {
-						if resource.owner_id == workspace_id {
+						if resource.workspace_id == workspace_id {
 							true
 						} else {
 							warn!(
 								"Resource {} exists, but does not belong to workspace {}",
 								resource_id, workspace_id
 							);
-							debug!("It actually belongs to workspace {}", resource.owner_id);
+							debug!("It actually belongs to workspace {}", resource.workspace_id);
 							false
 						}
 					} else {

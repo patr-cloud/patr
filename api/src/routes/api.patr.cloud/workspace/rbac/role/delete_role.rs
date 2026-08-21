@@ -142,7 +142,7 @@ pub async fn delete_role(
 			role
 		WHERE
 			id = $1 AND
-			owner_id = $2;
+			workspace_id = $2;
 		"#,
 		role_id as _,
 		workspace_id as _,

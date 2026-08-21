@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE resource ADD CONSTRAINT resource_pk PRIMARY KEY(id), ADD CONSTRAINT resource_uq_id_workspace_id UNIQUE(id, workspace_id), ADD CONSTRAINT resource_uq_id_workspace_id_deleted UNIQUE(id, workspace_id, deleted);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "144b491dfc1c3f7dfea5b2b0dfc6d102afe0d3ece8edd2815bc5843c48a6158b"
+}

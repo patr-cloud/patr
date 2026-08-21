@@ -50,7 +50,7 @@ pub async fn list_all_roles(
 		FROM
 			role
 		WHERE
-			owner_id = $1 AND
+			workspace_id = $1 AND
 			($2::TEXT IS NULL OR name ILIKE '%' || $2::TEXT || '%') AND
 			($3::TEXT IS NULL OR description ILIKE '%' || $3::TEXT || '%')
 		ORDER BY

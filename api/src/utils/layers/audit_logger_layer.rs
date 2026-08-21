@@ -240,7 +240,7 @@ where
 
 						$9,
 						$10,
-						(SELECT owner_id FROM resource WHERE id = $11),
+						(SELECT workspace_id FROM resource WHERE id = $11),
 						$11
 					);
 				"#,

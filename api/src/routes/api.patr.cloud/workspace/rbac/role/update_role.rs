@@ -51,7 +51,7 @@ pub async fn update_role(
 			description = $2
 		WHERE
 			id = $3 AND
-			owner_id = $4;
+			workspace_id = $4;
 		"#,
 		&*name,
 		&*description,

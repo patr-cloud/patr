@@ -129,7 +129,7 @@ pub async fn update_managed_url(
 				WHERE
 					deployment.id = $1 AND
 					deployment.deleted IS NULL AND
-					resource.owner_id = $2;
+					resource.workspace_id = $2;
 				"#,
 				managed_url_deployment_id as _,
 				workspace_id as _,

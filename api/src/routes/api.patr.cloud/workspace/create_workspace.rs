@@ -94,7 +94,7 @@ pub async fn create_workspace(
 					resource(
 						id,
 						resource_type_id,
-						owner_id,
+						workspace_id,
 						created
 					)
 				VALUES
@@ -149,7 +149,7 @@ pub async fn create_workspace(
 				UPDATE
 					resource
 				SET
-					owner_id = $1
+					workspace_id = $1
 				WHERE
 					id = $2;
 				"#,
@@ -615,7 +615,7 @@ async fn create_default_roles_for_workspace(
 				resource(
 					id,
 					resource_type_id,
-					owner_id,
+					workspace_id,
 					created,
 					deleted
 				)
@@ -645,7 +645,7 @@ async fn create_default_roles_for_workspace(
 			INSERT INTO
 				role(
 					id,
-					owner_id,
+					workspace_id,
 					name,
 					description
 				)

@@ -54,7 +54,7 @@ pub async fn create_new_role(
 			resource(
 				id,
 				resource_type_id,
-				owner_id,
+				workspace_id,
 				created,
 				deleted
 			)
@@ -84,7 +84,7 @@ pub async fn create_new_role(
 		INSERT INTO
 			role(
 				id,
-				owner_id,
+				workspace_id,
 				name,
 				description
 			)
