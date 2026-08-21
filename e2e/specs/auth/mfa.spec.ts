@@ -29,7 +29,7 @@ async function login(
 	const context = await newContext(browser);
 	const page = await context.newPage();
 	await openLoginPage(page);
-	await fillLoginForm(page, { userId: user.username, password: user.password });
+	await fillLoginForm(page, { email: user.email, password: user.password });
 	await submitLogin(page);
 	await waitForLoggedIn(page);
 	return { context, page, user };
@@ -39,7 +39,7 @@ async function login(
 // steps (login, disable) can compute matching TOTPs.
 async function enableMfaViaUi(
 	page: import('@playwright/test').Page,
-	username: string,
+	email: string,
 ): Promise<string> {
 	await openProfile(page);
 	await openMfaModal(page);
@@ -51,7 +51,7 @@ async function enableMfaViaUi(
 	);
 	// Tiny settle to let the Redis write land before we read it.
 	await page.waitForTimeout(200);
-	const secret = await readMfaSetupSecret(username);
+	const secret = await readMfaSetupSecret(email);
 	const otp = computeTotp(secret);
 	await fillMfaModalOtp(page, otp);
 	await submitMfaModal(page);
@@ -66,7 +66,7 @@ test.describe('mfa — enable flow', () => {
 	test('correct TOTP enables MFA', async ({ browser, api }) => {
 		const { context, page, user } = await login(browser, api);
 		try {
-			await enableMfaViaUi(page, user.username);
+			await enableMfaViaUi(page, user.email);
 		} finally {
 			await context.close();
 		}
@@ -94,7 +94,7 @@ test.describe('mfa — disable flow', () => {
 	test('correct TOTP disables MFA', async ({ browser, api }) => {
 		const { context, page, user } = await login(browser, api);
 		try {
-			const secret = await enableMfaViaUi(page, user.username);
+			const secret = await enableMfaViaUi(page, user.email);
 			// Reopen modal for disable. The button now says "Disable 2FA Settings".
 			await openMfaModal(page);
 			// Disable flow doesn't fetch a new secret (no GET /user/mfa); we reuse
@@ -116,7 +116,7 @@ test.describe('mfa — disable flow', () => {
 	test('wrong TOTP fails to disable', async ({ browser, api }) => {
 		const { context, page, user } = await login(browser, api);
 		try {
-			await enableMfaViaUi(page, user.username);
+			await enableMfaViaUi(page, user.email);
 			await openMfaModal(page);
 			await fillMfaModalOtp(page, '111111');
 			await submitMfaModal(page);
@@ -135,7 +135,7 @@ test.describe('mfa — login with MFA', () => {
 		const { context, page, user } = await login(browser, api);
 		let secret: string;
 		try {
-			secret = await enableMfaViaUi(page, user.username);
+			secret = await enableMfaViaUi(page, user.email);
 			await signOut(page);
 		} finally {
 			await context.close();
@@ -146,7 +146,7 @@ test.describe('mfa — login with MFA', () => {
 		const page2 = await context2.newPage();
 		try {
 			await openLoginPage(page2);
-			await fillLoginForm(page2, { userId: user.username, password: user.password });
+			await fillLoginForm(page2, { email: user.email, password: user.password });
 			await submitLogin(page2);
 			// First submit reveals MFA prompt (server returns mfaRequired).
 			await expect(page2.locator('#otp-0')).toBeVisible({ timeout: 10_000 });
@@ -163,7 +163,7 @@ test.describe('mfa — login with MFA', () => {
 	test('user with MFA: wrong TOTP keeps user on /login', async ({ browser, api }) => {
 		const { context, page, user } = await login(browser, api);
 		try {
-			await enableMfaViaUi(page, user.username);
+			await enableMfaViaUi(page, user.email);
 			await signOut(page);
 		} finally {
 			await context.close();
@@ -173,7 +173,7 @@ test.describe('mfa — login with MFA', () => {
 		const page2 = await context2.newPage();
 		try {
 			await openLoginPage(page2);
-			await fillLoginForm(page2, { userId: user.username, password: user.password });
+			await fillLoginForm(page2, { email: user.email, password: user.password });
 			await submitLogin(page2);
 			await expect(page2.locator('#otp-0')).toBeVisible({ timeout: 10_000 });
 			await fillMfaOtp(page2, '000000');

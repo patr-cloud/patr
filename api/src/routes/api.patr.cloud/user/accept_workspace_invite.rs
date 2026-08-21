@@ -92,7 +92,7 @@ pub async fn accept_workspace_invite(
 				"user"
 			WHERE
 				id = $1 AND
-				recovery_email = $2
+				email = $2::CITEXT
 		) AS "owns_email!: bool";
 		"#,
 		user_data.id as _,

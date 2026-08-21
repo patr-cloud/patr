@@ -1,8 +1,9 @@
-use std::collections::BTreeMap;
-
 use axum::http::StatusCode;
 use models::{
-	api::{user::BasicUserInfoSearchParams, workspace::rbac::user::*},
+	api::{
+		WithId,
+		workspace::rbac::user::{WorkspaceUserInfo, WorkspaceUserInfoSearchParams, *},
+	},
 	utils::TotalCountHeader,
 };
 
@@ -19,8 +20,8 @@ pub async fn list_users_in_workspace(
 					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
-							BasicUserInfoSearchParams {
-								username: username_filter,
+							WorkspaceUserInfoSearchParams {
+								email: email_filter,
 								first_name: first_name_filter,
 								last_name: last_name_filter,
 							},
@@ -44,27 +45,54 @@ pub async fn list_users_in_workspace(
 ) -> Result<AppResponse<ListUsersInWorkspaceRequest>, ErrorType> {
 	info!("Listing all users in workspace `{workspace_id}`");
 
+	// The owner holds super-admin rights directly on the workspace rather than
+	// through a role, so they have no `workspace_user` rows. UNION them in
+	// here — they're a member as far as anyone reading this list is
+	// concerned, and folding them in keeps pagination and total_count honest.
 	let mut total_count = 0;
 	let users = query!(
 		r#"
-		WITH matched_users AS (
+		WITH members AS (
 			SELECT DISTINCT
 				workspace_user.user_id
 			FROM
 				workspace_user
+			WHERE
+				workspace_user.workspace_id = $1
+			UNION
+			SELECT
+				workspace.super_admin_id AS user_id
+			FROM
+				workspace
+			WHERE
+				workspace.id = $1
+		),
+		matched_users AS (
+			SELECT
+				members.user_id,
+				"user".first_name,
+				"user".last_name,
+				"user".email,
+				(workspace.id IS NOT NULL) AS is_owner
+			FROM
+				members
 			INNER JOIN
 				"user"
 			ON
-				workspace_user.user_id = "user".id
+				members.user_id = "user".id
+			LEFT JOIN
+				workspace
+			ON
+				workspace.id = $1 AND
+				workspace.super_admin_id = members.user_id
 			WHERE
-				workspace_user.workspace_id = $1 AND
-				($2::TEXT IS NULL OR "user".username ILIKE '%' || $2::TEXT || '%') AND
+				($2::TEXT IS NULL OR "user".email ILIKE '%' || $2::TEXT || '%') AND
 				($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
 				($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
 		),
 		users_page AS (
 			SELECT
-				user_id
+				*
 			FROM
 				matched_users
 			ORDER BY
@@ -73,23 +101,34 @@ pub async fn list_users_in_workspace(
 			OFFSET $6
 		)
 		SELECT
-			workspace_user.user_id AS "user_id!",
-			workspace_user.role_id AS "role_id!",
+			users_page.user_id AS "user_id!",
+			users_page.first_name AS "first_name!",
+			users_page.last_name AS "last_name!",
+			users_page.email AS "email!",
+			users_page.is_owner AS "is_owner!",
+			COALESCE(
+				ARRAY_REMOVE(ARRAY_AGG(workspace_user.role_id), NULL),
+				'{}'
+			) AS "role_ids!: Vec<Uuid>",
 			(SELECT COUNT(*) FROM matched_users) AS "total_count!"
 		FROM
-			workspace_user
-		INNER JOIN
 			users_page
+		LEFT JOIN
+			workspace_user
 		ON
-			users_page.user_id = workspace_user.user_id
-		WHERE
+			workspace_user.user_id = users_page.user_id AND
 			workspace_user.workspace_id = $1
+		GROUP BY
+			users_page.user_id,
+			users_page.first_name,
+			users_page.last_name,
+			users_page.email,
+			users_page.is_owner
 		ORDER BY
-			workspace_user.user_id,
-			workspace_user.role_id;
+			users_page.user_id;
 		"#,
 		workspace_id as _,
-		username_filter,
+		email_filter,
 		first_name_filter,
 		last_name_filter,
 		count as i64,
@@ -98,14 +137,22 @@ pub async fn list_users_in_workspace(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.fold(BTreeMap::<Uuid, Vec<Uuid>>::new(), |mut users, row| {
+	.map(|row| {
 		total_count = row.total_count;
-		users
-			.entry(row.user_id.into())
-			.or_default()
-			.push(row.role_id.into());
-		users
-	});
+		WorkspaceMember {
+			user: WithId::new(
+				row.user_id,
+				WorkspaceUserInfo {
+					first_name: row.first_name,
+					last_name: row.last_name,
+					email: row.email,
+				},
+			),
+			role_ids: row.role_ids,
+			is_owner: row.is_owner,
+		}
+	})
+	.collect();
 
 	AppResponse::builder()
 		.body(ListUsersInWorkspaceResponse { users })

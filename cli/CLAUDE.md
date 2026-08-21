@@ -1,6 +1,6 @@
 # cli/CLAUDE.md
 
-The `patr` CLI — talks to the Patr API and manages on-host runners (systemd-installed Docker/Kubernetes workers). Binary `patr`, crate `cli`, entry `src/main.rs`. Run with `cargo patr`. See root `CLAUDE.md` for workspace-wide rules.
+The `patr` CLI — talks to the Patr API and manages on-host runners (systemd-installed Docker workers). Binary `patr`, crate `cli`, entry `src/main.rs`. Run with `cargo patr`. See root `CLAUDE.md` for workspace-wide rules.
 
 ## Layout
 

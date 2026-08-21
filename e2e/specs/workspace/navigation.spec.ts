@@ -62,7 +62,7 @@ test.describe('workspace > navigation @racy', () => {
 			// Navigate to members (active workspace is alpha).
 			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
 			// Alpha has 1 invitee in workspace_user (owner not in list).
-			await expect(page.getByText(`@${invitee.username}`).first()).toBeVisible({
+			await expect(page.getByText(invitee.email).first()).toBeVisible({
 				timeout: 10_000,
 			});
 
@@ -73,7 +73,7 @@ test.describe('workspace > navigation @racy', () => {
 			await clickSwitcherWorkspace(page, user.workspaces[1].name);
 			await waitForActiveWorkspaceCookie(page, user.workspaces[1].id);
 			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
-			await expect(page.getByText(`@${invitee.username}`).first()).toBeHidden({
+			await expect(page.getByText(invitee.email).first()).toBeHidden({
 				timeout: 10_000,
 			});
 
@@ -82,7 +82,7 @@ test.describe('workspace > navigation @racy', () => {
 			await clickSwitcherWorkspace(page, user.workspaces[0].name);
 			await waitForActiveWorkspaceCookie(page, user.workspaces[0].id);
 			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
-			await expect(page.getByText(`@${invitee.username}`).first()).toBeVisible({
+			await expect(page.getByText(invitee.email).first()).toBeVisible({
 				timeout: 10_000,
 			});
 			// Touch suffix to silence unused-var lint.

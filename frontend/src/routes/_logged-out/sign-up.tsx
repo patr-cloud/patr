@@ -7,10 +7,9 @@ import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
 import { cloudOnly, IS_CLOUD } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
-import { validateNameField, validatePassword } from "~/utils/validation";
+import { validateEmail, validateNameField, validatePassword } from "~/utils/validation";
 
 interface FieldErrors {
-	username: string;
 	firstName: string;
 	lastName: string;
 	email: string;
@@ -19,7 +18,6 @@ interface FieldErrors {
 }
 
 const emptyErrors: FieldErrors = {
-	username: "",
 	firstName: "",
 	lastName: "",
 	email: "",
@@ -53,7 +51,6 @@ const SignUp = () => {
 			}
 		: undefined;
 
-	const [username, setUsername] = createSignal("");
 	const [firstName, setFirstName] = createSignal("");
 	const [lastName, setLastName] = createSignal("");
 
@@ -75,13 +72,6 @@ const SignUp = () => {
 		const newErrors = { ...emptyErrors };
 		let valid = true;
 
-		if (!username().trim()) {
-			newErrors.username = "Username is required.";
-			valid = false;
-		} else if (username().trim().length < 2) {
-			newErrors.username = "Must be at least 2 characters.";
-			valid = false;
-		}
 		const firstNameError = validateNameField(firstName());
 		if (firstNameError) {
 			newErrors.firstName = firstNameError;
@@ -92,8 +82,9 @@ const SignUp = () => {
 			newErrors.lastName = lastNameError;
 			valid = false;
 		}
-		if (!email().trim()) {
-			newErrors.email = "Email is required.";
+		const emailError = validateEmail(email());
+		if (emailError) {
+			newErrors.email = emailError;
 			valid = false;
 		}
 		if (!password()) {
@@ -124,11 +115,10 @@ const SignUp = () => {
 		}
 
 		const requestBody: CreateAccountRequest = {
-			username: username(),
+			email: email(),
 			password: password(),
 			firstName: firstName(),
 			lastName: lastName(),
-			recoveryEmail: email(),
 			cfTurnstileToken: IS_CLOUD ? turnstileToken() : "self-hosted",
 		};
 
@@ -138,12 +128,9 @@ const SignUp = () => {
 		});
 
 		if (resp.ok) {
-			navigate({ to: "/confirm-signup", search: { username: username(), otp: undefined } });
+			navigate({ to: "/confirm-signup", search: { email: email(), otp: undefined } });
 		} else {
 			switch (resp.data.error) {
-				case "usernameUnavailable":
-					setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
-					break;
 				case "emailUnavailable":
 					setErrors((prev) => ({ ...prev, email: "Email is already in use." }));
 					break;
@@ -183,26 +170,6 @@ const SignUp = () => {
 
 				{/* Form */}
 				<div>
-					<Input
-						type={InputType.Text}
-						placeholder="Username"
-						autocomplete="username"
-						required={true}
-						name="username"
-						id="username"
-						value={username}
-						onInput={(e) => {
-							setUsername(e.currentTarget.value);
-							clearError("username");
-						}}
-						styleVariant="medium"
-					/>
-					<Show when={errors().username}>
-						<div class="mt-1">
-							<Alert message={errors().username} type="error" />
-						</div>
-					</Show>
-
 					{/* Name Inputs */}
 					<div class="flex items-center gap-4 mt-4">
 						<div class="flex-1">
@@ -337,7 +304,7 @@ const SignUp = () => {
 					<div class="pt-8 w-full flex flex-row items-center justify-between">
 						<Link
 							to="/confirm-signup"
-							search={{ username: undefined, otp: undefined }}
+							search={{ email: undefined, otp: undefined }}
 							class="text-primary text-xs hover:underline font-light"
 						>
 							Have an OTP?

@@ -193,7 +193,7 @@ test.describe('role > update [UI]', () => {
 			await page.goto(`/workspace/roles/${role.id}?tab=users`, {
 				waitUntil: 'domcontentloaded',
 			});
-			await expect(page.getByText(`@${invitee.username}`)).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByText(invitee.email)).toBeVisible({ timeout: 10_000 });
 		} finally {
 			await context.close();
 		}

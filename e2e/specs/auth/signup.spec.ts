@@ -10,13 +10,13 @@ import { openSignupPage, fillSignupForm, submitSignup } from '@/helpers/ui/signu
 
 // Frontend sets `noValidate` on the form, so browser-level pattern/email
 // validation is bypassed. Client-side validation is the JS `validateInputs`
-// function: it checks `.trim()` non-empty + `validatePassword` + confirm-match.
-// Username regex and email-format violations go through to the server and
-// surface as a generic toast ("Error creating account: ...").
+// function: it checks `.trim()` non-empty + `validateEmail` +
+// `validatePassword` + confirm-match. Anything it lets through that the
+// server still rejects surfaces as a generic toast
+// ("Error creating account: ...").
 
 function newCreds(suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12)) {
 	return {
-		username: `e2euser${suffix}`,
 		firstName: 'E2E',
 		lastName: 'User',
 		email: `e2euser${suffix}@example.com`,
@@ -39,18 +39,18 @@ async function withSignupContext(
 }
 
 test.describe('sign-up — happy path', () => {
-	test('valid credentials → navigates to /confirm-signup, username pre-filled', async ({
+	test('valid credentials → navigates to /confirm-signup, email pre-filled', async ({
 		browser,
 	}) => {
 		await withSignupContext(browser, async (page) => {
 			const creds = newCreds();
 			await fillSignupForm(page, creds);
 			await submitSignup(page);
-			// The page strips ?username=... from the URL on mount, then renders
-			// "Confirming account for <username>" instead of the username input.
+			// The page strips ?email=... from the URL on mount, then renders
+			// "Confirming account for <email>" instead of the email input.
 			await expect(page).toHaveURL(/\/confirm-signup/, { timeout: 10_000 });
 			await expect(
-				page.getByText(new RegExp(`Confirming account for.*${creds.username}`)),
+				page.getByText(new RegExp(`Confirming account for.*${creds.email}`)),
 			).toBeVisible({ timeout: 5_000 });
 		});
 	});
@@ -77,7 +77,7 @@ test.describe('sign-up — client-side field validation', () => {
 	// Note: empty `confirm-password` doesn't surface "required" — it surfaces
 	// "Passwords do not match" (validateInputs only checks `!password()` for
 	// required, then compares `password() !== confirmPassword()`).
-	for (const field of ['username', 'first-name', 'last-name', 'email', 'password'] as const) {
+	for (const field of ['first-name', 'last-name', 'email', 'password'] as const) {
 		test(`empty ${field} blocks submit`, async ({ browser }) => {
 			await withSignupContext(browser, async (page) => {
 				const creds = newCreds();
@@ -178,36 +178,44 @@ test.describe('sign-up — client-side field validation', () => {
 		});
 	});
 
-	test('whitespace-only username treated as empty', async ({ browser }) => {
+	// The client's `validateEmail` blocks these before any request fires, so
+	// a typo never costs a round trip.
+	for (const [label, email] of [
+		['no local part', '@example.com'],
+		['no domain', 'baduser@'],
+		['contains space', 'bad user@example.com'],
+		['no dot in domain', 'baduser@example'],
+		['missing @', 'not-an-email'],
+	] as const) {
+		test(`malformed email (${label}) blocks submit`, async ({ browser }) => {
+			await withSignupContext(browser, async (page) => {
+				const creds = newCreds();
+				await fillSignupForm(page, { ...creds, email });
+				await expectNoSignupRequest(page, async () => {
+					await submitSignup(page);
+				});
+				await expect(page.getByText(/not a valid email address/i)).toBeVisible();
+			});
+		});
+	}
+
+	test('whitespace-only email treated as empty', async ({ browser }) => {
 		await withSignupContext(browser, async (page) => {
 			const creds = newCreds();
-			await fillSignupForm(page, { ...creds, username: '   ' });
+			await fillSignupForm(page, { ...creds, email: '   ' });
 			await expectNoSignupRequest(page, async () => {
 				await submitSignup(page);
 			});
 			await expect(page.getByText(/required/i).first()).toBeVisible();
 		});
 	});
-
-	// Username min-length (2) is enforced client-side, matching login and the
-	// backend's `length(min = 2)`. A single-char username blocks submit without
-	// firing a request.
-	test('single-char username blocks submit', async ({ browser }) => {
-		await withSignupContext(browser, async (page) => {
-			const creds = newCreds();
-			await fillSignupForm(page, { ...creds, username: 'a' });
-			await expectNoSignupRequest(page, async () => {
-				await submitSignup(page);
-			});
-			await expect(page.getByText(/at least 2 characters/i)).toBeVisible();
-		});
-	});
 });
 
 test.describe('sign-up — server-side rejection (bypass client validation)', () => {
-	// Username regex / email-format checks happen on the server. The frontend
-	// dispatches a generic toast for unknown errors; the explicit handler
-	// maps usernameUnavailable/emailUnavailable to inline alerts.
+	// What's left for the server: availability, and the email-format rules
+	// stricter than the client's shape check. The frontend dispatches a
+	// generic toast for unknown errors; the explicit handler maps
+	// emailUnavailable to an inline alert.
 
 	// Wait-for-response THEN assert: the API can occasionally take 10s+ to
 	// respond under sustained suite load, so polling the DOM with a fixed
@@ -228,24 +236,6 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
 		await expect(page.getByText(matcher)).toBeVisible();
 	}
 
-	test('username already taken (active user) → inline alert', async ({ browser, api }) => {
-		await using existing = await createUserAccount(api);
-		await withSignupContext(browser, async (page) => {
-			const creds = newCreds();
-			await fillSignupForm(page, { ...creds, username: existing.username });
-			await submitAndExpectInlineError(page, /Username is already taken/i);
-		});
-	});
-
-	test('username already taken by pending (unconfirmed) signup', async ({ browser, api }) => {
-		const pending = await createPendingSignup(api);
-		await withSignupContext(browser, async (page) => {
-			const creds = newCreds();
-			await fillSignupForm(page, { ...creds, username: pending.username });
-			await submitAndExpectInlineError(page, /Username is already taken/i);
-		});
-	});
-
 	test('email already used by active user', async ({ browser, api }) => {
 		await using existing = await createUserAccount(api);
 		await withSignupContext(browser, async (page) => {
@@ -264,35 +254,12 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
 		});
 	});
 
-	// Username regex violations get rejected by the server's WrongParameters
-	// preprocessor and surface as a generic toast (Error creating account: ...).
-	for (const [label, username] of [
-		['uppercase', 'BadUser123'],
-		['leading hyphen', '-baduser'],
-		['trailing hyphen', 'baduser-'],
-		['leading dot', '.baduser'],
-		['trailing dot', 'baduser.'],
-		['contains space', 'bad user'],
-	] as const) {
-		test(`username regex (${label}) → server rejects`, async ({ browser }) => {
-			await withSignupContext(browser, async (page) => {
-				const creds = newCreds();
-				await fillSignupForm(page, { ...creds, username });
-				const signupResp = page.waitForResponse(
-					(r) => r.url().includes('/auth/sign-up') && r.request().method() === 'POST',
-					{ timeout: 10_000 },
-				);
-				await submitSignup(page);
-				const resp = await signupResp;
-				expect(resp.ok()).toBe(false);
-			});
-		});
-	}
-
-	test('email missing @ → server rejects', async ({ browser }) => {
+	// A local part over RFC5321's 64-char limit sails past the client's
+	// email-shape check and is only caught by the server's preprocessor.
+	test('email local part over 64 chars → server rejects', async ({ browser }) => {
 		await withSignupContext(browser, async (page) => {
 			const creds = newCreds();
-			await fillSignupForm(page, { ...creds, email: 'not-an-email' });
+			await fillSignupForm(page, { ...creds, email: `${'a'.repeat(65)}@example.com` });
 			const signupResp = page.waitForResponse(
 				(r) => r.url().includes('/auth/sign-up') && r.request().method() === 'POST',
 				{ timeout: 10_000 },
@@ -333,13 +300,13 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
 
 test.describe('sign-up — concurrency @racy', () => {
 	// The API's create_account handler does an UPSERT on user_to_sign_up
-	// (ON CONFLICT username DO UPDATE WHERE EXCLUDED.otp_expiry > NOW()).
-	// Two concurrent signups for the same username typically both succeed
+	// (ON CONFLICT email DO UPDATE WHERE EXCLUDED.otp_expiry > NOW()).
+	// Two concurrent signups for the same email typically both succeed
 	// (the second overwrites the first), but the race can also leave one
 	// rejected if the conditional UPDATE evaluates false at the moment the
 	// second insert lands. Either outcome is acceptable; what's NOT
 	// acceptable is "both rejected" — that would mean the row is unowned.
-	test('two parallel contexts with the same username — at least one succeeds', async ({
+	test('two parallel contexts with the same email — at least one succeeds', async ({
 		browser,
 	}) => {
 		const creds = newCreds();

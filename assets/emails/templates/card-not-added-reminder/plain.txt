@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 Your workspace {{ workspace_name }} has {{ total_usage_charges }} in unpaid charges for this billing period, and there's no payment method on file.
 

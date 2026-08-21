@@ -57,7 +57,7 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 		return true;
 	};
 
-	const removeUser = async (userId: string, username: string) => {
+	const removeUser = async (userId: string, email: string) => {
 		if (isMutating() || !membersQuery.data) {
 			if (!membersQuery.data) toast("Members not loaded yet, try again", "error");
 			return;
@@ -66,7 +66,7 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 		const next = getCurrentRoleIds(userId).filter((id) => id !== props.roleId);
 		const ok = await updateUserRoles(userId, next);
 		setIsMutating(false);
-		if (ok) toast(`Removed ${username} from role`, "success");
+		if (ok) toast(`Removed ${email} from role`, "success");
 	};
 
 	const canMutate = () => !isMutating() && !!membersQuery.data;
@@ -97,11 +97,11 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 										lastName={user.lastName}
 										size="xs"
 									/>
-									<span class="font-mono truncate max-w-40">{user.username}</span>
+									<span class="font-mono truncate max-w-40">{user.email}</span>
 									<button
 										type="button"
-										aria-label={`Remove ${user.username} from role`}
-										onClick={() => removeUser(user.id, user.username).catch(() => {})}
+										aria-label={`Remove ${user.email} from role`}
+										onClick={() => removeUser(user.id, user.email).catch(() => {})}
 										disabled={!canMutate()}
 										class="text-grey hover:text-error transition-colors p-0.5 rounded-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
 									>

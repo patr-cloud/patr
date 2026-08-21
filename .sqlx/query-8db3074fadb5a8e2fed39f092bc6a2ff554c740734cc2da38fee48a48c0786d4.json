@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "/* * `email` sits where `recovery_email` used to, because m009 gets here * by renaming that column rather than adding a new one. Keeping the * position identical means a freshly initialized schema matches a * migrated one — which matters because `SELECT \"user\".*` decodes * positionally against the offline sqlx cache, and a column-order * difference between the two would blow up at runtime on whichever * one the cache wasn't built from. */ CREATE TABLE \"user\"(id UUID NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, created TIMESTAMPTZ NOT NULL, /* * A user's email is their unique identifier. CITEXT so that * comparison and the UNIQUE constraint are both case-insensitive * without every call site having to remember to lowercase. */ email CITEXT NOT NULL, workspace_limit INTEGER NOT NULL, password_reset_token TEXT, password_reset_token_expiry TIMESTAMPTZ NULL, password_reset_attempts INT NULL, mfa_secret TEXT);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8db3074fadb5a8e2fed39f092bc6a2ff554c740734cc2da38fee48a48c0786d4"
+}

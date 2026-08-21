@@ -13,8 +13,8 @@ use crate::utils::assets::email_images as filters;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct _DomainNotVerifiedEmail {
-	/// The username of the user.
-	pub username: String,
+	/// The first name of the user.
+	pub first_name: String,
 	/// The domain name that is no longer verified.
 	pub domain_name: String,
 	/// The number of days the user has to re-verify the domain.

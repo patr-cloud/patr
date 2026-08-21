@@ -27,7 +27,6 @@ pub mod prelude {
 			AppState,
 			AuthState,
 			Channel,
-			RunnerType,
 			SearchAndSelect,
 			ToJsonValue,
 			TtyExpectable,

@@ -1,7 +1,4 @@
-use crate::{
-	prelude::*,
-	utils::constants::{OTP_VERIFICATION_TOKEN_REGEX, USERNAME_VALIDITY_REGEX},
-};
+use crate::{prelude::*, utils::constants::OTP_VERIFICATION_TOKEN_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route when user verifies his identity/recovery-method by entering the OTP
@@ -15,9 +12,9 @@ macros::declare_api_endpoint!(
 		pub user_agent: UserAgent,
 	},
 	request = {
-		/// The username of the user verifying their account
-		#[preprocess(trim, length(min = 2), regex = USERNAME_VALIDITY_REGEX)]
-		pub username: String,
+		/// The email address of the user verifying their account
+		#[preprocess(trim, email)]
+		pub email: String,
 		/// The OTP which will validate the verification
 		#[preprocess(trim, length(min = 6, max = 7), regex = OTP_VERIFICATION_TOKEN_REGEX)]
 		pub verification_token: String,

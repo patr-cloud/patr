@@ -10,8 +10,8 @@ use crate::utils::assets::email_images as filters;
 #[template(path = "domain-added", subject = "Domain added - verify your DNS")]
 #[serde(rename_all = "camelCase")]
 pub struct _DomainAddedEmail {
-	/// The username of the user.
-	pub username: String,
+	/// The first name of the user.
+	pub first_name: String,
 	/// The domain name that was added.
 	pub domain_name: String,
 	/// The name of the workspace the domain was added to.

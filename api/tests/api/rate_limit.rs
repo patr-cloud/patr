@@ -187,7 +187,7 @@ async fn test_rate_limit_authenticated_per_login() {
 	let ip = fixed_test_ip();
 
 	// Log in again to get a second session (different login_id, same user)
-	let (session_b_token, _) = setup.login_test_user(&user.username, &user.password).await;
+	let (session_b_token, _) = setup.login_test_user(&user.email, &user.password).await;
 	let session_b_bearer = BearerToken::from_str(&session_b_token).unwrap();
 
 	// Exhaust the per-second window using the first session

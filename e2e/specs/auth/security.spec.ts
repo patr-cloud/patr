@@ -12,7 +12,7 @@ import { openConfirmSignup, fillOtp, submitConfirm } from '@/helpers/ui/confirm'
 import { openLoginPage, fillLoginForm, submitLogin, waitForLoggedIn } from '@/helpers/ui/login';
 import { openProfile } from '@/helpers/ui/profile';
 
-// XSS-in-name and SQLi-in-userId ingest rejection are API-contract behaviors
+// XSS-in-name and SQLi-in-email ingest rejection are API-contract behaviors
 // covered in the Rust API suite (api/tests/api/auth.rs). The dashboard-side
 // security surface (cookie tampering, autocomplete attributes) stays here.
 
@@ -23,7 +23,7 @@ test.describe('security — cookie tampering', () => {
 		const page = await context.newPage();
 		try {
 			await openLoginPage(page);
-			await fillLoginForm(page, { userId: user.username, password: user.password });
+			await fillLoginForm(page, { email: user.email, password: user.password });
 			await submitLogin(page);
 			await waitForLoggedIn(page);
 
@@ -54,7 +54,7 @@ test.describe('security — cookie tampering', () => {
 		const ctxA = await newContext(browser);
 		const pageA = await ctxA.newPage();
 		await openLoginPage(pageA);
-		await fillLoginForm(pageA, { userId: userA.username, password: userA.password });
+		await fillLoginForm(pageA, { email: userA.email, password: userA.password });
 		await submitLogin(pageA);
 		await waitForLoggedIn(pageA);
 		const aCookies = await ctxA.cookies();
@@ -66,7 +66,7 @@ test.describe('security — cookie tampering', () => {
 		const ctxB = await newContext(browser);
 		const pageB = await ctxB.newPage();
 		await openLoginPage(pageB);
-		await fillLoginForm(pageB, { userId: userB.username, password: userB.password });
+		await fillLoginForm(pageB, { email: userB.email, password: userB.password });
 		await submitLogin(pageB);
 		await waitForLoggedIn(pageB);
 		const bCookies = await ctxB.cookies();

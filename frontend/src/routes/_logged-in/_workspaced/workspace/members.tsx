@@ -25,13 +25,7 @@ import { ResendWorkspaceInviteResponse } from "~/bindings/ResendWorkspaceInviteR
 import { UpdateWorkspaceInviteRolesRequest } from "~/bindings/UpdateWorkspaceInviteRolesRequest";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
-import {
-	useWorkspaceInfoQuery,
-	useAllRolesQuery,
-	useMembersQuery,
-	useWorkspaceOwnerQuery,
-	useInvitesQuery,
-} from "~/hooks/fetch";
+import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery, useInvitesQuery } from "~/hooks/fetch";
 import { useQueryClient } from "@tanstack/solid-query";
 import { memberKeys, inviteKeys } from "~/hooks/query-keys";
 
@@ -60,18 +54,13 @@ const ManageWorkspace = () => {
 		() => search().count
 	);
 	const invitesQuery = useInvitesQuery();
-	const ownerQuery = useWorkspaceOwnerQuery(() => workspaceInfoQuery.data?.superAdminId);
 	const canModifyMembers = useIsAllowed("modifyRoles", "edit");
 
-	// Prepend the synthesised owner row (pinned first) on page 0 only.
-	// Skip on later pages so pagination stays clean.
+	// The list endpoint includes the owner, flagged `isOwner`. Pin them first
+	// so the row order doesn't shuffle as other members come and go.
 	const displayedMembers = createMemo(() => {
 		const raw = membersQuery.data?.members ?? [];
-		const isFirstPage = !search().page || search().page === "0";
-		const owner = ownerQuery.data;
-		if (!isFirstPage || !owner) return raw;
-		if (raw.some((m) => m.userId === owner.userId)) return raw;
-		return [owner, ...raw];
+		return [...raw].sort((a, b) => Number(b.isOwner) - Number(a.isOwner));
 	});
 
 	createEffect(() => {
@@ -338,6 +327,7 @@ const ManageWorkspace = () => {
 									<Input
 										type={InputType.Email}
 										placeholder="Email address to invite..."
+
 										class="flex-2"
 										value={inviteEmail()}
 										onInput={(e) => setInviteEmail(e.currentTarget.value)}
@@ -574,7 +564,7 @@ const ManageWorkspace = () => {
 																	{member.fullName}
 																</span>
 																<span class="text-grey text-xs truncate">
-																	@{member.username}
+																	{member.email}
 																</span>
 															</div>
 															<Show
@@ -706,7 +696,7 @@ const ManageWorkspace = () => {
 														<span class="text-white text-xl font-medium">
 															{member().fullName}
 														</span>
-														<span class="text-grey text-sm">@{member().username}</span>
+														<span class="text-grey text-sm">{member().email}</span>
 													</div>
 
 													<div class="flex flex-col gap-3">

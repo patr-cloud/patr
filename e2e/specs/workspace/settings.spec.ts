@@ -99,7 +99,7 @@ test.describe('workspace settings > field state', () => {
 		await using user = await createUserWithWorkspace(api);
 		await withSettings(browser, user, async (page) => {
 			await waitForWorkspaceInfo(page);
-			await expect(page.locator('#workspace-name')).toHaveValue(`wks-${user.username}`);
+			await expect(page.locator('#workspace-name')).toHaveValue(user.workspaceName);
 		});
 	});
 

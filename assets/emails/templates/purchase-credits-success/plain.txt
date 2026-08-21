@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 {{ credit_amount }} in credits have been added to your {{ workspace_name }} workspace. The invoice for this purchase is attached to this email.
 

@@ -291,8 +291,14 @@ async fn list_users_for_role_filters_by_role() {
 
 	// Must return only role_a's user, not role_b's — the query has to filter
 	// by role_id, not just workspace_id.
-	assert_eq!(response.response.users, vec![user_a.user_id]);
-	assert!(!response.response.users.contains(&user_b.user_id));
+	let user_ids = response
+		.response
+		.users
+		.iter()
+		.map(|u| u.id)
+		.collect::<Vec<_>>();
+	assert_eq!(user_ids, vec![user_a.user_id]);
+	assert!(!user_ids.contains(&user_b.user_id));
 }
 
 #[tokio::test]
@@ -316,11 +322,18 @@ async fn list_users_in_workspace_works() {
 		.await
 		.json::<ApiSuccessResponseBody<ListUsersInWorkspaceResponse>>();
 
-	// Super admin is not in workspace_user table, so creator won't appear here
-	// unless explicitly added via UpdateUserRolesInWorkspace
+	// The owner holds super-admin rights on the workspace directly rather than
+	// through a role, so they have no `workspace_user` rows — but they're a
+	// member all the same, and the endpoint UNIONs them in so the UI doesn't
+	// have to synthesise the row itself.
+	assert_eq!(response.response.users.len(), 1);
+	let owner = &response.response.users[0];
+	assert_eq!(owner.user.id, user.user_id);
+	assert_eq!(owner.user.email, user.email);
+	assert!(owner.is_owner, "the creator must be flagged as the owner");
 	assert!(
-		response.response.users.is_empty(),
-		"workspace_user table should be empty for a new workspace"
+		owner.role_ids.is_empty(),
+		"the owner's access doesn't come from a role"
 	);
 }
 
@@ -352,7 +365,13 @@ async fn update_user_roles_works() {
 		.await
 		.json::<ApiSuccessResponseBody<ListUsersInWorkspaceResponse>>();
 
-	assert!(response.response.users.contains_key(&user_b.user_id));
+	assert!(
+		response
+			.response
+			.users
+			.iter()
+			.any(|u| u.user.id == user_b.user_id)
+	);
 }
 
 #[tokio::test]
@@ -401,7 +420,13 @@ async fn remove_user_from_workspace_works() {
 		.await
 		.json::<ApiSuccessResponseBody<ListUsersInWorkspaceResponse>>();
 
-	assert!(!response.response.users.contains_key(&user_b.user_id));
+	assert!(
+		!response
+			.response
+			.users
+			.iter()
+			.any(|u| u.user.id == user_b.user_id)
+	);
 }
 
 #[tokio::test]

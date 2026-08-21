@@ -82,7 +82,7 @@ test.describe('api token > permissions [UI]', () => {
 		const page = await context.newPage();
 		try {
 			await openTokenDetail(page, token.id);
-			await enableWorkspaceCheckbox(page, `wks-${owner.username}`);
+			await enableWorkspaceCheckbox(page, owner.workspaceName);
 			await expect(page.getByRole('button', { name: /^Save Permissions$/ })).toBeDisabled();
 		} finally {
 			await context.close();

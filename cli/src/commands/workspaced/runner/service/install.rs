@@ -16,11 +16,7 @@ use crate::prelude::*;
 /// `systemctl`. You may be prompted for your password.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
-	/// The type of runner to install as a service
-	#[arg(value_enum)]
-	pub runner_type: RunnerType,
-	/// Path to the config file (defaults to standard location for the runner
-	/// type)
+	/// Path to the config file (defaults to the standard location)
 	#[arg(short = 'c', long = "config")]
 	pub config: Option<PathBuf>,
 }
@@ -33,9 +29,7 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 		));
 	}
 
-	let config_path = args
-		.config
-		.unwrap_or_else(|| crate::utils::runner_config_path(args.runner_type));
+	let config_path = args.config.unwrap_or_else(crate::utils::runner_config_path);
 
 	if !config_path.exists() {
 		return Err(AppError::RunnerError(format!(
@@ -88,17 +82,11 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 		.ok_or_else(|| AppError::RunnerError("Group name is not valid UTF-8".to_string()))?
 		.to_string();
 
-	let runner_type_str = match args.runner_type {
-		RunnerType::Docker => "docker",
-		RunnerType::Kubernetes => "kubernetes",
-	};
-
-	let service_name = format!("patr-{runner_type_str}-runner.service");
+	let service_name = "patr-docker-runner.service".to_string();
 	let service_file_path = format!("/etc/systemd/system/{service_name}");
 
 	let unit_file = format!(
 		include_str!("../../../../../../assets/cli/systemd-service.template"),
-		runner_type_str = runner_type_str,
 		username = username,
 		groupname = groupname,
 		patr_binary = patr_binary.display(),

@@ -67,7 +67,7 @@ pub async fn get_user_info(
 		}
 	}
 
-	let (Some(username), Some(first_name), Some(last_name)) =
+	let (Some(email), Some(first_name), Some(last_name)) =
 		(db_user_id, db_first_name, db_last_name)
 	else {
 		return Err(ErrorType::UserNotFound);
@@ -77,15 +77,13 @@ pub async fn get_user_info(
 		basic_user_info: WithId::new(
 			Uuid::nil(),
 			BasicUserInfo {
-				username,
 				first_name,
 				last_name,
 			},
 		),
 		created: OffsetDateTime::UNIX_EPOCH,
 		is_mfa_enabled: false,
-		recovery_email: None,
-		recovery_phone_number: None,
+		email,
 	};
 
 	AppResponse::builder()

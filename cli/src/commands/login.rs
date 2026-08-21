@@ -35,11 +35,11 @@ pub(super) async fn execute(
 			WithId {
 				id: _,
 				data: BasicUserInfo {
-					username,
 					first_name,
 					last_name,
 				},
 			},
+		email,
 		..
 	} = make_request(
 		ApiRequest::<GetUserInfoRequest>::builder()
@@ -77,7 +77,7 @@ pub(super) async fn execute(
 
 	CommandOutput::builder()
 		.text(format!(
-			"Logged in as `{username}`. Hello {first_name} {last_name}!"
+			"Logged in as `{email}`. Hello {first_name} {last_name}!"
 		))
 		.json(ApiSuccessResponseBody::empty().to_json_value())
 		.build()

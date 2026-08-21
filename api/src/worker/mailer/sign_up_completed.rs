@@ -9,6 +9,6 @@ use crate::utils::assets::email_images as filters;
 #[template(path = "sign-up-completed", subject = "Patr Account Ready")]
 #[serde(rename_all = "camelCase")]
 pub struct SignUpCompletedEmail {
-	/// The username of the user whose account is now ready.
-	pub username: String,
+	/// The first name of the user whose account is now ready.
+	pub first_name: String,
 }

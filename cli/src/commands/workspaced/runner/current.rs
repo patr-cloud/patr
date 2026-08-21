@@ -5,7 +5,6 @@ use docker::prelude::DockerSettings;
 use models::api::workspace::runner::*;
 use serde::Serialize;
 use serde_json::Value;
-use strum::IntoEnumIterator as _;
 
 use crate::prelude::*;
 
@@ -15,7 +14,7 @@ use crate::prelude::*;
 struct SelfHostedOutput {
 	/// Path to the config file on disk.
 	config: String,
-	/// Runner kind (`docker`, `kubernetes`).
+	/// Runner kind. Always `docker`.
 	#[serde(rename = "type")]
 	runner_type: String,
 	/// Always `"selfHosted"` for this variant.
@@ -26,58 +25,30 @@ struct SelfHostedOutput {
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {}
 
-/// Print information about the runner(s) configured on this host. Auto-detects
-/// which runner type(s) are set up by looking for their config files — no
-/// positional argument needed.
+/// Print information about the runner configured on this host. Auto-detects
+/// whether one is set up by looking for its config file — no positional
+/// argument needed.
 pub(super) async fn execute(_args: Args) -> Result<CommandOutput, AppError> {
-	let configured = RunnerType::iter()
-		.filter(|t| crate::utils::runner_config_path(*t).exists())
-		.collect::<Vec<_>>();
-
-	if configured.is_empty() {
+	if !crate::utils::runner_config_path().exists() {
 		return Err(AppError::RunnerError(
 			"No runner is configured on this host. Run `patr runner setup` to configure one."
 				.to_string(),
 		));
 	}
 
-	let multi = configured.len() > 1;
-	let mut text_blocks = Vec::<String>::with_capacity(configured.len());
-	let mut json_items = Vec::<Value>::with_capacity(configured.len());
-
-	for runner_type in configured {
-		let (table, json) = render_runner(runner_type).await?;
-		let block = if multi {
-			let header = match runner_type {
-				RunnerType::Docker => "== docker ==",
-				RunnerType::Kubernetes => "== kubernetes ==",
-			};
-			format!("{header}\n{table}")
-		} else {
-			table
-		};
-		text_blocks.push(block);
-		json_items.push(json);
-	}
+	let (table, json) = render_runner().await?;
 
 	CommandOutput::builder()
-		.text(text_blocks.join("\n\n"))
-		.json(Value::Array(json_items))
+		.text(table)
+		.json(Value::Array(vec![json]))
 		.build()
 		.into_result()
 }
 
-/// Render a single configured runner — returns the text table plus the JSON
-/// value that represents it.
-async fn render_runner(runner_type: RunnerType) -> Result<(String, Value), AppError> {
-	match runner_type {
-		RunnerType::Kubernetes => {
-			todo!("Kubernetes runner is not yet supported")
-		}
-		RunnerType::Docker => {}
-	}
-
-	let config_path = crate::utils::runner_config_path(runner_type);
+/// Render the configured runner — returns the text table plus the JSON value
+/// that represents it.
+async fn render_runner() -> Result<(String, Value), AppError> {
+	let config_path = crate::utils::runner_config_path();
 
 	let config_str = std::fs::read_to_string(&config_path).map_err(|e| {
 		AppError::RunnerError(format!(
@@ -89,10 +60,7 @@ async fn render_runner(runner_type: RunnerType) -> Result<(String, Value), AppEr
 	let config: RunnerSettings<DockerSettings> = serde_json::from_str(&config_str)
 		.map_err(|e| AppError::RunnerError(format!("Failed to parse config: {e}")))?;
 
-	let runner_type_str = match runner_type {
-		RunnerType::Docker => "docker",
-		RunnerType::Kubernetes => "kubernetes",
-	};
+	let runner_type_str = "docker";
 
 	match config.mode {
 		RunnerMode::SelfHosted { .. } => {

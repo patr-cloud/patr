@@ -46,25 +46,25 @@ pub async fn invite_user_to_workspace(
 					SELECT
 						1
 					FROM
-						user_email
+						"user"
 					INNER JOIN
 						workspace_user
 					ON
-						workspace_user.user_id = user_email.user_id
+						workspace_user.user_id = "user".id
 					WHERE
-						user_email.email = $1 AND
+						"user".email = $1::CITEXT AND
 						workspace_user.workspace_id = $2
 				) OR EXISTS(
 					SELECT
 						1
 					FROM
-						user_email
+						"user"
 					INNER JOIN
 						workspace
 					ON
-						workspace.super_admin_id = user_email.user_id
+						workspace.super_admin_id = "user".id
 					WHERE
-						user_email.email = $1 AND
+						"user".email = $1::CITEXT AND
 						workspace.id = $2
 				)
 			) AS "already_member!: bool";

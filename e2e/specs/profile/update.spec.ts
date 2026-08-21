@@ -32,10 +32,10 @@ async function withProfile(
 	}
 }
 
-async function dbNames(username: string): Promise<{ first: string; last: string }> {
+async function dbNames(email: string): Promise<{ first: string; last: string }> {
 	const rows = await sql<{ first_name: string; last_name: string }>(
-		`SELECT first_name, last_name FROM "user" WHERE username = $1`,
-		[username],
+		`SELECT first_name, last_name FROM "user" WHERE email = $1`,
+		[email],
 	);
 	return { first: rows[0].first_name, last: rows[0].last_name };
 }
@@ -54,7 +54,7 @@ test.describe('profile update > happy paths [UI]', () => {
 			await expectUserInfoUpdateToast(page, 'success');
 			await reloadProfileAndWaitForUserInfo(page, newFirst);
 		});
-		const db = await dbNames(user.username);
+		const db = await dbNames(user.email);
 		expect(db.first).toBe(newFirst);
 		expect(db.last).toBe(user.lastName);
 	});
@@ -68,7 +68,7 @@ test.describe('profile update > happy paths [UI]', () => {
 			expect(ok).toBe(true);
 			await expectUserInfoUpdateToast(page, 'success');
 		});
-		const db = await dbNames(user.username);
+		const db = await dbNames(user.email);
 		expect(db.first).toBe(user.firstName);
 		expect(db.last).toBe(newLast);
 	});
@@ -83,7 +83,7 @@ test.describe('profile update > happy paths [UI]', () => {
 			expect(ok).toBe(true);
 			await expectUserInfoUpdateToast(page, 'success');
 		});
-		const db = await dbNames(user.username);
+		const db = await dbNames(user.email);
 		expect(db.first).toBe(newFirst);
 		expect(db.last).toBe(newLast);
 	});
@@ -97,7 +97,7 @@ test.describe('profile update > form round-trips [UI]', () => {
 			const { ok } = await submitNameUpdateAndWaitResponse(page);
 			expect(ok).toBe(true);
 		});
-		const db = await dbNames(user.username);
+		const db = await dbNames(user.email);
 		expect(db.first).toBe('José');
 		expect(db.last).toBe('Núñez');
 	});
@@ -109,7 +109,7 @@ test.describe('profile update > form round-trips [UI]', () => {
 			const { ok } = await submitNameUpdateAndWaitResponse(page);
 			expect(ok).toBe(true);
 		});
-		const db = await dbNames(user.username);
+		const db = await dbNames(user.email);
 		expect(db.first).toBe('🚀Rocket');
 	});
 
@@ -123,7 +123,7 @@ test.describe('profile update > form round-trips [UI]', () => {
 			const { ok } = await submitNameUpdateAndWaitResponse(page);
 			expect(ok).toBe(true);
 		});
-		const db = await dbNames(user.username);
+		const db = await dbNames(user.email);
 		expect(db.first).toBe('山田');
 	});
 
@@ -135,7 +135,7 @@ test.describe('profile update > form round-trips [UI]', () => {
 			const { ok } = await submitNameUpdateAndWaitResponse(page);
 			expect(ok).toBe(true);
 		});
-		const db = await dbNames(user.username);
+		const db = await dbNames(user.email);
 		expect(db.first).toBe(name);
 	});
 
@@ -188,7 +188,7 @@ test.describe('profile update > form round-trips [UI]', () => {
 			await expectUserInfoUpdateToast(page, 'success');
 			expect(patchCount).toBe(1);
 		});
-		const db = await dbNames(user.username);
+		const db = await dbNames(user.email);
 		expect(db.first).toBe(first1);
 	});
 });

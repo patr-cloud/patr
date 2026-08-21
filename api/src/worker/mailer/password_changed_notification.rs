@@ -12,8 +12,6 @@ use crate::utils::assets::email_images as filters;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct _PasswordChangedNotificationEmail {
-	/// The username of the user whose password was changed.
-	pub username: String,
 	/// The first name of the user, used in the greeting.
 	pub first_name: String,
 }

@@ -12,8 +12,8 @@ use crate::utils::assets::email_images as filters;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct _CardNotAddedReminderEmail {
-	/// The username of the recipient.
-	pub username: String,
+	/// The first_name of the recipient.
+	pub first_name: String,
 	/// The name of the workspace with unpaid charges.
 	pub workspace_name: String,
 	/// The total usage charges for the billing period.

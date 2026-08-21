@@ -168,7 +168,6 @@ async fn social_login_setup_invalid_token() {
 				})
 				.body(SocialLoginSetupRequest {
 					setup_token: Uuid::new_v4().to_string(),
-					username: random_name(8),
 					first_name: "Test".to_string(),
 					last_name: "User".to_string(),
 				})
@@ -187,7 +186,6 @@ async fn social_login_setup_invalid_token() {
 async fn social_login_setup_works() {
 	let setup = setup().await.expect("failed to setup test server");
 
-	let username = random_name(8);
 	let email = format!("{}@example.com", random_name(6));
 	let setup_token = seed_github_setup(&setup, &email).await;
 
@@ -202,7 +200,6 @@ async fn social_login_setup_works() {
 				})
 				.body(SocialLoginSetupRequest {
 					setup_token,
-					username: username.clone(),
 					first_name: "Octo".to_string(),
 					last_name: "Cat".to_string(),
 				})
@@ -228,7 +225,7 @@ async fn social_login_setup_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
 
-	assert_eq!(username, info.response.basic_user_info.username);
+	assert_eq!(email, info.response.email);
 	assert_eq!("Octo", info.response.basic_user_info.first_name);
 	assert_eq!("Cat", info.response.basic_user_info.last_name);
 }
@@ -252,7 +249,6 @@ async fn social_login_setup_token_single_use() {
 				})
 				.body(SocialLoginSetupRequest {
 					setup_token: setup_token.clone(),
-					username: random_name(8),
 					first_name: "Octo".to_string(),
 					last_name: "Cat".to_string(),
 				})
@@ -273,7 +269,6 @@ async fn social_login_setup_token_single_use() {
 				})
 				.body(SocialLoginSetupRequest {
 					setup_token,
-					username: random_name(8),
 					first_name: "Octo".to_string(),
 					last_name: "Cat".to_string(),
 				})
@@ -289,53 +284,11 @@ async fn social_login_setup_token_single_use() {
 }
 
 #[tokio::test]
-async fn social_login_setup_username_taken() {
-	let setup = setup().await.expect("failed to setup test server");
-	let existing = setup.create_test_user().await;
-
-	let setup_token = seed_github_setup(&setup, &format!("{}@example.com", random_name(6))).await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<SocialLoginSetupRequest>::builder()
-				.path(SocialLoginSetupPath {
-					provider: SocialLoginProvider::GitHub,
-				})
-				.headers(SocialLoginSetupRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(SocialLoginSetupRequest {
-					setup_token,
-					username: existing.username.clone(),
-					first_name: "Octo".to_string(),
-					last_name: "Cat".to_string(),
-				})
-				.build(),
-		)
-		.await;
-
-	assert!(
-		response.status_code().is_client_error(),
-		"expected client error for taken username, got {}",
-		response.status_code()
-	);
-}
-
-#[tokio::test]
 async fn social_login_setup_email_taken() {
 	let setup = setup().await.expect("failed to setup test server");
 	let existing = setup.create_test_user().await;
 
-	// `create_test_user` sets recovery_email to `<username>@example.com` —
-	// fetch the actual value so we don't depend on that detail here.
-	let existing_email: String =
-		sqlx::query_scalar("SELECT recovery_email FROM \"user\" WHERE id = $1")
-			.bind(existing.user_id)
-			.fetch_one(setup.database())
-			.await
-			.expect("failed to fetch existing user's recovery_email");
-
-	let setup_token = seed_github_setup(&setup, &existing_email).await;
+	let setup_token = seed_github_setup(&setup, &existing.email).await;
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -348,7 +301,6 @@ async fn social_login_setup_email_taken() {
 				})
 				.body(SocialLoginSetupRequest {
 					setup_token,
-					username: random_name(8),
 					first_name: "Octo".to_string(),
 					last_name: "Cat".to_string(),
 				})

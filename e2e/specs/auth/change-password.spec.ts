@@ -25,7 +25,7 @@ async function loginAsNew(
 	const context = await newContext(browser);
 	const page = await context.newPage();
 	await openLoginPage(page);
-	await fillLoginForm(page, { userId: user.username, password: user.password });
+	await fillLoginForm(page, { email: user.email, password: user.password });
 	await submitLogin(page);
 	await waitForLoggedIn(page);
 	return { context, page, user };
@@ -54,7 +54,7 @@ test.describe('change-password — happy path', () => {
 		const page2 = await ctx2.newPage();
 		try {
 			await openLoginPage(page2);
-			await fillLoginForm(page2, { userId: user.username, password: newPassword });
+			await fillLoginForm(page2, { email: user.email, password: newPassword });
 			await submitLogin(page2);
 			await waitForLoggedIn(page2);
 		} finally {
@@ -66,7 +66,7 @@ test.describe('change-password — happy path', () => {
 		const page3 = await ctx3.newPage();
 		try {
 			await openLoginPage(page3);
-			await fillLoginForm(page3, { userId: user.username, password: user.password });
+			await fillLoginForm(page3, { email: user.email, password: user.password });
 			await submitLogin(page3);
 			await expect(page3.getByText(/Incorrect password/i)).toBeVisible({
 				timeout: 10_000,
@@ -163,7 +163,7 @@ test.describe('change-password — MFA branch', () => {
 				{ timeout: 10_000 },
 			);
 			await page.waitForTimeout(200);
-			const secret = await readMfaSetupSecret(user.username);
+			const secret = await readMfaSetupSecret(user.email);
 			const enableOtp = computeTotp(secret);
 			await fillMfaModalOtp(page, enableOtp);
 			await submitMfaModal(page);

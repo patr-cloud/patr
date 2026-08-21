@@ -1,7 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetRoleInfoResponse } from "~/bindings/GetRoleInfoResponse";
-import { GetUserDetailsResponse } from "~/bindings/GetUserDetailsResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
 import { ListUsersForRoleResponse } from "~/bindings/ListUsersForRoleResponse";
 
@@ -133,18 +132,7 @@ export const useRoleUsersQuery = (roleId: Accessor<string>) => {
 					throw new Error(response.data.error);
 				}
 
-				const userDetailsPromises = (response.data.users || []).map(async (userId) => {
-					const userResponse = await httpRequest<GetUserDetailsResponse>(
-						`${import.meta.env.VITE_BASE_URL}/api/user/${userId}`,
-						{ method: "GET" }
-					);
-					if (!userResponse.ok) return null;
-					return userResponse.data;
-				});
-
-				return (await Promise.all(userDetailsPromises)).filter(
-					(user): user is GetUserDetailsResponse => user !== null
-				);
+				return response.data.users || [];
 			},
 		};
 	});

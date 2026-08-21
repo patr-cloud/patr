@@ -8,7 +8,7 @@ Patr is a Rust/TypeScript monorepo for a DevOps platform. The key components are
 - **`frontend/`** - SolidJS + SolidStart frontend (TypeScript, TailwindCSS v4, pnpm)
 - **`models/`** - Shared request/response DTOs used across API, frontend bindings, CLI, and runners
 - **`macros/`** - Proc macros for endpoint declarations, route definitions, and code generation
-- **`runners/`** - Docker/Kubernetes runners that connect via WebSocket to execute deployments
+- **`runners/`** - Docker runners that connect via WebSocket to execute deployments
 - **`cli/`** - CLI tool for workspace management and runner setup
 
 ## Critical Patterns

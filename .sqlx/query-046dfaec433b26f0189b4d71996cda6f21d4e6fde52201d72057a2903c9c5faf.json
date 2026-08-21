@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE workspace_user_invite(id UUID NOT NULL, workspace_id UUID NOT NULL, /* CITEXT to match `\"user\".email` — see `db/user/user_data.rs` */ email CITEXT NOT NULL,  token_hash TEXT NOT NULL, token_expiry TIMESTAMPTZ NOT NULL,  invited_by UUID NOT NULL, created TIMESTAMPTZ NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "046dfaec433b26f0189b4d71996cda6f21d4e6fde52201d72057a2903c9c5faf"
+}

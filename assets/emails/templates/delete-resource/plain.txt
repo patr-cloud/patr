@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 A {{ resource_type }} named {{ resource_name }} was deleted from the {{ workspace_name }} workspace by {{ deleted_by }}.
 

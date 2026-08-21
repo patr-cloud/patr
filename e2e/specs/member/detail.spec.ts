@@ -35,7 +35,7 @@ test.describe('member > detail', () => {
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
 		await withUI(browser, owner, async (page) => {
 			// The Owner row is first by default; click the invitee row to select it.
-			await page.getByText(`@${invitee.username}`).click();
+			await page.getByText(invitee.email).click();
 			await expect(page.getByText(r1.name).first()).toBeVisible({ timeout: 10_000 });
 		});
 	});

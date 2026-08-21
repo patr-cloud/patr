@@ -17,10 +17,10 @@ import { SocialLoginInitiateResponse, LoginRequest, LoginResponse } from "~/bind
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { IS_CLOUD } from "~/utils/env";
-import { USERNAME_OR_EMAIL_PATTERN, validateUsernameOrEmail } from "~/utils/validation";
+import { EMAIL_PATTERN, validateEmail } from "~/utils/validation";
 
 interface InputFields {
-	userId: string;
+	email: string;
 	password: string;
 	mfaOtp: string;
 }
@@ -35,12 +35,12 @@ const Login = () => {
 	const [mfaOtp, setMfaOtp] = createSignal("");
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
 	const [inputs, setInputs] = createSignal<InputFields>({
-		userId: "",
+		email: "",
 		password: "",
 		mfaOtp: "",
 	});
 	const [inputError, setInputError] = createSignal<InputFields>({
-		userId: "",
+		email: "",
 		password: "",
 		mfaOtp: "",
 	});
@@ -55,11 +55,11 @@ const Login = () => {
 	};
 
 	const validateInputs = (): boolean => {
-		const { userId, password } = inputs();
+		const { email, password } = inputs();
 
-		const userIdError = validateUsernameOrEmail(userId);
-		if (userIdError) {
-			setInputError((prev) => ({ ...prev, userId: userIdError }));
+		const emailError = validateEmail(email);
+		if (emailError) {
+			setInputError((prev) => ({ ...prev, email: emailError }));
 			return false;
 		}
 
@@ -102,11 +102,11 @@ const Login = () => {
 		: undefined;
 
 	const { execute: submitLogin, isLoading } = createAsyncAction(async () => {
-		const { userId, password } = inputs();
+		const { email, password } = inputs();
 		if (!validateInputs()) return;
 
 		const requestBody: LoginRequest = {
-			userId,
+			email,
 			password,
 			mfaOtp: showMfa() && mfaOtp() !== "" ? mfaOtp() : undefined,
 			cfTurnstileToken: IS_CLOUD ? turnstileToken() : "self-hosted",
@@ -153,7 +153,7 @@ const Login = () => {
 				case "invalidEmail":
 					setInputError((prev) => ({
 						...prev,
-						userId: "User not found. Please check your username.",
+						email: "User not found. Please check your email.",
 					}));
 					break;
 				case "mfaRequired":
@@ -200,20 +200,20 @@ const Login = () => {
 					<Input
 						required={true}
 						type={InputType.Text}
-						placeholder="Username or Email"
-						autocomplete="username"
-						pattern={USERNAME_OR_EMAIL_PATTERN}
-						title="Enter your username or the email you signed up with."
-						id="userId"
-						name="userId"
+						placeholder="Email"
+						autocomplete="email"
+						pattern={EMAIL_PATTERN}
+						title="Enter the email you signed up with."
+						id="email"
+						name="email"
 						class="mt-4"
 						styleVariant="medium"
-						value={inputs().userId}
+						value={inputs().email}
 						onInput={handleInput}
 					/>
-					<Show when={inputError().userId}>
+					<Show when={inputError().email}>
 						<div class="flex justify-start items-center mt-1">
-							<Alert message={inputError().userId} type="error" />
+							<Alert message={inputError().email} type="error" />
 						</div>
 					</Show>
 

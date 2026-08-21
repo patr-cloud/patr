@@ -12,10 +12,6 @@ mod docker_login;
 mod forgot_password;
 /// The route to check if an email is valid
 mod is_email_valid;
-/// The route to check if a username is valid
-mod is_username_valid;
-/// The route to list recovery options for a user
-mod list_recovery_options;
 /// The route to login a user
 mod login;
 /// The route to logout a user
@@ -39,8 +35,6 @@ use self::{
 	docker_login::*,
 	forgot_password::*,
 	is_email_valid::*,
-	is_username_valid::*,
-	list_recovery_options::*,
 	login::*,
 	logout::*,
 	renew_access_token::*,
@@ -69,9 +63,7 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_endpoint(renew_access_token, state, allowed_client_type)
 		.mount_endpoint(forgot_password, state, allowed_client_type)
 		.mount_endpoint(is_email_valid, state, allowed_client_type)
-		.mount_endpoint(is_username_valid, state, allowed_client_type)
 		.mount_endpoint(complete_sign_up, state, allowed_client_type)
-		.mount_endpoint(list_recovery_options, state, allowed_client_type)
 		.mount_endpoint(resend_otp, state, allowed_client_type)
 		.mount_endpoint(reset_password, state, allowed_client_type)
 		.mount_endpoint(docker_login, state, allowed_client_type)

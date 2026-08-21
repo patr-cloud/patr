@@ -117,7 +117,7 @@ export async function getLastNameValue(page: Page): Promise<string> {
 }
 
 export async function getRecoveryEmailValue(page: Page): Promise<string> {
-	return page.locator('#recovery-email').inputValue();
+	return page.locator('#email').inputValue();
 }
 
 // The Update button on /profile is also used by other forms ("Update Password",

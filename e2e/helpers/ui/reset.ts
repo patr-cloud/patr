@@ -7,7 +7,7 @@ import { expect } from '@playwright/test';
 //
 // Assumed route: /reset-password
 // Assumed fields:
-//   #userId            — username or email
+//   #email             — the user's email address
 //   #otp-0..#otp-5     — six-digit verification token (OtpInput convention)
 //   #new-password      — new password
 //   #confirm-password  — confirm new password
@@ -19,14 +19,14 @@ export async function openResetPassword(page: Page): Promise<void> {
 }
 
 export type ResetFields = {
-	userId: string;
+	email: string;
 	otp: string;
 	newPassword: string;
 	confirmPassword?: string;
 };
 
 export async function fillResetForm(page: Page, fields: ResetFields): Promise<void> {
-	await page.locator('#userId').fill(fields.userId);
+	await page.locator('#email').fill(fields.email);
 	for (let i = 0; i < 6; i++) {
 		await page.locator(`#otp-${i}`).fill(fields.otp[i] ?? '');
 	}

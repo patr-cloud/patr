@@ -1,7 +1,4 @@
-use crate::{
-	prelude::*,
-	utils::{constants::USERNAME_VALIDITY_REGEX, validate_password},
-};
+use crate::{prelude::*, utils::validate_password};
 
 macros::declare_api_endpoint!(
 	/// Route to resent an OTP to the linked recovery method opted by the user to
@@ -14,9 +11,9 @@ macros::declare_api_endpoint!(
 		pub user_agent: UserAgent,
 	},
 	request = {
-		/// The username of the user
-		#[preprocess(trim, length(min = 2), regex = USERNAME_VALIDITY_REGEX)]
-		pub username: String,
+		/// The email address of the user
+		#[preprocess(trim, email)]
+		pub email: String,
 		/// The password of the user
 		#[preprocess(trim, length(min = 8), custom = "validate_password")]
 		pub password: String,

@@ -11,11 +11,10 @@ pub async fn create_account(
 				headers: CreateAccountRequestHeaders { user_agent },
 				body:
 					CreateAccountRequestProcessed {
-						username,
+						email,
 						password,
 						first_name,
 						last_name,
-						recovery_method,
 						cf_turnstile_token,
 					},
 			},
@@ -31,11 +30,10 @@ pub async fn create_account(
 			// are seeded / invited by the operator. Mirror the frontend, which
 			// 404s the sign-up routes.
 			let _ = (
-				username,
+				email,
 				password,
 				first_name,
 				last_name,
-				recovery_method,
 				cf_turnstile_token,
 				user_agent,
 				database,
@@ -75,19 +73,18 @@ pub async fn create_account(
 
 			info!("Creating account");
 
-			trace!("Checking if username is available");
-			// check if username is available
-			let is_username_available = super::is_username_valid(AppRequest {
+			trace!("Checking if the email is available");
+			let is_email_available = super::is_email_valid(AppRequest {
 				client_ip,
 				request: ProcessedApiRequest::builder()
-					.headers(IsUsernameValidRequestHeaders {
+					.headers(IsEmailValidRequestHeaders {
 						user_agent: user_agent.clone(),
 					})
-					.query(IsUsernameValidQueryProcessed {
-						username: username.clone(),
+					.query(IsEmailValidQueryProcessed {
+						email: email.clone(),
 					})
-					.path(IsUsernameValidPath)
-					.body(IsUsernameValidRequestProcessed)
+					.path(IsEmailValidPath)
+					.body(IsEmailValidRequestProcessed)
 					.build(),
 				database,
 				redis,
@@ -95,58 +92,13 @@ pub async fn create_account(
 			})
 			.await
 			.inspect_err(|err| {
-				error!("Error checking if username is available: `{}`", err);
+				error!("Error checking if email is available: `{}`", err);
 			})?
 			.body
 			.available;
 
-			if !is_username_available {
-				return Err(ErrorType::UsernameUnavailable);
-			}
-
-			match &recovery_method {
-				RecoveryMethod::PhoneNumber {
-					recovery_phone_country_code: _,
-					recovery_phone_number: _,
-				} => {
-					todo!("Check if phone is valid");
-				}
-				RecoveryMethod::Email { recovery_email } => {
-					// Validate the email format. The `#[preprocess(email)]` attribute
-					// inside `RecoveryMethod::Email` doesn't run because the parent
-					// field on `CreateAccountRequest` doesn't recurse into the enum.
-					if preprocess::validators::validate_email(recovery_email.as_str()).is_err() {
-						return Err(ErrorType::InvalidEmail);
-					}
-
-					// Check if email is valid
-					let is_email_available = super::is_email_valid(AppRequest {
-						client_ip,
-						request: ProcessedApiRequest::builder()
-							.headers(IsEmailValidRequestHeaders {
-								user_agent: user_agent.clone(),
-							})
-							.query(IsEmailValidQueryProcessed {
-								email: recovery_email.clone().into(),
-							})
-							.path(IsEmailValidPath)
-							.body(IsEmailValidRequestProcessed)
-							.build(),
-						database,
-						redis,
-						state: state.clone(),
-					})
-					.await
-					.inspect_err(|err| {
-						error!("Error checking if email is available: `{}`", err);
-					})?
-					.body
-					.available;
-
-					if !is_email_available {
-						return Err(ErrorType::EmailUnavailable);
-					}
-				}
+			if !is_email_available {
+				return Err(ErrorType::EmailUnavailable);
 			}
 
 			let now = OffsetDateTime::now_utc();
@@ -186,40 +138,14 @@ pub async fn create_account(
 			.map_err(ErrorType::server_error)?
 			.to_string();
 
-			let recovery_email;
-			let recovery_phone_country_code;
-			let recovery_phone_number;
-
-			match recovery_method {
-				RecoveryMethod::PhoneNumber {
-					recovery_phone_country_code: country_code,
-					recovery_phone_number: number,
-				} => {
-					recovery_email = None;
-					recovery_phone_country_code = Some(country_code);
-					recovery_phone_number = Some(number);
-				}
-				RecoveryMethod::Email {
-					recovery_email: email,
-				} => {
-					recovery_email = Some(email);
-					recovery_phone_country_code = None;
-					recovery_phone_number = None;
-				}
-			}
-
 			query!(
 				r#"
 				INSERT INTO
 					user_to_sign_up(
-						username,
+						email,
 						password,
 						first_name,
 						last_name,
-
-						recovery_email,
-						recovery_phone_country_code,
-						recovery_phone_number,
 
 						otp_hash,
 						otp_expiry,
@@ -234,33 +160,23 @@ pub async fn create_account(
 
 						$5,
 						$6,
-						$7,
-
-						$8,
-						$9,
 						0
 					)
 				ON CONFLICT
-					(username)
+					(email)
 				DO UPDATE SET
 					password = EXCLUDED.password,
 					first_name = EXCLUDED.first_name,
 					last_name = EXCLUDED.last_name,
-					recovery_email = EXCLUDED.recovery_email,
-					recovery_phone_country_code = EXCLUDED.recovery_phone_country_code,
-					recovery_phone_number = EXCLUDED.recovery_phone_number,
 					otp_hash = EXCLUDED.otp_hash,
 					otp_expiry = EXCLUDED.otp_expiry
 				WHERE
 					EXCLUDED.otp_expiry > NOW();
 				"#,
-				&username,
+				&email,
 				hashed_password,
 				&first_name,
 				&last_name,
-				recovery_email,
-				recovery_phone_country_code,
-				recovery_phone_number,
 				hashed_otp,
 				otp_expiry,
 			)
@@ -275,11 +191,10 @@ pub async fn create_account(
 			state
 				.worker
 				.send_email(
-					recovery_email
-						.clone()
-						.unwrap_or_else(|| "unknown".to_string()),
+					email.to_string(),
 					UserSignUpEmail {
-						username: username.to_string(),
+						first_name: first_name.to_string(),
+						email: email.to_string(),
 						otp,
 						otp_expiry: constants::OTP_VALIDITY.to_string(),
 					},

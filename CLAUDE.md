@@ -13,7 +13,7 @@ Patr is a DevOps automation platform. Rust workspace (backend, CLI, runners, Clo
 - `ingress/` — Cloudflare Worker (wasm32 `cdylib`) that proxies requests to the right cluster. Depends on `models`.
 - `macros/` — proc macros (`declare_api_endpoint!`, `query!`, `migration`).
 - `models/` — DTOs and shared types; source of the frontend's generated TS bindings.
-- `runners/{common,docker,kubernetes}` — deployment runners. `common` is the framework; `docker` is the live runner; `kubernetes` is legacy.
+- `runners/{common,docker}` — deployment runners. `common` is the framework; `docker` is the live runner.
 - `frontend/` — SolidJS dashboard (pnpm). `e2e/` — Playwright suite (pnpm).
 
 ## Cloud vs self-hosted
@@ -26,7 +26,7 @@ The same codebase builds two flavors. The **cloud** build is the public `patr.cl
 
 ## Build & test
 
-- **Build/check individual packages, never `--workspace`.** The workspace build fails (legacy crates, missing generated dirs), and per-package builds are also what populate the `.sqlx/` cache. Use `cargo check -p api`, `cargo build -p api`, etc.
+- **Build/check individual packages, never `--workspace`.** The workspace build fails (missing generated dirs — `runners/common` RustEmbeds `frontend/.output/public`), and per-package builds are also what populate the `.sqlx/` cache. Use `cargo check -p api`, `cargo build -p api`, etc.
 - **`cargo build -p api` and `cargo build -p docker` must be separate invocations.** Compiling both at once unifies `common`'s features and fails to build. Run them one after the other, never `cargo build -p api -p docker`.
 - **`cargo check` skips test targets.** Verify tests compile with `cargo test -p <pkg> --no-run`.
 - **Clippy per-package** (`cargo clippy -p api`), not workspace-wide — other crates have pre-existing lint errors.

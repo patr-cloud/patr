@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_to_sign_up WHERE email = $1::CITEXT;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "457e994ad34c34ff5022dc76917c8f63708dd5a34173bda06c0b5bfb0d39a793"
+}

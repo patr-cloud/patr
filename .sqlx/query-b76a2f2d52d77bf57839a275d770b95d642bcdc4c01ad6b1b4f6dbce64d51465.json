@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".id AS \"id!: Uuid\" FROM \"user\" WHERE \"user\".email = $1::CITEXT;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b76a2f2d52d77bf57839a275d770b95d642bcdc4c01ad6b1b4f6dbce64d51465"
+}

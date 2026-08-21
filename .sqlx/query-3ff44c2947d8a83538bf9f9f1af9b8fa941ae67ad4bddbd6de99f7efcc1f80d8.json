@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE user_to_sign_up(/* CITEXT to match `\"user\".email` — see `user_data.rs` */ email CITEXT NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL,  otp_hash TEXT NOT NULL, otp_expiry TIMESTAMPTZ NOT NULL, sign_up_attempts INTEGER NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "3ff44c2947d8a83538bf9f9f1af9b8fa941ae67ad4bddbd6de99f7efcc1f80d8"
+}

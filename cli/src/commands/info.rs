@@ -33,12 +33,10 @@ pub(super) async fn execute(
 				data: BasicUserInfo {
 					first_name,
 					last_name,
-					username,
 				},
 			},
 		created,
-		recovery_email,
-		recovery_phone_number,
+		email,
 		is_mfa_enabled,
 	} = make_request(
 		ApiRequest::<GetUserInfoRequest>::builder()
@@ -58,20 +56,8 @@ pub(super) async fn execute(
 				.add_row(["ID".to_owned(), id.to_string()])
 				.add_row(["First Name", first_name.as_str()])
 				.add_row(["Last Name", last_name.as_str()])
-				.add_row(["Username", username.as_str()])
+				.add_row(["Email", email.as_str()])
 				.add_row(["Created At", created.to_string().as_str()])
-				.add_row([
-					"Recovery Email",
-					recovery_email.as_deref().unwrap_or_default(),
-				])
-				.add_row([
-					"Recovery Phone Number",
-					recovery_phone_number
-						.as_ref()
-						.map(|number| format!("+{} {}", number.country_code, number.phone_number))
-						.unwrap_or_default()
-						.as_str(),
-				])
 				.add_row(["2FA Enabled", is_mfa_enabled.to_string().as_str()])
 				.to_string(),
 		)
@@ -82,12 +68,10 @@ pub(super) async fn execute(
 					data: BasicUserInfo {
 						first_name: first_name.to_owned(),
 						last_name: last_name.to_owned(),
-						username: username.to_owned(),
 					},
 				},
 				created,
-				recovery_email,
-				recovery_phone_number,
+				email,
 				is_mfa_enabled,
 			}
 			.to_json_value(),

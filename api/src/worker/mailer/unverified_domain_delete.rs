@@ -13,8 +13,8 @@ use crate::utils::assets::email_images as filters;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct _UnverifiedDomainDeleteEmail {
-	/// The username of the user.
-	pub username: String,
+	/// The first name of the user.
+	pub first_name: String,
 	/// The domain name that was removed.
 	pub domain_name: String,
 	/// The deadline limit after which the domain was removed (e.g. "30 days").

@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_to_sign_up(email, password, first_name, last_name,  otp_hash, otp_expiry, sign_up_attempts) VALUES ($1, $2, $3, $4,  $5, $6, 0) ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, otp_hash = EXCLUDED.otp_hash, otp_expiry = EXCLUDED.otp_expiry WHERE EXCLUDED.otp_expiry > NOW();",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3d968f3f7a6637871d80b848484991ea35792debdd8bb10567e98031befb3296"
+}

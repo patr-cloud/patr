@@ -8,9 +8,6 @@ use crate::prelude::*;
 /// The arguments for the `runner service uninstall` command.
 #[derive(Debug, Clone, ClapArgs)]
 pub struct Args {
-	/// The type of runner whose service to remove
-	#[arg(value_enum)]
-	pub runner_type: RunnerType,
 	/// Skip the confirmation prompt
 	#[arg(short = 'y', long = "yes")]
 	pub yes: bool,
@@ -24,11 +21,7 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 		));
 	}
 
-	let runner_type_str = match args.runner_type {
-		RunnerType::Docker => "docker",
-		RunnerType::Kubernetes => "kubernetes",
-	};
-	let service_name = format!("patr-{runner_type_str}-runner.service");
+	let service_name = "patr-docker-runner.service".to_string();
 	let service_file_path = format!("/etc/systemd/system/{service_name}");
 
 	let is_root = uzers::get_current_uid() == 0;

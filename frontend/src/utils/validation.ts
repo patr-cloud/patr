@@ -1,6 +1,5 @@
 const RESOURCE_NAME_REGEX = /^[a-zA-Z0-9\-_ .]{4,255}$/;
-const PHONE_NUMBER_REGEX = /^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$/;
-const USERNAME_VALIDITY_REGEX = /^[a-z0-9_][a-z0-9_.-]*[a-z0-9_]$/;
+const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // Pattern matches USER_NAME_REGEX on the backend: 1–100 chars, no HTML
 // metacharacters (<, >, &), no control chars / tabs / newlines.
 // eslint-disable-next-line no-control-regex
@@ -16,13 +15,7 @@ const XSS_PATTERN = /[<>&\x00-\x1f]/;
 
 // Pattern strings for HTML input pattern attribute (without delimiters and flags)
 const RESOURCE_NAME_PATTERN = "[a-zA-Z0-9\\-_ \\.]{4,255}";
-const PHONE_NUMBER_PATTERN = "\\(?\\d{3}\\)?[-.\\s]?\\d{3}[-.\\s]?\\d{4}";
-const USERNAME_VALIDITY_PATTERN = "[a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]";
-// HTML input pattern for "username or email" — matches either the username
-// shape or any string containing `@` and `.`. The backend's
-// `validate_username_or_email` does the authoritative check; this is a
-// best-effort client gate.
-const USERNAME_OR_EMAIL_PATTERN = "([a-z0-9_][a-z0-9_\\.\\-]*[a-z0-9_]|[^@\\s]+@[^@\\s]+\\.[^@\\s]+)";
+const EMAIL_PATTERN = "[^@\\s]+@[^@\\s]+\\.[^@\\s]+";
 
 // Special characters accepted in passwords. Mirrors the backend
 // `validate_password` set. Shared between `validatePassword` and
@@ -219,34 +212,23 @@ export function validateRoleDescription(value: string): string | undefined {
 }
 
 /**
- * Validates a login identifier as either a username or an email. Phone-shape
- * input is rejected — phone login is not exposed in the UI this round.
- * Mirrors the backend's `validate_username_or_email`.
+ * Validates an email address. A user's email is their identifier, so this is
+ * the gate on every auth form. Deliberately loose — the backend does the
+ * authoritative check, this is just to catch obvious typos before a round
+ * trip.
  */
-export function validateUsernameOrEmail(value: string): string | undefined {
+export function validateEmail(value: string): string | undefined {
 	if (!value || value.trim().length === 0) return "Required";
-	if (value.length < 2) return "Must be at least 2 characters";
-	if (value.includes("@")) {
-		if (!value.includes(".") || value.length < 5) {
-			return "Not a valid email address";
-		}
-		return undefined;
-	}
-	if (!USERNAME_VALIDITY_REGEX.test(value)) {
-		return "Must be a valid username or email";
-	}
+	if (!EMAIL_REGEX.test(value.trim())) return "Not a valid email address";
 	return undefined;
 }
 
 export {
 	RESOURCE_NAME_REGEX,
-	PHONE_NUMBER_REGEX,
-	USERNAME_VALIDITY_REGEX,
+	EMAIL_REGEX,
 	USER_NAME_REGEX,
 	ROLE_DESCRIPTION_REGEX,
 	XSS_PATTERN,
 	RESOURCE_NAME_PATTERN,
-	PHONE_NUMBER_PATTERN,
-	USERNAME_VALIDITY_PATTERN,
-	USERNAME_OR_EMAIL_PATTERN,
+	EMAIL_PATTERN,
 };

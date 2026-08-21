@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 {% if fully_paid %}Your bill of {{ total_bill }} for the {{ workspace_name }} workspace has been fully paid using your Patr credits. Your remaining credit balance is {{ remaining_credits }}.{% else %}Your bill of {{ total_bill }} for the {{ workspace_name }} workspace has been partially covered by your Patr credits. The remaining amount due is {{ reduced_bill }}.{% endif %}
 

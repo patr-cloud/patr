@@ -13,10 +13,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::prelude::*;
 
-/// The add new email notification email template.
-mod add_new_email_notification;
-/// The backup email notification email template.
-mod backup_email_notification;
 /// The bill not paid delete resources email template.
 mod bill_not_paid_delete_resources;
 /// The bill paid successfully email template.
@@ -51,8 +47,6 @@ mod payment_failure_invoice;
 mod payment_success_invoice;
 /// The purchase credits success email template.
 mod purchase_credits_success;
-/// The recovery email notification email template.
-mod recovery_email_notification;
 /// The runner disconnected reminder email template.
 mod runner_disconnected_reminder;
 /// The sign-up completed email template.
@@ -65,8 +59,6 @@ mod user_sign_up;
 mod workspace_user_invite;
 
 pub use self::{
-	add_new_email_notification::*,
-	backup_email_notification::*,
 	bill_not_paid_delete_resources::*,
 	bill_paid_successfully::*,
 	bill_paid_using_credits::*,
@@ -84,7 +76,6 @@ pub use self::{
 	payment_failure_invoice::*,
 	payment_success_invoice::*,
 	purchase_credits_success::*,
-	recovery_email_notification::*,
 	runner_disconnected_reminder::*,
 	sign_up_completed::*,
 	unverified_domain_delete::*,
@@ -123,12 +114,6 @@ pub struct GlobalArgs {}
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
 #[serde(tag = "type", content = "data", rename_all = "camelCase")]
 pub enum EmailTemplateType {
-	/// The add new email notification email template. This email is sent to
-	/// the user when they add a new email address to their account.
-	AddNewEmailNotification(add_new_email_notification::_AddNewEmailNotificationEmail),
-	/// The backup email notification email template. This email is sent to
-	/// the user when a recovery email is set for their account.
-	BackupEmailNotification(backup_email_notification::_BackupEmailNotificationEmail),
 	/// The bill not paid delete resources email template. This email is sent
 	/// to the user when their resources have been deleted due to an unpaid
 	/// balance.
@@ -183,9 +168,6 @@ pub enum EmailTemplateType {
 	/// The purchase credits success email template. This email is sent to the
 	/// user when credits have been successfully added to their workspace.
 	PurchaseCreditsSuccess(purchase_credits_success::_PurchaseCreditsSuccessEmail),
-	/// The recovery email notification email template. This email is sent when
-	/// a recovery email address is added to a user's Patr account.
-	RecoveryEmailNotification(recovery_email_notification::_RecoveryEmailNotificationEmail),
 	/// The runner disconnected reminder email template. This email is sent to
 	/// the user when a runner in their workspace is no longer connected.
 	RunnerDisconnectedReminder(runner_disconnected_reminder::_RunnerDisconnectedReminderEmail),
@@ -208,8 +190,6 @@ impl EmailTemplateType {
 	/// Renders the subject template of the email into a string.
 	fn render_subject(&self, globals: &GlobalArgs) -> Result<String, ErrorType> {
 		match self {
-			Self::AddNewEmailNotification(template) => template.render_subject(globals),
-			Self::BackupEmailNotification(template) => template.render_subject(globals),
 			Self::BillNotPaidDeleteResources(template) => template.render_subject(globals),
 			Self::BillPaidSuccessfully(template) => template.render_subject(globals),
 			Self::BillPaidUsingCredits(template) => template.render_subject(globals),
@@ -227,7 +207,6 @@ impl EmailTemplateType {
 			Self::PaymentFailureInvoice(template) => template.render_subject(globals),
 			Self::PaymentSuccessInvoice(template) => template.render_subject(globals),
 			Self::PurchaseCreditsSuccess(template) => template.render_subject(globals),
-			Self::RecoveryEmailNotification(template) => template.render_subject(globals),
 			Self::RunnerDisconnectedReminder(template) => template.render_subject(globals),
 			Self::SignUpCompleted(template) => template.render_subject(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_subject(globals),
@@ -238,8 +217,6 @@ impl EmailTemplateType {
 
 	fn render_html(&self, globals: &GlobalArgs) -> Result<String, ErrorType> {
 		match self {
-			Self::AddNewEmailNotification(template) => template.render_html(globals),
-			Self::BackupEmailNotification(template) => template.render_html(globals),
 			Self::BillNotPaidDeleteResources(template) => template.render_html(globals),
 			Self::BillPaidSuccessfully(template) => template.render_html(globals),
 			Self::BillPaidUsingCredits(template) => template.render_html(globals),
@@ -257,7 +234,6 @@ impl EmailTemplateType {
 			Self::PaymentFailureInvoice(template) => template.render_html(globals),
 			Self::PaymentSuccessInvoice(template) => template.render_html(globals),
 			Self::PurchaseCreditsSuccess(template) => template.render_html(globals),
-			Self::RecoveryEmailNotification(template) => template.render_html(globals),
 			Self::RunnerDisconnectedReminder(template) => template.render_html(globals),
 			Self::SignUpCompleted(template) => template.render_html(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_html(globals),
@@ -268,8 +244,6 @@ impl EmailTemplateType {
 
 	fn render_text(&self, globals: &GlobalArgs) -> Result<String, ErrorType> {
 		match self {
-			Self::AddNewEmailNotification(template) => template.render_text(globals),
-			Self::BackupEmailNotification(template) => template.render_text(globals),
 			Self::BillNotPaidDeleteResources(template) => template.render_text(globals),
 			Self::BillPaidSuccessfully(template) => template.render_text(globals),
 			Self::BillPaidUsingCredits(template) => template.render_text(globals),
@@ -287,7 +261,6 @@ impl EmailTemplateType {
 			Self::PaymentFailureInvoice(template) => template.render_text(globals),
 			Self::PaymentSuccessInvoice(template) => template.render_text(globals),
 			Self::PurchaseCreditsSuccess(template) => template.render_text(globals),
-			Self::RecoveryEmailNotification(template) => template.render_text(globals),
 			Self::RunnerDisconnectedReminder(template) => template.render_text(globals),
 			Self::SignUpCompleted(template) => template.render_text(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_text(globals),

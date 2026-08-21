@@ -9,8 +9,8 @@ use crate::utils::assets::email_images as filters;
 #[template(path = "partial-payment-success", subject = "Partial payment received")]
 #[serde(rename_all = "camelCase")]
 pub struct _PartialPaymentSuccessEmail {
-	/// The username of the recipient.
-	pub username: String,
+	/// The first_name of the recipient.
+	pub first_name: String,
 	/// The amount that was paid.
 	pub amount_paid: String,
 	/// The name of the workspace the bill is for.

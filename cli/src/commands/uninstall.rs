@@ -2,7 +2,6 @@ use std::{io::IsTerminal, path::Path, process::Command};
 
 use clap::Args as ClapArgs;
 use models::ApiSuccessResponseBody;
-use strum::IntoEnumIterator as _;
 
 use crate::prelude::*;
 
@@ -38,9 +37,9 @@ pub async fn execute(
 		.map_err(|e| AppError::RunnerError(format!("Failed to determine current binary: {e}")))?;
 
 	let cli_config_path = crate::utils::config_local_dir();
-	let runner_configs = RunnerType::iter()
-		.map(|t| (t, crate::utils::runner_config_path(t)))
-		.filter(|(_, p)| p.exists())
+	let runner_configs = Some(crate::utils::runner_config_path())
+		.filter(|p| p.exists())
+		.into_iter()
 		.collect::<Vec<_>>();
 
 	// Layer 1 confirm (unless -y or --purge).
@@ -54,7 +53,7 @@ pub async fn execute(
 		if cli_config_path.exists() {
 			eprintln!("  - CLI config ({})", cli_config_path.display());
 		}
-		for (_, p) in &runner_configs {
+		for p in &runner_configs {
 			eprintln!("  - Runner config ({})", p.display());
 		}
 		if !runner_configs.is_empty() && Path::new("/run/systemd/system").exists() {
@@ -113,9 +112,9 @@ pub async fn execute(
 		}
 	}
 
-	// Layer 1: remove installed systemd services for any runner type whose
-	// config we found on disk. Logic mirrors `runner service uninstall` but
-	// runs non-interactively here.
+	// Layer 1: remove the installed systemd service, if we found a runner
+	// config on disk. Logic mirrors `runner service uninstall` but runs
+	// non-interactively here.
 	if Path::new("/run/systemd/system").exists() {
 		let is_root = uzers::get_current_uid() == 0;
 		if !is_root && !runner_configs.is_empty() {
@@ -123,12 +122,8 @@ pub async fn execute(
 				"This will use sudo to stop/remove installed systemd services. You may be prompted for your password."
 			);
 		}
-		for (runner_type, _) in &runner_configs {
-			let runner_type_str = match runner_type {
-				RunnerType::Docker => "docker",
-				RunnerType::Kubernetes => "kubernetes",
-			};
-			let service_name = format!("patr-{runner_type_str}-runner.service");
+		if !runner_configs.is_empty() {
+			let service_name = "patr-docker-runner.service".to_string();
 			let service_file_path = format!("/etc/systemd/system/{service_name}");
 
 			// Lenient stop.
@@ -200,7 +195,7 @@ pub async fn execute(
 	}
 
 	// Remove runner config files.
-	for (_, config_path) in &runner_configs {
+	for config_path in &runner_configs {
 		if let Err(e) = std::fs::remove_file(config_path) &&
 			e.kind() != std::io::ErrorKind::NotFound
 		{

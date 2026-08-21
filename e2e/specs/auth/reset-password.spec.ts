@@ -43,7 +43,7 @@ async function requestResetFor(browser: import('@playwright/test').Browser, emai
 }
 
 test.describe('reset-password [needs-ui] — happy path', () => {
-	test('valid userId + OTP + new password → login with new works, old fails', async ({
+	test('valid email + OTP + new password → login with new works, old fails', async ({
 		browser,
 		api,
 	}) => {
@@ -54,7 +54,7 @@ test.describe('reset-password [needs-ui] — happy path', () => {
 		await withContext(browser, async (page) => {
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: user.username,
+				email: user.email,
 				otp: DEBUG_OTP,
 				newPassword,
 			});
@@ -65,7 +65,7 @@ test.describe('reset-password [needs-ui] — happy path', () => {
 		// New password works.
 		await withContext(browser, async (page) => {
 			await openLoginPage(page);
-			await fillLoginForm(page, { userId: user.username, password: newPassword });
+			await fillLoginForm(page, { email: user.email, password: newPassword });
 			await submitLogin(page);
 			await waitForLoggedIn(page);
 		});
@@ -73,7 +73,7 @@ test.describe('reset-password [needs-ui] — happy path', () => {
 		// Old password rejected.
 		await withContext(browser, async (page) => {
 			await openLoginPage(page);
-			await fillLoginForm(page, { userId: user.username, password: user.password });
+			await fillLoginForm(page, { email: user.email, password: user.password });
 			await submitLogin(page);
 			await expect(page.getByText(/Incorrect password/i)).toBeVisible({
 				timeout: 10_000,
@@ -83,13 +83,13 @@ test.describe('reset-password [needs-ui] — happy path', () => {
 });
 
 test.describe('reset-password [needs-ui] — client-side validation', () => {
-	test('empty userId blocks submit', async ({ browser, api }) => {
+	test('empty email blocks submit', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
 		await requestResetFor(browser, user.email);
 		await withContext(browser, async (page) => {
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: '',
+				email: '',
 				otp: DEBUG_OTP,
 				newPassword: 'NewPassw0rd!Test',
 			});
@@ -109,7 +109,7 @@ test.describe('reset-password [needs-ui] — client-side validation', () => {
 		await withContext(browser, async (page) => {
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: user.username,
+				email: user.email,
 				otp: '12345',
 				newPassword: 'NewPassw0rd!Test',
 			});
@@ -126,7 +126,7 @@ test.describe('reset-password [needs-ui] — client-side validation', () => {
 		await withContext(browser, async (page) => {
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: user.username,
+				email: user.email,
 				otp: DEBUG_OTP,
 				newPassword: 'NewPassw0rd!Test',
 				confirmPassword: 'DifferentPass!1',
@@ -147,7 +147,7 @@ test.describe('reset-password [needs-ui] — client-side validation', () => {
 		await withContext(browser, async (page) => {
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: user.username,
+				email: user.email,
 				otp: DEBUG_OTP,
 				newPassword: 'NoDigitsHere!',
 			});
@@ -169,7 +169,7 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
 		await withContext(browser, async (page) => {
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: user.username,
+				email: user.email,
 				otp: '123456',
 				newPassword: 'NewPassw0rd!Test',
 			});
@@ -182,13 +182,13 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
 		});
 	});
 
-	test('userId without a pending reset → same generic error', async ({ browser, api }) => {
+	test('email without a pending reset → same generic error', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
 		// No requestResetFor call — user has no pending reset.
 		await withContext(browser, async (page) => {
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: user.username,
+				email: user.email,
 				otp: DEBUG_OTP,
 				newPassword: 'NewPassw0rd!Test',
 			});
@@ -201,11 +201,11 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
 		});
 	});
 
-	test('nonexistent userId → same generic error', async ({ browser }) => {
+	test('nonexistent email → same generic error', async ({ browser }) => {
 		await withContext(browser, async (page) => {
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: 'doesnotexist' + Date.now(),
+				email: `doesnotexist${Date.now()}@example.com`,
 				otp: DEBUG_OTP,
 				newPassword: 'NewPassw0rd!Test',
 			});
@@ -221,11 +221,11 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
 	test('expired reset token → InvalidPasswordResetToken', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
 		await requestResetFor(browser, user.email);
-		await backdatePasswordResetToken(user.username, '20 min');
+		await backdatePasswordResetToken(user.email, '20 min');
 		await withContext(browser, async (page) => {
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: user.username,
+				email: user.email,
 				otp: DEBUG_OTP,
 				newPassword: 'NewPassw0rd!Test',
 			});
@@ -254,7 +254,7 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
 			await withContext(browser, async (page) => {
 				await openResetPassword(page);
 				await fillResetForm(page, {
-					userId: user.username,
+					email: user.email,
 					otp,
 					newPassword: 'NewPassw0rd!Test',
 				});
@@ -273,8 +273,8 @@ test.describe('reset-password [needs-ui] — server-side rejection', () => {
 		}
 
 		const [row] = await sql<{ attempts: number }>(
-			'SELECT password_reset_attempts AS attempts FROM "user" WHERE username = $1',
-			[user.username],
+			'SELECT password_reset_attempts AS attempts FROM "user" WHERE email = $1::citext',
+			[user.email],
 		);
 		expect(row?.attempts).toBe(MAX_PASSWORD_RESET_ATTEMPTS);
 
@@ -297,7 +297,7 @@ test.describe('reset-password [needs-ui] — end-to-end seam', () => {
 
 			await openResetPassword(page);
 			await fillResetForm(page, {
-				userId: user.username,
+				email: user.email,
 				otp: DEBUG_OTP,
 				newPassword,
 			});

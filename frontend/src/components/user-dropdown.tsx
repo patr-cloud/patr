@@ -25,7 +25,7 @@ const UserDropdown = () => {
 
 	const getDisplayName = () => {
 		const user = userInfoQuery.data;
-		return user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.username : "User";
+		return user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email : "User";
 	};
 
 	return (
@@ -55,26 +55,18 @@ const UserDropdown = () => {
 								<div class="text-white font-medium truncate">
 									{userInfoQuery.data?.firstName && userInfoQuery.data?.lastName
 										? `${userInfoQuery.data!.firstName} ${userInfoQuery.data!.lastName}`
-										: userInfoQuery.data?.username || "Unknown User"}
+										: userInfoQuery.data?.email || "Unknown User"}
 								</div>
 								<div class="text-gray-400 text-sm truncate">
-									{userInfoQuery.data?.recoveryEmail || "No email"}
+									{userInfoQuery.data?.email || "No email"}
 								</div>
 							</div>
 						</div>
 
-						<div class="mb-2">
-							<CopyableField
-								variant={CopyableFieldVariant.Input}
-								label="User ID"
-								value={userInfoQuery.data?.id || ""}
-							/>
-						</div>
-
 						<CopyableField
 							variant={CopyableFieldVariant.Input}
-							label="Username"
-							value={userInfoQuery.data?.username || ""}
+							label="User ID"
+							value={userInfoQuery.data?.id || ""}
 						/>
 					</div>
 

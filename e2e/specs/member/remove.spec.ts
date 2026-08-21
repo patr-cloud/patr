@@ -42,7 +42,7 @@ test.describe('member > remove', () => {
 		await withUI(browser, owner, async (page) => {
 			// Owner row is auto-selected; click the invitee row to bring up the
 			// Remove control (owner row has no Remove button by design).
-			await page.getByText(`@${invitee.username}`).click();
+			await page.getByText(invitee.email).click();
 			await clickRemoveMember(page);
 			const inviteeId = await getOwnUserId(api, invitee);
 			const me = await api.request<{ firstName: string; lastName: string }>(
@@ -66,10 +66,10 @@ test.describe('member > remove', () => {
 		await withUI(browser, owner, async (page) => {
 			// Owner row is auto-selected; click the invitee row to bring up the
 			// Remove control (owner row has no Remove button by design).
-			await page.getByText(`@${invitee.username}`).click();
+			await page.getByText(invitee.email).click();
 			await clickRemoveMember(page);
 			await page.getByRole('button', { name: /^Cancel$/ }).click();
-			await expect(page.getByText(`@${invitee.username}`).first()).toBeVisible({
+			await expect(page.getByText(invitee.email).first()).toBeVisible({
 				timeout: 10_000,
 			});
 		});
@@ -84,7 +84,7 @@ test.describe('member > remove', () => {
 		await withUI(browser, owner, async (page) => {
 			// Owner row is auto-selected; click the invitee row to bring up the
 			// Remove control (owner row has no Remove button by design).
-			await page.getByText(`@${invitee.username}`).click();
+			await page.getByText(invitee.email).click();
 			await clickRemoveMember(page);
 			await confirmRemoveMember(page);
 			await expectToast(page, /User removed successfully/i);

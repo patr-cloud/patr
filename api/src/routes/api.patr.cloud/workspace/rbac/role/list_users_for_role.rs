@@ -1,6 +1,12 @@
 use axum::http::StatusCode;
 use models::{
-	api::{user::BasicUserInfoSearchParams, workspace::rbac::role::*},
+	api::{
+		WithId,
+		workspace::rbac::{
+			role::*,
+			user::{WorkspaceUserInfo, WorkspaceUserInfoSearchParams},
+		},
+	},
 	utils::TotalCountHeader,
 };
 
@@ -20,8 +26,8 @@ pub async fn list_users_for_role(
 					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
-							BasicUserInfoSearchParams {
-								username: username_filter,
+							WorkspaceUserInfoSearchParams {
+								email: email_filter,
 								first_name: first_name_filter,
 								last_name: last_name_filter,
 							},
@@ -49,7 +55,10 @@ pub async fn list_users_for_role(
 	let users = query!(
 		r#"
 		SELECT
-			workspace_user.*,
+			workspace_user.user_id,
+			"user".first_name,
+			"user".last_name,
+			"user".email,
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			workspace_user
@@ -60,7 +69,7 @@ pub async fn list_users_for_role(
 		WHERE
 			workspace_id = $1 AND
 			role_id = $2 AND
-			($3::TEXT IS NULL OR "user".username ILIKE '%' || $3::TEXT || '%') AND
+			($3::TEXT IS NULL OR "user".email ILIKE '%' || $3::TEXT || '%') AND
 			($4::TEXT IS NULL OR "user".first_name ILIKE '%' || $4::TEXT || '%') AND
 			($5::TEXT IS NULL OR "user".last_name ILIKE '%' || $5::TEXT || '%')
 		ORDER BY
@@ -70,7 +79,7 @@ pub async fn list_users_for_role(
 		"#,
 		workspace_id as _,
 		role_id as _,
-		username_filter,
+		email_filter,
 		first_name_filter,
 		last_name_filter,
 		count as i64,
@@ -81,7 +90,14 @@ pub async fn list_users_for_role(
 	.into_iter()
 	.map(|row| {
 		total_count = row.total_count;
-		row.user_id.into()
+		WithId::new(
+			row.user_id,
+			WorkspaceUserInfo {
+				first_name: row.first_name,
+				last_name: row.last_name,
+				email: row.email,
+			},
+		)
 	})
 	.collect();
 

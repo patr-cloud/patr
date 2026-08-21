@@ -10,7 +10,6 @@
 /api/Dockerfile
 /cli/Dockerfile
 /runners/docker/Dockerfile
-/runners/kubernetes/Dockerfile
 
 /.devcontainer
 /data

@@ -1,0 +1,92 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM \"user\" WHERE email = $1::CITEXT;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "email",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "workspace_limit",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "password_reset_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "password_reset_token_expiry",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "password_reset_attempts",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "mfa_secret",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d08f504e0863aa766998396c2ffbf510adca30788c2023e8680059999953857f"
+}

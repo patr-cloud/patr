@@ -10,3 +10,4 @@ mod m007_unify_domains;
 mod m008_simplify_workspace_name_index;
 mod m009_scope_roles_to_workspace;
 mod m010_workspace_user_invites;
+mod m011_email_as_identity;

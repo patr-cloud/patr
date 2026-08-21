@@ -1,10 +1,6 @@
 use crate::{
 	prelude::*,
-	utils::{
-		constants::OTP_VERIFICATION_TOKEN_REGEX,
-		validate_password,
-		validate_username_or_email,
-	},
+	utils::{constants::OTP_VERIFICATION_TOKEN_REGEX, validate_password},
 };
 
 macros::declare_api_endpoint!(
@@ -18,12 +14,9 @@ macros::declare_api_endpoint!(
 		pub user_agent: UserAgent,
 	},
 	request = {
-		/// The user identifier of the user.
-		/// Accepts either a username (per [`USERNAME_VALIDITY_REGEX`]) or an email.
-		/// Phone-shaped input is rejected at this layer (the backend handler still
-		/// supports phone lookup, but we don't expose it from the login UI yet).
-		#[preprocess(trim, length(min = 2), custom = "validate_username_or_email")]
-		pub user_id: String,
+		/// The email address of the user. This is their unique identifier.
+		#[preprocess(trim, email)]
+		pub email: String,
 		/// The password of the user policy:
 		/// Minimum length (often at least 8 characters).
 		/// At least one uppercase letter.

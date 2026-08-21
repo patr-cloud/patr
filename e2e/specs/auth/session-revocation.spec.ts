@@ -31,14 +31,14 @@ test.describe('credential change revokes other sessions', () => {
 		const contextA = await newContext(browser);
 		const pageA = await contextA.newPage();
 		await openLoginPage(pageA);
-		await fillLoginForm(pageA, { userId: owner.username, password: owner.password });
+		await fillLoginForm(pageA, { email: owner.email, password: owner.password });
 		await submitLogin(pageA);
 		await waitForLoggedIn(pageA);
 
 		const contextB = await newContext(browser);
 		const pageB = await contextB.newPage();
 		await openLoginPage(pageB);
-		await fillLoginForm(pageB, { userId: owner.username, password: owner.password });
+		await fillLoginForm(pageB, { email: owner.email, password: owner.password });
 		await submitLogin(pageB);
 		await waitForLoggedIn(pageB);
 
@@ -87,14 +87,14 @@ test.describe('credential change revokes other sessions', () => {
 		const contextA = await newContext(browser);
 		const pageA = await contextA.newPage();
 		await openLoginPage(pageA);
-		await fillLoginForm(pageA, { userId: owner.username, password: owner.password });
+		await fillLoginForm(pageA, { email: owner.email, password: owner.password });
 		await submitLogin(pageA);
 		await waitForLoggedIn(pageA);
 
 		const contextB = await newContext(browser);
 		const pageB = await contextB.newPage();
 		await openLoginPage(pageB);
-		await fillLoginForm(pageB, { userId: owner.username, password: owner.password });
+		await fillLoginForm(pageB, { email: owner.email, password: owner.password });
 		await submitLogin(pageB);
 		await waitForLoggedIn(pageB);
 
@@ -105,7 +105,7 @@ test.describe('credential change revokes other sessions', () => {
 
 			await openProfile(pageA);
 			await openMfaModal(pageA);
-			const secret = await readMfaSetupSecret(owner.username);
+			const secret = await readMfaSetupSecret(owner.email);
 			await fillMfaModalOtp(pageA, computeTotp(secret));
 			await submitMfaModal(pageA);
 			await expect(pageA.getByText(/Two-Factor Authentication enabled/i)).toBeVisible({

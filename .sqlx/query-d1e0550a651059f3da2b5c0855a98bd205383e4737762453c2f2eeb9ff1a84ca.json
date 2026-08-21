@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_to_sign_up SET otp_hash = $1 WHERE email = $2::CITEXT;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d1e0550a651059f3da2b5c0855a98bd205383e4737762453c2f2eeb9ff1a84ca"
+}

@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 // Frontend reference: frontend/src/routes/_logged-out/login.tsx
-// Selectors: #userId, #password, #otp-0..#otp-5 (when MFA prompt shown),
+// Selectors: #email, #password, #otp-0..#otp-5 (when MFA prompt shown),
 //            button[type=submit] with text "Login".
 
 export async function openLoginPage(page: Page): Promise<void> {
@@ -14,9 +14,9 @@ export async function openLoginPage(page: Page): Promise<void> {
 
 export async function fillLoginForm(
 	page: Page,
-	fields: { userId: string; password: string },
+	fields: { email: string; password: string },
 ): Promise<void> {
-	await page.locator('#userId').fill(fields.userId);
+	await page.locator('#email').fill(fields.email);
 	await page.locator('#password').fill(fields.password);
 }
 

@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 Your Patr account password was just changed. If you made this change, no action is needed.
 

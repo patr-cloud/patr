@@ -37,9 +37,9 @@ export async function deleteRunnerLock(runnerId: string): Promise<void> {
 //
 // UUIDs are stored hyphenless throughout this codebase, but pg returns the
 // hyphenated string form by default — strip hyphens before key construction.
-export async function readMfaSetupSecret(username: string): Promise<string> {
-	const user = await queryUser(username);
-	if (!user) throw new Error(`No such user: ${username}`);
+export async function readMfaSetupSecret(email: string): Promise<string> {
+	const user = await queryUser(email);
+	if (!user) throw new Error(`No such user: ${email}`);
 	const userIdHex = user.id.replace(/-/g, '');
 	// The secret is written when the API handles GET /user/mfa, which the caller
 	// races after opening the 2FA modal (the request is still in flight). Poll
@@ -50,7 +50,7 @@ export async function readMfaSetupSecret(username: string): Promise<string> {
 		if (secret) return secret;
 		if (Date.now() >= deadline) {
 			throw new Error(
-				`No MFA secret in Redis for user ${username} (${user.id}); ` +
+				`No MFA secret in Redis for user ${email} (${user.id}); ` +
 					`was GET /user/mfa called and within the 5-min TTL?`,
 			);
 		}

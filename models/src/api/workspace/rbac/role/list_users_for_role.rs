@@ -1,4 +1,4 @@
-use crate::{api::user::BasicUserInfo, prelude::*};
+use crate::{api::workspace::rbac::user::WorkspaceUserInfo, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Route to list all the users with the role
@@ -15,7 +15,7 @@ macros::declare_api_endpoint!(
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
 	},
-	listable_resource = BasicUserInfo,
+	listable_resource = WorkspaceUserInfo,
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.workspace_id,
@@ -28,8 +28,8 @@ macros::declare_api_endpoint!(
 		pub total_count: TotalCountHeader,
 	},
 	response = {
-		/// The list of users with the role
-		pub users: Vec<Uuid>
+		/// The list of users with the role, with their details
+		pub users: Vec<WithId<WorkspaceUserInfo>>
 	},
 	audit_log = NoAuditLogger,
 );

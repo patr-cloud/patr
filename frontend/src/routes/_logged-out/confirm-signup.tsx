@@ -14,15 +14,15 @@ const ConfirmSignUp = () => {
 	const search = Route.useSearch();
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
 
-	// Get username from URL params or navigation state
-	const initialUsername = search().username || "";
+	// Get the email from URL params or navigation state
+	const initialEmail = search().email || "";
 	const initialOtp = search().otp || "";
 
-	// Track if username was pre-filled (from URL or navigation state)
-	const usernameWasPreFilled = !!initialUsername;
+	// Track if the email was pre-filled (from URL or navigation state)
+	const emailWasPreFilled = !!initialEmail;
 
-	const [username, setUsername] = createSignal(initialUsername);
-	const [usernameError, setUsernameError] = createSignal("");
+	const [email, setEmail] = createSignal(initialEmail);
+	const [emailError, setEmailError] = createSignal("");
 	const [otpDigits, setOtpDigits] = createSignal<string[]>(
 		initialOtp
 			? [...initialOtp.replace(/\D/g, "").slice(0, 6).padEnd(6, " ")].map((c) => (c === " " ? "" : c))
@@ -31,14 +31,14 @@ const ConfirmSignUp = () => {
 
 	// Clear URL params after reading them
 	onMount(() => {
-		if (search().username || search().otp) {
-			navigate({ to: "/confirm-signup", search: { username: undefined, otp: undefined }, replace: true });
+		if (search().email || search().otp) {
+			navigate({ to: "/confirm-signup", search: { email: undefined, otp: undefined }, replace: true });
 		}
 	});
 
 	const { execute: submitConfirmation, isLoading } = createAsyncAction(async () => {
-		if (!username().trim()) {
-			setUsernameError("Username is required.");
+		if (!email().trim()) {
+			setEmailError("Email is required.");
 			return;
 		}
 
@@ -48,7 +48,7 @@ const ConfirmSignUp = () => {
 		}
 
 		const body: CompleteSignUpRequest = {
-			username: username(),
+			email: email(),
 			verificationToken: otpDigits().join(""),
 			cfTurnstileToken: IS_CLOUD ? turnstileToken() : "self-hosted",
 		};
@@ -63,14 +63,14 @@ const ConfirmSignUp = () => {
 		} else {
 			const errorMsg =
 				resp.data.error === "userNotFound"
-					? "Those credentials don't match our records. Please check your username and verification code."
+					? "Those credentials don't match our records. Please check your email and verification code."
 					: "Error confirming account. Please try again.";
 			toast(errorMsg, "error");
 		}
 	});
 
 	const handleResendOtp = () => {
-		toast("To get a new code, please sign up again with the same username.", "info");
+		toast("To get a new code, please sign up again with the same email.", "info");
 		navigate({ to: "/sign-up" });
 	};
 
@@ -100,33 +100,33 @@ const ConfirmSignUp = () => {
 					</div>
 				</div>
 
-				{/* Username Input - only show if username was not pre-filled */}
-				<Show when={!usernameWasPreFilled}>
+				{/* Email input — only shown if the email was not pre-filled */}
+				<Show when={!emailWasPreFilled}>
 					<Input
 						type={InputType.Text}
-						placeholder="Username"
+						placeholder="Email"
 						required={true}
-						autocomplete="username"
-						name="username"
-						id="username"
-						value={username}
+						autocomplete="email"
+						name="email"
+						id="email"
+						value={email}
 						onInput={(e) => {
-							setUsername(e.currentTarget.value);
-							setUsernameError("");
+							setEmail(e.currentTarget.value);
+							setEmailError("");
 						}}
 						styleVariant="medium"
 					/>
-					<Show when={usernameError()}>
+					<Show when={emailError()}>
 						<div class="mt-1">
-							<Alert message={usernameError()} type="error" />
+							<Alert message={emailError()} type="error" />
 						</div>
 					</Show>
 				</Show>
 
-				{/* Show username as text if it was pre-filled */}
-				<Show when={usernameWasPreFilled}>
+				{/* Show the email as text if it was pre-filled */}
+				<Show when={emailWasPreFilled}>
 					<div class="text-gray-400 text-sm">
-						Confirming account for <span class="text-white font-medium">{username()}</span>
+						Confirming account for <span class="text-white font-medium">{email()}</span>
 					</div>
 				</Show>
 
@@ -185,8 +185,8 @@ const ConfirmSignUp = () => {
 
 export const Route = createFileRoute("/_logged-out/confirm-signup")(
 	cloudOnly({
-		validateSearch: (search: Record<string, unknown>): { username?: string; otp?: string } => ({
-			username: (search.username as string) || undefined,
+		validateSearch: (search: Record<string, unknown>): { email?: string; otp?: string } => ({
+			email: (search.email as string) || undefined,
 			otp: (search.otp as string) || undefined,
 		}),
 		component: ConfirmSignUp,

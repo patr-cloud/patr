@@ -19,8 +19,6 @@ mod list_user_workspaces;
 mod mfa;
 /// The endpoint to preview a workspace invite before accepting
 mod preview_workspace_invite;
-/// All endpoints related to recovery options
-mod recovery_options;
 /// All endpoints related to social-login providers (list, disconnect, connect)
 mod social_logins;
 /// The endpoint to update the information of a user
@@ -37,36 +35,21 @@ pub use self::{
 	list_user_workspaces::*,
 	mfa::*,
 	preview_workspace_invite::*,
-	recovery_options::*,
 	social_logins::*,
 	update_user_info::*,
 	web_logins::*,
 };
 
-/// The phone number of a user. This is used to send OTPs, notifications, etc to
-/// the user.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
-#[serde(rename_all = "camelCase")]
-pub struct UserPhoneNumber {
-	/// The country code of the phone number. This is a 2 letter code, such as
-	/// IN, US, UK, etc.
-	pub country_code: String,
-	/// The phone number of the user. This should be a valid phone number. This
-	/// is a string because it can contain leading zeroes, which will not be
-	/// preserved if it is an integer.
-	pub phone_number: String,
-}
-
 /// This is the information that is _allowed_ to be public about a user.
 ///
 /// This is not the entire user object, but only the information that is allowed
-/// to be public. For privacy reasons, things like their email address and phone
-/// number are not public.
+/// to be public. For privacy reasons, their email address — which is also their
+/// unique identifier — is deliberately not part of this. Endpoints scoped to a
+/// workspace expose co-members' emails separately, via
+/// [`WorkspaceUserInfo`][crate::api::workspace::rbac::user::WorkspaceUserInfo].
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct BasicUserInfo {
-	/// The username of the user. This is unique to the user.
-	pub username: String,
 	/// The first name of the user.
 	pub first_name: String,
 	/// The last name of the user.
