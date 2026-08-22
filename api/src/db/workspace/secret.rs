@@ -12,6 +12,7 @@ pub async fn initialize_secret_tables(
 			id UUID NOT NULL,
 			name CITEXT NOT NULL,
 			workspace_id UUID NOT NULL,
+			last_updated TIMESTAMPTZ NOT NULL,
 			deleted TIMESTAMPTZ
 		);
 		"#

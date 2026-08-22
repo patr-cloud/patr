@@ -1,11 +1,10 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO secret(id, name, workspace_id, deleted) VALUES ($1, $2, $3, NULL);",
+  "query": "UPDATE secret SET name = $1, last_updated = NOW() WHERE id = $2;",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
-        "Uuid",
         {
           "Custom": {
             "name": "citext",
@@ -17,5 +16,5 @@
     },
     "nullable": []
   },
-  "hash": "b8ec753c9f8645771e09eb776d8559408bfa368986c0ffe7a875004b7622bd24"
+  "hash": "2e8dfa8899689bc406bd63f063738e078d08e25d60c671b4539396ac4b5ff980"
 }
