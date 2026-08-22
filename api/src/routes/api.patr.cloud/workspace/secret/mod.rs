@@ -10,6 +10,7 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 	Router::new()
 		.mount_auth_endpoint(create_secret, state, allowed_client_type)
 		.mount_auth_endpoint(delete_secret, state, allowed_client_type)
+		.mount_auth_endpoint(get_secret_info, state, allowed_client_type)
 		.mount_auth_endpoint(list_secrets_for_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(update_secret, state, allowed_client_type)
 		.with_state(state.clone())
@@ -75,6 +76,7 @@ async fn create_secret(
 				id,
 				name,
 				workspace_id,
+				last_updated,
 				deleted
 			)
 		VALUES
@@ -82,12 +84,14 @@ async fn create_secret(
 				$1,
 				$2,
 				$3,
+				$4,
 				NULL
 			);
 		"#,
 		secret_id as _,
 		name as _,
 		workspace_id as _,
+		now as _,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -177,6 +181,73 @@ async fn delete_secret(
 		.into_result()
 }
 
+/// Gets the metadata of a single secret: id, name, created, and last-updated.
+/// The value lives in OpenBao and is never read here.
+async fn get_secret_info(
+	AuthenticatedAppRequest {
+		request:
+			ProcessedApiRequest {
+				path: GetSecretInfoPath {
+					workspace_id,
+					secret_id,
+				},
+				query: (),
+				headers: _,
+				body: GetSecretInfoRequestProcessed,
+			},
+		database,
+		redis: _,
+		client_ip: _,
+		user_data: _,
+		state: _,
+	}: AuthenticatedAppRequest<'_, GetSecretInfoRequest>,
+) -> Result<AppResponse<GetSecretInfoRequest>, ErrorType> {
+	trace!("Getting secret info for ID: `{secret_id}`");
+
+	let secret = query!(
+		r#"
+		SELECT
+			secret.id AS "id: Uuid",
+			secret.name AS "name: String",
+			resource.created AS "created: OffsetDateTime",
+			secret.last_updated AS "last_updated: OffsetDateTime"
+		FROM
+			secret
+		JOIN
+			resource
+		ON
+			secret.id = resource.id
+		WHERE
+			secret.id = $1 AND
+			secret.workspace_id = $2 AND
+			secret.deleted IS NULL;
+		"#,
+		secret_id as _,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.map(|row| {
+		WithId::new(
+			row.id,
+			Secret {
+				name: row.name,
+				deployment_id: None,
+				created: row.created,
+				last_updated: row.last_updated,
+			},
+		)
+	})
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
+
+	AppResponse::builder()
+		.body(GetSecretInfoResponse { secret })
+		.headers(())
+		.status_code(StatusCode::OK)
+		.build()
+		.into_result()
+}
+
 /// Lists the secrets in a workspace. Only metadata (id and name) is returned —
 /// the value lives in OpenBao and is never read here.
 async fn list_secrets_for_workspace(
@@ -210,6 +281,8 @@ async fn list_secrets_for_workspace(
 		SELECT
 			secret.id AS "id: Uuid",
 			secret.name AS "name: String",
+			resource.created AS "created: OffsetDateTime",
+			secret.last_updated AS "last_updated: OffsetDateTime",
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			secret
@@ -239,6 +312,8 @@ async fn list_secrets_for_workspace(
 			Secret {
 				name: row.name,
 				deployment_id: None,
+				created: row.created,
+				last_updated: row.last_updated,
 			},
 		)
 	})
@@ -254,9 +329,9 @@ async fn list_secrets_for_workspace(
 		.into_result()
 }
 
-/// Updates a secret: renames the metadata row and overwrites the value in
-/// OpenBao. The plaintext value never touches Postgres and is zeroized once
-/// written.
+/// Updates a secret: renames the metadata row and, when a new value is provided,
+/// overwrites the value in OpenBao. An omitted value keeps the existing one. The
+/// plaintext value never touches Postgres and is zeroized once written.
 async fn update_secret(
 	AuthenticatedAppRequest {
 		request:
@@ -267,7 +342,7 @@ async fn update_secret(
 				},
 				query: (),
 				headers: _,
-				body: UpdateSecretRequestProcessed { name, mut value },
+				body: UpdateSecretRequestProcessed { name, value },
 			},
 		database,
 		redis: _,
@@ -283,7 +358,8 @@ async fn update_secret(
 		UPDATE
 			secret
 		SET
-			name = $1
+			name = $1,
+			last_updated = NOW()
 		WHERE
 			id = $2;
 		"#,
@@ -293,11 +369,15 @@ async fn update_secret(
 	.execute(&mut **database)
 	.await?;
 
-	let write = OpenBaoClient::new(&state.config.open_bao)
-		.write_secret(workspace_id, secret_id, &value)
-		.await;
-	value.zeroize();
-	write.map_err(|err| ErrorType::server_error(err))?;
+	// Only touch OpenBao when a new value was supplied; otherwise the existing
+	// value is kept. Zeroize the plaintext regardless of the outcome.
+	if let Some(mut value) = value {
+		let write = OpenBaoClient::new(&state.config.open_bao)
+			.write_secret(workspace_id, secret_id, &value)
+			.await;
+		value.zeroize();
+		write.map_err(|err| ErrorType::server_error(err))?;
+	}
 
 	AppResponse::builder()
 		.body(UpdateSecretResponse)
