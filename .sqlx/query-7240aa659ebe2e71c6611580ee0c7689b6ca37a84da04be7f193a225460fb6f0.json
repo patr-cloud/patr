@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE role_binding ADD CONSTRAINT role_binding_fk_actor_id_workspace_id FOREIGN KEY(actor_id, workspace_id) REFERENCES actor(id, workspace_id), ADD CONSTRAINT role_binding_fk_role_id_workspace_id FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, workspace_id), ADD CONSTRAINT role_binding_fk_scope_id_workspace_id FOREIGN KEY(scope_id, workspace_id) REFERENCES resource(id, workspace_id), ADD CONSTRAINT role_binding_fk_created_by FOREIGN KEY(created_by) REFERENCES \"user\"(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "7240aa659ebe2e71c6611580ee0c7689b6ca37a84da04be7f193a225460fb6f0"
+}

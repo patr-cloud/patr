@@ -104,6 +104,41 @@ pub async fn initialize_rbac_tables(
 	.execute(&mut *connection)
 	.await?;
 
+	// The only place a permission target appears. Scope is a resource id;
+	// workspace-wide = scope_id = workspace_id (workspaces self-own their
+	// resource row), so there is no scope-type column.
+	query!(
+		r#"
+		CREATE TABLE role_binding(
+			id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			actor_id UUID NOT NULL,
+			role_id UUID NOT NULL,
+			scope_id UUID NOT NULL,
+			created TIMESTAMPTZ NOT NULL,
+			created_by UUID
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// A token's own (role, scope) ceiling — independent of the owner's
+	// bindings. Effective permissions are the ceiling intersected with the
+	// owner's current permissions at auth time.
+	query!(
+		r#"
+		CREATE TABLE api_token_role_binding(
+			token_id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			role_id UUID NOT NULL,
+			scope_id UUID NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// Users belong to an workspace through a role
 	query!(
 		r#"
@@ -251,6 +286,51 @@ pub async fn initialize_rbac_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE role_binding
+			ADD CONSTRAINT role_binding_pk PRIMARY KEY(id),
+			ADD CONSTRAINT role_binding_uq_actor_id_role_id_scope_id
+				UNIQUE(actor_id, role_id, scope_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			role_binding_idx_actor_id
+		ON
+			role_binding
+		(actor_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE INDEX
+			role_binding_idx_scope_id
+		ON
+			role_binding
+		(scope_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE api_token_role_binding
+		ADD CONSTRAINT api_token_role_binding_pk
+		PRIMARY KEY(token_id, role_id, scope_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// Users belong to an workspace through a role
 	query!(
 		r#"
@@ -387,6 +467,40 @@ pub async fn initialize_rbac_constraints(
 			),
 			ADD CONSTRAINT actor_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Every FK pivots on workspace_id: the actor, the role, and the scope
+	// must all live in the binding's workspace. No `deleted` in the scope
+	// FKs — a binding onto a tombstoned resource is inert, the authorizer
+	// re-checks `deleted IS NULL`.
+	query!(
+		r#"
+		ALTER TABLE role_binding
+			ADD CONSTRAINT role_binding_fk_actor_id_workspace_id
+				FOREIGN KEY(actor_id, workspace_id) REFERENCES actor(id, workspace_id),
+			ADD CONSTRAINT role_binding_fk_role_id_workspace_id
+				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, workspace_id),
+			ADD CONSTRAINT role_binding_fk_scope_id_workspace_id
+				FOREIGN KEY(scope_id, workspace_id) REFERENCES resource(id, workspace_id),
+			ADD CONSTRAINT role_binding_fk_created_by
+				FOREIGN KEY(created_by) REFERENCES "user"(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE api_token_role_binding
+			ADD CONSTRAINT api_token_role_binding_fk_token_id
+				FOREIGN KEY(token_id) REFERENCES user_api_token(token_id),
+			ADD CONSTRAINT api_token_role_binding_fk_role_id_workspace_id
+				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, workspace_id),
+			ADD CONSTRAINT api_token_role_binding_fk_scope_id_workspace_id
+				FOREIGN KEY(scope_id, workspace_id) REFERENCES resource(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)

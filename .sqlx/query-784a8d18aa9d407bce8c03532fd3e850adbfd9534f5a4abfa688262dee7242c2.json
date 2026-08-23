@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE api_token_role_binding(token_id UUID NOT NULL, workspace_id UUID NOT NULL, role_id UUID NOT NULL, scope_id UUID NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "784a8d18aa9d407bce8c03532fd3e850adbfd9534f5a4abfa688262dee7242c2"
+}

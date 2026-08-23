@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX role_binding_idx_scope_id ON role_binding (scope_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "aee84851e1ca9ef7b6a7553a4dcc81d423881ceb10893325fee01a5df4671410"
+}

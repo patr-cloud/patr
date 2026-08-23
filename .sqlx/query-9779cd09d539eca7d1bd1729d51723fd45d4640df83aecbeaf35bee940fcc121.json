@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE role_binding(id UUID NOT NULL, workspace_id UUID NOT NULL, actor_id UUID NOT NULL, role_id UUID NOT NULL, scope_id UUID NOT NULL, created TIMESTAMPTZ NOT NULL, created_by UUID);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9779cd09d539eca7d1bd1729d51723fd45d4640df83aecbeaf35bee940fcc121"
+}
