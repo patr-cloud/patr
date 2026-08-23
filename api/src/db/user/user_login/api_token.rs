@@ -118,6 +118,23 @@ pub async fn initialize_api_token_tables(
 	.execute(&mut *connection)
 	.await?;
 
+	// A token's own (permission, scope) ceiling — independent of the owner's
+	// bindings. Effective permissions are the ceiling intersected with the
+	// owner's current permissions at auth time. Permissions are global, so
+	// only the scope FK pins a row to its workspace.
+	query!(
+		r#"
+		CREATE TABLE user_api_token_permission_binding(
+			token_id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			permission_id UUID NOT NULL,
+			scope_id UUID NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -213,6 +230,16 @@ pub async fn initialize_api_token_indices(
 		ALTER TABLE user_api_token_resource_permissions_exclude
 		ADD CONSTRAINT user_api_token_resource_permissions_exclude_pk
 		PRIMARY KEY(token_id, workspace_id, permission_id, resource_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_api_token_permission_binding
+		ADD CONSTRAINT user_api_token_permission_binding_pk
+		PRIMARY KEY(token_id, permission_id, scope_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -353,6 +380,20 @@ pub async fn initialize_api_token_constraints(
 				workspace_id,
 				deleted
 			);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE user_api_token_permission_binding
+			ADD CONSTRAINT user_api_token_permission_binding_fk_token_id
+				FOREIGN KEY(token_id) REFERENCES user_api_token(token_id),
+			ADD CONSTRAINT user_api_token_permission_binding_fk_permission_id
+				FOREIGN KEY(permission_id) REFERENCES permission(id),
+			ADD CONSTRAINT user_api_token_permission_binding_fk_scope_id_workspace_id
+				FOREIGN KEY(scope_id, workspace_id) REFERENCES resource(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
