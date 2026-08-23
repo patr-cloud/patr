@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE audit_log(id UUID NOT NULL,  /* Where the action was performed from */ timestamp TIMESTAMPTZ NOT NULL, ip INET NOT NULL, location GEOMETRY NOT NULL, user_agent TEXT NOT NULL, country TEXT NOT NULL, region TEXT NOT NULL, city TEXT NOT NULL, timezone TEXT NOT NULL,  actor_client_id UUID NOT NULL, action AUDIT_LOG_TYPE NOT NULL, /* workspace_id is kept in case the resource is moved to another workspace */ workspace_id UUID NOT NULL, resource_id UUID NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ddd1e5c979d48ccc1d87a22caf48cb1d301fc2cd4459ae8a7ca870b05efafb41"
+}
