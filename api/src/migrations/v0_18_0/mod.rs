@@ -14,3 +14,4 @@ mod m011_rename_owner_id_to_workspace_id;
 mod m012_actor_client_registry;
 mod m013_audit_log_actor_client_id;
 mod m014_role_permission_flat_list;
+mod m015_actor;

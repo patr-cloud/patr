@@ -76,6 +76,34 @@ pub async fn initialize_rbac_tables(
 	.execute(&mut *connection)
 	.await?;
 
+	// The workspace-scoped principal that role bindings are granted on. A
+	// user's actor requires membership; a service account's (future) requires
+	// its workspace-owned row. One actor per principal per workspace.
+	query!(
+		r#"
+		CREATE TYPE ACTOR_TYPE AS ENUM(
+			'user',
+			'service_account'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE actor(
+			id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			actor_type ACTOR_TYPE NOT NULL,
+			user_id UUID,
+			service_account_id UUID
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// Users belong to an workspace through a role
 	query!(
 		r#"
@@ -210,6 +238,19 @@ pub async fn initialize_rbac_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE actor
+			ADD CONSTRAINT actor_pk PRIMARY KEY(id),
+			ADD CONSTRAINT actor_uq_id_workspace_id UNIQUE(id, workspace_id),
+			ADD CONSTRAINT actor_uq_user_id_workspace_id UNIQUE(user_id, workspace_id),
+			ADD CONSTRAINT actor_uq_service_account_id_workspace_id
+				UNIQUE(service_account_id, workspace_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// Users belong to an workspace through a role
 	query!(
 		r#"
@@ -323,6 +364,29 @@ pub async fn initialize_rbac_constraints(
 				FOREIGN KEY(role_id) REFERENCES role(id),
 			ADD CONSTRAINT role_permission_fk_permission_id
 				FOREIGN KEY(permission_id) REFERENCES permission(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// The (user_id, workspace_id) FK up to workspace_user arrives with the
+	// cutover, once that table's primary key no longer carries role_id.
+	query!(
+		r#"
+		ALTER TABLE actor
+			ADD CONSTRAINT actor_chk_type_matches_columns CHECK(
+				(
+					actor_type = 'user' AND
+					user_id IS NOT NULL AND
+					service_account_id IS NULL
+				) OR (
+					actor_type = 'service_account' AND
+					service_account_id IS NOT NULL AND
+					user_id IS NULL
+				)
+			),
+			ADD CONSTRAINT actor_fk_workspace_id
+				FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 		"#
 	)
 	.execute(&mut *connection)

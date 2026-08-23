@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE actor ADD CONSTRAINT actor_chk_type_matches_columns CHECK((actor_type = 'user' AND user_id IS NOT NULL AND service_account_id IS NULL) OR (actor_type = 'service_account' AND service_account_id IS NOT NULL AND user_id IS NULL)), ADD CONSTRAINT actor_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e6add41d8e9118b82006c0d95364d1646efd17b6c16c7a58584147a4de50b6c8"
+}
