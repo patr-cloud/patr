@@ -12,3 +12,4 @@ mod m009_scope_roles_to_workspace;
 mod m010_workspace_user_invites;
 mod m011_rename_owner_id_to_workspace_id;
 mod m012_actor_client_registry;
+mod m013_audit_log_actor_client_id;
