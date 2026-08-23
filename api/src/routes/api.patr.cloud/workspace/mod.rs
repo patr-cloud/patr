@@ -14,7 +14,7 @@ mod runner;
 mod volume;
 
 /// The handler to create a new workspace. The workspace name must be unique.
-mod create_workspace;
+pub(crate) mod create_workspace;
 /// The handler to delete a workspace. This will delete all associated data
 /// with the workspace, including the database, container registry, and any
 /// other resources. This is a destructive operation and cannot be undone.

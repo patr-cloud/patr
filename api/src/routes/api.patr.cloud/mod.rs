@@ -1,7 +1,7 @@
 mod api_environment;
 mod auth;
 mod user;
-mod workspace;
+pub(crate) mod workspace;
 
 use axum::Router;
 

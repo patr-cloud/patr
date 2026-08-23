@@ -208,13 +208,20 @@ pub async fn create_workspace(
 	}
 }
 
-struct DefaultRole {
-	name: &'static str,
-	description: &'static str,
-	permissions: Vec<Permission>,
+/// A default role seeded into every new workspace. Also consumed by the
+/// role-binding backfill migration to decide which existing roles are the
+/// untouched seeded defaults (and therefore become immutable).
+pub(crate) struct DefaultRole {
+	/// The role's seeded name.
+	pub(crate) name: &'static str,
+	/// The role's seeded description.
+	pub(crate) description: &'static str,
+	/// The permissions the role grants (seeded as Exclude(∅) = whole workspace).
+	pub(crate) permissions: Vec<Permission>,
 }
 
-fn default_roles() -> Vec<DefaultRole> {
+/// The set of default roles seeded into every new workspace.
+pub(crate) fn default_roles() -> Vec<DefaultRole> {
 	use Permission::*;
 
 	let mut roles = Vec::new();
