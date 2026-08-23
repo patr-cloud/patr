@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE role_permission(role_id UUID NOT NULL, permission_id UUID NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "7d1a6d94a7a650b415caaca42a2670eb9f5e941fdeaad7c5bb2b6a9c8f954c84"
+}
