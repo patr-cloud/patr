@@ -36,14 +36,28 @@ pub async fn initialize_rbac_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	// Roles belong to an workspace
+	// Roles belong to an workspace. Immutable roles are the defaults seeded
+	// at workspace creation — uneditable and undeletable.
 	query!(
 		r#"
 		CREATE TABLE role(
 			id UUID NOT NULL,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500) NOT NULL,
-			workspace_id UUID NOT NULL
+			workspace_id UUID NOT NULL,
+			is_immutable BOOLEAN NOT NULL DEFAULT FALSE
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// A role is a flat list of permissions; targeting lives on the binding.
+	query!(
+		r#"
+		CREATE TABLE role_permission(
+			role_id UUID NOT NULL,
+			permission_id UUID NOT NULL
 		);
 		"#
 	)
@@ -186,6 +200,16 @@ pub async fn initialize_rbac_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE role_permission
+		ADD CONSTRAINT role_permission_pk
+		PRIMARY KEY(role_id, permission_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// Users belong to an workspace through a role
 	query!(
 		r#"
@@ -287,6 +311,18 @@ pub async fn initialize_rbac_constraints(
 		ALTER TABLE role
 		ADD CONSTRAINT role_fk_workspace_id
 		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		ALTER TABLE role_permission
+			ADD CONSTRAINT role_permission_fk_role_id
+				FOREIGN KEY(role_id) REFERENCES role(id),
+			ADD CONSTRAINT role_permission_fk_permission_id
+				FOREIGN KEY(permission_id) REFERENCES permission(id);
 		"#
 	)
 	.execute(&mut *connection)
