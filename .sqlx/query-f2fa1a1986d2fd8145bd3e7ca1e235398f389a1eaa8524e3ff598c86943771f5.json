@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE role_binding ADD CONSTRAINT role_binding_pk PRIMARY KEY(id), ADD CONSTRAINT role_binding_uq_actor_id_role_id_scope_id UNIQUE(actor_id, role_id, scope_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f2fa1a1986d2fd8145bd3e7ca1e235398f389a1eaa8524e3ff598c86943771f5"
+}

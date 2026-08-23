@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_api_token_permission_binding ADD CONSTRAINT user_api_token_permission_binding_fk_token_id FOREIGN KEY(token_id) REFERENCES user_api_token(token_id), ADD CONSTRAINT user_api_token_permission_binding_fk_permission_id FOREIGN KEY(permission_id) REFERENCES permission(id), ADD CONSTRAINT user_api_token_permission_binding_fk_scope_id_workspace_id FOREIGN KEY(scope_id, workspace_id) REFERENCES resource(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9a6a3b319839209c5ade35c25de3773e189a82f5c71f3b693c5e2cb047d09354"
+}
