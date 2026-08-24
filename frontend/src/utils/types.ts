@@ -1,3 +1,4 @@
+import { PermissionScope } from "~/bindings/PermissionScope";
 import { Accessor } from "solid-js";
 import { ErrorType } from "~/bindings";
 
@@ -84,20 +85,15 @@ export type UserPermissionsT =
 	  }
 	| ({
 			type: "member";
-	  } & Record<
-			ResourceTypes,
-			Record<ActionTypes, { permissionType: "include" | "exclude"; resources: Array<string> }>
-	  >);
+	  } & Record<ResourceTypes, Record<ActionTypes, PermissionScope>>);
 
 // Local copies of wire shapes whose generated bindings went away with the
-// flattened role DTOs. The remaining consumers (the include/exclude role
-// matrix and the token permission editor) are retired by the role-editor
-// and token-screen reworks later in the stack.
+// flattened role DTOs. The remaining consumers (the token permission editor
+// and its selector) are retired by the token-screen rework later in the
+// stack.
 export type ResourcePermissionType =
-	{ permissionType: "include"; resources: Array<string> } | { permissionType: "exclude"; resources: Array<string> };
-
-/** The pre-flattening role metadata shape, still used by the roles list. */
-export type Role = { name: string; description?: string };
+	| { permissionType: "include"; resources: Array<string> }
+	| { permissionType: "exclude"; resources: Array<string> };
 
 /**
  * The old per-workspace token permission shape. The token screens keep

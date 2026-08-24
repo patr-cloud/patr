@@ -1,3 +1,4 @@
+import { PermissionScope } from "~/bindings/PermissionScope";
 import { ActionTypes, MaybeAccessor, ResourceTypes, UserPermissionsT } from "~/utils/types";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { createMemo } from "solid-js";
@@ -44,10 +45,7 @@ const useGetPermissions = <T extends ResourceTypes>(resourceType: T, resId: Mayb
 		if (!wsId) return allFalse;
 		if (!auth || auth.type !== "LoggedIn") return allFalse;
 
-		const userPermissionsOnResource = userPerms[resourceType] as Record<
-			ActionTypes,
-			{ permissionType: "include" | "exclude"; resources: string[] }
-		>;
+		const userPermissionsOnResource = userPerms[resourceType] as Record<ActionTypes, PermissionScope>;
 		if (!userPermissionsOnResource) return allFalse;
 
 		const permissions = {} as Record<ActionsForResource<T>, boolean>;
@@ -61,13 +59,10 @@ const useGetPermissions = <T extends ResourceTypes>(resourceType: T, resId: Mayb
 				return;
 			}
 
-			if (actionPermission.permissionType === "exclude") {
-				permissions[action as ActionsForResource<T>] = !actionPermission.resources.includes(resourceId);
-			} else if (actionPermission.permissionType === "include") {
-				permissions[action as ActionsForResource<T>] = actionPermission.resources.includes(resourceId);
-			} else {
-				permissions[action as ActionsForResource<T>] = false;
-			}
+			// A workspace-wide scope covers every resource; a resource set
+			// covers exactly its members.
+			permissions[action as ActionsForResource<T>] =
+				actionPermission.scopeType === "workspace" || actionPermission.resources.includes(resourceId);
 		});
 
 		console.log(permissions);
@@ -126,16 +121,9 @@ const useIsAllowed = (resourceType: ResourceTypes, action: ActionTypes, resId?: 
 			return true;
 		}
 
-		// Resource-dependent actions with a resourceId: check include/exclude lists
-		if (actionPermission.permissionType === "exclude") {
-			return !actionPermission.resources.includes(resourceId);
-		}
-
-		if (actionPermission.permissionType === "include") {
-			return actionPermission.resources.includes(resourceId);
-		}
-
-		return false;
+		// Resource-dependent actions with a resourceId: a workspace scope covers
+		// everything, a resource set covers exactly its members
+		return actionPermission.scopeType === "workspace" || actionPermission.resources.includes(resourceId);
 	});
 
 	return isAllowed;

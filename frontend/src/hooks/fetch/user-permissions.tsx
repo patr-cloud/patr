@@ -1,5 +1,5 @@
 import { createQuery } from "@tanstack/solid-query";
-import { GetCurrentPermissionsResponse, ListAllPermissionsResponse } from "~/bindings";
+import { GetCurrentPermissionsResponse, ListAllPermissionsResponse, PermissionScope } from "~/bindings";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { userPermissionKeys } from "~/hooks/query-keys";
@@ -75,10 +75,9 @@ const useUserPermissionsQuery = () => {
 				const validActions = new Set<string>(userActionTypes);
 
 				// @ts-expect-error just this once
-				let detailedPermissions: Record<
-					ResourceTypes,
-					Record<ActionTypes, { permissionType: "include" | "exclude"; resources: Array<string> }>
-				> & { type: "member" } = { type: "member" };
+				let detailedPermissions: Record<ResourceTypes, Record<ActionTypes, PermissionScope>> & {
+					type: "member";
+				} = { type: "member" };
 
 				for (const [resourceType, actionPermissions] of Object.entries(permissionsMap)) {
 					if (resourceType === "type" || !validResourceTypes.has(resourceType)) continue;
