@@ -350,7 +350,7 @@ async fn initiate_upload_as_member_without_push_returns_forbidden() {
 		.create_role_with_permissions(
 			&admin.access_token,
 			workspace.id,
-			BTreeMap::from([(perm_id, ResourcePermissionType::Exclude(BTreeSet::new()))]),
+			vec![perm_id],
 		)
 		.await;
 

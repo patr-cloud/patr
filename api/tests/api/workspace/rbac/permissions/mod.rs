@@ -1,8 +1,6 @@
-use std::collections::{BTreeMap, BTreeSet};
-
 use models::{
 	api::workspace::rbac::user::RoleGrant,
-	rbac::{Permission, PermissionScope, ResourcePermissionType},
+	rbac::{Permission, PermissionScope},
 	utils::Uuid,
 };
 
@@ -22,33 +20,23 @@ pub mod workspace;
 /// permissions. Returns (admin, workspace_id, user_b).
 async fn setup_permission_test(
 	setup: &TestSetup,
-	perm_entries: Vec<(Permission, ResourcePermissionType)>,
+	perm_entries: Vec<(Permission, PermissionScope)>,
 ) -> (TestUser, Uuid, TestUser) {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
-	let mut permissions = BTreeMap::new();
-	for (perm, perm_type) in perm_entries {
-		let perm_id = setup.get_permission_id(perm);
-		permissions.insert(perm_id, perm_type);
+	let mut permissions = Vec::new();
+	let mut scope = None;
+	for (perm, perm_scope) in perm_entries {
+		permissions.push(setup.get_permission_id(perm));
+		// A binding applies the whole role at one scope; entries share it.
+		assert!(
+			scope.is_none() || scope.as_ref() == Some(&perm_scope),
+			"all entries must share one scope"
+		);
+		scope = Some(perm_scope);
 	}
-
-	// The grant's scope is derived from the (uniform) permission entries:
-	// scope moved from the role to the assignment at the role-binding
-	// cutover. Non-empty excludes have no additive equivalent.
-	let scope = match permissions
-		.values()
-		.next()
-		.expect("at least one permission")
-	{
-		ResourcePermissionType::Include(resources) => PermissionScope::Resources(resources.clone()),
-		ResourcePermissionType::Exclude(resources) if resources.is_empty() => {
-			PermissionScope::Workspace
-		}
-		ResourcePermissionType::Exclude(_) => {
-			panic!("non-empty excludes are not representable as grants")
-		}
-	};
+	let scope = scope.expect("at least one permission");
 
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, permissions)
@@ -68,16 +56,12 @@ async fn setup_permission_test(
 	(admin, workspace.id, user_b)
 }
 
-fn include(ids: &[Uuid]) -> ResourcePermissionType {
-	ResourcePermissionType::Include(ids.iter().copied().collect())
+fn include(ids: &[Uuid]) -> PermissionScope {
+	PermissionScope::Resources(ids.iter().copied().collect())
 }
 
-fn exclude(ids: &[Uuid]) -> ResourcePermissionType {
-	ResourcePermissionType::Exclude(ids.iter().copied().collect())
-}
-
-fn all() -> ResourcePermissionType {
-	ResourcePermissionType::Exclude(BTreeSet::new())
+fn all() -> PermissionScope {
+	PermissionScope::Workspace
 }
 
 /// A grant scope covering exactly these resources.

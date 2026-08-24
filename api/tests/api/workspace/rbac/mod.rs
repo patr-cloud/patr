@@ -185,10 +185,7 @@ async fn update_role_works() {
 						name: new_name.clone(),
 						description: "test role".to_string(),
 					},
-					permissions: BTreeMap::from([(
-						setup.get_permission_id(Permission::ViewRoles),
-						ResourcePermissionType::Include(Default::default()),
-					)]),
+					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
 				})
 				.build(),
 		)
@@ -412,14 +409,8 @@ async fn get_current_permissions_member() {
 
 	let view_roles_id = setup.get_permission_id(Permission::ViewRoles);
 
-	let mut permissions = BTreeMap::new();
-	permissions.insert(
-		view_roles_id,
-		ResourcePermissionType::Exclude(std::collections::BTreeSet::new()),
-	);
-
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, permissions)
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![view_roles_id])
 		.await;
 
 	let user_b = setup
@@ -494,7 +485,7 @@ async fn create_role_duplicate_name() {
 						name: role.name.clone(),
 						description: "duplicate".to_string(),
 					},
-					permissions: BTreeMap::new(),
+					permissions: vec![],
 				})
 				.build(),
 		)
@@ -597,10 +588,7 @@ async fn update_role_nonexistent() {
 						name: random_name(8),
 						description: "test role".to_string(),
 					},
-					permissions: BTreeMap::from([(
-						setup.get_permission_id(Permission::ViewRoles),
-						ResourcePermissionType::Include(Default::default()),
-					)]),
+					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
 				})
 				.build(),
 		)
@@ -622,11 +610,7 @@ async fn update_role_add_permissions() {
 		.create_test_role(&user.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::ViewRoles),
-		ResourcePermissionType::Exclude(Default::default()),
-	);
+	let perms = vec![setup.get_permission_id(Permission::ViewRoles)];
 
 	setup
 		.make_web_dashboard_call(
@@ -681,25 +665,16 @@ async fn update_role_remove_permissions() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	// Start with two permissions.
-	let mut perms = BTreeMap::new();
-	perms.insert(
+	let perms = vec![
 		setup.get_permission_id(Permission::ViewRoles),
-		ResourcePermissionType::Exclude(Default::default()),
-	);
-	perms.insert(
 		setup.get_permission_id(Permission::ModifyRoles),
-		ResourcePermissionType::Exclude(Default::default()),
-	);
+	];
 	let role = setup
 		.create_role_with_permissions(&user.access_token, workspace.id, perms)
 		.await;
 
 	// Replace with just one permission.
-	let mut next = BTreeMap::new();
-	next.insert(
-		setup.get_permission_id(Permission::ViewRoles),
-		ResourcePermissionType::Exclude(Default::default()),
-	);
+	let next = vec![setup.get_permission_id(Permission::ViewRoles)];
 
 	setup
 		.make_web_dashboard_call(
@@ -825,11 +800,7 @@ async fn create_role_invalid_name() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::ViewRoles),
-		ResourcePermissionType::Include(Default::default()),
-	);
+	let perms = vec![setup.get_permission_id(Permission::ViewRoles)];
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -1027,11 +998,7 @@ async fn create_role_with_description(
 	workspace_id: Uuid,
 	description: &str,
 ) -> ::axum_test::TestResponse {
-	let mut permissions = BTreeMap::new();
-	permissions.insert(
-		setup.get_permission_id(Permission::ViewRoles),
-		ResourcePermissionType::Include(Default::default()),
-	);
+	let permissions = vec![setup.get_permission_id(Permission::ViewRoles)];
 	setup
 		.make_web_dashboard_call(
 			ApiRequest::<CreateNewRoleRequest>::builder()
@@ -1148,10 +1115,7 @@ async fn update_role_rejects_xss_in_description() {
 						name: random_name(8),
 						description: "<script>alert(1)</script>".to_string(),
 					},
-					permissions: BTreeMap::from([(
-						setup.get_permission_id(Permission::ViewRoles),
-						ResourcePermissionType::Include(Default::default()),
-					)]),
+					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
 				})
 				.build(),
 		)
@@ -1221,10 +1185,7 @@ async fn role_cross_workspace_update_denied() {
 						name: random_name(8),
 						description: "test role".to_string(),
 					},
-					permissions: BTreeMap::from([(
-						setup.get_permission_id(Permission::ViewRoles),
-						ResourcePermissionType::Include(Default::default()),
-					)]),
+					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
 				})
 				.build(),
 		)
@@ -1319,6 +1280,85 @@ async fn default_roles_seeded_on_workspace_create() {
 }
 
 #[tokio::test]
+async fn default_roles_are_immutable() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let roles = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListAllRolesRequest>::builder()
+				.path(ListAllRolesPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListAllRolesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListAllRolesResponse>>()
+		.response
+		.roles;
+	let seeded = roles
+		.iter()
+		.find(|role| role.data.is_immutable)
+		.expect("a new workspace must seed immutable default roles");
+
+	let update = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRoleRequest>::builder()
+				.path(UpdateRolePath {
+					workspace_id: workspace.id,
+					role_id: seeded.id,
+				})
+				.headers(UpdateRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRoleRequest {
+					role: Role {
+						name: random_name(8),
+						description: "nope".to_string(),
+					},
+					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		update.status_code(),
+		StatusCode::FORBIDDEN,
+		"updating a seeded default role must be rejected"
+	);
+
+	let delete = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteRoleRequest>::builder()
+				.path(DeleteRolePath {
+					workspace_id: workspace.id,
+					role_id: seeded.id,
+				})
+				.query(DeleteRoleQuery {
+					remove_users: false,
+				})
+				.headers(DeleteRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(DeleteRoleRequest)
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		delete.status_code(),
+		StatusCode::FORBIDDEN,
+		"deleting a seeded default role must be rejected"
+	);
+}
+
+#[tokio::test]
 async fn create_role_name_too_short() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
@@ -1339,10 +1379,7 @@ async fn create_role_name_too_short() {
 						name: "ab".to_string(),
 						description: "too short".to_string(),
 					},
-					permissions: BTreeMap::from([(
-						setup.get_permission_id(Permission::ViewRoles),
-						ResourcePermissionType::Exclude(Default::default()),
-					)]),
+					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
 				})
 				.build(),
 		)
@@ -1376,10 +1413,7 @@ async fn create_role_same_name_across_workspaces() {
 							name: name.clone(),
 							description: "shared name".to_string(),
 						},
-						permissions: BTreeMap::from([(
-							setup.get_permission_id(Permission::ViewRoles),
-							ResourcePermissionType::Exclude(Default::default()),
-						)]),
+						permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
 					})
 					.build(),
 			)
@@ -1417,7 +1451,7 @@ async fn update_role_empty_permissions_400() {
 						name: random_name(8),
 						description: "test role".to_string(),
 					},
-					permissions: BTreeMap::new(),
+					permissions: vec![],
 				})
 				.build(),
 		)

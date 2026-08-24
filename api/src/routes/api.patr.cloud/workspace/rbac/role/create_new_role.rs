@@ -1,8 +1,7 @@
+use std::collections::BTreeSet;
+
 use axum::http::StatusCode;
-use models::{
-	api::workspace::rbac::role::*,
-	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant},
-};
+use models::api::workspace::rbac::role::*;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -37,15 +36,6 @@ pub async fn create_new_role(
 	info!("Creating new role: {} in workspace: {}", name, workspace_id);
 
 	if permissions.is_empty() {
-		return Err(ErrorType::WrongParameters);
-	}
-
-	// A binding applies the whole role at one scope, so every permission in a
-	// role must carry the same resource set. Non-uniform roles became
-	// unrepresentable at the role-binding cutover.
-	let mut values = permissions.values();
-	let first = values.next();
-	if values.any(|value| Some(value) != first) {
 		return Err(ErrorType::WrongParameters);
 	}
 
@@ -119,6 +109,13 @@ pub async fn create_new_role(
 
 	trace!("Role created. Inserting permissions.");
 
+	let permission_ids = permissions
+		.into_iter()
+		.collect::<BTreeSet<_>>()
+		.into_iter()
+		.map(Into::into)
+		.collect::<Vec<_>>();
+
 	query!(
 		r#"
 		INSERT INTO
@@ -128,11 +125,7 @@ pub async fn create_new_role(
 			UNNEST($2::UUID[]);
 		"#,
 		role_id as _,
-		&permissions
-			.keys()
-			.copied()
-			.map(Into::into)
-			.collect::<Vec<_>>(),
+		&permission_ids,
 	)
 	.execute(&mut **database)
 	.await
@@ -142,98 +135,6 @@ pub async fn create_new_role(
 		}
 		other => ErrorType::server_error(other),
 	})?;
-
-	// The legacy per-permission template rows are still dual-written: until
-	// the assignment DTOs carry scopes, they are where a role's scope is
-	// read from at assignment time.
-	for (permission_id, permission) in permissions {
-		let permission_type = ResourcePermissionTypeDiscriminant::from(&permission);
-		query!(
-			r#"
-			INSERT INTO
-				role_resource_permissions_type(
-					role_id,
-					permission_id,
-					permission_type
-				)
-			VALUES
-				(
-					$1,
-					$2,
-					$3
-				);
-			"#,
-			role_id as _,
-			permission_id as _,
-			permission_type as _,
-		)
-		.execute(&mut **database)
-		.await?;
-		match permission {
-			ResourcePermissionType::Include(resources) => {
-				query!(
-					r#"
-					INSERT INTO
-						role_resource_permissions_include(
-							role_id,
-							permission_id,
-							resource_id,
-							permission_type
-						)
-					VALUES
-						(
-							$1,
-							$2,
-							UNNEST($3::UUID[]),
-							DEFAULT
-						);
-					"#,
-					role_id as _,
-					permission_id as _,
-					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
-				)
-				.execute(&mut **database)
-				.await
-				.map_err(|err| match err {
-					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-						ErrorType::ResourceDoesNotExist
-					}
-					other => ErrorType::server_error(other),
-				})?;
-			}
-			ResourcePermissionType::Exclude(resources) => {
-				query!(
-					r#"
-					INSERT INTO
-						role_resource_permissions_exclude(
-							role_id,
-							permission_id,
-							resource_id,
-							permission_type
-						)
-					VALUES
-						(
-							$1,
-							$2,
-							UNNEST($3::UUID[]),
-							DEFAULT
-						);
-					"#,
-					role_id as _,
-					permission_id as _,
-					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
-				)
-				.execute(&mut **database)
-				.await
-				.map_err(|err| match err {
-					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-						ErrorType::ResourceDoesNotExist
-					}
-					other => ErrorType::server_error(other),
-				})?;
-			}
-		};
-	}
 
 	AppResponse::builder()
 		.body(CreateNewRoleResponse {

@@ -104,6 +104,8 @@ pub enum ErrorType {
 	/// The role that the user is trying to delete is in use and cannot be
 	/// deleted
 	RoleInUse,
+	/// The role is a seeded default role and cannot be edited or deleted
+	RoleIsImmutable,
 	/// Another instance of the same runner ID is already connected
 	RunnerAlreadyConnected,
 	/// The operation is not allowed in the current runner mode
@@ -191,6 +193,7 @@ impl ErrorType {
 			Self::ApiTokenDoesNotExist => StatusCode::NOT_FOUND,
 			Self::ApiTokenAlreadyExists => StatusCode::CONFLICT,
 			Self::RoleInUse => StatusCode::CONFLICT,
+			Self::RoleIsImmutable => StatusCode::FORBIDDEN,
 			Self::RunnerAlreadyConnected => StatusCode::CONFLICT,
 			Self::InvalidRunnerMode => StatusCode::FORBIDDEN,
 			Self::NotRootDomain => StatusCode::BAD_REQUEST,
@@ -260,6 +263,7 @@ impl ErrorType {
 			Self::ApiTokenDoesNotExist => "The API token does not exist",
 			Self::ApiTokenAlreadyExists => "An API token with that name already exists",
 			Self::RoleInUse => "The role is currently assigned to users and cannot be deleted",
+			Self::RoleIsImmutable => "Default roles cannot be edited or deleted",
 			Self::RunnerAlreadyConnected => {
 				"Another instance of the same runner ID is already connected"
 			}

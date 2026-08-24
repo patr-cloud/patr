@@ -33,6 +33,29 @@ pub async fn delete_role(
 ) -> Result<AppResponse<DeleteRoleRequest>, ErrorType> {
 	info!("Deleting role: {} in workspace: {}", role_id, workspace_id);
 
+	// Seeded default roles are read-only.
+	let is_immutable = query!(
+		r#"
+		SELECT
+			is_immutable
+		FROM
+			role
+		WHERE
+			id = $1 AND
+			workspace_id = $2;
+		"#,
+		role_id as _,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::RoleDoesNotExist)?
+	.is_immutable;
+
+	if is_immutable {
+		return Err(ErrorType::RoleIsImmutable);
+	}
+
 	// Only count when the caller might want to abort. With `remove_users=true`
 	// we'd delete regardless, so paying for a COUNT round-trip is wasted work.
 	// The handler runs in a transaction, so we *could* rely on the DELETE

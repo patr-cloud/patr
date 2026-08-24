@@ -39,11 +39,7 @@ async fn rbac_modify_roles_grants_access() {
 
 	// Role creation rejects empty permissions with `WrongParameters`, so seed
 	// one harmless permission.
-	let mut permissions = BTreeMap::new();
-	permissions.insert(
-		setup.get_permission_id(Permission::ViewRoles),
-		ResourcePermissionType::Include(Default::default()),
-	);
+	let permissions = vec![setup.get_permission_id(Permission::ViewRoles)];
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -75,13 +71,8 @@ async fn rbac_view_roles_denied_without_permission() {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Deployment(DeploymentPermission::View)),
-		all(),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -113,10 +104,8 @@ async fn rbac_modify_roles_denied_without_permission() {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ViewRoles)])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -137,7 +126,7 @@ async fn rbac_modify_roles_denied_without_permission() {
 						name: random_name(8),
 						description: "test".to_string(),
 					},
-					permissions: BTreeMap::new(),
+					permissions: vec![],
 				})
 				.build(),
 		)
@@ -155,10 +144,8 @@ async fn rbac_view_does_not_grant_modify() {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ViewRoles)])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -196,7 +183,7 @@ async fn rbac_view_does_not_grant_modify() {
 						name: random_name(8),
 						description: "test".to_string(),
 					},
-					permissions: BTreeMap::new(),
+					permissions: vec![],
 				})
 				.build(),
 		)
@@ -204,58 +191,5 @@ async fn rbac_view_does_not_grant_modify() {
 	assert!(
 		r_create.status_code().is_client_error(),
 		"viewRoles should not grant modifyRoles"
-	);
-}
-
-/// A role's permissions must all carry the same resource set: a binding
-/// applies the whole role at one scope, so non-uniform roles (the shape the
-/// old loader-join bug leaked across — see the history of this test) are
-/// rejected outright at creation.
-#[tokio::test]
-async fn rbac_non_uniform_role_rejected() {
-	let setup = setup().await.expect("failed to setup test server");
-	let admin = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let volume1 = setup
-		.create_test_volume(&admin.access_token, workspace.id)
-		.await;
-	let volume2 = setup
-		.create_test_volume(&admin.access_token, workspace.id)
-		.await;
-
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Volume(VolumePermission::View)),
-		include(&[volume1.id]),
-	);
-	perms.insert(
-		setup.get_permission_id(Permission::Volume(VolumePermission::Delete)),
-		include(&[volume2.id]),
-	);
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<CreateNewRoleRequest>::builder()
-				.path(CreateNewRolePath {
-					workspace_id: workspace.id,
-				})
-				.headers(CreateNewRoleRequestHeaders {
-					authorization: admin.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(CreateNewRoleRequest {
-					role: Role {
-						name: "NonUniform".to_string(),
-						description: String::new(),
-					},
-					permissions: perms,
-				})
-				.build(),
-		)
-		.await;
-	assert_eq!(
-		response.status_code(),
-		StatusCode::BAD_REQUEST,
-		"a role whose permissions carry different resource sets must be rejected"
 	);
 }

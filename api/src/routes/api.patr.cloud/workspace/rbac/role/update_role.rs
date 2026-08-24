@@ -1,8 +1,7 @@
+use std::collections::BTreeSet;
+
 use axum::http::StatusCode;
-use models::{
-	api::workspace::rbac::role::*,
-	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant},
-};
+use models::api::workspace::rbac::role::*;
 use rustis::commands::StringCommands;
 use time::OffsetDateTime;
 
@@ -42,13 +41,27 @@ pub async fn update_role(
 		return Err(ErrorType::WrongParameters);
 	}
 
-	// A binding applies the whole role at one scope, so every permission in a
-	// role must carry the same resource set. Non-uniform roles became
-	// unrepresentable at the role-binding cutover.
-	let mut values = permissions.values();
-	let first = values.next();
-	if values.any(|value| Some(value) != first) {
-		return Err(ErrorType::WrongParameters);
+	// Seeded default roles are read-only.
+	let is_immutable = query!(
+		r#"
+		SELECT
+			is_immutable
+		FROM
+			role
+		WHERE
+			id = $1 AND
+			workspace_id = $2;
+		"#,
+		role_id as _,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::RoleDoesNotExist)?
+	.is_immutable;
+
+	if is_immutable {
+		return Err(ErrorType::RoleIsImmutable);
 	}
 
 	let rows_updated = query!(
@@ -83,139 +96,6 @@ pub async fn update_role(
 
 	query!(
 		r#"
-			DELETE FROM
-				role_resource_permissions_include
-			WHERE
-				role_id = $1;
-			"#,
-		role_id as _
-	)
-	.execute(&mut **database)
-	.await?;
-
-	trace!("Deleted all the included permissions");
-
-	query!(
-		r#"
-			DELETE FROM
-				role_resource_permissions_exclude
-			WHERE
-				role_id = $1;
-			"#,
-		role_id as _
-	)
-	.execute(&mut **database)
-	.await?;
-
-	trace!("Deleted all the excluded permissions");
-
-	query!(
-		r#"
-			DELETE FROM
-				role_resource_permissions_type
-			WHERE
-				role_id = $1;
-			"#,
-		role_id as _
-	)
-	.execute(&mut **database)
-	.await?;
-
-	trace!("Role permissions deleted");
-
-	for (permission_id, permission) in permissions {
-		let permission_type = ResourcePermissionTypeDiscriminant::from(&permission);
-		query!(
-			r#"
-				INSERT INTO
-					role_resource_permissions_type(
-						role_id,
-						permission_id,
-						permission_type
-					)
-				VALUES
-					(
-						$1,
-						$2,
-						$3
-					);
-				"#,
-			role_id as _,
-			permission_id as _,
-			permission_type as _,
-		)
-		.execute(&mut **database)
-		.await?;
-		match permission {
-			ResourcePermissionType::Include(resources) => {
-				query!(
-					r#"
-						INSERT INTO
-							role_resource_permissions_include(
-								role_id,
-								permission_id,
-								resource_id,
-								permission_type
-							)
-						VALUES
-							(
-								$1,
-								$2,
-								UNNEST($3::UUID[]),
-								DEFAULT
-							);
-						"#,
-					role_id as _,
-					permission_id as _,
-					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
-				)
-				.execute(&mut **database)
-				.await
-				.map_err(|err| match err {
-					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-						ErrorType::ResourceDoesNotExist
-					}
-					other => ErrorType::server_error(other),
-				})?;
-			}
-			ResourcePermissionType::Exclude(resources) => {
-				query!(
-					r#"
-						INSERT INTO
-							role_resource_permissions_exclude(
-								role_id,
-								permission_id,
-								resource_id,
-								permission_type
-							)
-						VALUES
-							(
-								$1,
-								$2,
-								UNNEST($3::UUID[]),
-								DEFAULT
-							);
-						"#,
-					role_id as _,
-					permission_id as _,
-					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
-				)
-				.execute(&mut **database)
-				.await
-				.map_err(|err| match err {
-					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-						ErrorType::ResourceDoesNotExist
-					}
-					other => ErrorType::server_error(other),
-				})?;
-			}
-		};
-	}
-
-	trace!("Role permissions inserted");
-
-	query!(
-		r#"
 		DELETE FROM
 			role_permission
 		WHERE
@@ -226,71 +106,37 @@ pub async fn update_role(
 	.execute(&mut **database)
 	.await?;
 
+	let permission_ids = permissions
+		.into_iter()
+		.collect::<BTreeSet<_>>()
+		.into_iter()
+		.map(Into::into)
+		.collect::<Vec<_>>();
+
+	// Bindings are untouched: a role edit changes what the role grants, not
+	// where anyone holds it.
 	query!(
 		r#"
 		INSERT INTO
 			role_permission(role_id, permission_id)
 		SELECT
 			$1,
-			permission_id
-		FROM
-			role_resource_permissions_type
-		WHERE
-			role_id = $1;
+			UNNEST($2::UUID[]);
 		"#,
 		role_id as _,
+		&permission_ids,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			ErrorType::ResourceDoesNotExist
+		}
+		other => ErrorType::server_error(other),
+	})?;
 
-	// Re-mint the bindings of everyone holding this role at the new scopes.
-	// Nothing references binding ids, so delete-and-re-mint has no side
-	// effects; token ceilings reference the role directly and are untouched.
-	let actor_ids = query!(
-		r#"
-		SELECT DISTINCT
-			actor_id AS "actor_id: Uuid"
-		FROM
-			role_binding
-		WHERE
-			role_id = $1;
-		"#,
-		role_id as _,
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| row.actor_id)
-	.collect::<Vec<_>>();
+	trace!("Role permissions replaced");
 
-	query!(
-		r#"
-		DELETE FROM
-			role_binding
-		WHERE
-			role_id = $1;
-		"#,
-		role_id as _,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	let scopes = db::read_role_scopes(&mut **database, &workspace_id, &role_id)
-		.await?
-		.ok_or(ErrorType::RoleDoesNotExist)?;
-	for actor_id in &actor_ids {
-		db::mint_bindings(
-			&mut **database,
-			&workspace_id,
-			actor_id,
-			&role_id,
-			&scopes,
-			Some(&user_data.id),
-		)
-		.await?;
-	}
-
-	trace!("Bindings re-minted for {} actor(s)", actor_ids.len());
 
 	redis
 		.setex(

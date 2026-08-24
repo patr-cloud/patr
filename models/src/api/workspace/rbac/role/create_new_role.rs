@@ -1,7 +1,5 @@
-use std::collections::BTreeMap;
-
 use super::Role;
-use crate::{prelude::*, rbac::ResourcePermissionType};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to create a new role
@@ -28,9 +26,10 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		#[preprocess]
 		pub role: Role,
-		/// List of Permission IDs and the type of permission that is granted on this new role.
+		/// The permission IDs this role grants; targeting lives on the
+		/// binding, not the role.
 		#[preprocess(none)]
-		pub permissions: BTreeMap<Uuid, ResourcePermissionType>,
+		pub permissions: Vec<Uuid>,
 	},
 	response = {
 		/// The ID of the created role

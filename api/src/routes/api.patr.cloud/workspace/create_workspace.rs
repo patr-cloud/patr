@@ -11,7 +11,6 @@ use models::{
 		DomainPermission,
 		ManagedURLPermission,
 		Permission,
-		ResourcePermissionTypeDiscriminant,
 		RunnerPermission,
 		SecretPermission,
 		StaticSitePermission,
@@ -706,37 +705,7 @@ async fn create_default_roles_for_workspace(
 		.execute(&mut *connection)
 		.await?;
 
-		for permission in role.permissions {
-			let permission_name = permission.to_string();
-			let permission_id = permission_ids.get(&permission_name).ok_or_else(|| {
-				ErrorType::server_error(format!(
-					"permission `{permission_name}` missing from permission table"
-				))
-			})?;
-			let exclude_type = ResourcePermissionTypeDiscriminant::Exclude;
 
-			query!(
-				r#"
-				INSERT INTO
-					role_resource_permissions_type(
-						role_id,
-						permission_id,
-						permission_type
-					)
-				VALUES
-					(
-						$1,
-						$2,
-						$3
-					);
-				"#,
-				role_id as _,
-				*permission_id as _,
-				exclude_type as _,
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
 	}
 
 	Ok(())
