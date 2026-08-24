@@ -2,7 +2,7 @@ use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
 use models::{
 	api::user::*,
-	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant, WorkspacePermission},
+	rbac::{PermissionScope, ResourcePermissionTypeDiscriminant, WorkspacePermission},
 };
 use time::OffsetDateTime;
 
@@ -252,6 +252,12 @@ pub async fn create_api_token(
 				.await?;
 
 				for (permission_id, resource_permission) in permissions {
+					let legacy_type = match &resource_permission {
+						PermissionScope::Workspace => ResourcePermissionTypeDiscriminant::Exclude,
+						PermissionScope::Resources(_) => {
+							ResourcePermissionTypeDiscriminant::Include
+						}
+					};
 					query!(
 						r#"
 						INSERT INTO
@@ -274,78 +280,45 @@ pub async fn create_api_token(
 						token_id as _,
 						workspace_id as _,
 						permission_id as _,
-						ResourcePermissionTypeDiscriminant::from(&resource_permission) as _,
+						legacy_type as _,
 					)
 					.execute(&mut **database)
 					.await?;
 
-					match resource_permission {
-						ResourcePermissionType::Include(resource_ids) => {
-							query!(
-								r#"
-								INSERT INTO
-									user_api_token_resource_permissions_include(
-										token_id,
-										workspace_id,
-										permission_id,
-										resource_id,
-										resource_deleted,
-										permission_type
-									)
-								VALUES
-									(
-										$1,
-										$2,
-										$3,
-										UNNEST($4::UUID[]),
-										DEFAULT,
-										DEFAULT
-									);
-								"#,
-								token_id as _,
-								workspace_id as _,
-								permission_id as _,
-								&resource_ids
-									.into_iter()
-									.map(|id| id.into())
-									.collect::<Vec<_>>(),
-							)
-							.execute(&mut **database)
-							.await?;
-						}
-						ResourcePermissionType::Exclude(resource_ids) => {
-							query!(
-								r#"
-								INSERT INTO
-									user_api_token_resource_permissions_exclude(
-										token_id,
-										workspace_id,
-										permission_id,
-										resource_id,
-										resource_deleted,
-										permission_type
-									)
-								VALUES
-									(
-										$1,
-										$2,
-										$3,
-										UNNEST($4::UUID[]),
-										DEFAULT,
-										DEFAULT
-									);
-								"#,
-								token_id as _,
-								workspace_id as _,
-								permission_id as _,
-								&resource_ids
-									.into_iter()
-									.map(|id| id.into())
-									.collect::<Vec<_>>(),
-							)
-							.execute(&mut **database)
-							.await?;
-						}
+					// A workspace-wide scope is the legacy exclude-type row
+					// with no exclusions; a resource set is an include list.
+					if let PermissionScope::Resources(resource_ids) = resource_permission {
+						query!(
+							r#"
+							INSERT INTO
+								user_api_token_resource_permissions_include(
+									token_id,
+									workspace_id,
+									permission_id,
+									resource_id,
+									resource_deleted,
+									permission_type
+								)
+							VALUES
+								(
+									$1,
+									$2,
+									$3,
+									UNNEST($4::UUID[]),
+									DEFAULT,
+									DEFAULT
+								);
+							"#,
+							token_id as _,
+							workspace_id as _,
+							permission_id as _,
+							&resource_ids
+								.into_iter()
+								.map(|id| id.into())
+								.collect::<Vec<_>>(),
+						)
+						.execute(&mut **database)
+						.await?;
 					}
 				}
 			}

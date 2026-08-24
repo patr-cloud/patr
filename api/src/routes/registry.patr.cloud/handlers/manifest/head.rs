@@ -141,7 +141,7 @@ pub async fn check_manifest(
 		// Workspace members get a clear 403 (they can already list repos via the
 		// API, so there's nothing to hide); non-members get a 404 so outsiders
 		// can't enumerate private repositories.
-		return if user_data.permissions.contains_key(&workspace_id) {
+		return if user_data.workspaces.contains(&workspace_id) {
 			RegistryError::builder()
 				.status(StatusCode::FORBIDDEN)
 				.message(format!(
