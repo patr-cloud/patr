@@ -1,7 +1,5 @@
-use std::collections::BTreeMap;
-
-use super::Role;
-use crate::{prelude::*, rbac::ResourcePermissionType};
+use super::WorkspaceRole;
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to get the role info
@@ -29,10 +27,11 @@ macros::declare_api_endpoint!(
 		/// The role which contains:
 		///     name - The role name
 		///     description - The role description
+		///     isImmutable - Whether the role is a seeded default
 		#[serde(flatten)]
-		pub role: WithId<Role>,
-		/// List of Permission IDs and the type of permission that is granted on this role.
-		pub permissions: BTreeMap<Uuid, ResourcePermissionType>,
+		pub role: WithId<WorkspaceRole>,
+		/// The permission IDs this role grants.
+		pub permissions: Vec<Uuid>,
 	},
 	audit_log = NoAuditLogger,
 );

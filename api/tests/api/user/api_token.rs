@@ -47,10 +47,7 @@ async fn probe_modify_roles(
 						name: random_name(8),
 						description: "cascade probe".to_string(),
 					},
-					permissions: BTreeMap::from([(
-						view_perm,
-						ResourcePermissionType::Exclude(BTreeSet::new()),
-					)]),
+					permissions: vec![view_perm],
 				})
 				.build(),
 		)
@@ -334,10 +331,7 @@ async fn api_token_non_superadmin_cannot_mint_superadmin() {
 	let owner = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&owner.access_token).await;
 
-	let perms = BTreeMap::from([(
-		setup.get_permission_id(Permission::ViewRoles),
-		all_resources(),
-	)]);
+	let perms = vec![setup.get_permission_id(Permission::ViewRoles)];
 	let role = setup
 		.create_role_with_permissions(&owner.access_token, workspace.id, perms)
 		.await;
@@ -369,10 +363,7 @@ async fn api_token_member_cannot_exceed_creator() {
 	let workspace = setup.create_test_workspace(&owner.access_token).await;
 
 	// Member has only deployment::view.
-	let perms = BTreeMap::from([(
-		setup.get_permission_id(Permission::Deployment(DeploymentPermission::View)),
-		all_resources(),
-	)]);
+	let perms = vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))];
 	let role = setup
 		.create_role_with_permissions(&owner.access_token, workspace.id, perms)
 		.await;
@@ -620,11 +611,7 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			BTreeMap::from([(modify, all_resources())]),
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify])
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
@@ -689,11 +676,7 @@ async fn api_token_perm_trimmed_on_role_delete() {
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			BTreeMap::from([(modify, all_resources())]),
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify])
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
@@ -754,11 +737,7 @@ async fn api_token_does_not_widen_on_promotion() {
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let read_only = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			BTreeMap::from([(view, all_resources())]),
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![view])
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, read_only.id)
@@ -776,11 +755,7 @@ async fn api_token_does_not_widen_on_promotion() {
 		.await;
 
 	let write_role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			BTreeMap::from([(view, all_resources()), (modify, all_resources())]),
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![view, modify])
 		.await;
 	setup
 		.make_web_dashboard_call(

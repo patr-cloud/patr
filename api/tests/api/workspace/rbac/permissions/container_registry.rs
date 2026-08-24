@@ -6,7 +6,7 @@ use models::{
 	rbac::{ContainerRegistryRepositoryPermission, Permission},
 };
 
-use super::{all, exclude, grant, include, resources_scope, setup_permission_test};
+use super::{all, grant, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -50,15 +50,16 @@ async fn container_registry_delete_grants_access() {
 		.create_test_container_repo(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::ContainerRegistryRepository(
-			ContainerRegistryRepositoryPermission::Delete,
-		)),
-		include(&[repo.id]),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![
+				setup.get_permission_id(Permission::ContainerRegistryRepository(
+					ContainerRegistryRepositoryPermission::Delete,
+				)),
+			],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -98,10 +99,12 @@ async fn container_registry_denied_without_permission() {
 		.create_test_container_repo(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -140,15 +143,16 @@ async fn container_registry_delete_include_grants_only_listed_resource() {
 		.create_test_container_repo(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::ContainerRegistryRepository(
-			ContainerRegistryRepositoryPermission::Delete,
-		)),
-		include(&[repo1.id]),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![
+				setup.get_permission_id(Permission::ContainerRegistryRepository(
+					ContainerRegistryRepositoryPermission::Delete,
+				)),
+			],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -208,15 +212,16 @@ async fn container_registry_view_include_grants_only_listed_resource() {
 		.create_test_container_repo(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::ContainerRegistryRepository(
-			ContainerRegistryRepositoryPermission::View,
-		)),
-		include(&[repo1.id]),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![
+				setup.get_permission_id(Permission::ContainerRegistryRepository(
+					ContainerRegistryRepositoryPermission::View,
+				)),
+			],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -274,15 +279,16 @@ async fn container_registry_view_grant_omitting_a_resource_denies_it() {
 		.create_test_container_repo(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::ContainerRegistryRepository(
-			ContainerRegistryRepositoryPermission::View,
-		)),
-		include(&[repo1.id]),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![
+				setup.get_permission_id(Permission::ContainerRegistryRepository(
+					ContainerRegistryRepositoryPermission::View,
+				)),
+			],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -450,15 +456,16 @@ async fn container_registry_view_does_not_grant_delete() {
 		.create_test_container_repo(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::ContainerRegistryRepository(
-			ContainerRegistryRepositoryPermission::View,
-		)),
-		all(),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![
+				setup.get_permission_id(Permission::ContainerRegistryRepository(
+					ContainerRegistryRepositoryPermission::View,
+				)),
+			],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
