@@ -57,7 +57,10 @@ test.describe('member > roles [UI]', () => {
 		});
 		const inviteeId = await getOwnUserId(api, invitee);
 		const rows = await sql<{ role_id: string }>(
-			`SELECT role_id FROM workspace_user WHERE workspace_id = $1 AND user_id = $2`,
+			`SELECT rb.role_id
+			   FROM role_binding rb
+			   JOIN actor a ON a.id = rb.actor_id
+			  WHERE rb.workspace_id = $1 AND a.user_id = $2`,
 			[owner.workspaceId, inviteeId],
 		);
 		expect(rows.length).toBe(2);
@@ -79,7 +82,10 @@ test.describe('member > roles [UI]', () => {
 		});
 		const inviteeId = await getOwnUserId(api, invitee);
 		const rows = await sql<{ role_id: string }>(
-			`SELECT role_id FROM workspace_user WHERE workspace_id = $1 AND user_id = $2`,
+			`SELECT rb.role_id
+			   FROM role_binding rb
+			   JOIN actor a ON a.id = rb.actor_id
+			  WHERE rb.workspace_id = $1 AND a.user_id = $2`,
 			[owner.workspaceId, inviteeId],
 		);
 		expect(rows.length).toBe(1);
@@ -98,8 +104,13 @@ test.describe('member > roles [UI]', () => {
 			await cancelMemberRolesEdit(page);
 		});
 		const inviteeId = await getOwnUserId(api, invitee);
+		// Membership row: workspace_user is one row per member now; the grant
+		// itself lives in role_binding.
 		const rows = await sql(
-			`SELECT 1 FROM workspace_user WHERE workspace_id = $1 AND user_id = $2`,
+			`SELECT rb.id
+			   FROM role_binding rb
+			   JOIN actor a ON a.id = rb.actor_id
+			  WHERE rb.workspace_id = $1 AND a.user_id = $2`,
 			[owner.workspaceId, inviteeId],
 		);
 		expect(rows.length).toBe(1);

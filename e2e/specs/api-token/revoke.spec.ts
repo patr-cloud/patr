@@ -36,7 +36,7 @@ test.describe('api token > revoke', () => {
 	test('invalidates the token after delete via UI', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		const t = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		const before = await callWithApiToken(api, t.token, { clientIp: user.clientIp });
 		expect(before.status).toBe(200);
@@ -58,7 +58,7 @@ test.describe('api token > revoke', () => {
 	}) => {
 		await using user = await createUserWithWorkspace(api);
 		const t = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		await withDetail(browser, user, t.id, async (page) => {
 			await clickDelete(page);
@@ -77,7 +77,7 @@ test.describe('api token > revoke', () => {
 	test('removes a deleted token from the list', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		const t = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		await api.request('DELETE', `/user/api-token/${t.id}`, {
 			token: user.accessToken,

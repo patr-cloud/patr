@@ -29,9 +29,7 @@ test.describe('domain > RBAC [UI]', () => {
 		await using owner = await createUserWithWorkspace(api);
 		const added = await addDomainAPI(api, owner, owner.workspaceId);
 		const viewId = await permId(api, owner, 'domain::view');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -48,9 +46,7 @@ test.describe('domain > RBAC [UI]', () => {
 		await using owner = await createUserWithWorkspace(api);
 		await addDomainAPI(api, owner, owner.workspaceId);
 		const viewRoles = await permId(api, owner, 'viewRoles');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewRoles]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewRoles]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
