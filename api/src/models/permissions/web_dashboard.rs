@@ -7,7 +7,7 @@ use std::{
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
 	RequestUserData,
-	rbac::{ResourcePermissionType, WorkspacePermission},
+	rbac::{PermissionScope, WorkspacePermission},
 };
 use rustis::{client::Client as RedisClient, commands::StringCommands as _};
 use time::OffsetDateTime;
@@ -190,10 +190,34 @@ pub async fn get_permissions_for_web_login(
 		user_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
 	});
 
+	// Membership is first-class: a member holding no roles still belongs to
+	// the workspace, and gets an entry with an empty permission map.
+	query!(
+		r#"
+		SELECT
+			workspace_id AS "workspace_id!: Uuid"
+		FROM
+			workspace_user
+		WHERE
+			user_id = $1;
+		"#,
+		user_id as _,
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.map(|row| row.workspace_id)
+	.for_each(|workspace_id| {
+		user_permissions
+			.entry(workspace_id)
+			.or_insert_with(|| WorkspacePermission::Member {
+				permissions: BTreeMap::new(),
+			});
+	});
+
 	// One query over bindings: a workspace-scope row (scope_id =
-	// workspace_id) grants a permission everywhere in the workspace and maps
-	// to the wire encoding Exclude(∅); resource-scope rows accumulate into
-	// Include(S). Non-empty Exclude can no longer be produced.
+	// workspace_id) grants a permission everywhere in the workspace;
+	// resource-scope rows accumulate into a resource set.
 	query!(
 		r#"
 		SELECT
@@ -234,16 +258,14 @@ pub async fn get_permissions_for_web_login(
 		let entry = permissions.entry(row.permission_id.into());
 		if row.is_workspace_scope {
 			entry
-				.and_modify(|scope| *scope = ResourcePermissionType::Exclude(BTreeSet::new()))
-				.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
+				.and_modify(|scope| *scope = PermissionScope::Workspace)
+				.or_insert(PermissionScope::Workspace);
 		} else {
-			match entry.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new())) {
-				ResourcePermissionType::Include(resources) => {
-					resources.insert(row.scope_id.into());
-				}
-				// Already workspace-wide; a narrower scope adds nothing.
-				ResourcePermissionType::Exclude(_) => (),
-			}
+			entry
+				.or_insert_with(|| PermissionScope::Resources(BTreeSet::new()))
+				.union_with(&PermissionScope::Resources(BTreeSet::from([row
+					.scope_id
+					.into()])));
 		}
 	});
 
