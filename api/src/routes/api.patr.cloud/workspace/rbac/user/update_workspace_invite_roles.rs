@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use axum::http::StatusCode;
-use models::api::workspace::rbac::user::*;
+use models::{api::workspace::rbac::user::*, rbac::PermissionScope};
 
 use crate::prelude::*;
 
@@ -75,15 +75,14 @@ pub async fn update_workspace_invite_roles(
 	.execute(&mut **database)
 	.await?;
 
-	// One row per (role, scope), snapshotting the roles' scopes now — same
-	// shape InviteUserToWorkspace writes.
-	for role_id in &roles {
-		let scopes = db::read_role_scopes(&mut **database, &workspace_id, role_id)
-			.await?
-			.ok_or(ErrorType::RoleDoesNotExist)?;
-		let scope_ids = match scopes {
-			db::RoleScopes::Workspace => vec![workspace_id],
-			db::RoleScopes::Resources(resources) => resources.into_iter().collect(),
+// One row per (role, scope), straight from the request's grants.
+	for grant in &roles {
+		if matches!(&grant.scope, PermissionScope::Resources(resources) if resources.is_empty()) {
+			return Err(ErrorType::WrongParameters);
+		}
+		let scope_ids = match &grant.scope {
+			PermissionScope::Workspace => vec![workspace_id],
+			PermissionScope::Resources(resources) => resources.iter().copied().collect(),
 		};
 
 		query!(
@@ -102,14 +101,19 @@ pub async fn update_workspace_invite_roles(
 			"#,
 			invite_id as _,
 			workspace_id as _,
-			role_id as _,
+			grant.role_id as _,
 			&scope_ids as _,
 		)
 		.execute(&mut **database)
 		.await
 		.map_err(|err| match err {
 			sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-				ErrorType::RoleDoesNotExist
+				match db_err.constraint() {
+					Some("workspace_user_invite_role_fk_scope_id_workspace_id") => {
+						ErrorType::ResourceDoesNotExist
+					}
+					_ => ErrorType::RoleDoesNotExist,
+				}
 			}
 			other => ErrorType::server_error(other),
 		})?;

@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_user_invite.id AS \"id: Uuid\", workspace_user_invite.email, workspace_user_invite.invited_by AS \"invited_by: Uuid\", workspace_user_invite.created, workspace_user_invite.token_expiry, workspace_user_invite_role.role_id AS \"role_id?: Uuid\", (workspace_user_invite_role.scope_id = workspace_user_invite_role.workspace_id) AS \"is_workspace_scope?\", workspace_user_invite_role.scope_id AS \"scope_id?: Uuid\" FROM workspace_user_invite LEFT JOIN workspace_user_invite_role ON workspace_user_invite_role.invite_id = workspace_user_invite.id WHERE workspace_user_invite.workspace_id = $1 ORDER BY workspace_user_invite.created DESC, workspace_user_invite.id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "invited_by: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "token_expiry",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "role_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_workspace_scope?",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "scope_id?: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "e41df5ad036e21ac2e59b3d3c281ba3b5999bdf4421aa70062f8784b14d1bb2b"
+}

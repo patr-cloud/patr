@@ -15,7 +15,7 @@ use models::{
 		},
 		workspace::rbac::user::*,
 	},
-	rbac::{Permission, ResourcePermissionType},
+	rbac::{Permission, PermissionScope, ResourcePermissionType},
 };
 
 use crate::prelude::*;
@@ -55,7 +55,13 @@ async fn invite(
 				})
 				.body(InviteUserToWorkspaceRequest {
 					email: email.to_string(),
-					roles,
+					roles: roles
+						.into_iter()
+						.map(|role_id| RoleGrant {
+							role_id,
+							scope: PermissionScope::Workspace,
+						})
+						.collect(),
 				})
 				.build(),
 		)
@@ -135,7 +141,7 @@ async fn members(
 	setup: &TestSetup,
 	token: &BearerToken,
 	workspace_id: Uuid,
-) -> BTreeMap<Uuid, Vec<Uuid>> {
+) -> BTreeMap<Uuid, Vec<RoleGrant>> {
 	setup
 		.make_web_dashboard_call(
 			ApiRequest::<ListUsersInWorkspaceRequest>::builder()
@@ -190,8 +196,10 @@ async fn invite_and_accept_adds_member_with_role() {
 
 	let members = members(&setup, &admin.access_token, workspace.id).await;
 	assert_eq!(
-		members.get(&invitee.user_id),
-		Some(&vec![role.id]),
+		members
+			.get(&invitee.user_id)
+			.map(|grants| grants.iter().map(|grant| grant.role_id).collect::<Vec<_>>()),
+		Some(vec![role.id]),
 		"invitee should be a member with the invited role"
 	);
 }
@@ -513,7 +521,10 @@ async fn update_invite_roles_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateWorkspaceInviteRolesRequest {
-					roles: vec![role_b.id],
+					roles: vec![RoleGrant {
+						role_id: role_b.id,
+						scope: PermissionScope::Workspace,
+					}],
 				})
 				.build(),
 		)
@@ -521,14 +532,27 @@ async fn update_invite_roles_works() {
 	assert_eq!(update.status_code(), StatusCode::OK);
 
 	let invites = list_invites(&setup, &admin.access_token, workspace.id).await;
-	assert_eq!(invites[0].data.roles, BTreeSet::from([role_b.id]));
+	assert_eq!(
+		invites[0]
+			.data
+			.roles
+			.iter()
+			.map(|grant| grant.role_id)
+			.collect::<Vec<_>>(),
+		vec![role_b.id]
+	);
 
 	// The original link still works and grants the updated role.
 	let accept_response = accept(&setup, &invitee.access_token, invite_id, &invite_token).await;
 	assert_eq!(accept_response.status_code(), StatusCode::ACCEPTED);
 
 	let members = members(&setup, &admin.access_token, workspace.id).await;
-	assert_eq!(members.get(&invitee.user_id), Some(&vec![role_b.id]));
+	assert_eq!(
+		members
+			.get(&invitee.user_id)
+			.map(|grants| grants.iter().map(|grant| grant.role_id).collect::<Vec<_>>()),
+		Some(vec![role_b.id])
+	);
 }
 
 #[tokio::test]
@@ -582,8 +606,9 @@ async fn resend_invite_works() {
 	assert_eq!(
 		members(&setup, &admin.access_token, workspace.id)
 			.await
-			.get(&invitee.user_id),
-		Some(&vec![role.id])
+			.get(&invitee.user_id)
+			.map(|grants| grants.iter().map(|grant| grant.role_id).collect::<Vec<_>>()),
+		Some(vec![role.id])
 	);
 }
 

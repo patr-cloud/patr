@@ -6,7 +6,7 @@ use models::{
 	rbac::{ManagedURLPermission, Permission},
 };
 
-use super::{all, exclude, include};
+use super::{all, exclude, grant, include, resources_scope};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -83,7 +83,11 @@ async fn managed_url_delete_grants_access() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[url_id])),
+		)
 		.await;
 
 	let response = setup
@@ -182,7 +186,11 @@ async fn managed_url_delete_include_grants_only_listed_resource() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[url1])),
+		)
 		.await;
 
 	// url2 — should fail
@@ -224,7 +232,7 @@ async fn managed_url_delete_include_grants_only_listed_resource() {
 }
 
 #[tokio::test]
-async fn managed_url_delete_exclude_denies_only_listed_resource() {
+async fn managed_url_delete_grant_omitting_a_resource_denies_it() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
@@ -242,13 +250,17 @@ async fn managed_url_delete_exclude_denies_only_listed_resource() {
 	let mut perms = BTreeMap::new();
 	perms.insert(
 		setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Delete)),
-		exclude(&[url2]),
+		include(&[url1]),
 	);
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[url1])),
+		)
 		.await;
 
 	// url2 — excluded, should fail

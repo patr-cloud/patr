@@ -1,8 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use axum::http::StatusCode;
 use models::{
 	api::{user::BasicUserInfoSearchParams, workspace::rbac::user::*},
+	rbac::PermissionScope,
 	utils::TotalCountHeader,
 };
 
@@ -75,6 +76,8 @@ pub async fn list_users_in_workspace(
 		SELECT
 			users_page.user_id AS "user_id!",
 			role_binding.role_id AS "role_id?",
+			(role_binding.scope_id = role_binding.workspace_id) AS "is_workspace_scope?",
+			role_binding.scope_id AS "scope_id?",
 			(SELECT COUNT(*) FROM matched_users) AS "total_count!"
 		FROM
 			users_page
@@ -101,16 +104,28 @@ pub async fn list_users_in_workspace(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.fold(BTreeMap::<Uuid, Vec<Uuid>>::new(), |mut users, row| {
+	.fold(BTreeMap::<Uuid, Vec<RoleGrant>>::new(), |mut users, row| {
 		total_count = row.total_count;
-		// A zero-binding member still gets an (empty) entry; a role bound
-		// at several scopes appears once.
-		let roles = users.entry(row.user_id.into()).or_default();
-		if let Some(role_id) = row.role_id {
-			let role_id = role_id.into();
-			if !roles.contains(&role_id) {
-				roles.push(role_id);
-			}
+		// A zero-binding member still gets an (empty) entry; per-resource
+		// bindings of one role accumulate into a single grant.
+		let grants = users.entry(row.user_id.into()).or_default();
+		let (Some(role_id), Some(is_workspace_scope), Some(scope_id)) =
+			(row.role_id, row.is_workspace_scope, row.scope_id)
+		else {
+			return users;
+		};
+		let role_id = role_id.into();
+
+		let scope = if is_workspace_scope {
+			PermissionScope::Workspace
+		} else {
+			PermissionScope::Resources(BTreeSet::from([scope_id.into()]))
+		};
+
+		if let Some(grant) = grants.iter_mut().find(|grant| grant.role_id == role_id) {
+			grant.scope.union_with(&scope);
+		} else {
+			grants.push(RoleGrant { role_id, scope });
 		}
 		users
 	});
