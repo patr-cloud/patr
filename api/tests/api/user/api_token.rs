@@ -14,7 +14,13 @@ use models::{
 			rbac::{role::*, user::*},
 		},
 	},
-	rbac::{DeploymentPermission, Permission, ResourcePermissionType, WorkspacePermission},
+	rbac::{
+		DeploymentPermission,
+		Permission,
+		PermissionScope,
+		ResourcePermissionType,
+		WorkspacePermission,
+	},
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -97,9 +103,14 @@ async fn mint_token_raw(
 		.await
 }
 
-/// A permission grant over all resources (Exclude of the empty set).
+/// A role permission grant over all resources (Exclude of the empty set).
 fn all_resources() -> ResourcePermissionType {
 	ResourcePermissionType::Exclude(BTreeSet::new())
+}
+
+/// A token permission scope covering the whole workspace.
+fn workspace_scope() -> PermissionScope {
+	PermissionScope::Workspace
 }
 
 /// A token used after its `token_exp` is rejected at auth time (401).
@@ -377,7 +388,7 @@ async fn api_token_member_cannot_exceed_creator() {
 		BTreeMap::from([(
 			workspace.id,
 			WorkspacePermission::Member {
-				permissions: BTreeMap::from([(delete_id, all_resources())]),
+				permissions: BTreeMap::from([(delete_id, workspace_scope())]),
 			},
 		)]),
 		None,
@@ -624,7 +635,7 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, all_resources())]),
+					permissions: BTreeMap::from([(modify, workspace_scope())]),
 				},
 			)]),
 		)
@@ -693,7 +704,7 @@ async fn api_token_perm_trimmed_on_role_delete() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, all_resources())]),
+					permissions: BTreeMap::from([(modify, workspace_scope())]),
 				},
 			)]),
 		)
@@ -758,7 +769,7 @@ async fn api_token_does_not_widen_on_promotion() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(view, all_resources())]),
+					permissions: BTreeMap::from([(view, workspace_scope())]),
 				},
 			)]),
 		)
@@ -817,7 +828,7 @@ async fn api_token_patch_revokes_access() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, all_resources())]),
+					permissions: BTreeMap::from([(modify, workspace_scope())]),
 				},
 			)]),
 		)
@@ -844,7 +855,7 @@ async fn api_token_patch_revokes_access() {
 						permissions: BTreeMap::from([(
 							workspace.id,
 							WorkspacePermission::Member {
-								permissions: BTreeMap::from([(view, all_resources())]),
+								permissions: BTreeMap::from([(view, workspace_scope())]),
 							},
 						)]),
 						token_nbf: None,
@@ -1604,7 +1615,7 @@ async fn api_token_with_scoped_permissions_allows_resource() {
 		WorkspacePermission::Member {
 			permissions: BTreeMap::from([(
 				view_perm,
-				ResourcePermissionType::Include(BTreeSet::from([deployment1.id])),
+				PermissionScope::Resources(BTreeSet::from([deployment1.id])),
 			)]),
 		},
 	)]);
@@ -1656,7 +1667,7 @@ async fn api_token_with_scoped_permissions_denies_other_resource() {
 		WorkspacePermission::Member {
 			permissions: BTreeMap::from([(
 				view_perm,
-				ResourcePermissionType::Include(BTreeSet::from([deployment1.id])),
+				PermissionScope::Resources(BTreeSet::from([deployment1.id])),
 			)]),
 		},
 	)]);
@@ -1702,7 +1713,7 @@ async fn api_token_view_permission_denies_create() {
 		WorkspacePermission::Member {
 			permissions: BTreeMap::from([(
 				view_perm,
-				ResourcePermissionType::Exclude(BTreeSet::new()), // grants View on all
+				PermissionScope::Workspace, // grants View on all
 			)]),
 		},
 	)]);

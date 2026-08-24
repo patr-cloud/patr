@@ -105,7 +105,7 @@ mod test {
 	use super::UserApiToken;
 	use crate::{
 		prelude::*,
-		rbac::{ResourcePermissionType, WorkspacePermission},
+		rbac::{PermissionScope, WorkspacePermission},
 	};
 
 	#[test]
@@ -149,7 +149,7 @@ mod test {
 								let mut map = BTreeMap::new();
 								map.insert(
 									Uuid::nil(),
-									ResourcePermissionType::Include(BTreeSet::from([Uuid::nil()])),
+									PermissionScope::Resources(BTreeSet::from([Uuid::nil()])),
 								);
 								map
 							},
@@ -189,13 +189,13 @@ mod test {
 				Token::Str("member"),
 				Token::Str("00000000000000000000000000000000"),
 				Token::Struct {
-					name: "ResourcePermissionType",
+					name: "PermissionScope",
 					len: 2,
 				},
-				Token::Str("permissionType"),
+				Token::Str("scopeType"),
 				Token::UnitVariant {
-					name: "ResourcePermissionType",
-					variant: "include",
+					name: "PermissionScope",
+					variant: "resources",
 				},
 				Token::Str("resources"),
 				Token::Seq { len: Some(1) },
