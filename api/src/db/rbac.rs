@@ -651,38 +651,20 @@ pub async fn initialize_rbac_constraints(
 				WHERE
 					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
-			/* An API token's declared grants, from the legacy snapshot tables
-			(interim until the token DTOs move to ceiling rows): granted on a
-			resource when the include list names it, or the workspace has an
-			exclude-type entry whose list doesn't */
-			token_included AS (
+			/* An API token's declared ceiling: its own (role, scope) rows */
+			token_ceiling AS (
 				SELECT
-					user_api_token_resource_permissions_include.resource_id,
-					user_api_token_resource_permissions_include.workspace_id
+					atrb.workspace_id,
+					atrb.scope_id
 				FROM
-					user_api_token_resource_permissions_include
+					api_token_role_binding atrb
+				INNER JOIN
+					role_permission
+				ON
+					role_permission.role_id = atrb.role_id AND
+					role_permission.permission_id = local_permission_id
 				WHERE
-					user_api_token_resource_permissions_include.permission_id = local_permission_id AND
-					user_api_token_resource_permissions_include.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
-			),
-			token_excluded AS (
-				SELECT
-					user_api_token_resource_permissions_exclude.resource_id
-				FROM
-					user_api_token_resource_permissions_exclude
-				WHERE
-					user_api_token_resource_permissions_exclude.permission_id = local_permission_id AND
-					user_api_token_resource_permissions_exclude.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
-			),
-			token_exclude_workspaces AS (
-				SELECT
-					t.workspace_id
-				FROM
-					user_api_token_resource_permissions_type t
-				WHERE
-					t.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-					t.permission_id = local_permission_id AND
-					t.resource_permission_type = 'exclude'
+					atrb.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
 			/* The token owner's own grants; effective = ceiling ∩ owner,
 			intersected per resource below */
@@ -723,7 +705,8 @@ pub async fn initialize_rbac_constraints(
 						super_admin_workspaces
 					WHERE
 						super_admin_workspaces.workspace_id = resource.workspace_id
-				) OR EXISTS (
+				)
+				OR EXISTS (
 					SELECT
 						1
 					FROM
@@ -734,33 +717,19 @@ pub async fn initialize_rbac_constraints(
 							user_bindings.scope_id = resource.id OR
 							user_bindings.scope_id = user_bindings.workspace_id
 						)
-				) OR (
-					(
-						EXISTS (
-							SELECT
-								1
-							FROM
-								token_included
-							WHERE
-								token_included.workspace_id = resource.workspace_id AND
-								token_included.resource_id = resource.id
-						) OR (
-							EXISTS (
-								SELECT
-									1
-								FROM
-									token_exclude_workspaces
-								WHERE
-									token_exclude_workspaces.workspace_id = resource.workspace_id
-							) AND NOT EXISTS (
-								SELECT
-									1
-								FROM
-									token_excluded
-								WHERE
-									token_excluded.resource_id = resource.id
+				)
+				OR (
+					EXISTS (
+						SELECT
+							1
+						FROM
+							token_ceiling
+						WHERE
+							token_ceiling.workspace_id = resource.workspace_id AND
+							(
+								token_ceiling.scope_id = resource.id OR
+								token_ceiling.scope_id = token_ceiling.workspace_id
 							)
-						)
 					) AND EXISTS (
 						SELECT
 							1
