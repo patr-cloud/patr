@@ -1,6 +1,6 @@
 import { createMemo, For, Show } from "solid-js";
 import { FiX } from "solid-icons/fi";
-import { InputDropdownCheckBox } from "~/components";
+import InputDropdownCheckBox from "./input-dropdown-checkbox";
 import { RoleGrant } from "~/bindings/RoleGrant";
 import { WithId, WorkspaceRole } from "~/bindings";
 import ScopePicker from "./scope-picker";
@@ -11,6 +11,12 @@ interface MemberRoleEditorProps {
 	/** Called with the complete next grant list on every edit. */
 	onChange: (next: RoleGrant[]) => void;
 	roles: WithId<WorkspaceRole>[];
+	/**
+	 * Hide the create-a-role link. The link targets the active workspace's role
+	 * editor, so callers editing another workspace's grants (the token screens)
+	 * suppress it.
+	 */
+	hideCreateRoleLink?: boolean;
 }
 
 /**
@@ -73,14 +79,16 @@ const MemberRoleEditor = (props: MemberRoleEditorProps) => {
 					checked={grantedRoleIds()}
 					onToggle={toggleRole}
 				/>
-				<a
-					href="/workspace/roles/new"
-					target="_blank"
-					rel="noopener noreferrer"
-					class="text-primary text-xs hover:underline self-start"
-				>
-					or create a new role &rarr;
-				</a>
+				<Show when={!props.hideCreateRoleLink}>
+					<a
+						href="/workspace/roles/new"
+						target="_blank"
+						rel="noopener noreferrer"
+						class="text-primary text-xs hover:underline self-start"
+					>
+						or create a new role &rarr;
+					</a>
+				</Show>
 			</div>
 		</div>
 	);

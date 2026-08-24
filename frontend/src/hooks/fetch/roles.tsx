@@ -46,13 +46,19 @@ export const useRolesQuery = (page: Accessor<string | undefined>, count: Accesso
 	});
 };
 
-export const useAllRolesQuery = (page: Accessor<string | undefined>, count: Accessor<string | undefined>) => {
+export const useAllRolesQuery = (
+	page: Accessor<string | undefined>,
+	count: Accessor<string | undefined>,
+	// Defaults to the active workspace; pass one to fetch another workspace's
+	// roles (the token screens list grants across all of the user's workspaces).
+	workspaceId?: Accessor<string | undefined>
+) => {
 	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
+	const [lastWorkspaceId] = useLastWorkspaceId();
 
 	return createQuery(() => {
 		const auth = authState();
-		const wsId = workspaceId();
+		const wsId = workspaceId ? workspaceId() : lastWorkspaceId();
 		const p = page();
 		const c = count();
 		return {
@@ -83,13 +89,13 @@ export const useAllRolesQuery = (page: Accessor<string | undefined>, count: Acce
 	});
 };
 
-export const useRoleInfoQuery = (roleId: Accessor<string>) => {
+export const useRoleInfoQuery = (roleId: Accessor<string>, workspaceId?: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
+	const [lastWorkspaceId] = useLastWorkspaceId();
 
 	return createQuery<GetRoleInfoResponse>(() => {
 		const auth = authState();
-		const wsId = workspaceId();
+		const wsId = workspaceId ? workspaceId() : lastWorkspaceId();
 		const id = roleId();
 		return {
 			queryKey: roleKeys.detail(wsId ?? "", id),
