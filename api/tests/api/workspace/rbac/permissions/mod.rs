@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use models::{
-	rbac::{Permission, ResourcePermissionType},
+	api::workspace::rbac::user::RoleGrant,
+	rbac::{Permission, PermissionScope, ResourcePermissionType},
 	utils::Uuid,
 };
 
@@ -32,12 +33,34 @@ async fn setup_permission_test(
 		permissions.insert(perm_id, perm_type);
 	}
 
+	// The grant's scope is derived from the (uniform) permission entries:
+	// scope moved from the role to the assignment at the role-binding
+	// cutover. Non-empty excludes have no additive equivalent.
+	let scope = match permissions.values().next().expect("at least one permission") {
+		ResourcePermissionType::Include(resources) => {
+			PermissionScope::Resources(resources.clone())
+		}
+		ResourcePermissionType::Exclude(resources) if resources.is_empty() => {
+			PermissionScope::Workspace
+		}
+		ResourcePermissionType::Exclude(_) => {
+			panic!("non-empty excludes are not representable as grants")
+		}
+	};
+
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, permissions)
 		.await;
 
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			RoleGrant {
+				role_id: role.id,
+				scope,
+			},
+		)
 		.await;
 
 	(admin, workspace.id, user_b)
@@ -53,4 +76,14 @@ fn exclude(ids: &[Uuid]) -> ResourcePermissionType {
 
 fn all() -> ResourcePermissionType {
 	ResourcePermissionType::Exclude(BTreeSet::new())
+}
+
+/// A grant scope covering exactly these resources.
+fn resources_scope(ids: &[Uuid]) -> PermissionScope {
+	PermissionScope::Resources(ids.iter().copied().collect())
+}
+
+/// A role grant at a specific scope.
+fn grant(role_id: Uuid, scope: PermissionScope) -> RoleGrant {
+	RoleGrant { role_id, scope }
 }

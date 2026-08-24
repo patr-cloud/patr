@@ -28,8 +28,9 @@ macros::declare_api_endpoint!(
 		pub total_count: TotalCountHeader,
 	},
 	response = {
-		/// List of all users with their set of roles in a workspace
-		pub users: BTreeMap<Uuid, Vec<Uuid>>,
+		/// Every member of the workspace with their role grants. A member
+		/// with zero grants appears with an empty list.
+		pub users: BTreeMap<Uuid, Vec<super::RoleGrant>>,
 	},
 	audit_log = NoAuditLogger,
 );

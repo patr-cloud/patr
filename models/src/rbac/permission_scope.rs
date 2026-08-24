@@ -8,7 +8,7 @@ use crate::prelude::*;
 /// `ResourcePermissionType`: grants are purely additive — a permission is
 /// held workspace-wide (a binding at `scope_id = workspace_id`) or on an
 /// explicit set of resources, and evaluation is a union.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, ts_rs::TS)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ts_rs::TS)]
 #[serde(rename_all = "camelCase", tag = "scopeType", content = "resources")]
 pub enum PermissionScope {
 	/// Every resource in the workspace, including ones created later.

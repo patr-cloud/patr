@@ -5,7 +5,7 @@ use models::{
 	rbac::{Permission, VolumePermission},
 };
 
-use super::{all, exclude, include, setup_permission_test};
+use super::{all, exclude, grant, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -98,7 +98,11 @@ async fn volume_include_grants_only_listed_resource() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[volume1.id])),
+		)
 		.await;
 
 	let r1 = setup
@@ -141,7 +145,7 @@ async fn volume_include_grants_only_listed_resource() {
 }
 
 #[tokio::test]
-async fn volume_exclude_denies_only_listed_resource() {
+async fn volume_grant_omitting_a_resource_denies_it() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
@@ -155,13 +159,17 @@ async fn volume_exclude_denies_only_listed_resource() {
 	let mut perms = BTreeMap::new();
 	perms.insert(
 		setup.get_permission_id(Permission::Volume(VolumePermission::View)),
-		exclude(&[volume2.id]),
+		include(&[volume1.id]),
 	);
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[volume1.id])),
+		)
 		.await;
 
 	let r1 = setup

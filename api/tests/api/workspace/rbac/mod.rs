@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::rbac::{role::*, user::*, *},
-	rbac::{Permission, ResourcePermissionType},
+	rbac::{Permission, PermissionScope, ResourcePermissionType},
 };
 
 use crate::prelude::*;
@@ -768,7 +768,10 @@ async fn update_user_roles_nonexistent_user() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![role.id],
+					roles: vec![RoleGrant {
+						role_id: role.id,
+						scope: PermissionScope::Workspace,
+					}],
 				})
 				.build(),
 		)
@@ -800,7 +803,10 @@ async fn update_user_roles_nonexistent_role() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![Uuid::nil()],
+					roles: vec![RoleGrant {
+						role_id: Uuid::nil(),
+						scope: PermissionScope::Workspace,
+					}],
 				})
 				.build(),
 		)
@@ -878,7 +884,10 @@ async fn update_user_roles_idempotent() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![role.id],
+					roles: vec![RoleGrant {
+						role_id: role.id,
+						scope: PermissionScope::Workspace,
+					}],
 				})
 				.build(),
 		)
@@ -1445,7 +1454,10 @@ async fn update_user_roles_cross_workspace_role() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![role_b.id],
+					roles: vec![RoleGrant {
+						role_id: role_b.id,
+						scope: PermissionScope::Workspace,
+					}],
 				})
 				.build(),
 		)
