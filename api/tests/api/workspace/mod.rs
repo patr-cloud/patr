@@ -344,10 +344,7 @@ async fn update_workspace_denied_without_edit_permission() {
 		.create_role_with_permissions(
 			&admin.access_token,
 			workspace.id,
-			BTreeMap::from([(
-				setup.get_permission_id(Permission::ViewRoles),
-				ResourcePermissionType::Exclude(Default::default()),
-			)]),
+			vec![setup.get_permission_id(Permission::ViewRoles)],
 		)
 		.await;
 	let member = setup

@@ -6,7 +6,7 @@ use models::{
 	rbac::{DomainPermission, Permission},
 };
 
-use super::{all, exclude, grant, include, resources_scope, setup_permission_test};
+use super::{all, grant, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -47,13 +47,8 @@ async fn domain_delete_permission_grants_access() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Domain(DomainPermission::Delete)),
-		include(&[domain.id]),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::Delete))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -93,13 +88,8 @@ async fn domain_verify_permission_grants_access() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Domain(DomainPermission::Verify)),
-		include(&[domain.id]),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::Verify))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -140,10 +130,8 @@ async fn domain_denied_without_permission() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ViewRoles)])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -182,13 +170,8 @@ async fn domain_include_grants_only_listed_resource() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Domain(DomainPermission::View)),
-		include(&[domain1.id]),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -249,13 +232,8 @@ async fn domain_grant_omitting_a_resource_denies_it() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Domain(DomainPermission::View)),
-		include(&[domain1.id]),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -313,13 +291,8 @@ async fn domain_view_does_not_grant_delete() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Domain(DomainPermission::View)),
-		all(),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)

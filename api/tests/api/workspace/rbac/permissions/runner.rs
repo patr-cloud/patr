@@ -6,7 +6,7 @@ use models::{
 	rbac::{Permission, RunnerPermission},
 };
 
-use super::{all, exclude, grant, include, resources_scope, setup_permission_test};
+use super::{all, grant, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -47,10 +47,8 @@ async fn runner_denied_without_permission() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ViewRoles)])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -89,13 +87,8 @@ async fn runner_include_grants_only_listed_resource() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Runner(RunnerPermission::View)),
-		include(&[runner1.id]),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -150,13 +143,8 @@ async fn runner_grant_omitting_a_resource_denies_it() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Runner(RunnerPermission::View)),
-		include(&[runner1.id]),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -353,13 +341,8 @@ async fn runner_view_does_not_grant_delete() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Runner(RunnerPermission::View)),
-		include(&[runner.id]),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -414,13 +397,8 @@ async fn runner_view_does_not_grant_create() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Runner(RunnerPermission::View)),
-		all(),
-	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		let role = setup
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))])
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)

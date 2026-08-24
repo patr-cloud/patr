@@ -211,13 +211,12 @@ async fn invite_requires_modify_roles() {
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
 	// A role that can view but not modify roles.
-	let mut permissions = BTreeMap::new();
-	permissions.insert(
-		setup.get_permission_id(Permission::ViewRoles),
-		ResourcePermissionType::Include(Default::default()),
-	);
 	let view_role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, permissions)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, view_role.id)

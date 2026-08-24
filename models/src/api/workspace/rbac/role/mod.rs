@@ -40,3 +40,18 @@ pub struct Role {
 	#[serde(default, skip_serializing_if = "str::is_empty")]
 	pub description: String,
 }
+
+/// A role as it exists in a workspace. Immutable roles are the seeded
+/// defaults — not editable, not deletable.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceRole {
+	/// The name of the role
+	pub name: String,
+	/// The description of the role
+	#[serde(default, skip_serializing_if = "str::is_empty")]
+	pub description: String,
+	/// Whether the role is a seeded default that cannot be edited or deleted
+	#[search(skip)]
+	pub is_immutable: bool,
+}

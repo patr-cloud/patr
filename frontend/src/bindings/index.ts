@@ -648,3 +648,4 @@ export type * from "./Workspace";
 export type * from "./WorkspaceDomain";
 export type * from "./WorkspaceInvite";
 export type * from "./WorkspacePermission";
+export type * from "./WorkspaceRole";
