@@ -22,7 +22,10 @@
 //! It prints the `OCI_*` environment the conformance container needs and then
 //! blocks. Ctrl-C to stop.
 
-use std::{collections::BTreeMap, net::SocketAddr};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	net::SocketAddr,
+};
 
 use axum::{Router, body::Body, routing::any};
 use http::Request;
@@ -51,7 +54,8 @@ async fn conformance_harness() {
 	let token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 

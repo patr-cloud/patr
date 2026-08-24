@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use models::rbac::WorkspacePermission;
+use models::{api::workspace::rbac::user::RoleGrant, rbac::Permission};
 
 use super::helpers::*;
 use crate::prelude::*;
@@ -67,17 +67,25 @@ async fn loki_push_no_execute_permission_returns_403() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	// Create an API token for the admin but with only Member permissions
-	// (no Runner::Execute). The admin can create such a token because they
-	// own the workspace.
+	// Create an API token for the admin whose ceiling carries only a
+	// harmless role (no Runner::Execute).
+	let view_role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
+		.await;
 	let api_token = setup
 		.create_test_api_token(
 			&admin.access_token,
+			BTreeSet::new(),
 			BTreeMap::from([(
 				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::new(),
-				},
+				vec![RoleGrant {
+					role_id: view_role.id,
+					resource_id: workspace.id,
+				}],
 			)]),
 		)
 		.await;
@@ -120,7 +128,8 @@ async fn loki_push_valid_auth_succeeds() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -167,7 +176,8 @@ async fn loki_push_label_rewriting() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -245,7 +255,8 @@ async fn loki_push_wrong_deployment_returns_403() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -290,7 +301,8 @@ async fn loki_push_invalid_snappy_returns_400() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -329,7 +341,8 @@ async fn loki_push_invalid_protobuf_returns_400() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 

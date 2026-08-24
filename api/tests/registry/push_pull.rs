@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use api::routes::registry_patr_cloud::handlers::manifest::*;
 use models::{
@@ -21,7 +21,8 @@ async fn push_image_shows_in_api_manifests() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -74,7 +75,8 @@ async fn push_tag_shows_in_api_tags() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -120,7 +122,8 @@ async fn push_tag_updates_existing() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -216,7 +219,8 @@ async fn delete_manifest_removes_from_list() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -280,7 +284,8 @@ async fn delete_manifest_with_tag_removes_both() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -343,7 +348,8 @@ async fn registry_delete_manifest_returns_405() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
