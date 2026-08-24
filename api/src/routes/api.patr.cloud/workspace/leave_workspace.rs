@@ -38,6 +38,39 @@ pub async fn leave_workspace(
 		return Err(ErrorType::CannotLeaveWorkspaceAsOwner);
 	}
 
+	// Ordered teardown: bindings -> actor -> membership.
+	let actor = query!(
+		r#"
+		SELECT
+			id AS "id: Uuid"
+		FROM
+			actor
+		WHERE
+			user_id = $1 AND
+			workspace_id = $2;
+		"#,
+		user_data.id as _,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?;
+
+	if let Some(actor) = actor {
+		db::delete_bindings_for_actor(&mut **database, &actor.id).await?;
+
+		query!(
+			r#"
+			DELETE FROM
+				actor
+			WHERE
+				id = $1;
+			"#,
+			actor.id as _,
+		)
+		.execute(&mut **database)
+		.await?;
+	}
+
 	query!(
 		r#"
 		DELETE FROM

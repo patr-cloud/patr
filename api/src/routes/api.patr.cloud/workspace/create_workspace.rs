@@ -655,14 +655,16 @@ async fn create_default_roles_for_workspace(
 					id,
 					workspace_id,
 					name,
-					description
+					description,
+					is_immutable
 				)
 			VALUES
 				(
 					$1,
 					$2,
 					$3,
-					$4
+					$4,
+					TRUE
 				);
 			"#,
 			role_id as _,
@@ -674,6 +676,35 @@ async fn create_default_roles_for_workspace(
 		.await?;
 
 		trace!("Role created. Inserting permissions.");
+
+		let role_permission_ids = role
+			.permissions
+			.iter()
+			.map(|permission| {
+				permission_ids
+					.get(&permission.to_string())
+					.copied()
+					.ok_or_else(|| {
+						ErrorType::server_error(format!(
+							"permission `{permission}` missing from permission table"
+						))
+					})
+			})
+			.collect::<Result<Vec<_>, _>>()?;
+
+		query!(
+			r#"
+			INSERT INTO
+				role_permission(role_id, permission_id)
+			SELECT
+				$1,
+				UNNEST($2::UUID[]);
+			"#,
+			role_id as _,
+			&role_permission_ids as _,
+		)
+		.execute(&mut *connection)
+		.await?;
 
 		for permission in role.permissions {
 			let permission_name = permission.to_string();

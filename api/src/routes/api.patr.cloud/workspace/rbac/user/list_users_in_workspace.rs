@@ -73,20 +73,23 @@ pub async fn list_users_in_workspace(
 			OFFSET $6
 		)
 		SELECT
-			workspace_user.user_id AS "user_id!",
-			workspace_user.role_id AS "role_id!",
+			users_page.user_id AS "user_id!",
+			role_binding.role_id AS "role_id?",
 			(SELECT COUNT(*) FROM matched_users) AS "total_count!"
 		FROM
-			workspace_user
-		INNER JOIN
 			users_page
+		LEFT JOIN
+			actor
 		ON
-			users_page.user_id = workspace_user.user_id
-		WHERE
-			workspace_user.workspace_id = $1
+			actor.user_id = users_page.user_id AND
+			actor.workspace_id = $1
+		LEFT JOIN
+			role_binding
+		ON
+			role_binding.actor_id = actor.id
 		ORDER BY
-			workspace_user.user_id,
-			workspace_user.role_id;
+			users_page.user_id,
+			role_binding.role_id;
 		"#,
 		workspace_id as _,
 		username_filter,
@@ -100,10 +103,15 @@ pub async fn list_users_in_workspace(
 	.into_iter()
 	.fold(BTreeMap::<Uuid, Vec<Uuid>>::new(), |mut users, row| {
 		total_count = row.total_count;
-		users
-			.entry(row.user_id.into())
-			.or_default()
-			.push(row.role_id.into());
+		// A zero-binding member still gets an (empty) entry; a role bound
+		// at several scopes appears once.
+		let roles = users.entry(row.user_id.into()).or_default();
+		if let Some(role_id) = row.role_id {
+			let role_id = role_id.into();
+			if !roles.contains(&role_id) {
+				roles.push(role_id);
+			}
+		}
 		users
 	});
 

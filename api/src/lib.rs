@@ -72,6 +72,7 @@ pub mod prelude {
 
 	pub use crate::{
 		app::{AppRequest, AppState, AuthenticatedAppRequest, UnprocessedAppRequest},
+		db,
 		models::ip_lookup as ip,
 		redis,
 		utils::{self, EitherExt, RouterExt, TimeoutExt, WorkerExt, constants, layers::ClientType},

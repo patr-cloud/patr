@@ -32,13 +32,22 @@ pub async fn update_role(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		user_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateRoleRequest>,
 ) -> Result<AppResponse<UpdateRoleRequest>, ErrorType> {
 	info!("Updating role: {}", role_id);
 
 	if permissions.is_empty() {
+		return Err(ErrorType::WrongParameters);
+	}
+
+	// A binding applies the whole role at one scope, so every permission in a
+	// role must carry the same resource set. Non-uniform roles became
+	// unrepresentable at the role-binding cutover.
+	let mut values = permissions.values();
+	let first = values.next();
+	if values.any(|value| Some(value) != first) {
 		return Err(ErrorType::WrongParameters);
 	}
 
@@ -204,6 +213,84 @@ pub async fn update_role(
 	}
 
 	trace!("Role permissions inserted");
+
+	query!(
+		r#"
+		DELETE FROM
+			role_permission
+		WHERE
+			role_id = $1;
+		"#,
+		role_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			role_permission(role_id, permission_id)
+		SELECT
+			$1,
+			permission_id
+		FROM
+			role_resource_permissions_type
+		WHERE
+			role_id = $1;
+		"#,
+		role_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	// Re-mint the bindings of everyone holding this role at the new scopes.
+	// Nothing references binding ids, so delete-and-re-mint has no side
+	// effects; token ceilings reference the role directly and are untouched.
+	let actor_ids = query!(
+		r#"
+		SELECT DISTINCT
+			actor_id AS "actor_id: Uuid"
+		FROM
+			role_binding
+		WHERE
+			role_id = $1;
+		"#,
+		role_id as _,
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.map(|row| row.actor_id)
+	.collect::<Vec<_>>();
+
+	query!(
+		r#"
+		DELETE FROM
+			role_binding
+		WHERE
+			role_id = $1;
+		"#,
+		role_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	let scopes = db::read_role_scopes(&mut **database, &workspace_id, &role_id)
+		.await?
+		.ok_or(ErrorType::RoleDoesNotExist)?;
+	for actor_id in &actor_ids {
+		db::mint_bindings(
+			&mut **database,
+			&workspace_id,
+			actor_id,
+			&role_id,
+			&scopes,
+			Some(&user_data.id),
+		)
+		.await?;
+	}
+
+	trace!("Bindings re-minted for {} actor(s)", actor_ids.len());
 
 	redis
 		.setex(

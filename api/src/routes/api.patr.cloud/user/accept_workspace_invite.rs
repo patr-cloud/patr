@@ -39,7 +39,8 @@ pub async fn accept_workspace_invite(
 			workspace_id AS "workspace_id: Uuid",
 			email,
 			token_hash,
-			token_expiry
+			token_expiry,
+			invited_by AS "invited_by: Uuid"
 		FROM
 			workspace_user_invite
 		WHERE
@@ -108,28 +109,52 @@ pub async fn accept_workspace_invite(
 
 	let workspace_id = invite.workspace_id;
 
+	// Membership is unconditional — an invite whose roles were deleted in
+	// the meantime still makes the accepter a (zero-binding) member instead
+	// of silently making nobody anything.
 	query!(
 		r#"
 		INSERT INTO
-			workspace_user(
-				user_id,
-				workspace_id,
-				role_id
-			)
-		SELECT
-			$1,
-			workspace_id,
-			role_id
-		FROM
-			workspace_user_invite_role
-		WHERE
-			invite_id = $2
+			workspace_user(user_id, workspace_id)
+		VALUES
+			($1, $2)
 		ON CONFLICT
-			(user_id, workspace_id, role_id)
+			(user_id, workspace_id)
 		DO NOTHING;
 		"#,
 		user_data.id as _,
+		workspace_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	let actor_id = db::ensure_actor_for_user(&mut **database, &user_data.id, &workspace_id).await?;
+
+	// The invite rows already carry concrete scopes; mint bindings directly,
+	// attributing the grant to the inviter.
+	query!(
+		r#"
+		INSERT INTO
+			role_binding(id, workspace_id, actor_id, role_id, scope_id, created, created_by)
+		SELECT
+			gen_random_uuid(),
+			ir.workspace_id,
+			$1,
+			ir.role_id,
+			ir.scope_id,
+			NOW(),
+			$3
+		FROM
+			workspace_user_invite_role ir
+		WHERE
+			ir.invite_id = $2
+		ON CONFLICT
+			(actor_id, role_id, scope_id)
+		DO NOTHING;
+		"#,
+		actor_id as _,
 		invite_id as _,
+		invite.invited_by as _,
 	)
 	.execute(&mut **database)
 	.await?;

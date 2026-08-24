@@ -445,12 +445,15 @@ impl TestSetup {
 	/// permission maps with `WrongParameters`, so we always seed one.
 	pub async fn create_test_role(&self, token: &BearerToken, workspace_id: Uuid) -> TestRole {
 		// The `create_new_role` handler rejects empty permissions with
-		// `WrongParameters`, so seed one harmless permission. Tests that care
-		// about specific permissions should use `create_role_with_permissions`.
+		// `WrongParameters`, so seed one harmless workspace-wide permission.
+		// (`Include(∅)` — a role granting nothing — stopped being
+		// representable at the role-binding cutover: a grant IS a binding,
+		// and an empty scope set mints none.) Tests that care about specific
+		// permissions should use `create_role_with_permissions`.
 		let mut permissions = BTreeMap::new();
 		permissions.insert(
 			self.get_permission_id(Permission::ViewRoles),
-			ResourcePermissionType::Include(Default::default()),
+			ResourcePermissionType::Exclude(Default::default()),
 		);
 		self.create_role_with_permissions(token, workspace_id, permissions)
 			.await

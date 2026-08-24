@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT holders.user_id AS \"user_id!: Uuid\", COUNT(*) OVER() AS \"total_count!\" FROM (SELECT DISTINCT actor.user_id FROM role_binding INNER JOIN actor ON actor.id = role_binding.actor_id INNER JOIN \"user\" ON actor.user_id = \"user\".id WHERE role_binding.workspace_id = $1 AND role_binding.role_id = $2 AND ($3::TEXT IS NULL OR \"user\".username ILIKE '%' || $3::TEXT || '%') AND ($4::TEXT IS NULL OR \"user\".first_name ILIKE '%' || $4::TEXT || '%') AND ($5::TEXT IS NULL OR \"user\".last_name ILIKE '%' || $5::TEXT || '%')) holders ORDER BY holders.user_id LIMIT $6 OFFSET $7;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      null
+    ]
+  },
+  "hash": "632ef59c57fb8dbbb0a4c13319bd44f69bc6705b0874efe5c6eb2cf46e58681c"
+}

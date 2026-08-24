@@ -11,6 +11,9 @@ pub(super) mod meta_data;
 /// The role based access control for the database. This is used to handle the
 /// permissions for the users and what workspace they have access to.
 pub(super) mod rbac;
+/// Helpers for reading and writing role bindings — the single place a
+/// permission target appears.
+pub(super) mod role_binding;
 /// The user module for the database. This is used to handle the users and their
 /// data.
 pub(super) mod user;
@@ -19,7 +22,7 @@ pub(super) mod user;
 pub(super) mod workspace;
 
 pub use self::initializer::initialize;
-pub(super) use self::{meta_data::*, rbac::*, user::*, workspace::*};
+pub(super) use self::{meta_data::*, rbac::*, role_binding::*, user::*, workspace::*};
 
 /// Connects to the database based on a config. Not much to say here.
 #[instrument(skip(config))]

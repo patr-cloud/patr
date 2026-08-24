@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT workspace_id AS \"workspace_id: Uuid\", email, token_hash, token_expiry FROM workspace_user_invite WHERE id = $1;",
+  "query": "SELECT workspace_id AS \"workspace_id: Uuid\", email, token_hash, token_expiry, invited_by AS \"invited_by: Uuid\" FROM workspace_user_invite WHERE id = $1;",
   "describe": {
     "columns": [
       {
@@ -22,6 +22,11 @@
         "ordinal": 3,
         "name": "token_expiry",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "invited_by: Uuid",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
@@ -33,8 +38,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "f78c68dfa4c8de95c1cd5db505329d10c75598143079d972f2fea1420ed8c59f"
+  "hash": "8e8a52d76bcc0fb5d2b5ec06eb5445cb01acb420f21e47560f38cbb3f379d905"
 }

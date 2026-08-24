@@ -139,13 +139,12 @@ pub async fn initialize_rbac_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	// Users belong to an workspace through a role
+	// Pure membership; role grants live in role_binding
 	query!(
 		r#"
 		CREATE TABLE workspace_user(
 			user_id UUID NOT NULL,
-			workspace_id UUID NOT NULL,
-			role_id UUID NOT NULL
+			workspace_id UUID NOT NULL
 		);
 		"#
 	)
@@ -331,36 +330,11 @@ pub async fn initialize_rbac_indices(
 	.execute(&mut *connection)
 	.await?;
 
-	// Users belong to an workspace through a role
 	query!(
 		r#"
 		ALTER TABLE workspace_user
 		ADD CONSTRAINT workspace_user_pk
-		PRIMARY KEY(user_id, workspace_id, role_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE INDEX
-			workspace_user_idx_user_id
-		ON
-			workspace_user
-		(user_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE INDEX
-			workspace_user_idx_user_id_workspace_id
-		ON
-			workspace_user
-		(user_id, workspace_id);
+		PRIMARY KEY(user_id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -449,11 +423,14 @@ pub async fn initialize_rbac_constraints(
 	.execute(&mut *connection)
 	.await?;
 
-	// The (user_id, workspace_id) FK up to workspace_user arrives with the
-	// cutover, once that table's primary key no longer carries role_id.
+	// A user's actor requires membership; the FK chain is
+	// role_binding -> actor -> workspace_user.
 	query!(
 		r#"
 		ALTER TABLE actor
+			ADD CONSTRAINT actor_fk_user_id_workspace_id
+				FOREIGN KEY(user_id, workspace_id)
+					REFERENCES workspace_user(user_id, workspace_id),
 			ADD CONSTRAINT actor_chk_type_matches_columns CHECK(
 				(
 					actor_type = 'user' AND
@@ -506,16 +483,13 @@ pub async fn initialize_rbac_constraints(
 	.execute(&mut *connection)
 	.await?;
 
-	// Users belong to an workspace through a role
 	query!(
 		r#"
 		ALTER TABLE workspace_user
 			ADD CONSTRAINT workspace_user_fk_user_id
 				FOREIGN KEY(user_id) REFERENCES "user"(id),
 			ADD CONSTRAINT workspace_user_fk_workspace_id
-				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
-			ADD CONSTRAINT workspace_user_fk_role_id_workspace_id
-				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, workspace_id);
+				FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -688,101 +662,99 @@ pub async fn initialize_rbac_constraints(
 				WHERE
 					user_api_token_workspace_super_admin.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
-			/* Resources explicitly granted via include lists,
-			scoped to the workspace the role belongs to */
-			included_resources AS (
+			/* Bindings carrying this permission: the user's own for web
+			logins; the token's ceiling intersected with the owner's grants
+			for API tokens */
+			/* The login's own bindings (empty for API tokens) */
+			user_bindings AS (
 				SELECT
-					role_resource_permissions_include.resource_id,
-					workspace_user.workspace_id
+					role_binding.workspace_id,
+					role_binding.scope_id
 				FROM
 					web_login
 				INNER JOIN
-					workspace_user
+					actor
 				ON
-					workspace_user.user_id = web_login.user_id
+					actor.actor_type = 'user' AND
+					actor.user_id = web_login.user_id
 				INNER JOIN
-					role_resource_permissions_include
+					role_binding
 				ON
-					role_resource_permissions_include.role_id = workspace_user.role_id AND
-					role_resource_permissions_include.permission_id = local_permission_id
+					role_binding.actor_id = actor.id
+				INNER JOIN
+					role_permission
+				ON
+					role_permission.role_id = role_binding.role_id AND
+					role_permission.permission_id = local_permission_id
 				WHERE
 					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
-				UNION ALL
-				SELECT
-					user_api_token_resource_permissions_include.resource_id,
-					user_api_token_resource_permissions_include.workspace_id
-				FROM
-					user_api_token_resource_permissions_include
-				WHERE
-					user_api_token_resource_permissions_include.permission_id = local_permission_id AND
-					user_api_token_resource_permissions_include.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
-			/* Resources explicitly denied via exclude lists */
-			excluded_resources AS (
+			/* An API token's declared grants, from the legacy snapshot tables
+			(interim until the token DTOs move to ceiling rows): granted on a
+			resource when the include list names it, or the workspace has an
+			exclude-type entry whose list doesn't */
+			token_included AS (
 				SELECT
-					role_resource_permissions_exclude.resource_id
+					inc.workspace_id,
+					inc.resource_id
 				FROM
-					web_login
-				INNER JOIN
-					workspace_user
-				ON
-					workspace_user.user_id = web_login.user_id
-				INNER JOIN
-					role_resource_permissions_exclude
-				ON
-					role_resource_permissions_exclude.role_id = workspace_user.role_id AND
-					role_resource_permissions_exclude.permission_id = local_permission_id
+					user_api_token_resource_permissions_include inc
 				WHERE
-					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
-				UNION ALL
-				SELECT
-					user_api_token_resource_permissions_exclude.resource_id
-				FROM
-					user_api_token_resource_permissions_exclude
-				WHERE
-					user_api_token_resource_permissions_exclude.permission_id = local_permission_id AND
-					user_api_token_resource_permissions_exclude.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					inc.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+					inc.permission_id = local_permission_id
 			),
-			/* Workspaces where this login has any exclude-type permission */
-			exclude_workspaces AS (
+			token_excluded AS (
 				SELECT
-					workspace_user.workspace_id
+					exc.resource_id
 				FROM
-					web_login
-				INNER JOIN
-					workspace_user
-				ON
-					workspace_user.user_id = web_login.user_id
-				INNER JOIN
-					role_resource_permissions_type
-				ON
-					role_resource_permissions_type.role_id = workspace_user.role_id AND
-					role_resource_permissions_type.permission_id = local_permission_id AND
-					role_resource_permissions_type.permission_type = 'exclude'
+					user_api_token_resource_permissions_exclude exc
 				WHERE
-					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
-				UNION ALL
+					exc.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+					exc.permission_id = local_permission_id
+			),
+			token_exclude_workspaces AS (
 				SELECT
-					user_api_token_resource_permissions_type.workspace_id
+					t.workspace_id
 				FROM
-					user_api_token_resource_permissions_type
+					user_api_token_resource_permissions_type t
 				WHERE
-					user_api_token_resource_permissions_type.permission_id = local_permission_id AND
-					user_api_token_resource_permissions_type.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-					user_api_token_resource_permissions_type.resource_permission_type = 'exclude'
+					t.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+					t.permission_id = local_permission_id AND
+					t.resource_permission_type = 'exclude'
+			),
+			/* The token owner's own grants; effective = ceiling ∩ owner,
+			intersected per resource below */
+			token_owner_grants AS (
+				SELECT
+					role_binding.workspace_id,
+					role_binding.scope_id
+				FROM
+					user_api_token
+				INNER JOIN
+					actor
+				ON
+					actor.actor_type = 'user' AND
+					actor.user_id = user_api_token.user_id
+				INNER JOIN
+					role_binding
+				ON
+					role_binding.actor_id = actor.id
+				INNER JOIN
+					role_permission
+				ON
+					role_permission.role_id = role_binding.role_id AND
+					role_permission.permission_id = local_permission_id
+				WHERE
+					user_api_token.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			)
-			/*
-			We are basically doing:
-				if super_admin OR
-				in(include_list) OR
-				(has exclude on permissionId AND not in(exclude_list))
-			*/
+			/* Scope covers a resource when it is the resource itself or its
+			whole workspace — two OR terms, never IN (NULL semantics); a
+			third term arrives when projects land */
 			SELECT
 				resource.*
 			FROM
 				resource
 			WHERE
-				/* Super admin: all resources in owned workspaces */
 				EXISTS (
 					SELECT
 						1
@@ -791,34 +763,57 @@ pub async fn initialize_rbac_constraints(
 					WHERE
 						super_admin_workspaces.workspace_id = resource.workspace_id
 				)
-				/* Include: any role or API token explicitly grants this resource
-				(also overrides exclude — include always wins) */
 				OR EXISTS (
 					SELECT
 						1
 					FROM
-						included_resources
+						user_bindings
 					WHERE
-						included_resources.resource_id = resource.id AND
-						included_resources.workspace_id = resource.workspace_id
+						user_bindings.workspace_id = resource.workspace_id AND
+						(
+							user_bindings.scope_id = resource.id OR
+							user_bindings.scope_id = user_bindings.workspace_id
+						)
 				)
-				/* Exclude: resource is in a workspace with an exclude-type
-				permission and is not on any deny list */
 				OR (
-					EXISTS (
+					(
+						EXISTS (
+							SELECT
+								1
+							FROM
+								token_included
+							WHERE
+								token_included.workspace_id = resource.workspace_id AND
+								token_included.resource_id = resource.id
+						)
+						OR (
+							EXISTS (
+								SELECT
+									1
+								FROM
+									token_exclude_workspaces
+								WHERE
+									token_exclude_workspaces.workspace_id = resource.workspace_id
+							) AND NOT EXISTS (
+								SELECT
+									1
+								FROM
+									token_excluded
+								WHERE
+									token_excluded.resource_id = resource.id
+							)
+						)
+					) AND EXISTS (
 						SELECT
 							1
 						FROM
-							exclude_workspaces
+							token_owner_grants
 						WHERE
-							exclude_workspaces.workspace_id = resource.workspace_id
-					) AND NOT EXISTS (
-						SELECT
-							1
-						FROM
-							excluded_resources
-						WHERE
-							excluded_resources.resource_id = resource.id
+							token_owner_grants.workspace_id = resource.workspace_id AND
+							(
+								token_owner_grants.scope_id = resource.id OR
+								token_owner_grants.scope_id = token_owner_grants.workspace_id
+							)
 					)
 				);
 		END;

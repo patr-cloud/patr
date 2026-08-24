@@ -32,7 +32,7 @@ pub async fn initialize_workspace_user_invite_tables(
 			invite_id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
 			role_id UUID NOT NULL,
-			scope_id UUID
+			scope_id UUID NOT NULL
 		);
 		"#
 	)
@@ -86,11 +86,9 @@ pub async fn initialize_workspace_user_invite_indices(
 
 	query!(
 		r#"
-		CREATE UNIQUE INDEX
-			workspace_user_invite_role_uq_invite_id_role_id_scope_id
-		ON
-			workspace_user_invite_role(invite_id, role_id, scope_id)
-		NULLS NOT DISTINCT;
+		ALTER TABLE workspace_user_invite_role
+		ADD CONSTRAINT workspace_user_invite_role_pk
+		PRIMARY KEY(invite_id, role_id, scope_id);
 		"#
 	)
 	.execute(&mut *connection)

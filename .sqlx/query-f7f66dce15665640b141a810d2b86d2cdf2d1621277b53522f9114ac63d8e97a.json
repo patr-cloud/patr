@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT role_binding.workspace_id AS \"workspace_id!\", role_permission.permission_id AS \"permission_id!\", (role_binding.scope_id = role_binding.workspace_id) AS \"is_workspace_scope!\", role_binding.scope_id AS \"scope_id!\" FROM actor INNER JOIN role_binding ON role_binding.actor_id = actor.id INNER JOIN role_permission ON role_permission.role_id = role_binding.role_id WHERE actor.actor_type = 'user' AND actor.user_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "permission_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_workspace_scope!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "scope_id!",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "f7f66dce15665640b141a810d2b86d2cdf2d1621277b53522f9114ac63d8e97a"
+}

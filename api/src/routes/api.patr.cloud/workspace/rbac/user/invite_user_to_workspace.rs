@@ -138,31 +138,45 @@ pub async fn invite_user_to_workspace(
 	})?
 	.id;
 
-	query!(
-		r#"
-		INSERT INTO
-			workspace_user_invite_role(
-				invite_id,
-				workspace_id,
-				role_id
-			)
-		SELECT
-			$1, $2, *
-		FROM
-			UNNEST($3::UUID[]);
-		"#,
-		invite_id as _,
-		workspace_id as _,
-		&roles.into_iter().collect::<Vec<_>>() as _,
-	)
-	.execute(&mut **database)
-	.await
-	.map_err(|err| match err {
-		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-			ErrorType::RoleDoesNotExist
-		}
-		other => ErrorType::server_error(other),
-	})?;
+	// One row per (role, scope): the invite snapshots the role's scopes at
+	// invite time, and accepting mints bindings straight from these rows.
+	for role_id in &roles {
+		let scopes = db::read_role_scopes(&mut **database, &workspace_id, role_id)
+			.await?
+			.ok_or(ErrorType::RoleDoesNotExist)?;
+		let scope_ids = match scopes {
+			db::RoleScopes::Workspace => vec![workspace_id],
+			db::RoleScopes::Resources(resources) => resources.into_iter().collect(),
+		};
+
+		query!(
+			r#"
+			INSERT INTO
+				workspace_user_invite_role(
+					invite_id,
+					workspace_id,
+					role_id,
+					scope_id
+				)
+			SELECT
+				$1, $2, $3, *
+			FROM
+				UNNEST($4::UUID[]);
+			"#,
+			invite_id as _,
+			workspace_id as _,
+			role_id as _,
+			&scope_ids as _,
+		)
+		.execute(&mut **database)
+		.await
+		.map_err(|err| match err {
+			sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+				ErrorType::RoleDoesNotExist
+			}
+			other => ErrorType::server_error(other),
+		})?;
+	}
 
 	let workspace_name = query!(
 		r#"
