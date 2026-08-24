@@ -1,6 +1,7 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { FiX } from "solid-icons/fi";
-import { InputDropdown, ListResources } from "~/components";
+import InputDropdown from "./input-dropdown";
+import ListResources from "./list-resources";
 import { PermissionScope } from "~/bindings/PermissionScope";
 import { useResourcesInfoQuery, useRoleInfoQuery, usePermissionsQuery } from "~/hooks/fetch";
 import { getResourceEndpoint, parseCamelCase, parsePermissionName } from "~/utils/func";
@@ -22,7 +23,10 @@ interface ScopePickerProps {
 const ScopePicker = (props: ScopePickerProps) => {
 	const [selectedResourceType, setSelectedResourceType] = createSignal<string>("");
 
-	const roleInfoQuery = useRoleInfoQuery(() => props.roleId);
+	const roleInfoQuery = useRoleInfoQuery(
+		() => props.roleId,
+		() => props.workspaceId
+	);
 	const permissionsQuery = usePermissionsQuery(() => props.workspaceId);
 
 	// The listable resource types this role's permissions touch. Workspace-level
@@ -40,7 +44,10 @@ const ScopePicker = (props: ScopePickerProps) => {
 	const selectedResources = createMemo(() => (props.scope.scopeType === "resources" ? props.scope.resources : []));
 
 	// Resolve ids to names for the chips; unresolvable ids fall back to the raw id.
-	const resourcesInfoQuery = useResourcesInfoQuery(() => selectedResources());
+	const resourcesInfoQuery = useResourcesInfoQuery(
+		() => selectedResources(),
+		() => props.workspaceId
+	);
 
 	const toggleResource = (resourceId: string) => {
 		const current = selectedResources();

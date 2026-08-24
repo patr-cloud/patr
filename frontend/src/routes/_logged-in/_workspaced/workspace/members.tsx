@@ -12,6 +12,7 @@ import {
 	Pagination,
 	useToast,
 	Initials,
+	MemberRoleEditor,
 } from "~/components";
 import { FiCheck, FiChevronRight, FiCopy, FiEdit2, FiPlus, FiTrash, FiX } from "solid-icons/fi";
 import { useNavigate } from "@tanstack/solid-router";
@@ -26,7 +27,7 @@ import { UpdateWorkspaceInviteRolesRequest } from "~/bindings/UpdateWorkspaceInv
 import { RoleGrant } from "~/bindings/RoleGrant";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
-import MemberRoleEditor from "./-components/member-role-editor";
+
 import {
 	useWorkspaceInfoQuery,
 	useAllRolesQuery,

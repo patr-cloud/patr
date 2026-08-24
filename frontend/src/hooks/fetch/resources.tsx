@@ -118,13 +118,13 @@ export const useWorkspaceResourcesQuery = (
  * resource, or one belonging to another workspace), so they're absent from the
  * map. Callers should fall back to showing the raw ID in that case.
  */
-const useResourcesInfoQuery = (resourceIds: Accessor<string[]>) => {
+const useResourcesInfoQuery = (resourceIds: Accessor<string[]>, workspaceId?: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
+	const [lastWorkspaceId] = useLastWorkspaceId();
 
 	return createQuery(() => {
 		const auth = authState();
-		const wsId = workspaceId();
+		const wsId = workspaceId ? workspaceId() : lastWorkspaceId();
 		const ids = [...resourceIds()].sort();
 		return {
 			queryKey: resourceKeys.info(wsId ?? "", ids),
