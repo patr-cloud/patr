@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
@@ -27,7 +27,7 @@ pub use self::{
 	revoke_api_token::*,
 	update_api_token::*,
 };
-use crate::rbac::WorkspacePermission;
+use crate::api::workspace::rbac::user::RoleGrant;
 
 #[::preprocess::sync]
 /// An API token created by the user.
@@ -48,13 +48,18 @@ pub struct UserApiToken {
 	/// when the user is looking at the list of tokens.
 	#[preprocess(trim, length(min = 4), regex = RESOURCE_NAME_REGEX)]
 	pub name: String,
-	/// The list of permissions for this token for a given workspace. A token
-	/// can have multiple permissions across different workspaces. But all the
-	/// actions performed by the token will be logged as the user who created
-	/// the token.
+	/// The workspaces this token has super-admin access to. Only the
+	/// workspace's owner can mint these.
+	#[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+	#[search(skip)]
+	pub super_admin_of: BTreeSet<Uuid>,
+	/// The token's role grants per workspace. These are a ceiling, not a
+	/// grant: the token's effective permissions are this intersected with
+	/// its owner's current permissions, computed at auth time. A ceiling
+	/// above the owner's reach is allowed and clamps harmlessly.
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	#[search(skip)]
-	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
+	pub grants: BTreeMap<Uuid, Vec<RoleGrant>>,
 	/// Any token that is used before the nbf (not before) should be rejected.
 	/// Tokens are only valid after this time.
 	#[serde(
@@ -104,8 +109,9 @@ mod test {
 
 	use super::UserApiToken;
 	use crate::{
+		api::workspace::rbac::user::RoleGrant,
 		prelude::*,
-		rbac::{PermissionScope, WorkspacePermission},
+		rbac::PermissionScope,
 	};
 
 	#[test]
@@ -113,7 +119,8 @@ mod test {
 		assert_tokens(
 			&UserApiToken {
 				name: "Token 1".to_string(),
-				permissions: Default::default(),
+				super_admin_of: Default::default(),
+				grants: Default::default(),
 				token_nbf: None,
 				token_exp: None,
 				allowed_ips: None,
@@ -139,24 +146,14 @@ mod test {
 		assert_tokens(
 			&UserApiToken {
 				name: "Token 2".to_string(),
-				permissions: {
-					let mut map = BTreeMap::new();
-					map.insert(Uuid::nil(), WorkspacePermission::SuperAdmin);
-					map.insert(
-						Uuid::parse_str("00000000000000000000000000000001").unwrap(),
-						WorkspacePermission::Member {
-							permissions: {
-								let mut map = BTreeMap::new();
-								map.insert(
-									Uuid::nil(),
-									PermissionScope::Resources(BTreeSet::from([Uuid::nil()])),
-								);
-								map
-							},
-						},
-					);
-					map
-				},
+				super_admin_of: BTreeSet::from([Uuid::nil()]),
+				grants: BTreeMap::from([(
+					Uuid::parse_str("00000000000000000000000000000001").unwrap(),
+					vec![RoleGrant {
+						role_id: Uuid::nil(),
+						scope: PermissionScope::Resources(BTreeSet::from([Uuid::nil()])),
+					}],
+				)]),
 				token_nbf: Some(OffsetDateTime::UNIX_EPOCH),
 				token_exp: Some(OffsetDateTime::UNIX_EPOCH),
 				allowed_ips: Some(vec![
@@ -169,25 +166,25 @@ mod test {
 			&[
 				Token::Struct {
 					name: "UserApiToken",
-					len: 6,
+					len: 7,
 				},
 				Token::Str("name"),
 				Token::Str("Token 2"),
-				Token::Str("permissions"),
-				Token::Map { len: Some(2) },
+				Token::Str("superAdminOf"),
+				Token::Seq { len: Some(1) },
 				Token::Str("00000000000000000000000000000000"),
-				Token::Struct {
-					name: "WorkspacePermission",
-					len: 1,
-				},
-				Token::Str("type"),
-				Token::Str("superAdmin"),
-				Token::StructEnd,
+				Token::SeqEnd,
+				Token::Str("grants"),
+				Token::Map { len: Some(1) },
 				Token::Str("00000000000000000000000000000001"),
-				Token::Map { len: None },
-				Token::Str("type"),
-				Token::Str("member"),
+				Token::Seq { len: Some(1) },
+				Token::Struct {
+					name: "RoleGrant",
+					len: 2,
+				},
+				Token::Str("roleId"),
 				Token::Str("00000000000000000000000000000000"),
+				Token::Str("scope"),
 				Token::Struct {
 					name: "PermissionScope",
 					len: 2,
@@ -202,7 +199,8 @@ mod test {
 				Token::Str("00000000000000000000000000000000"),
 				Token::SeqEnd,
 				Token::StructEnd,
-				Token::MapEnd,
+				Token::StructEnd,
+				Token::SeqEnd,
 				Token::MapEnd,
 				Token::Str("tokenNbf"),
 				Token::Some,

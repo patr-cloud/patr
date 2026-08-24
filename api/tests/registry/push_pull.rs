@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use api::routes::registry_patr_cloud::handlers::manifest::*;
 use models::{
@@ -19,10 +19,7 @@ async fn push_image_shows_in_api_manifests() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	let image = setup
@@ -72,10 +69,7 @@ async fn push_tag_shows_in_api_tags() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	let image = setup
@@ -118,10 +112,7 @@ async fn push_tag_updates_existing() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	// Push first image with tag "v1" (seed 0)
@@ -214,10 +205,7 @@ async fn delete_manifest_removes_from_list() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	let image = setup
@@ -278,10 +266,7 @@ async fn delete_manifest_with_tag_removes_both() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	let image = setup
@@ -341,10 +326,7 @@ async fn registry_delete_manifest_returns_405() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	let image = setup

@@ -1,7 +1,12 @@
-use models::api::user::*;
+use std::collections::BTreeSet;
+
+use models::{
+	api::{user::*, workspace::rbac::user::RoleGrant},
+	rbac::PermissionScope,
+};
 use reqwest::StatusCode;
 
-use crate::{models::permissions::get_permissions_for_api_token, prelude::*};
+use crate::prelude::*;
 
 pub async fn get_api_token_info(
 	AuthenticatedAppRequest {
@@ -52,7 +57,8 @@ pub async fn get_api_token_info(
 			row.token_id,
 			UserApiToken {
 				name: row.name,
-				permissions: Default::default(),
+				super_admin_of: Default::default(),
+				grants: Default::default(),
 				token_nbf: row.token_nbf,
 				token_exp: row.token_exp,
 				allowed_ips: row.allowed_ips,
@@ -63,13 +69,62 @@ pub async fn get_api_token_info(
 
 	trace!("Basic token info fetched");
 
-	// Route the read through the same cache/intersect path the auth layer
-	// uses so the UI shows the token's effective permissions — narrowed by
-	// any user-side role revocations since the token was minted.
-	token.data.permissions =
-		get_permissions_for_api_token(&mut **database, redis, &token_id, &user_data.id.into())
-			.await?
-			.permissions;
+	// The declared ceiling. Effective permissions are the ceiling
+	// intersected with the owner's current permissions, computed at auth —
+	// the declaration is what the owner can inspect and edit.
+	token.data.super_admin_of = query!(
+		r#"
+		SELECT
+			workspace_id AS "workspace_id!: Uuid"
+		FROM
+			user_api_token_workspace_super_admin
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.map(|row| row.workspace_id)
+	.collect();
+
+	query!(
+		r#"
+		SELECT
+			workspace_id AS "workspace_id!: Uuid",
+			role_id AS "role_id!: Uuid",
+			(scope_id = workspace_id) AS "is_workspace_scope!",
+			scope_id AS "scope_id!: Uuid"
+		FROM
+			api_token_role_binding
+		WHERE
+			token_id = $1
+		ORDER BY
+			workspace_id,
+			role_id;
+		"#,
+		token_id as _,
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.for_each(|row| {
+		let scope = if row.is_workspace_scope {
+			PermissionScope::Workspace
+		} else {
+			PermissionScope::Resources(BTreeSet::from([row.scope_id]))
+		};
+		let grants = token.data.grants.entry(row.workspace_id).or_default();
+		if let Some(grant) = grants.iter_mut().find(|grant| grant.role_id == row.role_id) {
+			grant.scope.union_with(&scope);
+		} else {
+			grants.push(RoleGrant {
+				role_id: row.role_id,
+				scope,
+			});
+		}
+	});
 
 	AppResponse::builder()
 		.body(GetApiTokenInfoResponse { token })
