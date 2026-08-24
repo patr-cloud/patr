@@ -1,6 +1,7 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetUserDetailsResponse } from "~/bindings/GetUserDetailsResponse";
+import { RoleGrant } from "~/bindings/RoleGrant";
 import { ListUsersInWorkspaceResponse } from "~/bindings/ListUsersInWorkspaceResponse";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -13,7 +14,7 @@ export type WorkspaceMember = {
 	lastName: string;
 	fullName: string;
 	username: string;
-	roleIds: string[];
+	grants: RoleGrant[];
 	/**
 	 * True for the synthetic row representing the workspace's super-admin.
 	 * The list endpoint omits the owner; the UI prepends a synthesized row
@@ -76,7 +77,7 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
 							lastName,
 							fullName: `${firstName} ${lastName}`,
 							username,
-							roleIds: (response.data.users[userId] || []).map((grant) => grant.roleId),
+							grants: response.data.users[userId] || [],
 							isOwner: false,
 						};
 					}
@@ -124,7 +125,7 @@ export const useWorkspaceOwnerQuery = (superAdminId: Accessor<string | undefined
 					lastName,
 					fullName: `${firstName} ${lastName}`,
 					username: resp.data.username || "",
-					roleIds: [],
+					grants: [],
 					isOwner: true,
 				};
 			},

@@ -26,6 +26,7 @@ import { UpdateWorkspaceInviteRolesRequest } from "~/bindings/UpdateWorkspaceInv
 import { RoleGrant } from "~/bindings/RoleGrant";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
+import MemberRoleEditor from "./-components/member-role-editor";
 import {
 	useWorkspaceInfoQuery,
 	useAllRolesQuery,
@@ -100,7 +101,7 @@ const ManageWorkspace = () => {
 	const [inviteRoleIds, setInviteRoleIds] = createSignal<string[]>([]);
 	const [selectedMemberId, setSelectedMemberId] = createSignal<string | null>(null);
 	const [isEditingRoles, setIsEditingRoles] = createSignal(false);
-	const [editingRoleIds, setEditingRoleIds] = createSignal<string[]>([]);
+	const [editingGrants, setEditingGrants] = createSignal<RoleGrant[]>([]);
 	const [pendingDeleteUserId, setPendingDeleteUserId] = createSignal<string | null>(null);
 
 	createEffect(() => {
@@ -144,10 +145,8 @@ const ManageWorkspace = () => {
 		const userId = selectedMemberId();
 		if (!userId) return;
 
-		// Scope selection lands with the members-page rework; until then every
-		// grant is workspace-wide, matching the pre-migration behaviour.
 		const requestBody: UpdateUserRolesInWorkspaceRequest = {
-			roles: editingRoleIds().map((roleId) => ({ roleId, scope: { scopeType: "workspace" } })),
+			roles: editingGrants(),
 		};
 
 		const response = await httpRequest(
@@ -249,16 +248,22 @@ const ManageWorkspace = () => {
 
 	const [editingInviteId, setEditingInviteId] = createSignal<string | null>(null);
 	const [editingInviteRoleIds, setEditingInviteRoleIds] = createSignal<string[]>([]);
+	// The invite's grants as they were when editing began, so a role that stays
+	// selected keeps its scope through the save (the picker only edits role
+	// membership; newly added roles default to workspace scope).
+	const [editingInviteOriginalGrants, setEditingInviteOriginalGrants] = createSignal<RoleGrant[]>([]);
 
 	const beginEditInvite = (inviteId: string, grants: RoleGrant[]) => {
 		setPendingRevokeId(null);
 		setEditingInviteId(inviteId);
+		setEditingInviteOriginalGrants(grants);
 		setEditingInviteRoleIds(grants.map((grant) => grant.roleId));
 	};
 
 	const cancelEditInvite = () => {
 		setEditingInviteId(null);
 		setEditingInviteRoleIds([]);
+		setEditingInviteOriginalGrants([]);
 	};
 
 	const { execute: saveInviteRoles, isLoading: isSavingInvite } = createAuthenticatedAction(
@@ -266,8 +271,11 @@ const ManageWorkspace = () => {
 			const inviteId = editingInviteId();
 			if (!inviteId) return;
 
+			const originalByRole = new Map(editingInviteOriginalGrants().map((grant) => [grant.roleId, grant]));
 			const body: UpdateWorkspaceInviteRolesRequest = {
-				roles: editingInviteRoleIds().map((roleId) => ({ roleId, scope: { scopeType: "workspace" as const } })),
+				roles: editingInviteRoleIds().map(
+					(roleId) => originalByRole.get(roleId) ?? { roleId, scope: { scopeType: "workspace" as const } }
+				),
 			};
 			const response = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/invite/${inviteId}`,
@@ -323,7 +331,12 @@ const ManageWorkspace = () => {
 	};
 
 	const inviteRoleNames = (grants: RoleGrant[]) =>
-		grants.map((grant) => roleNameMap().get(grant.roleId) || grant.roleId);
+		grants.map((grant) => {
+			const name = roleNameMap().get(grant.roleId) || grant.roleId;
+			return grant.scope.scopeType === "resources"
+				? `${name} (${grant.scope.resources.length} resource${grant.scope.resources.length === 1 ? "" : "s"})`
+				: name;
+		});
 
 	// An expired invite is still listed for a while so it can be resent, but its
 	// link no longer works — say so rather than showing it as merely pending.
@@ -592,8 +605,8 @@ const ManageWorkspace = () => {
 																}
 															>
 																<div class="px-3 py-1 border border-border-color rounded-xs text-xs text-grey">
-																	{member.roleIds.length}&nbsp;
-																	{member.roleIds.length === 1 ? "role" : "roles"}
+																	{member.grants.length}&nbsp;
+																	{member.grants.length === 1 ? "role" : "roles"}
 																</div>
 															</Show>
 															<FiChevronRight size={18} class="text-grey shrink-0" />
@@ -615,39 +628,26 @@ const ManageWorkspace = () => {
 										}
 									>
 										{(member) => {
-											const displayedRoleIds = createMemo(() =>
-												isEditingRoles() ? editingRoleIds() : member().roleIds
-											);
-											const displayedRoles = createMemo(() =>
-												displayedRoleIds().map((roleId) => ({
-													id: roleId,
-													name: roleNameMap().get(roleId) || roleId,
-												}))
+											const displayedGrants = createMemo(() =>
+												isEditingRoles() ? editingGrants() : member().grants
 											);
 
 											const isPendingDelete = () => pendingDeleteUserId() === member().userId;
 
 											const beginEditing = () => {
-												setEditingRoleIds([...member().roleIds]);
+												setEditingGrants(member().grants);
 												setIsEditingRoles(true);
 											};
 
 											const cancelEditing = () => {
 												setIsEditingRoles(false);
-												setEditingRoleIds([]);
+												setEditingGrants([]);
 											};
 
-											const removeEditingRole = (roleId: string) => {
-												setEditingRoleIds((prev) => prev.filter((id) => id !== roleId));
-											};
-
-											const toggleEditingRole = (roleId: string) => {
-												setEditingRoleIds((prev) =>
-													prev.includes(roleId)
-														? prev.filter((id) => id !== roleId)
-														: [...prev, roleId]
-												);
-											};
+											const scopeLabel = (grant: RoleGrant) =>
+												grant.scope.scopeType === "resources"
+													? `${grant.scope.resources.length} resource${grant.scope.resources.length === 1 ? "" : "s"}`
+													: null;
 
 											return (
 												<div class="bg-secondary-light rounded-xs p-lg flex flex-col gap-5">
@@ -721,63 +721,46 @@ const ManageWorkspace = () => {
 																Assigned roles
 															</h3>
 															<span class="text-grey text-xs">
-																{displayedRoles().length}
+																{displayedGrants().length}
 															</span>
 														</div>
 														<Show
-															when={displayedRoles().length > 0}
+															when={isEditingRoles()}
 															fallback={
-																<p class="text-grey text-sm italic">
-																	No roles assigned.
-																</p>
+																<Show
+																	when={displayedGrants().length > 0}
+																	fallback={
+																		<p class="text-grey text-sm italic">
+																			No roles assigned.
+																		</p>
+																	}
+																>
+																	<div class="flex flex-wrap gap-2 max-h-52 overflow-y-auto pr-1">
+																		<For each={displayedGrants()}>
+																			{(grant) => (
+																				<span class="inline-flex items-center gap-2 px-3 py-1 bg-secondary-light border border-border-color rounded-xs text-white text-xs">
+																					{roleNameMap().get(grant.roleId) ||
+																						grant.roleId}
+																					<Show when={scopeLabel(grant)}>
+																						{(label) => (
+																							<span class="text-grey">
+																								{label()}
+																							</span>
+																						)}
+																					</Show>
+																				</span>
+																			)}
+																		</For>
+																	</div>
+																</Show>
 															}
 														>
-															<div class="flex flex-wrap gap-2 max-h-52 overflow-y-auto pr-1">
-																<For each={displayedRoles()}>
-																	{(role) => (
-																		<span class="inline-flex items-center gap-2 px-3 py-1 bg-secondary-light border border-border-color rounded-xs text-white text-xs">
-																			{role.name}
-																			<Show when={isEditingRoles()}>
-																				<button
-																					type="button"
-																					aria-label={`Remove ${role.name}`}
-																					onClick={() =>
-																						removeEditingRole(role.id)
-																					}
-																					class="text-grey hover:text-error transition-colors cursor-pointer"
-																				>
-																					<FiX size={12} />
-																				</button>
-																			</Show>
-																		</span>
-																	)}
-																</For>
-															</div>
-														</Show>
-
-														<Show when={isEditingRoles()}>
-															<div class="flex flex-col gap-2 p-3 border border-dashed border-border-color rounded-xs">
-																<InputDropdownCheckBox
-																	placeholder="+ Add role..."
-																	styleVariant="medium"
-																	options={
-																		rolesQuery.data?.roles.map((role) => ({
-																			label: role.name,
-																			value: role.id,
-																		})) || []
-																	}
-																	checked={editingRoleIds()}
-																	onToggle={toggleEditingRole}
-																/>
-																<a
-																	href="/workspace/roles/new"
-																	target="_blank"
-																	rel="noopener noreferrer"
-																	class="text-primary text-xs hover:underline self-start"
-																>
-																	or create a new role &rarr;
-																</a>
-															</div>
+															<MemberRoleEditor
+																workspaceId={workspaceId()!}
+																grants={editingGrants()}
+																onChange={setEditingGrants}
+																roles={rolesQuery.data?.roles ?? []}
+															/>
 														</Show>
 													</div>
 

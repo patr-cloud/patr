@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { FiX } from "solid-icons/fi";
 import { createSignal, For, Show } from "solid-js";
 import { Initials, LoadingSpinner, useToast } from "~/components";
+import { RoleGrant } from "~/bindings/RoleGrant";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useMembersQuery, useRoleUsersQuery } from "~/hooks/fetch";
@@ -32,21 +33,19 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 
 	const [isMutating, setIsMutating] = createSignal(false);
 
-	const getCurrentRoleIds = (userId: string): string[] => {
+	const getCurrentGrants = (userId: string): RoleGrant[] => {
 		const member = membersQuery.data?.members.find((m) => m.userId === userId);
-		return member?.roleIds ?? [];
+		return member?.grants ?? [];
 	};
 
-	const updateUserRoles = async (userId: string, roleIds: string[]): Promise<boolean> => {
+	const updateUserRoles = async (userId: string, grants: RoleGrant[]): Promise<boolean> => {
 		const wsId = workspaceId();
 		if (!wsId) {
 			toast("Workspace ID is missing", "error");
 			return false;
 		}
-		// Workspace-wide grants only until the scope picker lands on the members page.
-		const body: UpdateUserRolesInWorkspaceRequest = {
-			roles: roleIds.map((roleId) => ({ roleId, scope: { scopeType: "workspace" } })),
-		};
+		// A full replace, so the untouched grants keep their scopes.
+		const body: UpdateUserRolesInWorkspaceRequest = { roles: grants };
 		const response = await httpRequest(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/user/${userId}`,
 			{ method: "POST", body: JSON.stringify(body) }
@@ -66,7 +65,7 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 			return;
 		}
 		setIsMutating(true);
-		const next = getCurrentRoleIds(userId).filter((id) => id !== props.roleId);
+		const next = getCurrentGrants(userId).filter((grant) => grant.roleId !== props.roleId);
 		const ok = await updateUserRoles(userId, next);
 		setIsMutating(false);
 		if (ok) toast(`Removed ${username} from role`, "success");
