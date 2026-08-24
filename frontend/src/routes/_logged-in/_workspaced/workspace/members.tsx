@@ -23,6 +23,7 @@ import { InviteUserToWorkspaceRequest } from "~/bindings/InviteUserToWorkspaceRe
 import { InviteUserToWorkspaceResponse } from "~/bindings/InviteUserToWorkspaceResponse";
 import { ResendWorkspaceInviteResponse } from "~/bindings/ResendWorkspaceInviteResponse";
 import { UpdateWorkspaceInviteRolesRequest } from "~/bindings/UpdateWorkspaceInviteRolesRequest";
+import { RoleGrant } from "~/bindings/RoleGrant";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
 import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery, useInvitesQuery } from "~/hooks/fetch";
@@ -132,6 +133,8 @@ const ManageWorkspace = () => {
 		const userId = selectedMemberId();
 		if (!userId) return;
 
+		// Scope selection lands with the members-page rework; until then every
+		// grant is workspace-wide, matching the pre-migration behaviour.
 		const requestBody: UpdateUserRolesInWorkspaceRequest = {
 			// Grants sit at the workspace root until the scope picker lands.
 			roles: editingRoleIds().map((roleId) => ({ roleId, resourceId: workspaceId })),
@@ -237,10 +240,10 @@ const ManageWorkspace = () => {
 	const [editingInviteId, setEditingInviteId] = createSignal<string | null>(null);
 	const [editingInviteRoleIds, setEditingInviteRoleIds] = createSignal<string[]>([]);
 
-	const beginEditInvite = (inviteId: string, roleIds: string[]) => {
+	const beginEditInvite = (inviteId: string, grants: RoleGrant[]) => {
 		setPendingRevokeId(null);
 		setEditingInviteId(inviteId);
-		setEditingInviteRoleIds([...roleIds]);
+		setEditingInviteRoleIds(grants.map((grant) => grant.roleId));
 	};
 
 	const cancelEditInvite = () => {
@@ -309,7 +312,8 @@ const ManageWorkspace = () => {
 		}
 	};
 
-	const inviteRoleNames = (roleIds: string[]) => roleIds.map((id) => roleNameMap().get(id) || id);
+	const inviteRoleNames = (grants: RoleGrant[]) =>
+		grants.map((grant) => roleNameMap().get(grant.roleId) || grant.roleId);
 
 	// An expired invite is still listed for a while so it can be resent, but its
 	// link no longer works — say so rather than showing it as merely pending.
@@ -396,9 +400,7 @@ const ManageWorkspace = () => {
 																</Show>
 															</span>
 															<span class="text-grey text-xs truncate">
-																{inviteRoleNames(
-																	invite.roles.map((grant) => grant.roleId)
-																).join(", ") || "No roles"}
+																{inviteRoleNames(invite.roles).join(", ") || "No roles"}
 															</span>
 														</div>
 														<Show when={canModifyMembers() && !isEditing()}>
@@ -422,12 +424,7 @@ const ManageWorkspace = () => {
 																			variant={ButtonVariant.Outlined}
 																			class="flex items-center gap-2"
 																			onClick={() =>
-																				beginEditInvite(
-																					invite.id,
-																					invite.roles.map(
-																						(grant) => grant.roleId
-																					)
-																				)
+																				beginEditInvite(invite.id, invite.roles)
 																			}
 																		>
 																			<FiEdit2 size={14} />

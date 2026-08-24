@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
-import { GetApiTokenInfoResponse, UpdateApiTokenRequest } from "~/bindings";
-import { WorkspacePermission } from "~/utils/types";
+import { GetApiTokenInfoResponse, UpdateApiTokenRequest, WorkspacePermission } from "~/bindings";
 import {
 	Button,
 	ButtonVariant,
@@ -75,9 +74,9 @@ const ApiTokenInfo = () => {
 		const enabled = new Set<string>();
 		const perms: { [key: string]: WorkspacePermission } = {};
 
-		// The wire shape is superAdminOf + role grants now; this screen still
-		// edits the old per-permission shape until the token-screen rework, so
-		// member workspaces surface only as "member" with no detail.
+		// The wire shape is superAdminOf + role grants; this screen still edits
+		// the old per-permission shape until the token-screen rework, so member
+		// workspaces surface only as "member" with no detail.
 		for (const wsId of info.superAdminOf ?? []) {
 			enabled.add(wsId);
 			perms[wsId] = { type: "superAdmin" };

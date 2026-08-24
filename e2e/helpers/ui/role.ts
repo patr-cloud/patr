@@ -4,7 +4,7 @@ import { HYDRATION_TIMEOUT } from '@/helpers/config';
 
 // Frontend reference:
 //   frontend/src/routes/_logged-in/_workspaced/workspace/roles/{index,new,$roleId}.tsx
-//   .../roles/-components/{permission-selector,edit,users,role-header}.tsx
+//   .../roles/-components/{permission-picker,edit,users,role-header}.tsx
 
 export async function openRolesList(page: Page): Promise<void> {
 	// Fresh workspaces already have 36 seeded roles; use a high count so any
@@ -47,21 +47,39 @@ export async function fillRoleForm(
 	}
 }
 
-// PermissionSelector helpers — the InputDropdown options are plain <div>s in a
-// Portal (no role="option"). We open the dropdown, click the option by text,
-// then click the + button which has aria-label="Add Permission".
+// PermissionPicker helpers. Column 1 lists the resource types: pills for the
+// actioned types (click to drill into the Actions column), checkbox cards for
+// the workspace-level types (viewRoles / modifyRoles / editWorkspace), which
+// toggle directly. The Checkbox renders an sr-only <input> inside a <label>,
+// so we click the label wrapper (same trick as the token workspace checkbox).
+
+// Toggle a workspace-level permission's checkbox card in the picker.
 export async function addWorkspaceLevelPermission(
 	page: Page,
-	resourceLabel: 'Modify Roles' | 'View Roles' | 'Edit Workspace' | 'Billing',
+	resourceLabel: 'Modify Roles' | 'View Roles' | 'Edit Workspace',
 ): Promise<void> {
-	const input = page.getByPlaceholder('Select Resource Type');
-	await input.click();
-	const option = page.getByText(resourceLabel, { exact: true });
-	await option.first().waitFor({ state: 'visible', timeout: 5_000 });
-	await option.first().click();
-	// After selection the dropdown closes and the input shows the chosen label.
-	await expect(input).toHaveValue(resourceLabel, { timeout: 3_000 });
-	await page.getByRole('button', { name: 'Add Permission' }).click();
+	const escaped = resourceLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	await page
+		.locator('label')
+		.filter({ hasText: new RegExp(`^${escaped}$`) })
+		.first()
+		.click();
+}
+
+// Drill into an actioned resource type (pill) in the picker's first column.
+export async function selectResourceTypePill(page: Page, label: string): Promise<void> {
+	await page.getByRole('button', { name: label, exact: true }).click();
+}
+
+// Toggle one action's checkbox in the picker's second column. Select the
+// resource type pill first.
+export async function toggleActionCheckbox(page: Page, label: string): Promise<void> {
+	const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	await page
+		.locator('label')
+		.filter({ hasText: new RegExp(`^${escaped}$`) })
+		.first()
+		.click();
 }
 
 export async function submitCreateRole(page: Page): Promise<void> {
@@ -103,7 +121,7 @@ export async function expectToast(page: Page, matcher: RegExp, timeout = 10_000)
 	await expect(page.getByText(matcher).first()).toBeVisible({ timeout });
 }
 
-// Edit-permissions matrix (edit.tsx + permission-matrix.tsx).
+// Edit-role page (edit.tsx + permission-picker.tsx).
 
 // "Clear All" sits opposite the section label and empties the whole permission
 // map, which re-disables Save Changes.
