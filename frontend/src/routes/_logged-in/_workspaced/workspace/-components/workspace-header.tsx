@@ -1,9 +1,12 @@
 import { Link as RouterLink, useLocation } from "@tanstack/solid-router";
+import { JSX } from "solid-js";
 import { ButtonVariant, Link, PageContainerHead } from "~/components";
 
 interface WorkspaceHeaderProps {
 	workspaceName?: string;
 	activeTab: "general" | "members" | "roles";
+	/** Extra tab-specific header actions, rendered alongside the built-in ones. */
+	actions?: () => JSX.Element;
 }
 
 const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
@@ -31,14 +34,16 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 						: []),
 			]}
 			subText="Manage your workspace settings, members, and roles."
-			actions={() =>
-				props.activeTab === "roles" &&
-				!location().pathname.includes("/new") && (
-					<Link href="/workspace/roles/new" buttonVariant={ButtonVariant.Plain} external={false}>
-						Create New Role
-					</Link>
-				)
-			}
+			actions={() => (
+				<>
+					{props.actions?.()}
+					{props.activeTab === "roles" && !location().pathname.includes("/new") && (
+						<Link href="/workspace/roles/new" buttonVariant={ButtonVariant.Plain} external={false}>
+							Create New Role
+						</Link>
+					)}
+				</>
+			)}
 			bottomContent={() => (
 				<div class="w-full text-white flex gap-4">
 					<RouterLink

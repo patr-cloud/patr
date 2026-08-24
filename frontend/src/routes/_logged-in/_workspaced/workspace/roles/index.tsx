@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, createSignal, Show, Suspense } from "solid-js";
-import { FiChevronDown, FiChevronUp, FiTrash2 } from "solid-icons/fi";
+import { FiTrash2 } from "solid-icons/fi";
 
 import {
 	Button,
@@ -16,7 +16,6 @@ import {
 	Table,
 	useToast,
 } from "~/components";
-import RoleUsersChips from "./-components/role-users-chips";
 import { Color } from "~/utils/color";
 import { useNavigate } from "@tanstack/solid-router";
 import { useAuthState, createPaginationState, useIsAllowed } from "~/hooks";
@@ -33,7 +32,6 @@ const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const [deleteOpen, setDeleteOpen] = createSignal(false);
-	const [expanded, setExpanded] = createSignal(false);
 
 	const onClickDelete = async () => {
 		const auth = authState();
@@ -89,16 +87,13 @@ const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
 					</Link>
 				</div>
 				<div class="flex-2 flex items-center justify-center min-w-0">
-					<Button
-						variant={ButtonVariant.Plain}
-						aria-label={expanded() ? "Hide users" : "See users"}
-						aria-expanded={expanded()}
-						onClick={() => setExpanded(!expanded())}
-						class="flex items-center gap-1 cursor-pointer"
+					<Link
+						href={`/workspace/roles/${props.role.id}?tab=users`}
+						buttonVariant={ButtonVariant.Plain}
+						class="h-full flex items-center gap-2 cursor-pointer"
 					>
-						<span>{expanded() ? "Hide users" : "See users"}</span>
-						{expanded() ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
-					</Button>
+						See Users
+					</Link>
 				</div>
 				<div class="flex-1 flex items-center justify-center min-w-0">
 					{/* Built-in roles ship with the workspace and can't be deleted. */}
@@ -129,11 +124,6 @@ const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
 					</Show>
 				</div>
 			</td>
-			<Show when={expanded()}>
-				<td role="cell" class="w-full px-md md:px-xl py-sm border-t border-border-color/40">
-					<RoleUsersChips roleId={props.role.id} />
-				</td>
-			</Show>
 		</tr>
 	);
 };
