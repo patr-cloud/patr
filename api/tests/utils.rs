@@ -443,19 +443,14 @@ impl TestSetup {
 	/// permission maps with `WrongParameters`, so we always seed one.
 	pub async fn create_test_role(&self, token: &BearerToken, workspace_id: Uuid) -> TestRole {
 		// The `create_new_role` handler rejects empty permissions with
-		// `WrongParameters`, so seed one harmless workspace-wide permission.
-		// (`Include(∅)` — a role granting nothing — stopped being usable here
-		// the moment assignment started deriving scopes from the role: an
-		// empty scope set writes no rows, so the invite grants nothing and the
-		// invitee never becomes a member.) Tests that care about specific
-		// permissions should use `create_role_with_permissions`.
-		let mut permissions = BTreeMap::new();
-		permissions.insert(
-			self.get_permission_id(Permission::ViewRoles),
-			ResourcePermissionType::Exclude(Default::default()),
-		);
-		self.create_role_with_permissions(token, workspace_id, permissions)
-			.await
+		// `WrongParameters`, so seed one harmless permission. Tests that care
+		// about specific permissions should use `create_role_with_permissions`.
+		self.create_role_with_permissions(
+			token,
+			workspace_id,
+			vec![self.get_permission_id(Permission::ViewRoles)],
+		)
+		.await
 	}
 
 	/// Create a role with specific permissions.
@@ -463,7 +458,7 @@ impl TestSetup {
 		&self,
 		token: &BearerToken,
 		workspace_id: Uuid,
-		permissions: BTreeMap<Uuid, ResourcePermissionType>,
+		permissions: Vec<Uuid>,
 	) -> TestRole {
 		let name = random_name(8);
 

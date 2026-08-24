@@ -347,11 +347,7 @@ async fn initiate_upload_as_member_without_push_returns_forbidden() {
 	// ContainerRegistryRepository::Push)
 	let perm_id = setup.get_permission_id(Permission::Deployment(DeploymentPermission::View));
 	let role = setup
-		.create_role_with_permissions(
-			&admin.access_token,
-			workspace.id,
-			BTreeMap::from([(perm_id, ResourcePermissionType::Exclude(BTreeSet::new()))]),
-		)
+		.create_role_with_permissions(&admin.access_token, workspace.id, vec![perm_id])
 		.await;
 
 	// Add a second user to the workspace with that limited role
