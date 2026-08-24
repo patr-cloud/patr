@@ -21,15 +21,14 @@ import { Color } from "~/utils/color";
 import { useNavigate } from "@tanstack/solid-router";
 import { useAuthState, createPaginationState, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { WithId } from "~/bindings";
-import { Role } from "~/utils/types";
+import { WithId, WorkspaceRole } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-components/workspace-header";
 import { useRolesQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
 import { useQueryClient } from "@tanstack/solid-query";
 import { roleKeys } from "~/hooks/query-keys";
 
-const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
+const RoleRow = (props: { role: WithId<WorkspaceRole>; onDeleted: () => void }) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
@@ -102,29 +101,32 @@ const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
 					</Button>
 				</div>
 				<div class="flex-1 flex items-center justify-center min-w-0">
-					<DeleteModal
-						title={`Delete Role "${props.role.name}"`}
-						resourceName={props.role.name}
-						onClickDelete={onClickDelete}
-						isOpen={deleteOpen}
-						setIsOpen={setDeleteOpen}
-						renderTrigger={(open) => {
-							return (
-								<Button
-									variant={ButtonVariant.Plain}
-									color={Color.Error}
-									aria-label="Delete role"
-									onClick={(e) => {
-										e.stopPropagation();
-										open?.(true);
-									}}
-									class="p-1"
-								>
-									<FiTrash2 size={16} />
-								</Button>
-							);
-						}}
-					/>
+					{/* Built-in roles ship with the workspace and can't be deleted. */}
+					<Show when={!props.role.isImmutable} fallback={<span class="text-grey text-xs">Built-in</span>}>
+						<DeleteModal
+							title={`Delete Role "${props.role.name}"`}
+							resourceName={props.role.name}
+							onClickDelete={onClickDelete}
+							isOpen={deleteOpen}
+							setIsOpen={setDeleteOpen}
+							renderTrigger={(open) => {
+								return (
+									<Button
+										variant={ButtonVariant.Plain}
+										color={Color.Error}
+										aria-label="Delete role"
+										onClick={(e) => {
+											e.stopPropagation();
+											open?.(true);
+										}}
+										class="p-1"
+									>
+										<FiTrash2 size={16} />
+									</Button>
+								);
+							}}
+						/>
+					</Show>
 				</div>
 			</td>
 			<Show when={expanded()}>
