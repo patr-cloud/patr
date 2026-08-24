@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use models::{
 	ApiSuccessResponseBody,
@@ -415,10 +415,7 @@ async fn get_manifest_details_works() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 	let image = setup
 		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
@@ -497,10 +494,7 @@ async fn delete_manifest_works() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 	let image = setup
 		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
@@ -589,10 +583,7 @@ async fn get_exposed_ports_no_ports() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 	setup
 		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
@@ -630,10 +621,7 @@ async fn get_exposed_ports_works() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	// Custom push: image config declares 8080/tcp.
@@ -703,10 +691,7 @@ async fn delete_manifest_in_use_by_deployment() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 	let image = setup
 		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")

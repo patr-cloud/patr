@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use headers::UserAgent;
 use models::{
@@ -496,7 +496,8 @@ impl TestSetup {
 	pub async fn create_test_api_token(
 		&self,
 		token: &BearerToken,
-		permissions: BTreeMap<Uuid, WorkspacePermission>,
+		super_admin_of: BTreeSet<Uuid>,
+		grants: BTreeMap<Uuid, Vec<RoleGrant>>,
 	) -> TestApiToken {
 		let name = random_name(8);
 
@@ -510,7 +511,8 @@ impl TestSetup {
 					.body(CreateApiTokenRequest {
 						token: UserApiToken {
 							name: name.clone(),
-							permissions,
+							super_admin_of,
+							grants,
 							token_nbf: None,
 							token_exp: None,
 							allowed_ips: None,

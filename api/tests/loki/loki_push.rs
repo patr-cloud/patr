@@ -1,6 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use models::rbac::WorkspacePermission;
+use models::{
+	api::workspace::rbac::user::RoleGrant,
+	rbac::{Permission, PermissionScope},
+};
 
 use super::helpers::*;
 use crate::prelude::*;
@@ -67,17 +70,25 @@ async fn loki_push_no_execute_permission_returns_403() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	// Create an API token for the admin but with only Member permissions
-	// (no Runner::Execute). The admin can create such a token because they
-	// own the workspace.
+	// Create an API token for the admin whose ceiling carries only a
+	// harmless role (no Runner::Execute).
+	let view_role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
+		.await;
 	let api_token = setup
 		.create_test_api_token(
 			&admin.access_token,
+			BTreeSet::new(),
 			BTreeMap::from([(
 				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::new(),
-				},
+				vec![RoleGrant {
+					role_id: view_role.id,
+					scope: PermissionScope::Workspace,
+				}],
 			)]),
 		)
 		.await;
@@ -118,10 +129,7 @@ async fn loki_push_valid_auth_succeeds() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	let labels = format!(
@@ -165,10 +173,7 @@ async fn loki_push_label_rewriting() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	// Push with spoofed runner_id and workspace_id — the server should rewrite
@@ -243,10 +248,7 @@ async fn loki_push_wrong_deployment_returns_403() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	// Runner A tries to push logs with runner B's deployment_id
@@ -288,10 +290,7 @@ async fn loki_push_invalid_snappy_returns_400() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	// Send garbage bytes (not valid snappy)
@@ -327,10 +326,7 @@ async fn loki_push_invalid_protobuf_returns_400() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	// Valid snappy of garbage (not valid protobuf)

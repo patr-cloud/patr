@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
 use headers::{ContentLength, ContentType};
 use models::{
-	api::workspace::container_registry::*,
+	api::workspace::{container_registry::*, rbac::user::RoleGrant},
 	rbac::{
 		ContainerRegistryRepositoryPermission,
 		DeploymentPermission,
@@ -67,10 +67,7 @@ async fn registry_push_without_permission() {
 	let other = setup.create_test_user().await;
 	let other_workspace = setup.create_test_workspace(&other.access_token).await;
 	let other_token = setup
-		.create_test_api_token(
-			&other.access_token,
-			BTreeMap::from([(other_workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&other.access_token, BTreeSet::from([other_workspace.id]), BTreeMap::new())
 		.await;
 
 	let data: Vec<u8> = (0..64u8).collect();
@@ -111,10 +108,7 @@ async fn push_to_nonexistent_repo() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	let data: Vec<u8> = (0..64u8).collect();
@@ -149,10 +143,7 @@ async fn pull_from_nonexistent_repo() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	let response = setup
@@ -186,10 +177,7 @@ async fn get_manifest_with_invalid_reference_returns_404() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	let response = setup
@@ -224,10 +212,7 @@ async fn push_to_deleted_repo() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	// Delete the repo via API
@@ -294,10 +279,7 @@ async fn cross_workspace_push_denied() {
 	let user_b = setup.create_test_user().await;
 	let workspace_b = setup.create_test_workspace(&user_b.access_token).await;
 	let token_b = setup
-		.create_test_api_token(
-			&user_b.access_token,
-			BTreeMap::from([(workspace_b.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user_b.access_token, BTreeSet::from([workspace_b.id]), BTreeMap::new())
 		.await;
 
 	// User B tries to push to user A's repo
@@ -360,11 +342,13 @@ async fn initiate_upload_as_member_without_push_returns_forbidden() {
 	let token_b = setup
 		.create_test_api_token(
 			&user_b.access_token,
+			BTreeSet::new(),
 			BTreeMap::from([(
 				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(perm_id, PermissionScope::Workspace)]),
-				},
+				vec![RoleGrant {
+					role_id: role.id,
+					scope: PermissionScope::Workspace,
+				}],
 			)]),
 		)
 		.await;
@@ -424,14 +408,19 @@ async fn head_blob_with_push_only_token_is_allowed() {
 	let push_perm = setup.get_permission_id(Permission::ContainerRegistryRepository(
 		ContainerRegistryRepositoryPermission::Push,
 	));
+	let push_role = setup
+		.create_role_with_permissions(&user.access_token, workspace.id, vec![push_perm])
+		.await;
 	let push_only = setup
 		.create_test_api_token(
 			&user.access_token,
+			BTreeSet::new(),
 			BTreeMap::from([(
 				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(push_perm, PermissionScope::Workspace)]),
-				},
+				vec![RoleGrant {
+					role_id: push_role.id,
+					scope: PermissionScope::Workspace,
+				}],
 			)]),
 		)
 		.await;

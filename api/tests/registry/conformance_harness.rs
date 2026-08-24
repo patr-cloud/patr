@@ -22,7 +22,10 @@
 //! It prints the `OCI_*` environment the conformance container needs and then
 //! blocks. Ctrl-C to stop.
 
-use std::{collections::BTreeMap, net::SocketAddr};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	net::SocketAddr,
+};
 
 use axum::{Router, body::Body, routing::any};
 use http::Request;
@@ -49,10 +52,7 @@ async fn conformance_harness() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
+		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
 		.await;
 
 	// Build a combined router sharing the seeded state. Registry auth reads the

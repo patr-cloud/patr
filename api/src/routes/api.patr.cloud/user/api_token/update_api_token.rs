@@ -1,7 +1,4 @@
-use models::{
-	api::user::*,
-	rbac::{PermissionScope, ResourcePermissionTypeDiscriminant, WorkspacePermission},
-};
+use models::{api::user::*, rbac::PermissionScope};
 use reqwest::StatusCode;
 use rustis::commands::GenericCommands;
 
@@ -23,7 +20,8 @@ pub async fn update_api_token(
 						token:
 							UserApiTokenProcessed {
 								name,
-								permissions,
+								super_admin_of,
+								grants,
 								token_nbf,
 								token_exp,
 								allowed_ips,
@@ -40,7 +38,7 @@ pub async fn update_api_token(
 ) -> Result<AppResponse<UpdateApiTokenRequest>, ErrorType> {
 	trace!("Updating API token: {}", token_id);
 
-	if permissions.is_empty() {
+	if super_admin_of.is_empty() && grants.is_empty() {
 		return Err(ErrorType::WrongParameters);
 	}
 
@@ -94,6 +92,18 @@ pub async fn update_api_token(
 	}
 
 	trace!("API token updated");
+
+	query!(
+		r#"
+		DELETE FROM
+			api_token_role_binding
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
 	query!(
 		r#"
@@ -157,163 +167,110 @@ pub async fn update_api_token(
 
 	trace!("Existing permissions deleted");
 
-	for (workspace_id, permission) in permissions {
-		trace!("Inserting permission for workspace ID: `{workspace_id}`");
+	// Super-admin entries: the DB itself enforces that only the workspace's
+	// owner can mint these, via the FK to workspace(id, super_admin_id).
+	for workspace_id in super_admin_of {
+		trace!("Inserting super-admin entry for workspace ID: `{workspace_id}`");
 
-		let Some(user_permission) = user_data.permissions.get(&workspace_id) else {
-			debug!("The user does not have any permissions on workspace ID: `{workspace_id}`");
-			return Err(ErrorType::Unauthorized);
-		};
-
-		if !user_permission.is_superset_of(&permission) {
-			debug!("The user does not have adequate permissions on workspace ID: `{workspace_id}`");
-			return Err(ErrorType::Unauthorized);
-		}
-
-		match permission {
-			WorkspacePermission::SuperAdmin => {
-				trace!("Inserting permission as super admin");
-				query!(
-					r#"
-					INSERT INTO
-						user_api_token_workspace_permission_type(
-							token_id,
-							workspace_id,
-							token_permission_type
-						)
-					VALUES
-						(
-							$1,
-							$2,
-							'super_admin'
-						);
-					"#,
-					token_id as _,
-					workspace_id as _,
+		query!(
+			r#"
+			INSERT INTO
+				user_api_token_workspace_permission_type(
+					token_id,
+					workspace_id,
+					token_permission_type
 				)
-				.execute(&mut **database)
-				.await?;
+			VALUES
+				(
+					$1,
+					$2,
+					'super_admin'
+				);
+			"#,
+			token_id as _,
+			workspace_id as _,
+		)
+		.execute(&mut **database)
+		.await?;
 
-				query!(
-					r#"
-					INSERT INTO
-						user_api_token_workspace_super_admin(
-							token_id,
-							user_id,
-							workspace_id,
-							token_permission_type
-						)
-					VALUES
-						(
-							$1,
-							$2,
-							$3,
-							DEFAULT
-						);
-					"#,
-					token_id as _,
-					user_data.id as _,
-					workspace_id as _,
+		query!(
+			r#"
+			INSERT INTO
+				user_api_token_workspace_super_admin(
+					token_id,
+					user_id,
+					workspace_id,
+					token_permission_type
 				)
-				.execute(&mut **database)
-				.await?;
+			VALUES
+				(
+					$1,
+					$2,
+					$3,
+					DEFAULT
+				);
+			"#,
+			token_id as _,
+			user_data.id as _,
+			workspace_id as _,
+		)
+		.execute(&mut **database)
+		.await
+		.map_err(|err| match err {
+			sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+				ErrorType::Unauthorized
 			}
-			WorkspacePermission::Member { permissions } => {
-				trace!("Inserting permission as member");
-				// The per-permission rows below FK onto this parent row, so it
-				// has to land first. create_api_token does the same.
-				query!(
-					r#"
-					INSERT INTO
-						user_api_token_workspace_permission_type(
-							token_id,
-							workspace_id,
-							token_permission_type
-						)
-					VALUES
-						(
-							$1,
-							$2,
-							'member'
-						);
-					"#,
-					token_id as _,
-					workspace_id as _,
-				)
-				.execute(&mut **database)
-				.await?;
+			other => ErrorType::server_error(other),
+		})?;
+	}
 
-				for (permission_id, resource_permission) in permissions {
-					let legacy_type = match &resource_permission {
-						PermissionScope::Workspace => ResourcePermissionTypeDiscriminant::Exclude,
-						PermissionScope::Resources(_) => {
-							ResourcePermissionTypeDiscriminant::Include
+	// The ceiling rows. Validation is structural only — the composite FKs
+	// pin the role and every scope to the named workspace. A ceiling above
+	// the owner's current permissions is allowed: the intersection at auth
+	// time clamps it, and a later promotion needs no re-mint.
+	for (workspace_id, workspace_grants) in grants {
+		trace!("Inserting ceiling rows for workspace ID: `{workspace_id}`");
+
+		for grant in workspace_grants {
+			if matches!(&grant.scope, PermissionScope::Resources(resources) if resources.is_empty())
+			{
+				return Err(ErrorType::WrongParameters);
+			}
+			let scope_ids = match &grant.scope {
+				PermissionScope::Workspace => vec![workspace_id],
+				PermissionScope::Resources(resources) => resources.iter().copied().collect(),
+			};
+
+			query!(
+				r#"
+				INSERT INTO
+					api_token_role_binding(token_id, workspace_id, role_id, scope_id)
+				SELECT
+					$1, $2, $3, *
+				FROM
+					UNNEST($4::UUID[])
+				ON CONFLICT
+					(token_id, role_id, scope_id)
+				DO NOTHING;
+				"#,
+				token_id as _,
+				workspace_id as _,
+				grant.role_id as _,
+				&scope_ids as _,
+			)
+			.execute(&mut **database)
+			.await
+			.map_err(|err| match err {
+				sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+					match db_err.constraint() {
+						Some("api_token_role_binding_fk_role_id_workspace_id") => {
+							ErrorType::RoleDoesNotExist
 						}
-					};
-					query!(
-						r#"
-						INSERT INTO
-							user_api_token_resource_permissions_type(
-								token_id,
-								workspace_id,
-								permission_id,
-								resource_permission_type,
-								token_permission_type
-							)
-						VALUES
-							(
-								$1,
-								$2,
-								$3,
-								$4,
-								DEFAULT
-							);
-						"#,
-						token_id as _,
-						workspace_id as _,
-						permission_id as _,
-						legacy_type as _,
-					)
-					.execute(&mut **database)
-					.await?;
-
-					// A workspace-wide scope is the legacy exclude-type row
-					// with no exclusions; a resource set is an include list.
-					if let PermissionScope::Resources(resource_ids) = resource_permission {
-						query!(
-							r#"
-							INSERT INTO
-								user_api_token_resource_permissions_include(
-									token_id,
-									workspace_id,
-									permission_id,
-									resource_id,
-									resource_deleted,
-									permission_type
-								)
-							VALUES
-								(
-									$1,
-									$2,
-									$3,
-									UNNEST($4::UUID[]),
-									DEFAULT,
-									DEFAULT
-								);
-							"#,
-							token_id as _,
-							workspace_id as _,
-							permission_id as _,
-							&resource_ids
-								.into_iter()
-								.map(|id| id.into())
-								.collect::<Vec<_>>(),
-						)
-						.execute(&mut **database)
-						.await?;
+						_ => ErrorType::ResourceDoesNotExist,
 					}
 				}
-			}
+				other => ErrorType::server_error(other),
+			})?;
 		}
 	}
 
