@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -23,6 +23,11 @@ pub struct RequestUserData {
 	pub created: OffsetDateTime,
 	/// The loginId of the current authenticated request.
 	pub login_id: Uuid,
+	/// Every workspace this login belongs to (membership ∪ ownership for
+	/// users; granted ∪ super-admin workspaces for API tokens). Independent
+	/// of `permissions` — a member with zero bindings appears here and not
+	/// there.
+	pub workspaces: BTreeSet<Uuid>,
 	/// The permissions that the user has on all workspaces. This is a map of
 	/// WorkspaceID -> What permissions the user has on that workspace.
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
