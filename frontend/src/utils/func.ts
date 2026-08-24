@@ -1,3 +1,4 @@
+import type { ResourceTypeName } from "~/bindings/ResourceTypeName";
 import { Accessor, JSX } from "solid-js";
 import { Color } from "./color";
 import { ActionTypes, ResourceTypes } from "./types";
@@ -224,19 +225,39 @@ const safelyParseJSON = <T>(jsonString: string): T | undefined => {
 	}
 };
 
-// Map resource types to their API endpoints
-const getResourceEndpoint = (type: string) => {
-	const endpointMap: Record<string, string> = {
-		deployment: "deployment",
-		containerRegistryRepository: "container-registry",
-		runner: "runner",
-		volume: "volume",
-		secret: "secret",
-		domain: "domain",
-		managedURL: "managed-url",
-	};
-	return endpointMap[type];
+/**
+ * Every resource type, mapped to the workspace-scoped path segment that lists
+ * it — or `null` for the ones with no list endpoint, which therefore can't be
+ * scoped to.
+ *
+ * Deliberately a total `Record` over the generated `ResourceTypeName` rather
+ * than a `Record<string, string>`: adding a variant on the Rust side
+ * regenerates the binding and breaks this file's typecheck until it is
+ * handled here. The loose version silently returned `undefined` for anything
+ * new, which the scope picker reads as "not scopeable" — a permission quietly
+ * losing the ability to be narrowed, with nothing failing anywhere.
+ */
+const RESOURCE_LIST_ENDPOINTS: Record<ResourceTypeName, string | null> = {
+	deployment: "deployment",
+	containerRegistryRepository: "container-registry",
+	runner: "runner",
+	volume: "volume",
+	secret: "secret",
+	domain: "domain",
+	managedURL: "managed-url",
+	// Not scopeable. A workspace is the scope's own boundary, and neither
+	// projects nor roles are things a permission is granted *on*.
+	workspace: null,
+	project: null,
+	role: null,
 };
+
+const isResourceTypeName = (type: string): type is ResourceTypeName =>
+	Object.prototype.hasOwnProperty.call(RESOURCE_LIST_ENDPOINTS, type);
+
+/** The list endpoint for a resource type, or undefined if it has none. */
+const getResourceEndpoint = (type: string): string | undefined =>
+	isResourceTypeName(type) ? (RESOURCE_LIST_ENDPOINTS[type] ?? undefined) : undefined;
 
 const convertFileToBase64 = (file: File): Promise<string> => {
 	return new Promise((resolve, reject) => {
