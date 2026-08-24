@@ -29,6 +29,8 @@ import Modal from "~/components/modal";
 import { ModalContainer } from "~/components/modal";
 import Link from "~/components/link";
 import ListResources from "~/components/list-resources";
+import BindingRows from "~/components/binding-rows";
+import ScopePicker from "~/components/scope-picker";
 import DeleteModal from "~/components/modal/delete-resource-modal";
 import NoPermissionsPage from "~/components/no-permissions";
 import { LoadingSpinner } from "~/components/loading-spinner";
@@ -82,6 +84,8 @@ export {
 	type InputEventT,
 	type AutocompleteSuggestion,
 	ListResources,
+	BindingRows,
+	ScopePicker,
 	DeleteModal,
 	NoPermissionsPage,
 	LoadingSpinner,

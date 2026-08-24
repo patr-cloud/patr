@@ -1,111 +1,111 @@
 import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
-// Frontend: frontend/src/routes/_logged-in/_workspaced/workspace/members.tsx
+// Frontend:
+//   frontend/src/routes/_logged-in/_workspaced/workspace/members.tsx
+//   frontend/src/routes/_logged-in/_workspaced/workspace/members_/invite.tsx
+//
+// The members page is one list of people — the owner first, then pending
+// invites, then members — beside a detail panel. Row-level actions (resend,
+// revoke, edit, remove) all live in that panel, so every helper here selects
+// the row first and then acts on the panel.
 
 export async function openMembersPage(page: Page): Promise<void> {
 	await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
-	// Anchor on the workspace header's Members tab rather than the invite form:
-	// the form is gated behind modifyRoles, so anchoring on it would hang for a
-	// viewer-only member.
+	// Anchor on the workspace header's Members tab rather than any control:
+	// the actions are gated behind modifyRoles, so anchoring on one would hang
+	// for a viewer-only member.
 	await page
 		.getByRole('link', { name: 'Members', exact: true })
 		.first()
 		.waitFor({ state: 'visible', timeout: 15_000 });
 }
 
-// The invite form's email field. Rendered only for members with modifyRoles.
+// Inviting is its own page, reached from the header button.
+export async function openInvitePage(page: Page): Promise<void> {
+	await page.goto('/workspace/members/invite', { waitUntil: 'domcontentloaded' });
+	await page
+		.getByPlaceholder('someone@example.com')
+		.waitFor({ state: 'visible', timeout: 15_000 });
+}
+
 export async function fillInviteEmail(page: Page, email: string): Promise<void> {
-	await page.getByPlaceholder('Email address to invite...').fill(email);
+	await page.getByPlaceholder('someone@example.com').fill(email);
 }
 
 export async function submitInvite(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /^(Send Invite|Sending\.\.\.)$/ }).click();
+	await page.getByRole('button', { name: /^(Send invite|Sending\.\.\.)$/ }).click();
 }
 
-// A pending invite's row in the "Pending invitations" list, located by the
-// invited email address.
-export function inviteRow(page: Page, email: string) {
-	return page.locator('li').filter({ hasText: email }).first();
-}
-
-export async function copyInviteLink(page: Page, email: string): Promise<void> {
-	await inviteRow(page, email)
-		.getByRole('button', { name: /Copy link/i })
-		.click();
-}
-
-export async function resendInvite(page: Page, email: string): Promise<void> {
-	await inviteRow(page, email)
-		.getByRole('button', { name: /^Resend$/ })
-		.click();
-}
-
-// Revoke is a two-step confirm: the trash icon arms it, then "Revoke" commits.
-export async function revokeInvite(page: Page, email: string): Promise<void> {
-	const row = inviteRow(page, email);
-	await row.getByRole('button', { name: 'Revoke invite' }).click();
-	await row.getByRole('button', { name: /^Revoke$/ }).click();
-}
-
-export async function openRolesDropdown(page: Page): Promise<void> {
-	// InputDropdownCheckBox renders the placeholder as the <input placeholder=...>
-	// attribute (NOT text content). Click the input to open the dropdown.
-	// The placeholder switches to "N role(s) selected" after selection.
-	const placeholderInput = page
-		.locator(
-			'input[placeholder="Add roles..."], input[placeholder^="1 role selected"], input[placeholder*="roles selected"]',
-		)
-		.first();
-	await placeholderInput.click();
-}
-
-export async function toggleRoleOption(page: Page, roleName: string): Promise<void> {
-	// Dropdown options live in a max-h-60 overflow-y-scroll container; roles
-	// below the fold need scrollIntoView first. Each option is an outer
-	// <div class="cursor-pointer ..." onClick=...> wrapping a pointer-events-none
-	// Checkbox. Playwright's actionability check trips on pointer-events: none,
-	// so we click the outer cursor-pointer wrapper directly (where the onClick
-	// handler lives). hasText match is anchored to the checkbox accessible name
-	// via a nested locator instead of exact-text on the option (icon glyphs etc.
-	// can also contribute to the option's text).
-	const escaped = roleName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/**
+ * Picks an option from an `InputDropdown`. The list is portalled to the body
+ * with `position: fixed`, so it is not a descendant of the input — scope the
+ * option lookup to the page, not to the trigger.
+ */
+async function pickFromDropdown(page: Page, trigger: ReturnType<Page['locator']>, label: string) {
+	await trigger.click();
 	const option = page
 		.locator('div.cursor-pointer')
-		.filter({ has: page.getByRole('checkbox', { name: new RegExp(`^${escaped}$`) }) })
+		.filter({ hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) })
 		.first();
 	await option.scrollIntoViewIfNeeded({ timeout: 10_000 });
 	await option.click();
 }
 
+/** The role dropdown of the last binding row — the one just added. */
+export async function selectBindingRole(page: Page, roleName: string): Promise<void> {
+	await pickFromDropdown(page, page.getByPlaceholder('Select a role').last(), roleName);
+}
+
+/** A person's row in the list, located by email — invites and members alike. */
+export function personRow(page: Page, text: string) {
+	return page.locator('li[role="button"]').filter({ hasText: text }).first();
+}
+
+export async function selectPerson(page: Page, text: string): Promise<void> {
+	await personRow(page, text).click();
+}
+
+/** Kept as `inviteRow` for the invite specs; an invite is just a person row. */
+export const inviteRow = personRow;
+
+export async function copyInviteLink(page: Page, email: string): Promise<void> {
+	await selectPerson(page, email);
+	await page.getByRole('button', { name: /Copy link/i }).click();
+}
+
+export async function resendInvite(page: Page, email: string): Promise<void> {
+	await selectPerson(page, email);
+	await page.getByRole('button', { name: /^Resend$/ }).click();
+}
+
+// Revoke is a two-step confirm: the trash icon arms it, then "Revoke" commits.
+export async function revokeInvite(page: Page, email: string): Promise<void> {
+	await selectPerson(page, email);
+	await page.getByRole('button', { name: 'Revoke invite' }).click();
+	await page.getByRole('button', { name: /^Revoke$/ }).click();
+}
+
 export async function openMemberDetail(page: Page, fullName: string): Promise<void> {
-	await page.locator('li[role="button"]').filter({ hasText: fullName }).click();
+	await selectPerson(page, fullName);
 }
 
 export async function clickEditRoles(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /^Edit roles$/ }).click();
+	await page.getByRole('button', { name: /^Edit access$/ }).click();
 }
 
 export async function removeRoleChip(page: Page, roleName: string): Promise<void> {
 	await page.getByRole('button', { name: `Remove ${roleName}` }).click();
 }
 
+/**
+ * Adds a role to the person being edited: "Add role" appends an empty binding
+ * row, then its own dropdown picks the role. (The old chip dropdown was a
+ * multi-select over every role; a binding row carries one role and its scope.)
+ */
 export async function addRoleViaChipDropdown(page: Page, roleName: string): Promise<void> {
-	// The "+ Add role..." text is an <input placeholder>, not rendered text.
-	const input = page.locator('input[placeholder="+ Add role..."]').first();
-	await input.click();
-	// Dropdown options are pointer-events-none-wrapped Checkboxes; click the
-	// outer cursor-pointer wrapper that holds the onClick.
-	const escaped = roleName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	const option = page
-		.locator('div.cursor-pointer')
-		.filter({ has: page.getByRole('checkbox', { name: new RegExp(`^${escaped}$`) }) })
-		.first();
-	await option.scrollIntoViewIfNeeded({ timeout: 10_000 });
-	await option.click();
-	// Close the dropdown so its option list doesn't overlay Save / other
-	// controls. Escape on the focused input dismisses it.
-	await input.press('Escape');
+	await page.getByRole('button', { name: /^Add role$/ }).click();
+	await selectBindingRole(page, roleName);
 }
 
 export async function saveMemberRoles(page: Page): Promise<void> {
