@@ -63,12 +63,13 @@ pub async fn get_api_token_info(
 
 	trace!("Basic token info fetched");
 
-	// Route the read through the same cache/intersect/write-back path the auth
-	// layer uses so the UI shows the token's effective permissions — narrowed
-	// by any user-side role revocations since the token was minted.
+	// Route the read through the same cache/intersect path the auth layer
+	// uses so the UI shows the token's effective permissions — narrowed by
+	// any user-side role revocations since the token was minted.
 	token.data.permissions =
 		get_permissions_for_api_token(&mut **database, redis, &token_id, &user_data.id.into())
-			.await?;
+			.await?
+			.permissions;
 
 	AppResponse::builder()
 		.body(GetApiTokenInfoResponse { token })

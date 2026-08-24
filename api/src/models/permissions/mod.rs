@@ -1,4 +1,8 @@
-use std::{collections::BTreeMap, net::IpAddr, str::FromStr as _};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	net::IpAddr,
+	str::FromStr as _,
+};
 
 use models::{RequestUserData, rbac::WorkspacePermission};
 use rustis::{
@@ -50,6 +54,16 @@ pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Pe
 		})
 }
 
+/// The result of loading a login's permissions: the workspaces it belongs
+/// to, and the scope each granted permission applies at.
+pub struct LoadedPermissions {
+	/// Every workspace the login belongs to, independent of whether any
+	/// permission is currently granted there.
+	pub workspaces: BTreeSet<Uuid>,
+	/// The permission map per workspace.
+	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
+}
+
 /// Contains the functions to extract permissions for an API token.
 mod api_token;
 /// Contains the functions to extract permissions for a web dashboard JWT.
@@ -93,7 +107,7 @@ async fn get_cached_permissions(
 	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
 	user_id: &Uuid,
-) -> Result<Option<BTreeMap<Uuid, WorkspacePermission>>, ErrorType> {
+) -> Result<Option<LoadedPermissions>, ErrorType> {
 	let redis_data: Option<String> = redis_connection
 		.get(redis::keys::permission_for_login_id(login_id))
 		.await?;
@@ -188,7 +202,10 @@ async fn get_cached_permissions(
 	};
 
 	if is_valid {
-		Ok(Some(data.permission))
+		Ok(Some(LoadedPermissions {
+			workspaces: data.workspaces,
+			permissions: data.permission,
+		}))
 	} else {
 		// The data in redis is not valid anymore. It probably is expired due to a
 		// permission change, so delete it from Redis, and proceed to fetch the

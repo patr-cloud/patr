@@ -7,7 +7,7 @@ use std::{
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{
 	RequestUserData,
-	rbac::{ResourcePermissionType, WorkspacePermission},
+	rbac::{PermissionScope, WorkspacePermission},
 };
 use rustis::{client::Client as RedisClient, commands::StringCommands as _};
 use time::OffsetDateTime;
@@ -138,7 +138,7 @@ pub(crate) async fn get_permissions(
 		return Err(ErrorType::MalformedAccessToken);
 	}
 
-	let permissions =
+	let loaded =
 		get_permissions_for_web_login(&mut *database, redis, &sub, &user.id.into()).await?;
 
 	Ok(RequestUserData::builder()
@@ -148,7 +148,8 @@ pub(crate) async fn get_permissions(
 		.last_name(user.last_name)
 		.created(user.created)
 		.login_id(sub)
-		.permissions(permissions)
+		.workspaces(loaded.workspaces)
+		.permissions(loaded.permissions)
 		.build())
 }
 
@@ -163,7 +164,7 @@ pub async fn get_permissions_for_web_login(
 	redis_connection: &mut RedisClient,
 	login_id: &Uuid,
 	user_id: &Uuid,
-) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
+) -> Result<super::LoadedPermissions, ErrorType> {
 	if let Some(cached) = super::get_cached_permissions(redis_connection, login_id, user_id).await?
 	{
 		return Ok(cached);
@@ -190,10 +191,35 @@ pub async fn get_permissions_for_web_login(
 		user_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
 	});
 
+	// Membership is first-class: a member with zero bindings belongs to the
+	// workspace even though no permission map entry exists for it.
+	let workspaces = query!(
+		r#"
+		SELECT
+			workspace_id AS "workspace_id!: Uuid"
+		FROM
+			workspace_user
+		WHERE
+			user_id = $1
+		UNION
+		SELECT
+			id
+		FROM
+			workspace
+		WHERE
+			super_admin_id = $1;
+		"#,
+		user_id as _,
+	)
+	.fetch_all(&mut *db_connection)
+	.await?
+	.into_iter()
+	.map(|row| row.workspace_id)
+	.collect::<BTreeSet<_>>();
+
 	// One query over bindings: a workspace-scope row (scope_id =
-	// workspace_id) grants a permission everywhere in the workspace and maps
-	// to the wire encoding Exclude(∅); resource-scope rows accumulate into
-	// Include(S). Non-empty Exclude can no longer be produced.
+	// workspace_id) grants a permission everywhere in the workspace;
+	// resource-scope rows accumulate into a resource set.
 	query!(
 		r#"
 		SELECT
@@ -235,16 +261,14 @@ pub async fn get_permissions_for_web_login(
 		let entry = permissions.entry(row.permission_id.into());
 		if row.is_workspace_scope {
 			entry
-				.and_modify(|scope| *scope = ResourcePermissionType::Exclude(BTreeSet::new()))
-				.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
+				.and_modify(|scope| *scope = PermissionScope::Workspace)
+				.or_insert(PermissionScope::Workspace);
 		} else {
-			match entry.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new())) {
-				ResourcePermissionType::Include(resources) => {
-					resources.insert(row.scope_id.into());
-				}
-				// Already workspace-wide; a narrower scope adds nothing.
-				ResourcePermissionType::Exclude(_) => (),
-			}
+			entry
+				.or_insert_with(|| PermissionScope::Resources(BTreeSet::new()))
+				.union_with(&PermissionScope::Resources(BTreeSet::from([row
+					.scope_id
+					.into()])));
 		}
 	});
 
@@ -256,6 +280,7 @@ pub async fn get_permissions_for_web_login(
 				.unsigned_abs(),
 			serde_json::to_string(&UserPermissionCache {
 				permission: user_permissions.clone(),
+				workspaces: workspaces.clone(),
 				creation_time: OffsetDateTime::now_utc(),
 			})?,
 		)
@@ -267,5 +292,8 @@ pub async fn get_permissions_for_web_login(
 			);
 		})?;
 
-	Ok(user_permissions)
+	Ok(super::LoadedPermissions {
+		workspaces,
+		permissions: user_permissions,
+	})
 }
