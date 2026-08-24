@@ -1,4 +1,4 @@
-use super::Role;
+use super::WorkspaceRole;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
@@ -14,7 +14,7 @@ macros::declare_api_endpoint!(
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
 	},
-	listable_resource = Role,
+	listable_resource = WorkspaceRole,
 	authentication = {
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.workspace_id,
@@ -30,7 +30,8 @@ macros::declare_api_endpoint!(
 		/// The list of all roles that contains:
 		///     name - The role name
 		///     description - The role description
-		pub roles: Vec<WithId<Role>>,
+		///     isImmutable - Whether the role is a seeded default
+		pub roles: Vec<WithId<WorkspaceRole>>,
 	},
 	audit_log = NoAuditLogger,
 );

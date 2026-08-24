@@ -451,10 +451,7 @@ async fn deploy_history_list_requires_view() {
 		.await;
 
 	// A member with deployment::create (but not view) cannot list history.
-	let perms = BTreeMap::from([(
-		setup.get_permission_id(Permission::Deployment(DeploymentPermission::Create)),
-		ResourcePermissionType::Exclude(BTreeSet::new()),
-	)]);
+	let perms = vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::Create))];
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
@@ -500,10 +497,7 @@ async fn deploy_history_revert_delete_require_edit() {
 	seed_deploy_history(&setup, deployment.id, repo.id, digest, "10 minutes").await;
 
 	// A view-only member cannot revert or delete history (both need edit).
-	let perms = BTreeMap::from([(
-		setup.get_permission_id(Permission::Deployment(DeploymentPermission::View)),
-		ResourcePermissionType::Exclude(BTreeSet::new()),
-	)]);
+	let perms = vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))];
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
