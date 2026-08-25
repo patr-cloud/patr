@@ -39,7 +39,7 @@ test.describe('api token > regenerate', () => {
 	}) => {
 		await using user = await createUserWithWorkspace(api);
 		const original = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		let newToken = '';
 		await withDetail(browser, user, original.id, async (page) => {
@@ -62,7 +62,7 @@ test.describe('api token > regenerate', () => {
 	}) => {
 		await using user = await createUserWithWorkspace(api);
 		const t = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		await withDetail(browser, user, t.id, async (page) => {
 			await clickRegenerate(page);
@@ -82,7 +82,7 @@ test.describe('api token > regenerate', () => {
 		await using user = await createUserWithWorkspace(api);
 		const t = await createApiTokenAPI(api, user, {
 			name: `Mixed-${Date.now().toString(36)}`,
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		await withDetail(browser, user, t.id, async (page) => {
 			await clickRegenerate(page);

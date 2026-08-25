@@ -184,7 +184,7 @@ test.describe('api token > create', () => {
 		const name = `dup-${Date.now().toString(36)}`;
 		await createApiTokenAPI(api, user, {
 			name,
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		await withCreate(browser, user, async (page) => {
 			await fillTokenName(page, name);

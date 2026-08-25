@@ -26,7 +26,7 @@ test.describe('api token > security [UI]', () => {
 		const sneaky = `script_alert_1_${Date.now().toString(36)}`;
 		const t = await createApiTokenAPI(api, user, {
 			name: sneaky,
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user, { workspaceId: user.workspaceId });
