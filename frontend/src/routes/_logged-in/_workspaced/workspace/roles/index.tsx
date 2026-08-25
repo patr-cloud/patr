@@ -21,14 +21,14 @@ import { Color } from "~/utils/color";
 import { useNavigate } from "@tanstack/solid-router";
 import { useAuthState, createPaginationState, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { WithId, WorkspaceRole } from "~/bindings";
+import { WithId, Role } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-components/workspace-header";
 import { useRolesQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
 import { useQueryClient } from "@tanstack/solid-query";
 import { roleKeys } from "~/hooks/query-keys";
 
-const RoleRow = (props: { role: WithId<WorkspaceRole>; onDeleted: () => void }) => {
+const RoleRow = (props: { role: WithId<Role>; onDeleted: () => void }) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
