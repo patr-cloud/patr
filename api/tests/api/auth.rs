@@ -709,7 +709,11 @@ async fn docker_login_works() {
 	// docker login is for API tokens, not web-dashboard sessions — the handler
 	// validates the password as a `patrv1.` token.
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let response = setup

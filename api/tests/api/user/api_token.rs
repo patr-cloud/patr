@@ -113,7 +113,11 @@ fn workspace_scope() -> PermissionScope {
 }
 
 /// A one-role token grant map for a workspace.
-fn role_grants(workspace_id: Uuid, role_id: Uuid, scope: PermissionScope) -> BTreeMap<Uuid, Vec<RoleGrant>> {
+fn role_grants(
+	workspace_id: Uuid,
+	role_id: Uuid,
+	scope: PermissionScope,
+) -> BTreeMap<Uuid, Vec<RoleGrant>> {
 	BTreeMap::from([(workspace_id, vec![RoleGrant { role_id, scope }])])
 }
 
@@ -985,7 +989,9 @@ async fn list_api_tokens_works() {
 	let _t1 = setup
 		.create_test_api_token(&user.access_token, super_admins.clone(), BTreeMap::new())
 		.await;
-	let _t2 = setup.create_test_api_token(&user.access_token, super_admins, BTreeMap::new()).await;
+	let _t2 = setup
+		.create_test_api_token(&user.access_token, super_admins, BTreeMap::new())
+		.await;
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -1308,7 +1314,9 @@ async fn update_api_token_name_conflict() {
 	let first = setup
 		.create_test_api_token(&user.access_token, super_admins.clone(), BTreeMap::new())
 		.await;
-	let second = setup.create_test_api_token(&user.access_token, super_admins, BTreeMap::new()).await;
+	let second = setup
+		.create_test_api_token(&user.access_token, super_admins, BTreeMap::new())
+		.await;
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -1623,7 +1631,11 @@ async fn api_token_with_scoped_permissions_allows_resource() {
 		.create_test_api_token(
 			&user.access_token,
 			BTreeSet::new(),
-			role_grants(workspace.id, scoped_role.id, PermissionScope::Resources(BTreeSet::from([deployment1.id]))),
+			role_grants(
+				workspace.id,
+				scoped_role.id,
+				PermissionScope::Resources(BTreeSet::from([deployment1.id])),
+			),
 		)
 		.await;
 	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
@@ -1673,7 +1685,11 @@ async fn api_token_with_scoped_permissions_denies_other_resource() {
 		.create_test_api_token(
 			&user.access_token,
 			BTreeSet::new(),
-			role_grants(workspace.id, scoped_role.id, PermissionScope::Resources(BTreeSet::from([deployment1.id]))),
+			role_grants(
+				workspace.id,
+				scoped_role.id,
+				PermissionScope::Resources(BTreeSet::from([deployment1.id])),
+			),
 		)
 		.await;
 	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();

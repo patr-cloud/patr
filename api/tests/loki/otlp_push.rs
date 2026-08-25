@@ -39,7 +39,11 @@ async fn otlp_push_json_valid_succeeds() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let body = make_otlp_json_body(&[
@@ -83,7 +87,11 @@ async fn otlp_push_protobuf_valid_succeeds() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let body = make_otlp_proto_body(&[
@@ -124,7 +132,11 @@ async fn otlp_push_unsupported_content_type_returns_415() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let response = setup
@@ -166,7 +178,11 @@ async fn otlp_push_wrong_deployment_returns_403() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	// Runner A tries to push logs with runner B's deployment_id
@@ -211,7 +227,11 @@ async fn otlp_push_attribute_rewriting() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	// Push with spoofed runner_id and workspace_id
@@ -278,7 +298,11 @@ async fn otlp_push_invalid_json_returns_400() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let response = setup
@@ -313,7 +337,11 @@ async fn otlp_push_invalid_protobuf_returns_400() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let response = setup

@@ -129,7 +129,11 @@ async fn loki_push_valid_auth_succeeds() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let labels = format!(
@@ -173,7 +177,11 @@ async fn loki_push_label_rewriting() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	// Push with spoofed runner_id and workspace_id — the server should rewrite
@@ -248,7 +256,11 @@ async fn loki_push_wrong_deployment_returns_403() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	// Runner A tries to push logs with runner B's deployment_id
@@ -290,7 +302,11 @@ async fn loki_push_invalid_snappy_returns_400() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	// Send garbage bytes (not valid snappy)
@@ -326,7 +342,11 @@ async fn loki_push_invalid_protobuf_returns_400() {
 		.await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	// Valid snappy of garbage (not valid protobuf)
