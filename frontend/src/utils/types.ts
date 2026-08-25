@@ -92,3 +92,10 @@ export type ResourcePermissionType =
 
 /** The pre-flattening role metadata shape, still used by the roles list. */
 export type Role = { name: string; description?: string };
+
+/**
+ * The old per-workspace token permission shape. The token screens keep
+ * authoring it until their rework onto role-grant ceilings; super-admin
+ * selections round-trip, member detail is display-only.
+ */
+export type WorkspacePermission = { type: "superAdmin" } | ({ type: "member" } & Record<string, unknown>);
