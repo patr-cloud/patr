@@ -3,10 +3,10 @@
 //! - `RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID` is rewritten over `role_binding ⋈
 //!   role_permission`. The include/exclude CTEs disappear — and with them the
 //!   cross-workspace exclude leak (`excluded_resources` used to drop its
-//!   workspace column). The token arm keeps reading the legacy declared
-//!   tables (until the token DTOs move to ceiling rows), intersected
-//!   per-resource with the owner's binding-derived grants now that the
-//!   auth-path write-back is gone.
+//!   workspace column). The token arm keeps reading the legacy declared tables
+//!   (until the token DTOs move to ceiling rows), intersected per-resource with
+//!   the owner's binding-derived grants now that the auth-path write-back is
+//!   gone.
 //! - `workspace_user_invite_role.scope_id` becomes NOT NULL and rejoins the
 //!   primary key (every row was given a scope by the backfill).
 //! - `workspace_user` collapses to pure membership: `role_id` goes, the PK
