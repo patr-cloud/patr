@@ -23,7 +23,7 @@ async fn deployment_view_permission_grants_access() {
 
 	let view_id = setup.get_permission_id(Permission::Deployment(DeploymentPermission::View));
 
-		let role = setup
+	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, vec![view_id])
 		.await;
 	let user_b = setup
@@ -129,8 +129,12 @@ async fn deployment_delete_permission_grants_access() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::Delete))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::Delete))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -170,8 +174,12 @@ async fn deployment_view_denied_without_permission() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::Create))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::Create))],
+		)
 		.await;
 	let user_b2 = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -207,8 +215,12 @@ async fn deployment_create_denied_without_permission() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -286,8 +298,12 @@ async fn deployment_include_grants_only_listed_resource() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -351,8 +367,12 @@ async fn deployment_grant_omitting_a_resource_denies_it() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -432,8 +452,12 @@ async fn deployment_exclude_empty_grants_all() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -487,8 +511,12 @@ async fn deployment_exclude_empty_grants_list_access() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -538,8 +566,12 @@ async fn deployment_view_does_not_grant_edit() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -758,8 +790,12 @@ async fn deployment_view_does_not_grant_delete() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -802,8 +838,12 @@ async fn deployment_stop_denied_without_permission() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -852,8 +892,12 @@ async fn deployment_include_multiple_resources() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -927,8 +971,12 @@ async fn deployment_view_does_not_grant_start() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -986,8 +1034,12 @@ async fn deployment_edit_does_not_grant_delete() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::Edit))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::Edit))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -1029,8 +1081,12 @@ async fn deployment_start_does_not_grant_stop() {
 		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::Start))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::Start))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(

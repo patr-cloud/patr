@@ -611,11 +611,7 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			vec![modify],
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify])
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
@@ -680,11 +676,7 @@ async fn api_token_perm_trimmed_on_role_delete() {
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			vec![modify],
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify])
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
@@ -745,11 +737,7 @@ async fn api_token_does_not_widen_on_promotion() {
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let read_only = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			vec![view],
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![view])
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, read_only.id)
@@ -767,11 +755,7 @@ async fn api_token_does_not_widen_on_promotion() {
 		.await;
 
 	let write_role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			vec![view, modify],
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![view, modify])
 		.await;
 	setup
 		.make_web_dashboard_call(

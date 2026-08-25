@@ -704,8 +704,6 @@ async fn create_default_roles_for_workspace(
 		)
 		.execute(&mut *connection)
 		.await?;
-
-
 	}
 
 	Ok(())

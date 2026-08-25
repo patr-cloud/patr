@@ -47,8 +47,12 @@ async fn runner_denied_without_permission() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ViewRoles)])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -87,8 +91,12 @@ async fn runner_include_grants_only_listed_resource() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -143,8 +151,12 @@ async fn runner_grant_omitting_a_resource_denies_it() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -341,8 +353,12 @@ async fn runner_view_does_not_grant_delete() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -397,8 +413,12 @@ async fn runner_view_does_not_grant_create() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
