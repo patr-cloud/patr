@@ -246,7 +246,9 @@ pub async fn update_api_token(
 				for (permission_id, resource_permission) in permissions {
 					let legacy_type = match &resource_permission {
 						PermissionScope::Workspace => ResourcePermissionTypeDiscriminant::Exclude,
-						PermissionScope::Resources(_) => ResourcePermissionTypeDiscriminant::Include,
+						PermissionScope::Resources(_) => {
+							ResourcePermissionTypeDiscriminant::Include
+						}
 					};
 					query!(
 						r#"
