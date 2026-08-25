@@ -2,7 +2,7 @@ import { FiChevronDown, FiChevronUp, FiTrash2, FiX } from "solid-icons/fi";
 import { createSignal, For, Show } from "solid-js";
 import { Button, ButtonVariant, LoadingSpinner } from "~/components";
 import { ResourceInfo } from "~/bindings/ResourceInfo";
-import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
+import { ResourcePermissionType } from "~/utils/types";
 import { parseCamelCase } from "~/utils/func";
 
 export interface PermissionEntry {

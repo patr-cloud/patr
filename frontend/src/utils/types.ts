@@ -88,3 +88,13 @@ export type UserPermissionsT =
 			ResourceTypes,
 			Record<ActionTypes, { permissionType: "include" | "exclude"; resources: Array<string> }>
 	  >);
+
+// Local copies of wire shapes whose generated bindings went away with the
+// flattened role DTOs. The remaining consumers (the include/exclude role
+// matrix and the token permission editor) are retired by the role-editor
+// and token-screen reworks later in the stack.
+export type ResourcePermissionType =
+	{ permissionType: "include"; resources: Array<string> } | { permissionType: "exclude"; resources: Array<string> };
+
+/** The pre-flattening role metadata shape, still used by the roles list. */
+export type Role = { name: string; description?: string };
