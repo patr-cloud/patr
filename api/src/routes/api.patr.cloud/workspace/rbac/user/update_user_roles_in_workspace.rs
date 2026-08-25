@@ -39,9 +39,9 @@ pub async fn update_user_roles_in_workspace(
 
 	// A grant naming zero resources grants nothing — reject rather than
 	// silently minting no bindings.
-	if roles.iter().any(|grant| {
-		matches!(&grant.scope, PermissionScope::Resources(resources) if resources.is_empty())
-	}) {
+	if roles.iter().any(
+		|grant| matches!(&grant.scope, PermissionScope::Resources(resources) if resources.is_empty()),
+	) {
 		return Err(ErrorType::WrongParameters);
 	}
 
@@ -77,9 +77,7 @@ pub async fn update_user_roles_in_workspace(
 	for grant in &roles {
 		let scopes = match &grant.scope {
 			PermissionScope::Workspace => db::RoleScopes::Workspace,
-			PermissionScope::Resources(resources) => {
-				db::RoleScopes::Resources(resources.clone())
-			}
+			PermissionScope::Resources(resources) => db::RoleScopes::Resources(resources.clone()),
 		};
 		db::mint_bindings(
 			&mut **database,

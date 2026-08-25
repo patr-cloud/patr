@@ -36,10 +36,12 @@ async fn setup_permission_test(
 	// The grant's scope is derived from the (uniform) permission entries:
 	// scope moved from the role to the assignment at the role-binding
 	// cutover. Non-empty excludes have no additive equivalent.
-	let scope = match permissions.values().next().expect("at least one permission") {
-		ResourcePermissionType::Include(resources) => {
-			PermissionScope::Resources(resources.clone())
-		}
+	let scope = match permissions
+		.values()
+		.next()
+		.expect("at least one permission")
+	{
+		ResourcePermissionType::Include(resources) => PermissionScope::Resources(resources.clone()),
 		ResourcePermissionType::Exclude(resources) if resources.is_empty() => {
 			PermissionScope::Workspace
 		}

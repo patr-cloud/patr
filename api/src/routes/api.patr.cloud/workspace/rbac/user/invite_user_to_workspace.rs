@@ -138,7 +138,7 @@ pub async fn invite_user_to_workspace(
 	})?
 	.id;
 
-// One row per (role, scope), straight from the request's grants.
+	// One row per (role, scope), straight from the request's grants.
 	for grant in &roles {
 		if matches!(&grant.scope, PermissionScope::Resources(resources) if resources.is_empty()) {
 			return Err(ErrorType::WrongParameters);
