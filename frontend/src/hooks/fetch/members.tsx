@@ -57,7 +57,7 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
 					lastName: user.lastName,
 					fullName: `${user.firstName} ${user.lastName}`.trim(),
 					email: user.email,
-					roleIds: user.roleIds,
+					roleIds: user.roles.map((grant) => grant.roleId),
 					isOwner: user.isOwner,
 				}));
 
