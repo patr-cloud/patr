@@ -120,42 +120,6 @@ pub async fn update_api_token(
 	query!(
 		r#"
 		DELETE FROM
-			user_api_token_resource_permissions_include
-		WHERE
-			token_id = $1;
-		"#,
-		token_id as _,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	query!(
-		r#"
-		DELETE FROM
-			user_api_token_resource_permissions_exclude
-		WHERE
-			token_id = $1;
-		"#,
-		token_id as _,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	query!(
-		r#"
-		DELETE FROM
-			user_api_token_resource_permissions_type
-		WHERE
-			token_id = $1;
-		"#,
-		token_id as _,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	query!(
-		r#"
-		DELETE FROM
 			user_api_token_workspace_permission_type
 		WHERE
 			token_id = $1;
