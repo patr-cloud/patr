@@ -31,9 +31,7 @@ async function memberOf(
 		owner.clientIp,
 		'viewRoles',
 	);
-	return createSecondMemberWithRole(api, owner, {
-		[viewId]: { permissionType: 'exclude', resources: [] },
-	});
+	return createSecondMemberWithRole(api, owner, [viewId]);
 }
 
 test.describe('workspace > leave [UI]', () => {

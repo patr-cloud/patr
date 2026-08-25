@@ -1,10 +1,5 @@
 import type { ApiClient } from '@/helpers/api';
 
-export type PermissionInput = {
-	permissionType: 'include' | 'exclude';
-	resources: string[];
-};
-
 // Where a role grant applies: the whole workspace, or an explicit resource
 // set. Mirrors models/src/rbac/permission_scope.rs (tagged, camelCase).
 export type PermissionScope =
@@ -72,7 +67,7 @@ export async function createRoleAPI(
 	body: {
 		name: string;
 		description?: string;
-		permissions: Record<string, PermissionInput>;
+		permissions: string[];
 	},
 ): Promise<{ id: string }> {
 	return api.request<{ id: string }>('POST', `/workspace/${wsId}/rbac/role`, {
@@ -94,7 +89,7 @@ export async function updateRoleAPI(
 	body: Partial<{
 		name: string;
 		description: string;
-		permissions: Record<string, PermissionInput>;
+		permissions: string[];
 	}>,
 ): Promise<void> {
 	await api.request('PATCH', `/workspace/${wsId}/rbac/role/${roleId}`, {
@@ -124,9 +119,9 @@ export async function listRolesAPI(
 	api: ApiClient,
 	user: { accessToken: string; clientIp: string },
 	wsId: string,
-): Promise<{ id: string; name: string; description: string }[]> {
+): Promise<{ id: string; name: string; description: string; isImmutable: boolean }[]> {
 	const resp = await api.request<{
-		roles: { id: string; name: string; description: string }[];
+		roles: { id: string; name: string; description: string; isImmutable: boolean }[];
 	}>('GET', `/workspace/${wsId}/rbac/role?page=0&count=100`, {
 		token: user.accessToken,
 		clientIp: user.clientIp,
@@ -143,7 +138,8 @@ export async function getRoleAPI(
 	id: string;
 	name: string;
 	description: string;
-	permissions: Record<string, PermissionInput>;
+	permissions: string[];
+	isImmutable: boolean;
 }> {
 	return api.request('GET', `/workspace/${wsId}/rbac/role/${roleId}`, {
 		token: user.accessToken,
