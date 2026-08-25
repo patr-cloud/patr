@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { Checkbox, Radio, Table } from "~/components";
-import { ResourcePermissionType, WithId, Workspace, WorkspacePermission } from "~/bindings";
+import { WithId, Workspace, WorkspacePermission } from "~/bindings";
+import { ResourcePermissionType } from "~/utils/types";
 import PermissionSelector from "~/routes/_logged-in/_workspaced/workspace/roles/-components/permission-selector";
 import { usePermissionsQuery } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase } from "~/utils/func";

@@ -7,7 +7,7 @@ import { createAuthenticatedAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { CreateNewRoleRequest } from "~/bindings/CreateNewRoleRequest";
 import { CreateNewRoleResponse } from "~/bindings/CreateNewRoleResponse";
-import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
+import { ResourcePermissionType } from "~/utils/types";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-components/workspace-header";
 import PermissionSelector from "./-components/permission-selector";
@@ -76,7 +76,8 @@ const CreateRoles = () => {
 		const requestBody: CreateNewRoleRequest = {
 			name: roleName().trim(),
 			description: roleDescription().trim() || `Role: ${roleName().trim()}`,
-			permissions: permissionsData(),
+			// The map keys are the permission ids — the flat list the DTO wants.
+			permissions: Object.keys(permissionsData()),
 		};
 
 		const response = await httpRequest<CreateNewRoleResponse>(
