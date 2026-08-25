@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
-import { GetApiTokenInfoResponse, UpdateApiTokenRequest, WorkspacePermission } from "~/bindings";
+import { GetApiTokenInfoResponse, UpdateApiTokenRequest } from "~/bindings";
+import { WorkspacePermission } from "~/utils/types";
 import {
 	Button,
 	ButtonVariant,
