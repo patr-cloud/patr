@@ -7,7 +7,7 @@ import { httpRequest } from "~/utils/http-request";
 import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
 import { createLoggedInAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { ResourcePermissionType } from "~/bindings";
+import { ResourcePermissionType } from "~/utils/types";
 import { useRoleInfoQuery } from "~/hooks/fetch";
 import { roleKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
@@ -30,7 +30,11 @@ const EditPermissions = () => {
 	createEffect(() => {
 		const role = roleInfoQuery.data;
 		if (role) {
-			setPermissionsData(role.permissions as { [key: string]: ResourcePermissionType });
+			// The role DTO is now a flat permission-id list; the matrix still
+			// edits a per-permission map, so each id renders as "all resources".
+			setPermissionsData(
+				Object.fromEntries(role.permissions.map((id) => [id, { permissionType: "exclude", resources: [] }]))
+			);
 			setRoleName(role.name);
 			setRoleDescription(role.description ?? "");
 		}
@@ -51,7 +55,8 @@ const EditPermissions = () => {
 		const requestBody: UpdateRoleRequest = {
 			name: roleName().trim(),
 			description: roleDescription().trim(),
-			permissions: permissionsData(),
+			// The map keys are the permission ids — the flat list the DTO wants.
+			permissions: Object.keys(permissionsData()),
 		};
 
 		const response = await httpRequest(
@@ -94,8 +99,8 @@ const EditPermissions = () => {
 		if (roleName().trim() !== role.name) return true;
 		if (roleDescription().trim() !== (role.description ?? "")) return true;
 		return (
-			canonicalPermissions(permissionsData()) !==
-			canonicalPermissions((role.permissions ?? {}) as { [key: string]: ResourcePermissionType })
+			JSON.stringify(Object.keys(permissionsData()).sort()) !==
+			JSON.stringify([...(role.permissions ?? [])].sort())
 		);
 	});
 
