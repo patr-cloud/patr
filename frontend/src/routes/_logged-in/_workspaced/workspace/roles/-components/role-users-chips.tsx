@@ -43,7 +43,9 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 			toast("Workspace ID is missing", "error");
 			return false;
 		}
-		const body: UpdateUserRolesInWorkspaceRequest = { roles: roleIds };
+		const body: UpdateUserRolesInWorkspaceRequest = {
+			roles: roleIds.map((roleId) => ({ roleId, scope: { scopeType: "workspace" as const } })),
+		};
 		const response = await httpRequest(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/user/${userId}`,
 			{ method: "POST", body: JSON.stringify(body) }
