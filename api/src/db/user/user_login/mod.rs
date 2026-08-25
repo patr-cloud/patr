@@ -23,31 +23,6 @@ pub async fn initialize_user_login_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	// The registry of credentials that can act and leave an audit trail.
-	// `user_login` registers into it (reusing login_id as the registry id);
-	// future credential kinds (service account tokens, OAuth app tokens)
-	// register alongside without audit_log ever growing per-kind columns.
-	query!(
-		r#"
-		CREATE TYPE ACTOR_CLIENT_TYPE AS ENUM(
-			'user_login'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE actor_client(
-			id UUID NOT NULL,
-			client_type ACTOR_CLIENT_TYPE NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	query!(
 		r#"
 		CREATE TABLE user_login(
@@ -55,7 +30,7 @@ pub async fn initialize_user_login_tables(
 			user_id UUID NOT NULL,
 			login_type USER_LOGIN_TYPE NOT NULL,
 			created TIMESTAMPTZ NOT NULL,
-			client_type ACTOR_CLIENT_TYPE NOT NULL
+			actor_client_type ACTOR_CLIENT_TYPE NOT NULL
 				GENERATED ALWAYS AS ('user_login') STORED
 		);
 		"#
@@ -75,16 +50,6 @@ pub async fn initialize_user_login_indices(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up user login indices");
-	query!(
-		r#"
-		ALTER TABLE actor_client
-			ADD CONSTRAINT actor_client_pk PRIMARY KEY(id),
-			ADD CONSTRAINT actor_client_uq_id_client_type UNIQUE(id, client_type);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	query!(
 		r#"
 		ALTER TABLE user_login
@@ -115,9 +80,9 @@ pub async fn initialize_user_login_constraints(
 		ALTER TABLE user_login
 			ADD CONSTRAINT user_login_fk_user_id
 				FOREIGN KEY(user_id) REFERENCES "user"(id),
-			ADD CONSTRAINT user_login_fk_login_id_client_type
-				FOREIGN KEY(login_id, client_type)
-					REFERENCES actor_client(id, client_type);
+			ADD CONSTRAINT user_login_fk_login_id_actor_client_type
+				FOREIGN KEY(login_id, actor_client_type)
+					REFERENCES actor_client(id, actor_client_type);
 		"#
 	)
 	.execute(&mut *connection)

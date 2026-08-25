@@ -9,9 +9,9 @@
 //! `login_id` as the registry id, the same trick `resource` uses), and future
 //! credential kinds register alongside without touching `audit_log` again.
 //!
-//! The generated `client_type` discriminator plus the composite FK pin every
-//! `user_login` row to a registry row of the right kind — the same pattern as
-//! `web_login`/`user_api_token` pointing up at `user_login` itself.
+//! The generated `actor_client_type` discriminator plus the composite FK pin
+//! every `user_login` row to a registry row of the right kind — the same
+//! pattern as `web_login`/`user_api_token` pointing up at `user_login` itself.
 
 use crate::prelude::*;
 
@@ -31,7 +31,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		r#"
 		CREATE TABLE actor_client(
 			id UUID NOT NULL,
-			client_type ACTOR_CLIENT_TYPE NOT NULL
+			actor_client_type ACTOR_CLIENT_TYPE NOT NULL
 		);
 		"#,
 	)
@@ -42,7 +42,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		r#"
 		ALTER TABLE actor_client
 			ADD CONSTRAINT actor_client_pk PRIMARY KEY(id),
-			ADD CONSTRAINT actor_client_uq_id_client_type UNIQUE(id, client_type);
+			ADD CONSTRAINT actor_client_uq_id_actor_client_type UNIQUE(id, actor_client_type);
 		"#,
 	)
 	.execute(&mut *connection)
@@ -53,7 +53,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 	sqlx::query(
 		r#"
 		INSERT INTO
-			actor_client(id, client_type)
+			actor_client(id, actor_client_type)
 		SELECT
 			login_id,
 			'user_login'
@@ -67,7 +67,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 	sqlx::query(
 		r#"
 		ALTER TABLE user_login
-		ADD COLUMN client_type ACTOR_CLIENT_TYPE NOT NULL
+		ADD COLUMN actor_client_type ACTOR_CLIENT_TYPE NOT NULL
 			GENERATED ALWAYS AS ('user_login') STORED;
 		"#,
 	)
@@ -77,8 +77,8 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 	sqlx::query(
 		r#"
 		ALTER TABLE user_login
-		ADD CONSTRAINT user_login_fk_login_id_client_type
-		FOREIGN KEY(login_id, client_type) REFERENCES actor_client(id, client_type);
+		ADD CONSTRAINT user_login_fk_login_id_actor_client_type
+		FOREIGN KEY(login_id, actor_client_type) REFERENCES actor_client(id, actor_client_type);
 		"#,
 	)
 	.execute(&mut *connection)

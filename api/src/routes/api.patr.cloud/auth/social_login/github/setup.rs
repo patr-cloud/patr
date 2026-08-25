@@ -211,7 +211,7 @@ pub async fn social_login_setup(
 		r#"
 		WITH client AS (
 			INSERT INTO
-				actor_client(id, client_type)
+				actor_client(id, actor_client_type)
 			VALUES
 				(GENERATE_LOGIN_ID(), 'user_login')
 			RETURNING id

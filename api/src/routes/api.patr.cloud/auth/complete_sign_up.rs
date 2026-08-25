@@ -279,7 +279,7 @@ pub async fn complete_sign_up(
 				r#"
 				WITH client AS (
 					INSERT INTO
-						actor_client(id, client_type)
+						actor_client(id, actor_client_type)
 					VALUES
 						(GENERATE_LOGIN_ID(), 'user_login')
 					RETURNING id
