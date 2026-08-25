@@ -44,7 +44,7 @@ test.describe('credential change revokes other sessions', () => {
 
 		try {
 			const token = await createApiTokenAPI(api, owner, {
-				permissions: { [owner.workspaceId]: { type: 'superAdmin' } },
+				superAdminOf: [owner.workspaceId],
 			});
 
 			// UI form omits `revokeApiTokens`, so the backend defaults it to false.
@@ -100,7 +100,7 @@ test.describe('credential change revokes other sessions', () => {
 
 		try {
 			const token = await createApiTokenAPI(api, owner, {
-				permissions: { [owner.workspaceId]: { type: 'superAdmin' } },
+				superAdminOf: [owner.workspaceId],
 			});
 
 			await openProfile(pageA);
