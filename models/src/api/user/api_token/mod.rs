@@ -27,7 +27,21 @@ pub use self::{
 	revoke_api_token::*,
 	update_api_token::*,
 };
-use crate::api::workspace::rbac::user::RoleGrant;
+
+/// One permission grant on a token: the permission plus the scope it applies
+/// at. Permissions rather than roles, because a role belongs to a workspace
+/// while a token belongs to a user — and reading a workspace's roles is
+/// itself permission-gated, so a member without that permission could not
+/// otherwise scope their own token.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionGrant {
+	/// The permission being granted.
+	pub permission_id: Uuid,
+	/// The resource the permission applies at, or the workspace id for the
+	/// whole workspace.
+	pub resource_id: Uuid,
+}
 
 #[::preprocess::sync]
 /// An API token created by the user.
@@ -53,13 +67,13 @@ pub struct UserApiToken {
 	#[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
 	#[search(skip)]
 	pub super_admin_of: BTreeSet<Uuid>,
-	/// The token's role grants per workspace. These are a ceiling, not a
-	/// grant: the token's effective permissions are this intersected with
+	/// The token's permission grants per workspace. These are a ceiling, not
+	/// a grant: the token's effective permissions are this intersected with
 	/// its owner's current permissions, computed at auth time. A ceiling
 	/// above the owner's reach is allowed and clamps harmlessly.
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	#[search(skip)]
-	pub grants: BTreeMap<Uuid, Vec<RoleGrant>>,
+	pub grants: BTreeMap<Uuid, Vec<PermissionGrant>>,
 	/// Any token that is used before the nbf (not before) should be rejected.
 	/// Tokens are only valid after this time.
 	#[serde(
@@ -107,8 +121,8 @@ mod test {
 	use serde_test::{Configure, Token, assert_tokens};
 	use time::OffsetDateTime;
 
-	use super::UserApiToken;
-	use crate::{api::workspace::rbac::user::RoleGrant, prelude::*};
+	use super::{PermissionGrant, UserApiToken};
+	use crate::prelude::*;
 
 	#[test]
 	fn assert_empty_user_api_token_types() {
@@ -145,8 +159,8 @@ mod test {
 				super_admin_of: BTreeSet::from([Uuid::nil()]),
 				grants: BTreeMap::from([(
 					Uuid::parse_str("00000000000000000000000000000001").unwrap(),
-					vec![RoleGrant {
-						role_id: Uuid::nil(),
+					vec![PermissionGrant {
+						permission_id: Uuid::nil(),
 						resource_id: Uuid::nil(),
 					}],
 				)]),
@@ -175,10 +189,10 @@ mod test {
 				Token::Str("00000000000000000000000000000001"),
 				Token::Seq { len: Some(1) },
 				Token::Struct {
-					name: "RoleGrant",
+					name: "PermissionGrant",
 					len: 2,
 				},
-				Token::Str("roleId"),
+				Token::Str("permissionId"),
 				Token::Str("00000000000000000000000000000000"),
 				Token::Str("resourceId"),
 				Token::Str("00000000000000000000000000000000"),

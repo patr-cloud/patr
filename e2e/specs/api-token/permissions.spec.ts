@@ -4,7 +4,6 @@ import {
 	newContext,
 	createUserWithWorkspace,
 	createApiTokenAPI,
-	createRoleAPI,
 	callWithApiToken,
 	getPermissionId,
 	loginAs,
@@ -16,28 +15,17 @@ import {
 } from '@/helpers/ui/api-token';
 
 // Ceiling ∩ owner-permission enforcement, empty-ceiling PATCH, and the
-// role-revocation / PATCH cache-invalidation cascades all live in the Rust API
-// suite (api/tests/api/user/api_token.rs). Here we cover the token detail
-// page's Save-Permissions UI over the role-grant ceiling.
+// permission-revocation / PATCH cache-invalidation cascades all live in the
+// Rust API suite (api/tests/api/user/api_token.rs). Here we cover the token
+// detail page's Save-Permissions UI over the permission-grant ceiling.
 
-// A role holding just `permName`, for use as a token ceiling grant.
-async function makeRole(
-	api: Parameters<typeof createRoleAPI>[0],
+// The id of `permName`, for use as a token ceiling grant.
+async function permId(
+	api: Parameters<typeof getPermissionId>[0],
 	owner: Awaited<ReturnType<typeof createUserWithWorkspace>>,
 	permName: string,
 ): Promise<string> {
-	const permId = await getPermissionId(
-		api,
-		owner.accessToken,
-		owner.workspaceId,
-		owner.clientIp,
-		permName,
-	);
-	const role = await createRoleAPI(api, owner, owner.workspaceId, {
-		name: `tok-role-${crypto.randomUUID().slice(0, 8)}`,
-		permissions: [permId],
-	});
-	return role.id;
+	return getPermissionId(api, owner.accessToken, owner.workspaceId, owner.clientIp, permName);
 }
 
 test.describe('api token > permissions [UI]', () => {
@@ -46,9 +34,9 @@ test.describe('api token > permissions [UI]', () => {
 		api,
 	}) => {
 		await using owner = await createUserWithWorkspace(api);
-		const roleId = await makeRole(api, owner, 'deployment::view');
+		const permissionId = await permId(api, owner, 'deployment::view');
 		const token = await createApiTokenAPI(api, owner, {
-			grants: { [owner.workspaceId]: [{ roleId, resourceId: owner.workspaceId }] },
+			grants: { [owner.workspaceId]: [{ permissionId, resourceId: owner.workspaceId }] },
 		});
 		// Probe deployment list (should be 200 with view in the ceiling — the
 		// owner is super admin, so the ceiling is the binding constraint).
@@ -76,9 +64,9 @@ test.describe('api token > permissions [UI]', () => {
 		api,
 	}) => {
 		await using owner = await createUserWithWorkspace(api);
-		const roleId = await makeRole(api, owner, 'deployment::view');
+		const permissionId = await permId(api, owner, 'deployment::view');
 		const token = await createApiTokenAPI(api, owner, {
-			grants: { [owner.workspaceId]: [{ roleId, resourceId: owner.workspaceId }] },
+			grants: { [owner.workspaceId]: [{ permissionId, resourceId: owner.workspaceId }] },
 		});
 		const context = await newContext(browser, owner.clientIp);
 		await loginAs(context, owner, { workspaceId: owner.workspaceId });
@@ -103,21 +91,14 @@ test.describe('api token > permissions [UI]', () => {
 			});
 		const allowed = await mkRunner(`allowed-${Date.now().toString(36)}`);
 		const denied = await mkRunner(`denied-${Date.now().toString(36)}`);
-		const permId = await getPermissionId(
-			api,
-			owner.accessToken,
-			owner.workspaceId,
-			owner.clientIp,
-			'runner::view',
-		);
-		const role = await createRoleAPI(api, owner, owner.workspaceId, {
-			name: `scoped-${crypto.randomUUID().slice(0, 8)}`,
-			permissions: [permId],
-		});
+		const runnerViewId = await permId(api, owner, 'runner::view');
 		const token = await createApiTokenAPI(api, owner, {
 			grants: {
 				[owner.workspaceId]: [
-					{ roleId: role.id, resourceId: allowed.id },
+					{
+						permissionId: runnerViewId,
+						resourceId: allowed.id,
+					},
 				],
 			},
 		});
