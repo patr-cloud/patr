@@ -96,7 +96,7 @@ pub async fn update_api_token(
 	query!(
 		r#"
 		DELETE FROM
-			api_token_role_binding
+			user_api_token_permission_binding
 		WHERE
 			token_id = $1;
 		"#,
@@ -235,16 +235,18 @@ pub async fn update_api_token(
 			query!(
 				r#"
 				INSERT INTO
-					api_token_role_binding(token_id, workspace_id, role_id, scope_id)
+					user_api_token_permission_binding(
+						token_id, workspace_id, permission_id, scope_id
+					)
 				VALUES
 					($1, $2, $3, $4)
 				ON CONFLICT
-					(token_id, role_id, scope_id)
+					(token_id, permission_id, scope_id)
 				DO NOTHING;
 				"#,
 				token_id as _,
 				workspace_id as _,
-				grant.role_id as _,
+				grant.permission_id as _,
 				grant.resource_id as _,
 			)
 			.execute(&mut **database)
@@ -252,8 +254,8 @@ pub async fn update_api_token(
 			.map_err(|err| match err {
 				sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
 					match db_err.constraint() {
-						Some("api_token_role_binding_fk_role_id_workspace_id") => {
-							ErrorType::RoleDoesNotExist
+						Some("user_api_token_permission_binding_fk_permission_id") => {
+							ErrorType::WrongParameters
 						}
 						_ => ErrorType::ResourceDoesNotExist,
 					}

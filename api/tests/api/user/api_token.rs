@@ -73,7 +73,7 @@ async fn mint_token_raw(
 	setup: &TestSetup,
 	token: &BearerToken,
 	super_admin_of: BTreeSet<Uuid>,
-	grants: BTreeMap<Uuid, Vec<RoleGrant>>,
+	grants: BTreeMap<Uuid, Vec<PermissionGrant>>,
 	token_nbf: Option<time::OffsetDateTime>,
 	token_exp: Option<time::OffsetDateTime>,
 	allowed_ips: Option<Vec<ipnetwork::IpNetwork>>,
@@ -101,19 +101,19 @@ async fn mint_token_raw(
 		.await
 }
 
-/// A one-role token grant map for a workspace, one grant per scope. The
+/// A one-permission token grant map for a workspace, one grant per scope. The
 /// workspace's own id is the root and covers everything in it.
-fn role_grants(
+fn permission_grants(
 	workspace_id: Uuid,
-	role_id: Uuid,
+	permission_id: Uuid,
 	resource_ids: &[Uuid],
-) -> BTreeMap<Uuid, Vec<RoleGrant>> {
+) -> BTreeMap<Uuid, Vec<PermissionGrant>> {
 	BTreeMap::from([(
 		workspace_id,
 		resource_ids
 			.iter()
-			.map(|resource_id| RoleGrant {
-				role_id,
+			.map(|resource_id| PermissionGrant {
+				permission_id,
 				resource_id: *resource_id,
 			})
 			.collect::<Vec<_>>(),
@@ -404,7 +404,11 @@ async fn api_token_member_cannot_exceed_creator() {
 		&setup,
 		&member.access_token,
 		BTreeSet::new(),
-		role_grants(workspace.id, modify_role.id, &[workspace.id]),
+		permission_grants(
+			workspace.id,
+			setup.get_permission_id(Permission::ModifyRoles),
+			&[workspace.id],
+		),
 		None,
 		None,
 		None,
@@ -662,7 +666,7 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 		.create_test_api_token(
 			&member.access_token,
 			BTreeSet::new(),
-			role_grants(workspace.id, role.id, &[workspace.id]),
+			permission_grants(workspace.id, modify, &[workspace.id]),
 		)
 		.await;
 
@@ -723,7 +727,7 @@ async fn api_token_perm_trimmed_on_role_delete() {
 		.create_test_api_token(
 			&member.access_token,
 			BTreeSet::new(),
-			role_grants(workspace.id, role.id, &[workspace.id]),
+			permission_grants(workspace.id, modify, &[workspace.id]),
 		)
 		.await;
 
@@ -783,7 +787,7 @@ async fn api_token_does_not_widen_on_promotion() {
 		.create_test_api_token(
 			&member.access_token,
 			BTreeSet::new(),
-			role_grants(workspace.id, read_only.id, &[workspace.id]),
+			permission_grants(workspace.id, view, &[workspace.id]),
 		)
 		.await;
 
@@ -843,7 +847,7 @@ async fn api_token_patch_revokes_access() {
 		.create_test_api_token(
 			&owner.access_token,
 			BTreeSet::new(),
-			role_grants(workspace.id, write_role.id, &[workspace.id]),
+			permission_grants(workspace.id, modify, &[workspace.id]),
 		)
 		.await;
 
@@ -866,7 +870,7 @@ async fn api_token_patch_revokes_access() {
 					token: UserApiToken {
 						name: "revoketoken".to_string(),
 						super_admin_of: BTreeSet::new(),
-						grants: role_grants(workspace.id, view_role.id, &[workspace.id]),
+						grants: permission_grants(workspace.id, view, &[workspace.id]),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -1779,7 +1783,7 @@ async fn api_token_with_scoped_permissions_allows_resource() {
 		.create_test_api_token(
 			&user.access_token,
 			BTreeSet::new(),
-			role_grants(workspace.id, scoped_role.id, &[deployment1.id]),
+			permission_grants(workspace.id, view_perm, &[deployment1.id]),
 		)
 		.await;
 	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
@@ -1829,7 +1833,7 @@ async fn api_token_with_scoped_permissions_denies_other_resource() {
 		.create_test_api_token(
 			&user.access_token,
 			BTreeSet::new(),
-			role_grants(workspace.id, scoped_role.id, &[deployment1.id]),
+			permission_grants(workspace.id, view_perm, &[deployment1.id]),
 		)
 		.await;
 	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
@@ -1874,7 +1878,7 @@ async fn api_token_view_permission_denies_create() {
 			&user.access_token,
 			BTreeSet::new(),
 			// grants View on all
-			role_grants(workspace.id, view_role.id, &[workspace.id]),
+			permission_grants(workspace.id, view_perm, &[workspace.id]),
 		)
 		.await;
 	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();

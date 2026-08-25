@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
 use headers::{ContentLength, ContentType};
 use models::{
-	api::workspace::{container_registry::*, rbac::user::RoleGrant},
+	api::{user::PermissionGrant, workspace::container_registry::*},
 	rbac::{
 		ContainerRegistryRepositoryPermission,
 		DeploymentPermission,
@@ -367,8 +367,8 @@ async fn initiate_upload_as_member_without_push_returns_forbidden() {
 			BTreeSet::new(),
 			BTreeMap::from([(
 				workspace.id,
-				vec![RoleGrant {
-					role_id: role.id,
+				vec![PermissionGrant {
+					permission_id: perm_id,
 					resource_id: workspace.id,
 				}],
 			)]),
@@ -439,8 +439,8 @@ async fn head_blob_with_push_only_token_is_allowed() {
 			BTreeSet::new(),
 			BTreeMap::from([(
 				workspace.id,
-				vec![RoleGrant {
-					role_id: push_role.id,
+				vec![PermissionGrant {
+					permission_id: push_perm,
 					resource_id: workspace.id,
 				}],
 			)]),

@@ -188,14 +188,15 @@ const ApiTokenInfo = () => {
 		if (isSaving()) return;
 		setIsSaving(true);
 		try {
-			// Super-admin selections round-trip; member ceilings are authored
-			// only after the token-screen rework.
+			// Super-admin selections round-trip. Role-grant ceilings aren't
+			// editable here until the token-screen rework, so carry the saved
+			// ones through untouched rather than dropping them.
 			const body: UpdateApiTokenRequest = {
 				name,
 				superAdminOf: Object.entries(perms)
 					.filter(([, permission]) => permission.type === "superAdmin")
 					.map(([workspaceId]) => workspaceId),
-				grants: {},
+				grants: info?.grants ?? {},
 				tokenNbf: info?.tokenNbf,
 				tokenExp: info?.tokenExp,
 				allowedIps: info?.allowedIps,

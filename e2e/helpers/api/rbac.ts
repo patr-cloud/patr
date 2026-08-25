@@ -5,6 +5,21 @@ import type { ApiClient } from '@/helpers/api';
 // resource tree, so a grant there covers the whole workspace.
 export type RoleGrant = { roleId: string; resourceId: string };
 
+/** One permission grant on an API token, mirroring a ceiling row. */
+export type PermissionGrant = { permissionId: string; resourceId: string };
+
+/** Wraps bare permission ids into grants at the workspace root. */
+export function toPermissionGrants(
+	wsId: string,
+	permissions: (string | PermissionGrant)[],
+): PermissionGrant[] {
+	return permissions.map((permission) =>
+		typeof permission === 'string'
+			? { permissionId: permission, resourceId: wsId }
+			: permission,
+	);
+}
+
 // Grants of one role across a set of resources.
 export function scopedTo(roleId: string, resourceIds: string[]): RoleGrant[] {
 	return resourceIds.map((resourceId) => ({ roleId, resourceId }));

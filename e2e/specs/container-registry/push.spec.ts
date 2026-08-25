@@ -6,7 +6,6 @@ import {
 	loginAs,
 	getPermissionId,
 	createApiTokenAPI,
-	createRoleAPI,
 	DindHandle,
 } from '@/prelude';
 import type { ApiClient, UserHandle, DockerVersion } from '@/prelude';
@@ -47,12 +46,8 @@ async function scopedToken(api: ApiClient, user: User, permName: string): Promis
 		user.clientIp,
 		permName,
 	);
-	const role = await createRoleAPI(api, user, user.workspaceId, {
-		name: `tok-${permName.replace(/\W/g, '-')}-${crypto.randomUUID().slice(0, 8)}`,
-		permissions: [id],
-	});
 	const t = await createApiTokenAPI(api, user, {
-		grants: { [user.workspaceId]: [{ roleId: role.id, resourceId: user.workspaceId }] },
+		grants: { [user.workspaceId]: [{ permissionId: id, resourceId: user.workspaceId }] },
 	});
 	return t.token;
 }
