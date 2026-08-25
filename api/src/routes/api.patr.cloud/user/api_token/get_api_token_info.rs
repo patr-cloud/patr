@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use models::api::{user::*, workspace::rbac::user::RoleGrant};
+use models::api::user::*;
 use reqwest::StatusCode;
 
 use crate::prelude::*;
@@ -90,15 +90,15 @@ pub async fn get_api_token_info(
 		r#"
 		SELECT
 			workspace_id AS "workspace_id!: Uuid",
-			role_id AS "role_id!: Uuid",
+			permission_id AS "permission_id!: Uuid",
 			scope_id AS "scope_id!: Uuid"
 		FROM
-			api_token_role_binding
+			user_api_token_permission_binding
 		WHERE
 			token_id = $1
 		ORDER BY
 			workspace_id,
-			role_id;
+			permission_id;
 		"#,
 		token_id as _,
 	)
@@ -112,8 +112,8 @@ pub async fn get_api_token_info(
 			.grants
 			.entry(row.workspace_id)
 			.or_default()
-			.push(RoleGrant {
-				role_id: row.role_id,
+			.push(PermissionGrant {
+				permission_id: row.permission_id,
 				resource_id: row.scope_id,
 			});
 	});

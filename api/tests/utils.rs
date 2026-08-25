@@ -496,7 +496,7 @@ impl TestSetup {
 		&self,
 		token: &BearerToken,
 		super_admin_of: BTreeSet<Uuid>,
-		grants: BTreeMap<Uuid, Vec<RoleGrant>>,
+		grants: BTreeMap<Uuid, Vec<PermissionGrant>>,
 	) -> TestApiToken {
 		let name = random_name(8);
 

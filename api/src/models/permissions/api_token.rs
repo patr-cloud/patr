@@ -274,21 +274,17 @@ pub async fn get_permissions_for_api_token(
 		token_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
 	});
 
-	// The token's declared ceiling: its own (role, scope) rows.
+	// The token's declared ceiling: its own (permission, scope) rows.
 	query!(
 		r#"
 		SELECT
-			atrb.workspace_id AS "workspace_id!",
-			role_permission.permission_id AS "permission_id!",
-			atrb.scope_id AS "scope_id!"
+			pb.workspace_id AS "workspace_id!",
+			pb.permission_id AS "permission_id!",
+			pb.scope_id AS "scope_id!"
 		FROM
-			api_token_role_binding atrb
-		INNER JOIN
-			role_permission
-		ON
-			role_permission.role_id = atrb.role_id
+			user_api_token_permission_binding pb
 		WHERE
-			atrb.token_id = $1;
+			pb.token_id = $1;
 		"#,
 		login_id as _,
 	)

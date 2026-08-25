@@ -467,6 +467,7 @@ export type * from "./OAuthTokenRequestProcessed";
 export type * from "./OAuthTokenResponse";
 export type * from "./PatrRegistry";
 export type * from "./Permission";
+export type * from "./PermissionGrant";
 export type * from "./Platform";
 export type * from "./PreviewWorkspaceInvitePath";
 export type * from "./PreviewWorkspaceInviteRequest";

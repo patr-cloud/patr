@@ -428,8 +428,8 @@ pub async fn initialize_rbac_constraints(
 
 	// Every FK pivots on workspace_id: the actor, the role, and the scope
 	// must all live in the binding's workspace. No `deleted` in the scope
-	// FKs — a binding onto a tombstoned resource is inert, the authorizer
-	// re-checks `deleted IS NULL`.
+	// FKs — a binding onto a tombstoned resource is inert: the resource
+	// lookup filters `deleted IS NULL`, and so does the authorizer.
 	query!(
 		r#"
 		ALTER TABLE role_binding
@@ -619,11 +619,20 @@ pub async fn initialize_rbac_constraints(
 					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 				UNION ALL
 				SELECT
-					user_api_token_workspace_super_admin.workspace_id
+					workspace.id AS workspace_id
 				FROM
-					user_api_token_workspace_super_admin
+					user_api_token_workspace_super_admin sa
+				INNER JOIN
+					user_api_token
+				ON
+					user_api_token.token_id = sa.token_id
+				INNER JOIN
+					workspace
+				ON
+					workspace.id = sa.workspace_id AND
+					workspace.super_admin_id = user_api_token.user_id
 				WHERE
-					user_api_token_workspace_super_admin.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					sa.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
 			/* Bindings carrying this permission: the user's own for web
 			logins; the token's ceiling intersected with the owner's grants
@@ -651,20 +660,16 @@ pub async fn initialize_rbac_constraints(
 				WHERE
 					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
-			/* An API token's declared ceiling: its own (role, scope) rows */
+			/* An API token's declared ceiling: its own (permission, scope) rows */
 			token_ceiling AS (
 				SELECT
-					atrb.workspace_id,
-					atrb.scope_id
+					pb.workspace_id,
+					pb.scope_id
 				FROM
-					api_token_role_binding atrb
-				INNER JOIN
-					role_permission
-				ON
-					role_permission.role_id = atrb.role_id AND
-					role_permission.permission_id = local_permission_id
+					user_api_token_permission_binding pb
 				WHERE
-					atrb.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					pb.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+					pb.permission_id = local_permission_id
 			),
 			/* The token owner's own grants; effective = ceiling ∩ owner,
 			intersected per resource below */
@@ -698,49 +703,55 @@ pub async fn initialize_rbac_constraints(
 			FROM
 				resource
 			WHERE
-				EXISTS (
-					SELECT
-						1
-					FROM
-						super_admin_workspaces
-					WHERE
-						super_admin_workspaces.workspace_id = resource.workspace_id
-				)
-				OR EXISTS (
-					SELECT
-						1
-					FROM
-						user_bindings
-					WHERE
-						user_bindings.workspace_id = resource.workspace_id AND
-						(
-							user_bindings.scope_id = resource.id OR
-							user_bindings.scope_id = user_bindings.workspace_id
-						)
-				)
-				OR (
+				/* Tombstoned resources are nobody's, whatever the bindings say. The
+				parenthesised disjunction matters: AND binds tighter than OR, so
+				without it this would only narrow the super-admin arm. */
+				resource.deleted IS NULL AND
+				(
 					EXISTS (
 						SELECT
 							1
 						FROM
-							token_ceiling
+							super_admin_workspaces
 						WHERE
-							token_ceiling.workspace_id = resource.workspace_id AND
-							(
-								token_ceiling.scope_id = resource.id OR
-								token_ceiling.scope_id = token_ceiling.workspace_id
-							)
-					) AND EXISTS (
+							super_admin_workspaces.workspace_id = resource.workspace_id
+					)
+					OR EXISTS (
 						SELECT
 							1
 						FROM
-							token_owner_grants
+							user_bindings
 						WHERE
-							token_owner_grants.workspace_id = resource.workspace_id AND
+							user_bindings.workspace_id = resource.workspace_id AND
 							(
-								token_owner_grants.scope_id = resource.id OR
-								token_owner_grants.scope_id = token_owner_grants.workspace_id
+								user_bindings.scope_id = resource.id OR
+								user_bindings.scope_id = user_bindings.workspace_id
 							)
+					)
+					OR (
+						EXISTS (
+							SELECT
+								1
+							FROM
+								token_ceiling
+							WHERE
+								token_ceiling.workspace_id = resource.workspace_id AND
+								(
+									token_ceiling.scope_id = resource.id OR
+									token_ceiling.scope_id = token_ceiling.workspace_id
+								)
+						) AND EXISTS (
+							SELECT
+								1
+							FROM
+								token_owner_grants
+							WHERE
+								token_owner_grants.workspace_id = resource.workspace_id AND
+								(
+									token_owner_grants.scope_id = resource.id OR
+									token_owner_grants.scope_id = token_owner_grants.workspace_id
+								)
+						)
 					)
 				);
 		END;

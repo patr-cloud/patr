@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use models::{api::workspace::rbac::user::RoleGrant, rbac::Permission};
+use models::{api::user::PermissionGrant, rbac::Permission};
 
 use super::helpers::*;
 use crate::prelude::*;
@@ -82,8 +82,8 @@ async fn loki_push_no_execute_permission_returns_403() {
 			BTreeSet::new(),
 			BTreeMap::from([(
 				workspace.id,
-				vec![RoleGrant {
-					role_id: view_role.id,
+				vec![PermissionGrant {
+					permission_id: setup.get_permission_id(Permission::ViewRoles),
 					resource_id: workspace.id,
 				}],
 			)]),

@@ -2,15 +2,15 @@ import type { ApiClient } from '@/helpers/api';
 import { API_DIRECT_URL } from '@/helpers/urls';
 import { USER_AGENT } from '@/helpers/config';
 
-import type { RoleGrant } from '@/helpers/api/rbac';
+import type { PermissionGrant } from '@/helpers/api/rbac';
 
 // A token's ceiling: the workspaces it has super-admin on, plus per-workspace
-// role grants. Effective permissions are this intersected with the owner's
+// permission grants. Effective permissions are this intersected with the owner's
 // current permissions at auth time.
 export type CreateApiTokenOpts = {
 	name?: string;
 	superAdminOf?: string[];
-	grants?: Record<string, RoleGrant[]>;
+	grants?: Record<string, PermissionGrant[]>;
 	tokenNbf?: Date | null;
 	tokenExp?: Date | null;
 	allowedIps?: string[];
@@ -55,7 +55,7 @@ export async function patchApiTokenAPI(
 	patch: Partial<{
 		name: string;
 		superAdminOf: string[];
-		grants: Record<string, RoleGrant[]>;
+		grants: Record<string, PermissionGrant[]>;
 		tokenNbf: Date | null;
 		tokenExp: Date | null;
 		allowedIps: string[];
