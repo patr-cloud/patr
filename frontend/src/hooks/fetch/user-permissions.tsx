@@ -91,8 +91,14 @@ const useUserPermissionsQuery = () => {
 								// @ts-expect-error TypeScript can't narrow string to resourceTypes after validation
 								detailedPermissions[resourceType as ResourceTypes] = {};
 							}
-							detailedPermissions[resourceType as ResourceTypes][action as ActionTypes] =
-								userPermission[permId];
+							// The wire now carries PermissionScope; the hook's local shape
+							// still speaks include/exclude until the role-editor rework.
+							detailedPermissions[resourceType as ResourceTypes][action as ActionTypes] = userPermission[
+								permId
+							] as unknown as {
+								permissionType: "include" | "exclude";
+								resources: Array<string>;
+							};
 						}
 					});
 				}
