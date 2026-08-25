@@ -5,6 +5,28 @@ export type PermissionInput = {
 	resources: string[];
 };
 
+// Where a role grant applies: the whole workspace, or an explicit resource
+// set. Mirrors models/src/rbac/permission_scope.rs (tagged, camelCase).
+export type PermissionScope =
+	{ scopeType: 'workspace' } | { scopeType: 'resources'; resources: string[] };
+
+// One role grant — the only place a permission target appears on the wire.
+export type RoleGrant = { roleId: string; scope: PermissionScope };
+
+export const workspaceScope: PermissionScope = { scopeType: 'workspace' };
+
+export function resourcesScope(resources: string[]): PermissionScope {
+	return { scopeType: 'resources', resources };
+}
+
+// Accepts bare role ids (granted workspace-wide) or full grants, so call
+// sites that don't care about scoping stay terse.
+export function toGrants(roles: (string | RoleGrant)[]): RoleGrant[] {
+	return roles.map((role) =>
+		typeof role === 'string' ? { roleId: role, scope: workspaceScope } : role,
+	);
+}
+
 // Resolve permission name (e.g. "deployment::view" or "modifyRoles") to its
 // UUID. Cached per (workspaceId, name) pair within a single test run — names
 // are stable but ids regenerate per DB init.
@@ -134,12 +156,12 @@ export async function setUserRolesAPI(
 	user: { accessToken: string; clientIp: string },
 	wsId: string,
 	userId: string,
-	roleIds: string[],
+	roles: (string | RoleGrant)[],
 ): Promise<void> {
 	await api.request('POST', `/workspace/${wsId}/rbac/user/${userId}`, {
 		token: user.accessToken,
 		clientIp: user.clientIp,
-		body: { roles: roleIds },
+		body: { roles: toGrants(roles) },
 	});
 }
 
