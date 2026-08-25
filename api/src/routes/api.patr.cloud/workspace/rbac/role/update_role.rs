@@ -137,7 +137,6 @@ pub async fn update_role(
 
 	trace!("Role permissions replaced");
 
-
 	redis
 		.setex(
 			redis::keys::workspace_id_revocation_timestamp(&workspace_id),

@@ -19,8 +19,12 @@ async fn managed_url_add_grants_access() {
 		.await;
 	setup.mark_test_domain_verified(domain.id).await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Add))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Add))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -69,8 +73,12 @@ async fn managed_url_delete_grants_access() {
 		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Delete))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Delete))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -114,8 +122,12 @@ async fn managed_url_denied_without_permission() {
 		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ViewRoles)])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -165,8 +177,12 @@ async fn managed_url_delete_include_grants_only_listed_resource() {
 		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Delete))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Delete))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -230,8 +246,12 @@ async fn managed_url_delete_grant_omitting_a_resource_denies_it() {
 		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Delete))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Delete))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -293,8 +313,12 @@ async fn managed_url_view_does_not_grant_verify() {
 		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -335,8 +359,12 @@ async fn managed_url_no_permission_list_returns_empty() {
 		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ViewRoles)])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -409,8 +437,12 @@ async fn managed_url_view_does_not_grant_delete() {
 		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)

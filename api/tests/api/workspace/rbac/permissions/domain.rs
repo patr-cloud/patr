@@ -47,8 +47,12 @@ async fn domain_delete_permission_grants_access() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::Delete))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Domain(DomainPermission::Delete))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -88,8 +92,12 @@ async fn domain_verify_permission_grants_access() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::Verify))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Domain(DomainPermission::Verify))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -130,8 +138,12 @@ async fn domain_denied_without_permission() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::ViewRoles)])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -170,8 +182,12 @@ async fn domain_include_grants_only_listed_resource() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -232,8 +248,12 @@ async fn domain_grant_omitting_a_resource_denies_it() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_grant(
@@ -291,8 +311,12 @@ async fn domain_view_does_not_grant_delete() {
 		.create_test_domain(&admin.access_token, workspace.id)
 		.await;
 
-		let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))])
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
