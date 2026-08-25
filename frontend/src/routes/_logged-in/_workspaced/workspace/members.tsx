@@ -144,7 +144,8 @@ const ManageWorkspace = () => {
 		if (!userId) return;
 
 		const requestBody: UpdateUserRolesInWorkspaceRequest = {
-			roles: editingRoleIds(),
+			// Grants are workspace-wide until the scope picker lands.
+			roles: editingRoleIds().map((roleId) => ({ roleId, scope: { scopeType: "workspace" as const } })),
 		};
 
 		const response = await httpRequest(
@@ -180,7 +181,7 @@ const ManageWorkspace = () => {
 		async ({ workspaceId }) => {
 			const requestBody: InviteUserToWorkspaceRequest = {
 				email: inviteEmail().trim(),
-				roles: inviteRoleIds(),
+				roles: inviteRoleIds().map((roleId) => ({ roleId, scope: { scopeType: "workspace" as const } })),
 			};
 
 			const response = await httpRequest<InviteUserToWorkspaceResponse>(
@@ -263,7 +264,12 @@ const ManageWorkspace = () => {
 			const inviteId = editingInviteId();
 			if (!inviteId) return;
 
-			const body: UpdateWorkspaceInviteRolesRequest = { roles: editingInviteRoleIds() };
+			const body: UpdateWorkspaceInviteRolesRequest = {
+				roles: editingInviteRoleIds().map((roleId) => ({
+					roleId,
+					scope: { scopeType: "workspace" as const },
+				})),
+			};
 			const response = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/invite/${inviteId}`,
 				{ method: "PATCH", body: JSON.stringify(body) }
@@ -403,7 +409,9 @@ const ManageWorkspace = () => {
 																</Show>
 															</span>
 															<span class="text-grey text-xs truncate">
-																{inviteRoleNames(invite.roles).join(", ") || "No roles"}
+																{inviteRoleNames(
+																	invite.roles.map((grant) => grant.roleId)
+																).join(", ") || "No roles"}
 															</span>
 														</div>
 														<Show when={canModifyMembers() && !isEditing()}>
@@ -427,7 +435,12 @@ const ManageWorkspace = () => {
 																			variant={ButtonVariant.Outlined}
 																			class="flex items-center gap-2"
 																			onClick={() =>
-																				beginEditInvite(invite.id, invite.roles)
+																				beginEditInvite(
+																					invite.id,
+																					invite.roles.map(
+																						(grant) => grant.roleId
+																					)
+																				)
 																			}
 																		>
 																			<FiEdit2 size={14} />
