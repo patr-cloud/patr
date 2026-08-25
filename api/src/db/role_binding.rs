@@ -5,10 +5,7 @@ use std::collections::BTreeSet;
 
 use crate::prelude::*;
 
-/// The scopes a role grant applies at. Until the assignment DTOs carry
-/// scopes on the wire, this is read from the legacy per-permission template
-/// tables, which the role CRUD handlers keep dual-writing (uniform across a
-/// role's permissions — enforced at role write time).
+/// The scopes a role grant applies at.
 pub enum RoleScopes {
 	/// The whole workspace, including resources created later
 	/// (`scope_id = workspace_id`).
@@ -43,117 +40,6 @@ pub async fn ensure_actor_for_user(
 	.fetch_one(&mut *connection)
 	.await
 	.map(|row| row.id)
-}
-
-/// Reads a role's scope template from the legacy tables, expanded to
-/// concrete resources. Returns [`None`] when the role has no permission
-/// rows in the given workspace — the caller treats that as
-/// role-does-not-exist, since every real role carries at least one
-/// permission.
-pub async fn read_role_scopes(
-	connection: &mut DatabaseConnection,
-	workspace_id: &Uuid,
-	role_id: &Uuid,
-) -> Result<Option<RoleScopes>, sqlx::Error> {
-	let role_exists = query!(
-		r#"
-		SELECT
-			1 AS "present"
-		FROM
-			role
-		WHERE
-			id = $1 AND
-			workspace_id = $2;
-		"#,
-		role_id as _,
-		workspace_id as _,
-	)
-	.fetch_optional(&mut *connection)
-	.await?
-	.is_some();
-
-	if !role_exists {
-		return Ok(None);
-	}
-
-	// Uniformity is enforced at role write time, so one permission's shape
-	// speaks for the whole role. Exclude with no children = workspace-wide.
-	let is_workspace_wide = query!(
-		r#"
-		SELECT
-			1 AS "present"
-		FROM
-			role_resource_permissions_type t
-		WHERE
-			t.role_id = $1 AND
-			t.permission_type = 'exclude' AND
-			NOT EXISTS (
-				SELECT
-					1
-				FROM
-					role_resource_permissions_exclude e
-				WHERE
-					e.role_id = t.role_id
-			);
-		"#,
-		role_id as _,
-	)
-	.fetch_optional(&mut *connection)
-	.await?
-	.is_some();
-
-	if is_workspace_wide {
-		return Ok(Some(RoleScopes::Workspace));
-	}
-
-	// Include lists name resources directly; Exclude(S≠∅) expands to the
-	// live workspace resources not in S. The workspace's own resource row
-	// is never a scope — `scope_id = workspace_id` means workspace-wide.
-	let resources = query!(
-		r#"
-		SELECT
-			i.resource_id AS "resource_id!: Uuid"
-		FROM
-			(SELECT DISTINCT resource_id FROM role_resource_permissions_include WHERE role_id = $1) i
-		INNER JOIN
-			resource r
-		ON
-			r.id = i.resource_id AND
-			r.workspace_id = $2 AND
-			r.deleted IS NULL AND
-			r.id <> r.workspace_id
-		UNION
-		SELECT
-			r.id
-		FROM
-			resource r
-		WHERE
-			r.workspace_id = $2 AND
-			r.deleted IS NULL AND
-			r.id <> r.workspace_id AND
-			EXISTS (
-				SELECT 1 FROM role_resource_permissions_exclude e WHERE e.role_id = $1
-			) AND
-			NOT EXISTS (
-				SELECT
-					1
-				FROM
-					role_resource_permissions_exclude e
-				WHERE
-					e.role_id = $1 AND
-					e.resource_id = r.id
-			);
-		"#,
-		role_id as _,
-		workspace_id as _,
-	)
-	.fetch_all(&mut *connection)
-	.await?
-	.into_iter()
-	.map(|row| row.resource_id)
-	.collect::<BTreeSet<_>>();
-
-	Ok(Some(RoleScopes::Resources(resources)))
 }
 
 /// Mints bindings for one `(actor, role)` at the given scopes.

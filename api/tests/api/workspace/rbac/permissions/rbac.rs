@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use models::{
 	api::workspace::{rbac::role::*, volume::*},
-	rbac::{DeploymentPermission, Permission, ResourcePermissionType, VolumePermission},
+	rbac::{DeploymentPermission, Permission, VolumePermission},
 };
 
 use super::{all, grant, include, resources_scope, setup_permission_test};

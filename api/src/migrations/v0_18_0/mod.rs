@@ -19,3 +19,4 @@ mod m016_role_binding;
 mod m017_backfill_role_bindings;
 mod m018_role_binding_cutover;
 mod m019_token_ceiling_evaluation;
+mod m020_drop_legacy_permission_tables;

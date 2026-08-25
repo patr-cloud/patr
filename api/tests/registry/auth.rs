@@ -9,7 +9,6 @@ use models::{
 		DeploymentPermission,
 		Permission,
 		PermissionScope,
-		ResourcePermissionType,
 		WorkspacePermission,
 	},
 };

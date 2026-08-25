@@ -15,7 +15,7 @@ use models::{
 		},
 		workspace::rbac::user::*,
 	},
-	rbac::{Permission, PermissionScope, ResourcePermissionType},
+	rbac::{Permission, PermissionScope},
 };
 
 use crate::prelude::*;

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::*,
-	rbac::{Permission, ResourcePermissionType},
+	rbac::{Permission},
 	utils::Uuid,
 };
 

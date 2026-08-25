@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::rbac::{role::*, user::*, *},
-	rbac::{Permission, PermissionScope, ResourcePermissionType},
+	rbac::{Permission, PermissionScope},
 };
 
 use crate::prelude::*;
