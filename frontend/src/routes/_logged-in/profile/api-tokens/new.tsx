@@ -17,7 +17,8 @@ import { httpRequest } from "~/utils/http-request";
 import { useAuthState } from "~/hooks";
 import { useUserInfo } from "~/hooks/state-hooks";
 import { useWorkspacesQuery } from "~/hooks/fetch";
-import { CreateApiTokenRequest, CreateApiTokenResponse, WorkspacePermission } from "~/bindings";
+import { CreateApiTokenRequest, CreateApiTokenResponse } from "~/bindings";
+import { WorkspacePermission } from "~/utils/types";
 import { useNavigate } from "@tanstack/solid-router";
 import ApiTokenModal from "./-components/api-token-modal";
 import WorkspacePermissionItem from "./-components/workspace-permission-item";
@@ -107,7 +108,12 @@ const CreateApiTokens = () => {
 			tokenNbf: fromDate() || undefined,
 			tokenExp: toDate() || undefined,
 			allowedIps: allowedIps().length > 0 ? allowedIps() : undefined,
-			permissions: perms,
+			// Super-admin selections round-trip; member detail is authored as
+			// role-grant ceilings only after the token-screen rework.
+			superAdminOf: Object.entries(perms)
+				.filter(([, permission]) => permission.type === "superAdmin")
+				.map(([workspaceId]) => workspaceId),
+			grants: {},
 		};
 
 		const response = await httpRequest<CreateApiTokenResponse>(
