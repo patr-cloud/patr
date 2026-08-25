@@ -19,7 +19,7 @@ const WorkspacePermissionItem = (props: WorkspacePermissionItemProps) => {
 	const [superAdminMode, setSuperAdminMode] = createSignal(props.initialPermission?.type === "superAdmin");
 	const extractMemberPermissions = (wp?: WorkspacePermission): { [key: string]: ResourcePermissionType } => {
 		if (!wp || wp.type !== "member") return {};
-		const { type: _, ...rest } = wp as Record<string, ResourcePermissionType | string>;
+		const { type: _, ...rest } = wp as unknown as Record<string, ResourcePermissionType | string>;
 		return rest as { [key: string]: ResourcePermissionType };
 	};
 	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>(
