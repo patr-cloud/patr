@@ -50,7 +50,7 @@ async function makeRole(
 	);
 	return createRoleAPI(api, user, user.workspaceId, {
 		name,
-		permissions: { [viewId]: { permissionType: 'exclude', resources: [] } },
+		permissions: [viewId],
 	});
 }
 

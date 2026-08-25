@@ -54,9 +54,7 @@ test.describe('deployment > RBAC [UI]', () => {
 	}) => {
 		const { owner, dep } = await ownerWithDeployment(api);
 		const viewId = await permId(api, owner, 'deployment::view');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -77,9 +75,7 @@ test.describe('deployment > RBAC [UI]', () => {
 		const runner = await createRunnerAPI(api, owner, owner.workspaceId);
 		const repo = await createContainerRepo(api, owner, owner.workspaceId);
 		const createId = await permId(api, owner, 'deployment::create');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[createId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [createId]);
 		// The member creates a deployment (allowed) but cannot view it.
 		const created = await api.request<{ id: string }>(
 			'POST',
@@ -107,9 +103,7 @@ test.describe('deployment > RBAC [UI]', () => {
 	}) => {
 		const { owner } = await ownerWithDeployment(api);
 		const viewRoles = await permId(api, owner, 'viewRoles');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewRoles]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewRoles]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();

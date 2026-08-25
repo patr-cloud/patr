@@ -21,9 +21,7 @@ test.describe('rbac > app-wide UI gating (useIsAllowed)', () => {
 			owner.clientIp,
 			'deployment::view',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -57,10 +55,7 @@ test.describe('rbac > app-wide UI gating (useIsAllowed)', () => {
 			owner.clientIp,
 			'deployment::create',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-			[createId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId, createId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -96,9 +91,7 @@ test.describe('rbac > app-wide UI gating (useIsAllowed)', () => {
 			owner.clientIp,
 			'runner::view',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -125,9 +118,7 @@ test.describe('rbac > app-wide UI gating (useIsAllowed)', () => {
 			owner.clientIp,
 			'viewRoles',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
