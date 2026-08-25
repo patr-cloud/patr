@@ -52,7 +52,11 @@ async fn conformance_harness() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	// Build a combined router sharing the seeded state. Registry auth reads the

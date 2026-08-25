@@ -108,11 +108,7 @@ mod test {
 	use time::OffsetDateTime;
 
 	use super::UserApiToken;
-	use crate::{
-		api::workspace::rbac::user::RoleGrant,
-		prelude::*,
-		rbac::PermissionScope,
-	};
+	use crate::{api::workspace::rbac::user::RoleGrant, prelude::*, rbac::PermissionScope};
 
 	#[test]
 	fn assert_empty_user_api_token_types() {

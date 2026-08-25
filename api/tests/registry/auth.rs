@@ -67,7 +67,11 @@ async fn registry_push_without_permission() {
 	let other = setup.create_test_user().await;
 	let other_workspace = setup.create_test_workspace(&other.access_token).await;
 	let other_token = setup
-		.create_test_api_token(&other.access_token, BTreeSet::from([other_workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&other.access_token,
+			BTreeSet::from([other_workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let data: Vec<u8> = (0..64u8).collect();
@@ -108,7 +112,11 @@ async fn push_to_nonexistent_repo() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let data: Vec<u8> = (0..64u8).collect();
@@ -143,7 +151,11 @@ async fn pull_from_nonexistent_repo() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let response = setup
@@ -177,7 +189,11 @@ async fn get_manifest_with_invalid_reference_returns_404() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	let response = setup
@@ -212,7 +228,11 @@ async fn push_to_deleted_repo() {
 		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
 	let api_token = setup
-		.create_test_api_token(&user.access_token, BTreeSet::from([workspace.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	// Delete the repo via API
@@ -279,7 +299,11 @@ async fn cross_workspace_push_denied() {
 	let user_b = setup.create_test_user().await;
 	let workspace_b = setup.create_test_workspace(&user_b.access_token).await;
 	let token_b = setup
-		.create_test_api_token(&user_b.access_token, BTreeSet::from([workspace_b.id]), BTreeMap::new())
+		.create_test_api_token(
+			&user_b.access_token,
+			BTreeSet::from([workspace_b.id]),
+			BTreeMap::new(),
+		)
 		.await;
 
 	// User B tries to push to user A's repo
