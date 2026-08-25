@@ -23,7 +23,7 @@ import { InviteUserToWorkspaceRequest } from "~/bindings/InviteUserToWorkspaceRe
 import { InviteUserToWorkspaceResponse } from "~/bindings/InviteUserToWorkspaceResponse";
 import { ResendWorkspaceInviteResponse } from "~/bindings/ResendWorkspaceInviteResponse";
 import { UpdateWorkspaceInviteRolesRequest } from "~/bindings/UpdateWorkspaceInviteRolesRequest";
-import { RoleGrant } from "~/bindings/RoleGrant";
+import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "./-components/workspace-header";
 import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery, useInvitesQuery } from "~/hooks/fetch";
@@ -240,7 +240,7 @@ const ManageWorkspace = () => {
 	const [editingInviteId, setEditingInviteId] = createSignal<string | null>(null);
 	const [editingInviteRoleIds, setEditingInviteRoleIds] = createSignal<string[]>([]);
 
-	const beginEditInvite = (inviteId: string, grants: RoleGrant[]) => {
+	const beginEditInvite = (inviteId: string, grants: RoleBindingGrant[]) => {
 		setPendingRevokeId(null);
 		setEditingInviteId(inviteId);
 		setEditingInviteRoleIds(grants.map((grant) => grant.roleId));
@@ -312,7 +312,7 @@ const ManageWorkspace = () => {
 		}
 	};
 
-	const inviteRoleNames = (grants: RoleGrant[]) =>
+	const inviteRoleNames = (grants: RoleBindingGrant[]) =>
 		grants.map((grant) => roleNameMap().get(grant.roleId) || grant.roleId);
 
 	// An expired invite is still listed for a while so it can be resent, but its
