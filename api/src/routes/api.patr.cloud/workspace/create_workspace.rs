@@ -216,7 +216,8 @@ pub(crate) struct DefaultRole {
 	pub(crate) name: &'static str,
 	/// The role's seeded description.
 	pub(crate) description: &'static str,
-	/// The permissions the role grants (seeded as Exclude(∅) = whole workspace).
+	/// The permissions the role grants (seeded as Exclude(∅) = whole
+	/// workspace).
 	pub(crate) permissions: Vec<Permission>,
 }
 
