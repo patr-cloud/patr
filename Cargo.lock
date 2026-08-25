@@ -280,6 +280,7 @@ dependencies = [
  "typed-builder",
  "wiremock",
  "woothee",
+ "zeroize",
 ]
 
 [[package]]

@@ -140,6 +140,7 @@ wiremock                       = { default-features = false, version = "0.6" }
 woothee                        = { default-features = false, version = "0.13" }
 worker                         = { default-features = false, version = "0.8" }
 zip                            = { default-features = false, version = "8" }
+zeroize                        = { default-features = false, version = "1" }
 
 [workspace.dev-dependencies]
 k8s-openapi = { features = ["latest"] }

@@ -1,12 +1,13 @@
+use super::Secret;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
-	/// Route to delete a secret
-	DeleteSecret,
-	DELETE "/workspace/{workspace_id}/secret/{secret_id}" {
+	/// Route to get the information of a secret in a workspace
+	GetSecretInfo,
+	GET "/workspace/{workspace_id}/secret/{secret_id}" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
-		/// The ID of the secret to be deleted
+		/// The ID of the secret to get the information of
 		pub secret_id: Uuid,
 	},
 	request_headers = {
@@ -19,12 +20,12 @@ macros::declare_api_endpoint!(
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.secret_id,
 			extract_workspace_id: |req| req.path.workspace_id,
-			permission: Permission::Secret(SecretPermission::Delete),
+			permission: Permission::Secret(SecretPermission::View),
 		}
 	},
-	audit_log = AppAuditLogger {
-		audit_log_type: AuditLogType::ResourceDeleted,
-		resource_type: ResourceType::Secret,
-		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.secret_id),
+	response = {
+		/// The information of the secret
+		pub secret: WithId<Secret>,
 	},
+	audit_log = NoAuditLogger,
 );

@@ -123,6 +123,22 @@ pub async fn build_state(config: AppConfig) -> AppState {
 
 	let worker = worker::setup(&database);
 
+	// Verify connectivity to OpenBao at startup so a misconfigured secret store
+	// surfaces in the logs immediately rather than on the first secret request.
+	#[cfg(feature = "cloud")]
+	match crate::utils::openbao::OpenBaoClient::new(&config.open_bao)
+		.status()
+		.await
+	{
+		Ok(status) => tracing::info!(
+			initialized = status.initialized,
+			sealed = status.sealed,
+			token_valid = status.token_valid,
+			"OpenBao reachable",
+		),
+		Err(error) => tracing::warn!(%error, "OpenBao health check failed"),
+	}
+
 	AppState {
 		database,
 		redis,
