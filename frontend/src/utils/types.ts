@@ -92,8 +92,7 @@ export type UserPermissionsT =
 // and its selector) are retired by the token-screen rework later in the
 // stack.
 export type ResourcePermissionType =
-	| { permissionType: "include"; resources: Array<string> }
-	| { permissionType: "exclude"; resources: Array<string> };
+	{ permissionType: "include"; resources: Array<string> } | { permissionType: "exclude"; resources: Array<string> };
 
 /**
  * The old per-workspace token permission shape. The token screens keep
