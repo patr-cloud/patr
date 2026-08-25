@@ -2,7 +2,7 @@ import { createMemo, createSignal, Show, Suspense } from "solid-js";
 import { Button, ButtonVariant, InputDropdown, ListResources } from "~/components";
 import { usePermissionsQuery } from "~/hooks/fetch";
 import { parsePermissionName, parseCamelCase, getResourceEndpoint, workspaceLevelResourceTypes } from "~/utils/func";
-import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
+import { ResourcePermissionType } from "~/utils/types";
 import { FiPlus } from "solid-icons/fi";
 
 interface PermissionSelectorProps {
