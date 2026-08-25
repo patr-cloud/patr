@@ -145,7 +145,7 @@ export async function addMemberToWorkspace(
 export async function createSecondMemberWithRole(
 	api: ApiClient,
 	owner: UserHandle & { workspaceId: string },
-	permissions: Record<string, { permissionType: 'include' | 'exclude'; resources: string[] }>,
+	permissions: string[],
 	scope: PermissionScope = workspaceScope,
 ): Promise<UserHandle & { roleId: string }> {
 	const invitee = await createUserAccount(api);
