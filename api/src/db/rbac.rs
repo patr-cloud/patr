@@ -135,46 +135,6 @@ pub async fn initialize_rbac_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		CREATE TABLE role_resource_permissions_type(
-			role_id UUID NOT NULL,
-			permission_id UUID NOT NULL,
-			permission_type PERMISSION_TYPE NOT NULL
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE role_resource_permissions_include(
-			role_id UUID NOT NULL,
-			permission_id UUID NOT NULL,
-			resource_id UUID NOT NULL,
-			permission_type PERMISSION_TYPE NOT NULL
-				GENERATED ALWAYS AS ('include') STORED
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		CREATE TABLE role_resource_permissions_exclude(
-			role_id UUID NOT NULL,
-			permission_id UUID NOT NULL,
-			resource_id UUID NOT NULL,
-			permission_type PERMISSION_TYPE NOT NULL
-				GENERATED ALWAYS AS ('exclude') STORED
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 
@@ -312,43 +272,6 @@ pub async fn initialize_rbac_indices(
 	.execute(&mut *connection)
 	.await?;
 
-	query!(
-		r#"
-		ALTER TABLE role_resource_permissions_type
-			ADD CONSTRAINT role_resource_permissions_type_pk PRIMARY KEY(
-				role_id,
-				permission_id
-			),
-			ADD CONSTRAINT role_resource_permissions_type_uq UNIQUE(
-				role_id,
-				permission_id,
-				permission_type
-			);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE role_resource_permissions_include
-		ADD CONSTRAINT role_resource_permissions_include_pk
-		PRIMARY KEY(role_id, permission_id, resource_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE role_resource_permissions_exclude
-		ADD CONSTRAINT role_resource_permissions_exclude_pk
-		PRIMARY KEY(role_id,permission_id,resource_id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
 	Ok(())
 }
 
@@ -453,54 +376,6 @@ pub async fn initialize_rbac_constraints(
 				FOREIGN KEY(user_id) REFERENCES "user"(id),
 			ADD CONSTRAINT workspace_user_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE role_resource_permissions_type
-			ADD CONSTRAINT role_resource_permissions_type_fk_role_id
-				FOREIGN KEY(role_id) REFERENCES role(id),
-			ADD CONSTRAINT role_resource_permissions_type_fk_permission_id
-				FOREIGN KEY(permission_id) REFERENCES permission(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE role_resource_permissions_include
-			ADD CONSTRAINT role_resource_permissions_include_fk_parent FOREIGN KEY(
-				role_id,
-				permission_id,
-				permission_type
-			) REFERENCES role_resource_permissions_type(
-				role_id,
-				permission_id,
-				permission_type
-			),
-			ADD CONSTRAINT role_resource_permissions_include_fk_resource
-				FOREIGN KEY(resource_id) REFERENCES resource(id);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
-		ALTER TABLE role_resource_permissions_exclude
-			ADD CONSTRAINT role_resource_permissions_exclude_fk_parent
-				FOREIGN KEY(role_id, permission_id, permission_type)
-					REFERENCES role_resource_permissions_type(
-						role_id,
-						permission_id,
-						permission_type
-					),
-			ADD CONSTRAINT role_resource_permissions_exclude_fk_resource
-				FOREIGN KEY(resource_id) REFERENCES resource(id);
 		"#
 	)
 	.execute(&mut *connection)
