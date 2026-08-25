@@ -6,6 +6,8 @@ import {
 	loginAs,
 	getPermissionId,
 	createApiTokenAPI,
+	createRoleAPI,
+	workspaceScope,
 	DindHandle,
 } from '@/prelude';
 import type { ApiClient, UserHandle, DockerVersion } from '@/prelude';
@@ -32,11 +34,12 @@ function dv(testInfo: { project: { metadata: Record<string, unknown> } }): Docke
 
 async function superAdminToken(api: ApiClient, user: User): Promise<string> {
 	const t = await createApiTokenAPI(api, user, {
-		permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+		superAdminOf: [user.workspaceId],
 	});
 	return t.token;
 }
 
+// A token whose ceiling is a single-permission role granted workspace-wide.
 async function scopedToken(api: ApiClient, user: User, permName: string): Promise<string> {
 	const id = await getPermissionId(
 		api,
@@ -45,13 +48,12 @@ async function scopedToken(api: ApiClient, user: User, permName: string): Promis
 		user.clientIp,
 		permName,
 	);
+	const role = await createRoleAPI(api, user, user.workspaceId, {
+		name: `tok-${permName.replace(/\W/g, '-')}-${crypto.randomUUID().slice(0, 8)}`,
+		permissions: [id],
+	});
 	const t = await createApiTokenAPI(api, user, {
-		permissions: {
-			[user.workspaceId]: {
-				type: 'member',
-				[id]: { scopeType: 'workspace' },
-			} as any,
-		},
+		grants: { [user.workspaceId]: [{ roleId: role.id, scope: workspaceScope }] },
 	});
 	return t.token;
 }

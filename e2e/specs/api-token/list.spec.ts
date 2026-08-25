@@ -41,7 +41,7 @@ test.describe('api token > list', () => {
 		// (see expiry.spec.ts FAILS-UNTIL-FIX). The Expiry column will render
 		// "Never", which is what we want to verify visually anyway.
 		const token = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		await withList(browser, user, async (page) => {
 			await expect(page.getByText(token.name)).toBeVisible({ timeout: 10_000 });
@@ -51,7 +51,7 @@ test.describe('api token > list', () => {
 	test('opens the token detail page when a row is clicked', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		const token = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		await withList(browser, user, async (page) => {
 			await page.getByRole('row').filter({ hasText: token.name }).click();
@@ -69,7 +69,7 @@ test.describe('api token > list', () => {
 		for (let i = 0; i < 11; i++) {
 			await createApiTokenAPI(api, user, {
 				name: `tkn-page-${i}-${Math.random().toString(36).slice(2, 6)}`,
-				permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+				superAdminOf: [user.workspaceId],
 			});
 		}
 		await withList(browser, user, async (page) => {
@@ -88,7 +88,7 @@ test.describe('api token > list', () => {
 	test('hides revoked tokens from the list', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		const token = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		// Revoke via API (DELETE).
 		await api.request('DELETE', `/user/api-token/${token.id}`, {

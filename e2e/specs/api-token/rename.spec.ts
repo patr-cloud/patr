@@ -13,7 +13,7 @@ test.describe('api token > rename', () => {
 	test('enables the token-name input on the detail page', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		const t = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user, { workspaceId: user.workspaceId });
@@ -34,13 +34,13 @@ test.describe('api token > rename', () => {
 	}) => {
 		await using user = await createUserWithWorkspace(api);
 		const t = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		const renamed = `renamed-${Date.now().toString(36)}`;
 		// Update sends the full token object; resend the existing permissions.
 		await patchApiTokenAPI(api, user, t.id, {
 			name: renamed,
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user, { workspaceId: user.workspaceId });
@@ -59,7 +59,7 @@ test.describe('api token > rename', () => {
 	}) => {
 		await using user = await createUserWithWorkspace(api);
 		const t = await createApiTokenAPI(api, user, {
-			permissions: { [user.workspaceId]: { type: 'superAdmin' } },
+			superAdminOf: [user.workspaceId],
 		});
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user, { workspaceId: user.workspaceId });

@@ -2,18 +2,15 @@ import type { ApiClient } from '@/helpers/api';
 import { API_DIRECT_URL } from '@/helpers/urls';
 import { USER_AGENT } from '@/helpers/config';
 
-// Mirrors models/src/rbac/workspace_permission.rs — tagged enum, camelCase.
-// The member arm carries a PermissionScope per permission: workspace-wide, or
-// an explicit resource set.
-export type PermissionScopeInput =
-	{ scopeType: 'workspace' } | { scopeType: 'resources'; resources: string[] };
+import type { RoleGrant } from '@/helpers/api/rbac';
 
-export type WorkspacePermissionInput =
-	{ type: 'superAdmin' } | ({ type: 'member' } & Record<string, PermissionScopeInput>);
-
+// A token's ceiling: the workspaces it has super-admin on, plus per-workspace
+// role grants. Effective permissions are this intersected with the owner's
+// current permissions at auth time.
 export type CreateApiTokenOpts = {
 	name?: string;
-	permissions: Record<string, WorkspacePermissionInput>;
+	superAdminOf?: string[];
+	grants?: Record<string, RoleGrant[]>;
 	tokenNbf?: Date | null;
 	tokenExp?: Date | null;
 	allowedIps?: string[];
@@ -36,7 +33,8 @@ export async function createApiTokenAPI(
 	// (preprocess validates the body shape strictly). Omit it.
 	const body: Record<string, unknown> = {
 		name,
-		permissions: opts.permissions,
+		superAdminOf: opts.superAdminOf ?? [],
+		grants: opts.grants ?? {},
 	};
 	if (opts.tokenNbf !== undefined && opts.tokenNbf !== null) body.tokenNbf = opts.tokenNbf;
 	if (opts.tokenExp !== undefined && opts.tokenExp !== null) body.tokenExp = opts.tokenExp;
@@ -56,7 +54,8 @@ export async function patchApiTokenAPI(
 	id: string,
 	patch: Partial<{
 		name: string;
-		permissions: Record<string, WorkspacePermissionInput>;
+		superAdminOf: string[];
+		grants: Record<string, RoleGrant[]>;
 		tokenNbf: Date | null;
 		tokenExp: Date | null;
 		allowedIps: string[];
