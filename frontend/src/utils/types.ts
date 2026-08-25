@@ -86,17 +86,3 @@ export type UserPermissionsT =
 	| ({
 			type: "member";
 	  } & Record<ResourceTypes, Record<ActionTypes, PermissionScope>>);
-
-// Local copies of wire shapes whose generated bindings went away with the
-// flattened role DTOs. The remaining consumers (the token permission editor
-// and its selector) are retired by the token-screen rework later in the
-// stack.
-export type ResourcePermissionType =
-	{ permissionType: "include"; resources: Array<string> } | { permissionType: "exclude"; resources: Array<string> };
-
-/**
- * The old per-workspace token permission shape. The token screens keep
- * authoring it until their rework onto role-grant ceilings; super-admin
- * selections round-trip, member detail is display-only.
- */
-export type WorkspacePermission = { type: "superAdmin" } | ({ type: "member" } & Record<string, unknown>);
