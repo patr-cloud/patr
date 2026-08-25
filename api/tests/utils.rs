@@ -572,9 +572,7 @@ impl TestSetup {
 					authorization: admin_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![grant],
-				})
+				.body(UpdateUserRolesInWorkspaceRequest { roles: vec![grant] })
 				.build(),
 		)
 		.await
