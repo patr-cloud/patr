@@ -1,11 +1,6 @@
 use std::collections::BTreeMap;
 
-use models::{
-	ApiSuccessResponseBody,
-	api::workspace::*,
-	rbac::{Permission},
-	utils::Uuid,
-};
+use models::{ApiSuccessResponseBody, api::workspace::*, rbac::Permission, utils::Uuid};
 
 use crate::prelude::*;
 

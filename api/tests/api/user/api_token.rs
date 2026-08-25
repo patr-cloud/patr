@@ -14,12 +14,7 @@ use models::{
 			rbac::{role::*, user::*},
 		},
 	},
-	rbac::{
-		DeploymentPermission,
-		Permission,
-		PermissionScope,
-		WorkspacePermission,
-	},
+	rbac::{DeploymentPermission, Permission, PermissionScope, WorkspacePermission},
 	utils::{ListResourceQuery, Uuid},
 };
 
