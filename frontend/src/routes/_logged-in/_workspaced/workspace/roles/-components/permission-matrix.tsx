@@ -1,6 +1,6 @@
 import { createEffect, createMemo, createSignal, For, JSX, on, Show, Suspense, untrack } from "solid-js";
 import { Button, ButtonVariant, Checkbox, LoadingSpinner } from "~/components";
-import { ResourcePermissionType } from "~/bindings/ResourcePermissionType";
+import { ResourcePermissionType } from "~/utils/types";
 import { usePermissionsQuery } from "~/hooks/fetch";
 import { useWorkspaceResourcesQuery } from "~/hooks/fetch/resources";
 import { getResourceEndpoint, parseCamelCase, parsePermissionName, workspaceLevelResourceTypes } from "~/utils/func";
