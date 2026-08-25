@@ -1,4 +1,6 @@
 import type { ApiClient } from '@/helpers/api';
+import { toGrants, workspaceScope } from '@/helpers/api/rbac';
+import type { PermissionScope, RoleGrant } from '@/helpers/api/rbac';
 import { randomIPv4 } from '@/helpers/ip';
 import { DEBUG_OTP, TURNSTILE_TOKEN } from '@/helpers/config';
 
@@ -118,31 +120,33 @@ export async function getOwnUserId(
 	return me.id;
 }
 
-// Adds an existing user to `workspaceId` with the given roleIds. roleIds must
-// come from the owner's seeded defaults (e.g. one of the 36 default roles
-// looked up via GET /rbac/role). Looks up the invitee's user_id on the fly.
+// Adds an existing user to `workspaceId` with the given role grants. Bare
+// role ids are granted workspace-wide; pass full RoleGrants to scope one to
+// specific resources. Looks up the invitee's user_id on the fly.
 export async function addMemberToWorkspace(
 	api: ApiClient,
 	owner: { accessToken: string; clientIp: string },
 	workspaceId: string,
 	invitee: { accessToken: string; clientIp: string },
-	roleIds: string[],
+	roles: (string | RoleGrant)[],
 ): Promise<void> {
 	const inviteeId = await getOwnUserId(api, invitee);
 	await api.request('POST', `/workspace/${workspaceId}/rbac/user/${inviteeId}`, {
 		token: owner.accessToken,
 		clientIp: owner.clientIp,
-		body: { roles: roleIds },
+		body: { roles: toGrants(roles) },
 	});
 }
 
 // Creates a second user, creates a role in owner's workspace with the given
-// permissions, adds the user as a member with that role. Returns the new
-// user + role id. This is the cornerstone of all RBAC enforcement tests.
+// permissions, adds the user as a member with that role — granted at `scope`
+// (workspace-wide by default). This is the cornerstone of all RBAC
+// enforcement tests.
 export async function createSecondMemberWithRole(
 	api: ApiClient,
 	owner: UserHandle & { workspaceId: string },
 	permissions: Record<string, { permissionType: 'include' | 'exclude'; resources: string[] }>,
+	scope: PermissionScope = workspaceScope,
 ): Promise<UserHandle & { roleId: string }> {
 	const invitee = await createUserAccount(api);
 	const roleName = `e2e-role-${crypto.randomUUID().slice(0, 8)}`;
@@ -159,7 +163,9 @@ export async function createSecondMemberWithRole(
 			},
 		},
 	);
-	await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [role.id]);
+	await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [
+		{ roleId: role.id, scope },
+	]);
 	return Object.assign(invitee, { roleId: role.id });
 }
 
