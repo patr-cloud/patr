@@ -255,9 +255,7 @@ test.describe('deployment > logs/metrics RBAC [API]', () => {
 	test('logs and metrics require deployment::view', async ({ api }) => {
 		const { user: owner, dep } = await setup(api);
 		const createId = await permId(api, owner, 'deployment::create');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[createId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [createId]);
 		await expect(
 			api.request('GET', `${base(owner.workspaceId)}/${dep.id}/logs`, {
 				token: member.accessToken,

@@ -27,9 +27,7 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'viewRoles',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -53,9 +51,7 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'deployment::view',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[deployView]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [deployView]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -78,9 +74,7 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'viewRoles',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -108,9 +102,7 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'viewRoles',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
