@@ -571,6 +571,35 @@ async fn create_default_roles_for_workspace(
 
 		trace!("Role created. Inserting permissions.");
 
+		let role_permission_ids = role
+			.permissions
+			.iter()
+			.map(|permission| {
+				permission_ids
+					.get(&permission.to_string())
+					.copied()
+					.ok_or_else(|| {
+						ErrorType::server_error(format!(
+							"permission `{permission}` missing from permission table"
+						))
+					})
+			})
+			.collect::<Result<Vec<_>, _>>()?;
+
+		query!(
+			r#"
+			INSERT INTO
+				role_permission(role_id, permission_id)
+			SELECT
+				$1,
+				UNNEST($2::UUID[]);
+			"#,
+			role_id as _,
+			&role_permission_ids as _,
+		)
+		.execute(&mut *connection)
+		.await?;
+
 		for permission in role.permissions {
 			let permission_name = permission.to_string();
 			let permission_id = permission_ids.get(&permission_name).ok_or_else(|| {

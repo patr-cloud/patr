@@ -107,7 +107,7 @@ pub async fn list_users_in_workspace(
 			users_page.email AS "email!",
 			users_page.is_owner AS "is_owner!",
 			COALESCE(
-				ARRAY_REMOVE(ARRAY_AGG(workspace_user.role_id), NULL),
+				ARRAY_REMOVE(ARRAY_AGG(DISTINCT role_binding.role_id), NULL),
 				'{}'
 			) AS "role_ids!: Vec<Uuid>",
 			(SELECT COUNT(*) FROM matched_users) AS "total_count!"
@@ -118,6 +118,10 @@ pub async fn list_users_in_workspace(
 		ON
 			workspace_user.user_id = users_page.user_id AND
 			workspace_user.workspace_id = $1
+		LEFT JOIN
+			role_binding
+		ON
+			role_binding.actor_id = workspace_user.actor_id
 		GROUP BY
 			users_page.user_id,
 			users_page.first_name,

@@ -207,16 +207,12 @@ async fn rbac_view_does_not_grant_modify() {
 	);
 }
 
-/// Regression test for the loader join bug where a role's include/exclude
-/// resource lists were attached to EVERY permission of the role instead of
-/// only the permission they belong to (the LEFT JOIN omitted
-/// `permission_id`). A role granting `Volume::View` on v1 and
-/// `Volume::Delete` on v2 must not let the user view v2 or delete v1.
-///
-/// Note: non-uniform roles like this become unrepresentable once role
-/// bindings land (PR 10 of the stack) — this test will be reshaped then.
+/// A role's permissions must all carry the same resource set: a binding
+/// applies the whole role at one scope, so non-uniform roles (the shape the
+/// old loader-join bug leaked across — see the history of this test) are
+/// rejected outright at creation.
 #[tokio::test]
-async fn rbac_include_lists_do_not_cross_permissions() {
+async fn rbac_non_uniform_role_rejected() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
@@ -236,70 +232,30 @@ async fn rbac_include_lists_do_not_cross_permissions() {
 		setup.get_permission_id(Permission::Volume(VolumePermission::Delete)),
 		include(&[volume2.id]),
 	);
-	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
-		.await;
-	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
-		.await;
 
-	// View v1 is granted directly
-	let r_view_v1 = setup
+	let response = setup
 		.make_web_dashboard_call(
-			ApiRequest::<GetVolumeInfoRequest>::builder()
-				.path(GetVolumeInfoPath {
+			ApiRequest::<CreateNewRoleRequest>::builder()
+				.path(CreateNewRolePath {
 					workspace_id: workspace.id,
-					volume_id: volume1.id,
 				})
-				.headers(GetVolumeInfoRequestHeaders {
-					authorization: user_b.access_token.clone(),
+				.headers(CreateNewRoleRequestHeaders {
+					authorization: admin.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateNewRoleRequest {
+					role: Role {
+						name: "NonUniform".to_string(),
+						description: String::new(),
+					},
+					permissions: perms,
 				})
 				.build(),
 		)
 		.await;
-	assert!(
-		r_view_v1.status_code().is_success(),
-		"view on volume1 is granted directly"
-	);
-
-	// Delete v1 must fail: v1 is only in the View include list
-	let r_delete_v1 = setup
-		.make_web_dashboard_call(
-			ApiRequest::<DeleteVolumeRequest>::builder()
-				.path(DeleteVolumePath {
-					workspace_id: workspace.id,
-					volume_id: volume1.id,
-				})
-				.headers(DeleteVolumeRequestHeaders {
-					authorization: user_b.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-	assert!(
-		r_delete_v1.status_code().is_client_error(),
-		"delete include list must not leak volume1 from the view include list"
-	);
-
-	// View v2 must fail: v2 is only in the Delete include list
-	let r_view_v2 = setup
-		.make_web_dashboard_call(
-			ApiRequest::<GetVolumeInfoRequest>::builder()
-				.path(GetVolumeInfoPath {
-					workspace_id: workspace.id,
-					volume_id: volume2.id,
-				})
-				.headers(GetVolumeInfoRequestHeaders {
-					authorization: user_b.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-	assert!(
-		r_view_v2.status_code().is_client_error(),
-		"view include list must not leak volume2 from the delete include list"
+	assert_eq!(
+		response.status_code(),
+		StatusCode::BAD_REQUEST,
+		"a role whose permissions carry different resource sets must be rejected"
 	);
 }

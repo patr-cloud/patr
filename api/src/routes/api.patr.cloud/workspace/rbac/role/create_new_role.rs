@@ -40,6 +40,15 @@ pub async fn create_new_role(
 		return Err(ErrorType::WrongParameters);
 	}
 
+	// A binding applies the whole role at one scope, so every permission in a
+	// role must carry the same resource set. Non-uniform roles became
+	// unrepresentable at the role-binding cutover.
+	let mut values = permissions.values();
+	let first = values.next();
+	if values.any(|value| Some(value) != first) {
+		return Err(ErrorType::WrongParameters);
+	}
+
 	let description = if description.is_empty() {
 		"No description provided".into()
 	} else {
@@ -112,6 +121,33 @@ pub async fn create_new_role(
 
 	trace!("Role created. Inserting permissions.");
 
+	query!(
+		r#"
+		INSERT INTO
+			role_permission(role_id, permission_id)
+		SELECT
+			$1,
+			UNNEST($2::UUID[]);
+		"#,
+		role_id as _,
+		&permissions
+			.keys()
+			.copied()
+			.map(Into::into)
+			.collect::<Vec<_>>(),
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			ErrorType::ResourceDoesNotExist
+		}
+		other => ErrorType::server_error(other),
+	})?;
+
+	// The legacy per-permission template rows are still dual-written: until
+	// the assignment DTOs carry scopes, they are where a role's scope is
+	// read from at assignment time.
 	for (permission_id, permission) in permissions {
 		let permission_type = ResourcePermissionTypeDiscriminant::from(&permission);
 		query!(
