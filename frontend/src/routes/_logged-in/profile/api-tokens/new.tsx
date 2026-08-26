@@ -18,10 +18,10 @@ import { useAuthState } from "~/hooks";
 import { useUserInfo } from "~/hooks/state-hooks";
 import { useWorkspacesQuery } from "~/hooks/fetch";
 import { CreateApiTokenRequest, CreateApiTokenResponse } from "~/bindings";
-import { WorkspacePermission } from "~/utils/types";
+import { PermissionGrant, toWorkspacePermission } from "~/components/token-permission-editor";
 import { useNavigate } from "@tanstack/solid-router";
 import ApiTokenModal from "./-components/api-token-modal";
-import WorkspacePermissionItem from "./-components/workspace-permission-item";
+import TokenGrantsItem from "./-components/token-grants-item";
 
 const CreateApiTokens = () => {
 	const [authState] = useAuthState();
@@ -66,9 +66,8 @@ const CreateApiTokens = () => {
 	};
 
 	const [enabledWorkspaces, setEnabledWorkspaces] = createSignal<Set<string>>(new Set());
-	const [workspacePermissions, setWorkspacePermissions] = createSignal<{
-		[workspaceId: string]: WorkspacePermission;
-	}>({});
+	const [superAdminWorkspaces, setSuperAdminWorkspaces] = createSignal<Set<string>>(new Set());
+	const [workspaceGrants, setWorkspaceGrants] = createSignal<{ [workspaceId: string]: PermissionGrant[] }>({});
 
 	const handleWorkspaceToggle = (workspaceId: string, enabled: boolean) => {
 		const newEnabled = new Set(enabledWorkspaces());
@@ -76,15 +75,25 @@ const CreateApiTokens = () => {
 			newEnabled.add(workspaceId);
 		} else {
 			newEnabled.delete(workspaceId);
-			const newPerms = { ...workspacePermissions() };
-			delete newPerms[workspaceId];
-			setWorkspacePermissions(newPerms);
+			const newSuperAdmin = new Set(superAdminWorkspaces());
+			newSuperAdmin.delete(workspaceId);
+			setSuperAdminWorkspaces(newSuperAdmin);
+			const newGrants = { ...workspaceGrants() };
+			delete newGrants[workspaceId];
+			setWorkspaceGrants(newGrants);
 		}
 		setEnabledWorkspaces(newEnabled);
 	};
 
-	const handlePermissionChange = (workspaceId: string, permission: WorkspacePermission) => {
-		setWorkspacePermissions((prev) => ({ ...prev, [workspaceId]: permission }));
+	const handleSuperAdminChange = (workspaceId: string, superAdmin: boolean) => {
+		const next = new Set(superAdminWorkspaces());
+		if (superAdmin) next.add(workspaceId);
+		else next.delete(workspaceId);
+		setSuperAdminWorkspaces(next);
+	};
+
+	const handleGrantsChange = (workspaceId: string, grants: PermissionGrant[]) => {
+		setWorkspaceGrants((prev) => ({ ...prev, [workspaceId]: grants }));
 	};
 
 	const hasEnabledWorkspaces = () => enabledWorkspaces().size > 0;
@@ -97,20 +106,34 @@ const CreateApiTokens = () => {
 			return;
 		}
 
-		const perms = workspacePermissions();
-		if (Object.keys(perms).length === 0) {
+		if (!hasEnabledWorkspaces()) {
 			toast("Please enable at least one workspace and configure permissions", "error");
 			return;
 		}
+
+		// Every enabled workspace must contribute something to the ceiling —
+		// super-admin, or at least one role grant.
+		const missingGrants = [...enabledWorkspaces()].some(
+			(wsId) => !superAdminWorkspaces().has(wsId) && (workspaceGrants()[wsId] ?? []).length === 0
+		);
+		if (missingGrants) {
+			toast("Every enabled workspace needs super admin or at least one role", "error");
+			return;
+		}
+
+		const permissions = Object.fromEntries(
+			[...enabledWorkspaces()].map((wsId) => [
+				wsId,
+				toWorkspacePermission(superAdminWorkspaces().has(wsId), workspaceGrants()[wsId] ?? []),
+			])
+		);
 
 		const requestBody: Omit<CreateApiTokenRequest, "created"> = {
 			name: name(),
 			tokenNbf: fromDate() || undefined,
 			tokenExp: toDate() || undefined,
 			allowedIps: allowedIps().length > 0 ? allowedIps() : undefined,
-			// The screens still author the pre-cutover member shape; the
-			// token-screen rework replaces this editor wholesale.
-			permissions: perms as CreateApiTokenRequest["permissions"],
+			permissions,
 		};
 
 		const response = await httpRequest<CreateApiTokenResponse>(
@@ -217,17 +240,25 @@ const CreateApiTokens = () => {
 							>
 								<InputWithLabel label="Workspace Permissions">
 									<div class="flex flex-col gap-4 w-full">
+										<p class="text-grey text-sm">
+											<span class="text-white">This token can never do more than you can.</span>{" "}
+											Whatever you select here is checked against your own permissions each time
+											the token is used — if you lose access to something, so does the token.
+										</p>
 										<For
 											each={workspacesQuery.data?.workspaces || []}
 											fallback={<div class="text-gray-400">No workspaces available</div>}
 										>
 											{(ws) => (
-												<WorkspacePermissionItem
+												<TokenGrantsItem
 													workspace={ws}
 													isSuperAdmin={userInfo()?.id === ws.superAdminId}
 													enabled={enabledWorkspaces().has(ws.id)}
+													superAdmin={superAdminWorkspaces().has(ws.id)}
+													grants={workspaceGrants()[ws.id] ?? []}
 													onToggle={handleWorkspaceToggle}
-													onPermissionChange={handlePermissionChange}
+													onSuperAdminChange={handleSuperAdminChange}
+													onGrantsChange={handleGrantsChange}
 												/>
 											)}
 										</For>
