@@ -30,6 +30,7 @@ import { ModalContainer } from "~/components/modal";
 import Link from "~/components/link";
 import ListResources from "~/components/list-resources";
 import BindingRows from "~/components/binding-rows";
+import TokenPermissionEditor from "~/components/token-permission-editor";
 import ScopePicker from "~/components/scope-picker";
 import DeleteModal from "~/components/modal/delete-resource-modal";
 import NoPermissionsPage from "~/components/no-permissions";
@@ -85,6 +86,7 @@ export {
 	type AutocompleteSuggestion,
 	ListResources,
 	BindingRows,
+	TokenPermissionEditor,
 	ScopePicker,
 	DeleteModal,
 	NoPermissionsPage,

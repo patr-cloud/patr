@@ -5,7 +5,7 @@ import { HYDRATION_TIMEOUT } from '@/helpers/config';
 // Frontend reference:
 //   frontend/src/routes/_logged-in/profile/api-tokens/new.tsx
 //   .../api-tokens/$id.tsx
-//   .../api-tokens/-components/{api-token-modal,regenerate-modal,workspace-permission-item}.tsx
+//   .../api-tokens/-components/{api-token-modal,regenerate-modal,token-grants-item}.tsx
 //   frontend/src/components/modal/delete-resource-modal.tsx
 //   frontend/src/components/chip-input.tsx
 
@@ -97,10 +97,10 @@ export async function selectSuperAdminRadio(page: Page): Promise<void> {
 		.click();
 }
 
-export async function selectCustomPermissionsRadio(page: Page): Promise<void> {
+export async function selectSpecificPermissionsRadio(page: Page): Promise<void> {
 	await page
 		.locator('label')
-		.filter({ hasText: /^Custom Permissions$/ })
+		.filter({ hasText: /^Specific Permissions$/ })
 		.first()
 		.click();
 }
