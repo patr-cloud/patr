@@ -16,6 +16,13 @@ interface PaginationProps {
 	loading?: MaybeAccessor<boolean>;
 	/** Additional classes for the root element */
 	class?: MaybeAccessor<string>;
+	/**
+	 * Rows pinned outside the paginated set and rendered only on the first page
+	 * (the members page pins the workspace owner and every pending invite).
+	 * They count toward the total and shift the displayed range, but not the
+	 * page math — that still belongs to the paginated list alone.
+	 */
+	pinnedCount?: MaybeAccessor<number>;
 }
 
 /**
@@ -72,8 +79,13 @@ const Pagination = (rawProps: PaginationProps) => {
 
 	const pageWindow = () => buildPageWindow(props.state.page(), props.state.totalPages());
 
-	const rangeStart = () => props.state.page() * props.state.count() + 1;
-	const rangeEnd = () => Math.min((props.state.page() + 1) * props.state.count(), props.state.totalCount());
+	const pinned = () => get(props.pinnedCount) ?? 0;
+	const totalCount = () => props.state.totalCount() + pinned();
+
+	// The pinned rows all sit on page 0, so they shift every later page's range
+	// along by their count without ever being part of one.
+	const rangeStart = () => props.state.page() * props.state.count() + 1 + (props.state.page() === 0 ? 0 : pinned());
+	const rangeEnd = () => Math.min((props.state.page() + 1) * props.state.count() + pinned(), totalCount());
 
 	const btnBase =
 		"h-8 flex items-center justify-center rounded-xs text-sm font-medium transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed";
@@ -88,12 +100,12 @@ const Pagination = (rawProps: PaginationProps) => {
 		>
 			{/* Left: item range label */}
 			<p class="text-sm text-grey flex-1">
-				<Show when={props.state.totalCount() > 0} fallback={<span>No results</span>}>
+				<Show when={totalCount() > 0} fallback={<span>No results</span>}>
 					Showing&nbsp;
 					<span class="text-white">
 						{rangeStart()}–{rangeEnd()}
 					</span>
-					&nbsp;of <span class="text-white">{props.state.totalCount()}</span>
+					&nbsp;of <span class="text-white">{totalCount()}</span>
 				</Show>
 			</p>
 
