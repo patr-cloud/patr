@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM role_binding WHERE actor_id IN (SELECT actor_id FROM workspace_user WHERE user_id = $1 AND workspace_id = $2);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c92d554dee1584a6f7e3f5a26998db4ab264c4e68edcc01a7f570a3977145c3a"
+}

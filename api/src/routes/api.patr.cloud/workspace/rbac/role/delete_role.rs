@@ -45,7 +45,7 @@ pub async fn delete_role(
 			SELECT
 				COUNT(*) AS "count!: i64"
 			FROM
-				workspace_user
+				role_binding
 			WHERE
 				workspace_id = $1 AND
 				role_id = $2;
@@ -62,22 +62,24 @@ pub async fn delete_role(
 		}
 	}
 
-	let users_removed = query!(
+	// Only user bindings FK the role; membership rows are untouched — deleting
+	// a role no longer evicts anyone from the workspace. Token ceilings carry
+	// permissions rather than roles, so they survive; a token's effective
+	// access still shrinks, because the owner's bindings just went.
+	let grants_removed = query!(
 		r#"
 		DELETE FROM
-			workspace_user
+			role_binding
 		WHERE
-			workspace_id = $1 AND
-			role_id = $2;
+			role_id = $1;
 		"#,
-		workspace_id as _,
 		role_id as _,
 	)
 	.execute(&mut **database)
 	.await?
 	.rows_affected();
 
-	info!("Removed role from {} users", users_removed);
+	info!("Removed {} binding(s) of the role", grants_removed);
 
 	// Pending invites reference the role too, and the FK won't let it go first.
 	query!(
@@ -136,6 +138,18 @@ pub async fn delete_role(
 
 	trace!("Deleted all the permission types");
 
+	query!(
+		r#"
+		DELETE FROM
+			role_permission
+		WHERE
+			role_id = $1;
+		"#,
+		role_id as _
+	)
+	.execute(&mut **database)
+	.await?;
+
 	let role_rows_deleted = query!(
 		r#"
 		DELETE FROM
@@ -154,6 +168,23 @@ pub async fn delete_role(
 	if role_rows_deleted == 0 {
 		return Err(ErrorType::RoleDoesNotExist);
 	}
+
+	// The role is itself a registered resource; tombstone it like every
+	// other deleted resource (a hard DELETE would trip audit-log FKs).
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			deleted = NOW()
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		role_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
 	trace!("Deleted the role");
 

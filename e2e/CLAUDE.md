@@ -11,6 +11,7 @@ Lifecycle is driven by `just` (from `e2e/`): `just` = `install → up → test �
 - `just test [args]` — starts node mocks + API (`:3000`) + frontend (`:13030`), then runs Playwright in two passes (`@racy` tests run last, serial).
 - `just serve` / `just stop` — bring the stack up with the frontend in **dev** mode for interactive work.
 - `DOCKER_VERSIONS=27 just up test`, `TEST_THREADS=4 just test`, `API_BIN=/path just test` — version matrix / parallelism / reuse a prebuilt API.
+- `DASHBOARD_URL=… API_DIRECT_URL=… playwright test` — point the suite at a stack on non-default ports (e.g. when something else holds `:3000`); the corresponding `PATR__SERVER__BIND_ADDRESS` must match.
 
 Running `playwright test` on its own boots nothing — use `just test` (or `just serve` first). Config injected via `PATR__SECTION__KEY` env vars in the `Justfile`; `helpers/config.ts` mirrors some and must stay in sync.
 
