@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO workspace_actor(id, workspace_id, actor_type, user_id) VALUES (gen_random_uuid(), $1, 'user', $2) ON CONFLICT (user_id, workspace_id) DO UPDATE SET user_id = EXCLUDED.user_id RETURNING id AS \"id: Uuid\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "77df2be20a6dd0d72d7491e615aeaf509a1f0f5432ff44819efb3e04d402b293"
+}

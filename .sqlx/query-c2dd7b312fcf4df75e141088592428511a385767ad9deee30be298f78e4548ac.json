@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT 1 AS \"present\" FROM role_resource_permissions_type t WHERE t.role_id = $1 AND t.permission_type = 'exclude' AND NOT EXISTS (SELECT 1 FROM role_resource_permissions_exclude e WHERE e.role_id = t.role_id);",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "present",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c2dd7b312fcf4df75e141088592428511a385767ad9deee30be298f78e4548ac"
+}

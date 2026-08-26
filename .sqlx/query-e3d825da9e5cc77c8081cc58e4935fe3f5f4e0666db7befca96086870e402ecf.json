@@ -1,0 +1,57 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT holders.user_id AS \"user_id!: Uuid\", holders.first_name AS \"first_name!\", holders.last_name AS \"last_name!\", holders.email AS \"email!\", COUNT(*) OVER() AS \"total_count!\" FROM (SELECT DISTINCT workspace_actor.user_id, \"user\".first_name, \"user\".last_name, \"user\".email FROM role_binding INNER JOIN workspace_actor ON workspace_actor.id = role_binding.actor_id INNER JOIN \"user\" ON workspace_actor.user_id = \"user\".id WHERE role_binding.workspace_id = $1 AND role_binding.role_id = $2 AND ($3::TEXT IS NULL OR \"user\".email ILIKE '%' || $3::TEXT || '%') AND ($4::TEXT IS NULL OR \"user\".first_name ILIKE '%' || $4::TEXT || '%') AND ($5::TEXT IS NULL OR \"user\".last_name ILIKE '%' || $5::TEXT || '%')) holders ORDER BY holders.user_id LIMIT $6 OFFSET $7;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "first_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "email!",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "e3d825da9e5cc77c8081cc58e4935fe3f5f4e0666db7befca96086870e402ecf"
+}

@@ -6,12 +6,7 @@ use std::{
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
 use models::{
 	RequestUserData,
-	rbac::{
-		ResourcePermissionType,
-		ResourcePermissionTypeDiscriminant,
-		WorkspacePermission,
-		intersect_workspace_permissions,
-	},
+	rbac::{ResourcePermissionType, WorkspacePermission, intersect_workspace_permissions},
 };
 use rustis::{client::Client as RedisClient, commands::StringCommands as _};
 use time::OffsetDateTime;
@@ -219,119 +214,53 @@ pub async fn get_permissions_for_api_token(
 	query!(
 		r#"
 		SELECT
-			workspace_user.workspace_id AS "workspace_id!",
-			role_resource_permissions_type.permission_id AS "permission_id!",
-			role_resource_permissions_exclude.resource_id AS "resource_id?"
+			role_binding.workspace_id AS "workspace_id!",
+			role_permission.permission_id AS "permission_id!",
+			(role_binding.scope_id = role_binding.workspace_id) AS "is_workspace_scope!",
+			role_binding.scope_id AS "scope_id!"
 		FROM
-			workspace_user
+			workspace_actor
 		INNER JOIN
-			role_resource_permissions_type
+			role_binding
 		ON
-			role_resource_permissions_type.role_id = workspace_user.role_id AND
-			role_resource_permissions_type.permission_type = 'exclude'
-		LEFT JOIN
-			role_resource_permissions_exclude
+			role_binding.actor_id = workspace_actor.id
+		INNER JOIN
+			role_permission
 		ON
-			role_resource_permissions_exclude.role_id = role_resource_permissions_type.role_id AND
-			role_resource_permissions_exclude.permission_id =
-				role_resource_permissions_type.permission_id
+			role_permission.role_id = role_binding.role_id
 		WHERE
-			workspace_user.user_id = $1;
+			workspace_actor.actor_type = 'user' AND
+			workspace_actor.user_id = $1;
 		"#,
 		user_id as _,
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
-	.for_each(|(workspace_id, permission_id, resource_id)| {
+	.for_each(|row| {
 		let permissions = user_permissions
-			.entry(workspace_id.into())
+			.entry(row.workspace_id.into())
 			.or_insert_with(|| WorkspacePermission::Member {
 				permissions: BTreeMap::new(),
 			});
 
-		match permissions {
-			WorkspacePermission::SuperAdmin => {
-				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
-			}
-			WorkspacePermission::Member { permissions } => {
-				let permission_type = permissions
-					.entry(permission_id.into())
-					.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
-				match permission_type {
-					ResourcePermissionType::Include(_) => {
-						error!(
-							"Found include permissions before include is even called. This should be possible!"
-						);
-					}
-					ResourcePermissionType::Exclude(resources) => {
-						let Some(resource_id) = resource_id else {
-							return;
-						};
-
-						resources.insert(resource_id.into());
-					}
-				}
-			}
-		}
-	});
-
-	query!(
-		r#"
-		SELECT
-			workspace_user.workspace_id AS "workspace_id!",
-			role_resource_permissions_type.permission_id AS "permission_id!",
-			role_resource_permissions_include.resource_id AS "resource_id?"
-		FROM
-			workspace_user
-		INNER JOIN
-			role_resource_permissions_type
-		ON
-			role_resource_permissions_type.role_id = workspace_user.role_id AND
-			role_resource_permissions_type.permission_type = 'include'
-		LEFT JOIN
-			role_resource_permissions_include
-		ON
-			role_resource_permissions_include.role_id = role_resource_permissions_type.role_id AND
-			role_resource_permissions_include.permission_id =
-				role_resource_permissions_type.permission_id
-		WHERE
-			workspace_user.user_id = $1;
-		"#,
-		user_id as _,
-	)
-	.fetch_all(&mut *db_connection)
-	.await?
-	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
-	.for_each(|(workspace_id, permission_id, resource_id)| {
-		let permissions = user_permissions
-			.entry(workspace_id.into())
-			.or_insert_with(|| WorkspacePermission::Member {
-				permissions: BTreeMap::new(),
-			});
-
-		let Some(resource_id) = resource_id else {
+		let WorkspacePermission::Member { permissions } = permissions else {
+			// Super admin of this workspace — bindings are redundant.
 			return;
 		};
 
-		match permissions {
-			WorkspacePermission::SuperAdmin => {
-				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
-			}
-			WorkspacePermission::Member { permissions } => {
-				let permission_type = permissions
-					.entry(permission_id.into())
-					.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
-				match permission_type {
-					ResourcePermissionType::Include(resources) => {
-						resources.insert(resource_id.into());
-					}
-					ResourcePermissionType::Exclude(resources) => {
-						resources.remove(&resource_id.into());
-					}
+		let entry = permissions.entry(row.permission_id.into());
+		if row.is_workspace_scope {
+			entry
+				.and_modify(|scope| *scope = ResourcePermissionType::Exclude(BTreeSet::new()))
+				.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
+		} else {
+			match entry.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new())) {
+				ResourcePermissionType::Include(resources) => {
+					resources.insert(row.scope_id.into());
 				}
+				// Already workspace-wide; a narrower scope adds nothing.
+				ResourcePermissionType::Exclude(_) => (),
 			}
 		}
 	});
@@ -478,238 +407,6 @@ pub async fn get_permissions_for_api_token(
 
 	let effective_permissions =
 		intersect_workspace_permissions(&token_permissions, &user_permissions);
-
-	// Write-back: rewrite the token's rows for any workspace whose effective
-	// permissions differ from the declared ones. Steady-state requests where
-	// nothing changed skip the writes entirely.
-	if effective_permissions != token_permissions {
-		let changed_workspaces = token_permissions
-			.keys()
-			.chain(effective_permissions.keys())
-			.copied()
-			.filter(|workspace_id| {
-				token_permissions.get(workspace_id) != effective_permissions.get(workspace_id)
-			})
-			.collect::<BTreeSet<_>>();
-
-		for workspace_id in &changed_workspaces {
-			// DELETE in FK-safe order. The four resource/perm-type tables
-			// reference the workspace_permission_type parent row, so the
-			// parent comes last.
-			query!(
-				r#"
-				DELETE FROM
-					user_api_token_resource_permissions_include
-				WHERE
-					token_id = $1 AND
-					workspace_id = $2;
-				"#,
-				login_id as _,
-				workspace_id as _,
-			)
-			.execute(&mut *db_connection)
-			.await?;
-
-			query!(
-				r#"
-				DELETE FROM
-					user_api_token_resource_permissions_exclude
-				WHERE
-					token_id = $1 AND
-					workspace_id = $2;
-				"#,
-				login_id as _,
-				workspace_id as _,
-			)
-			.execute(&mut *db_connection)
-			.await?;
-
-			query!(
-				r#"
-				DELETE FROM
-					user_api_token_resource_permissions_type
-				WHERE
-					token_id = $1 AND
-					workspace_id = $2;
-				"#,
-				login_id as _,
-				workspace_id as _,
-			)
-			.execute(&mut *db_connection)
-			.await?;
-
-			query!(
-				r#"
-				DELETE FROM
-					user_api_token_workspace_super_admin
-				WHERE
-					token_id = $1 AND
-					workspace_id = $2;
-				"#,
-				login_id as _,
-				workspace_id as _,
-			)
-			.execute(&mut *db_connection)
-			.await?;
-
-			query!(
-				r#"
-				DELETE FROM
-					user_api_token_workspace_permission_type
-				WHERE
-					token_id = $1 AND
-					workspace_id = $2;
-				"#,
-				login_id as _,
-				workspace_id as _,
-			)
-			.execute(&mut *db_connection)
-			.await?;
-
-			// INSERT the new shape if the workspace survived intersection.
-			// Mirrors the per-workspace INSERT block in
-			// `create_api_token::create_api_token`.
-			let Some(permission) = effective_permissions.get(workspace_id) else {
-				continue;
-			};
-
-			match permission {
-				WorkspacePermission::SuperAdmin => {
-					query!(
-						r#"
-						INSERT INTO
-							user_api_token_workspace_permission_type(
-								token_id,
-								workspace_id,
-								token_permission_type
-							)
-						VALUES
-							($1, $2, 'super_admin');
-						"#,
-						login_id as _,
-						workspace_id as _,
-					)
-					.execute(&mut *db_connection)
-					.await?;
-
-					query!(
-						r#"
-						INSERT INTO
-							user_api_token_workspace_super_admin(
-								token_id,
-								user_id,
-								workspace_id,
-								token_permission_type
-							)
-						VALUES
-							($1, $2, $3, DEFAULT);
-						"#,
-						login_id as _,
-						user_id as _,
-						workspace_id as _,
-					)
-					.execute(&mut *db_connection)
-					.await?;
-				}
-				WorkspacePermission::Member { permissions } => {
-					query!(
-						r#"
-						INSERT INTO
-							user_api_token_workspace_permission_type(
-								token_id,
-								workspace_id,
-								token_permission_type
-							)
-						VALUES
-							($1, $2, 'member');
-						"#,
-						login_id as _,
-						workspace_id as _,
-					)
-					.execute(&mut *db_connection)
-					.await?;
-
-					for (permission_id, resource_permission) in permissions {
-						query!(
-							r#"
-							INSERT INTO
-								user_api_token_resource_permissions_type(
-									token_id,
-									workspace_id,
-									permission_id,
-									resource_permission_type,
-									token_permission_type
-								)
-							VALUES
-								($1, $2, $3, $4, DEFAULT);
-							"#,
-							login_id as _,
-							workspace_id as _,
-							permission_id as _,
-							ResourcePermissionTypeDiscriminant::from(resource_permission) as _,
-						)
-						.execute(&mut *db_connection)
-						.await?;
-
-						match resource_permission {
-							ResourcePermissionType::Include(resource_ids) => {
-								query!(
-									r#"
-									INSERT INTO
-										user_api_token_resource_permissions_include(
-											token_id,
-											workspace_id,
-											permission_id,
-											resource_id,
-											resource_deleted,
-											permission_type
-										)
-									VALUES
-										($1, $2, $3, UNNEST($4::UUID[]), DEFAULT, DEFAULT);
-									"#,
-									login_id as _,
-									workspace_id as _,
-									permission_id as _,
-									&resource_ids
-										.iter()
-										.map(|id| (*id).into())
-										.collect::<Vec<_>>(),
-								)
-								.execute(&mut *db_connection)
-								.await?;
-							}
-							ResourcePermissionType::Exclude(resource_ids) => {
-								query!(
-									r#"
-									INSERT INTO
-										user_api_token_resource_permissions_exclude(
-											token_id,
-											workspace_id,
-											permission_id,
-											resource_id,
-											resource_deleted,
-											permission_type
-										)
-									VALUES
-										($1, $2, $3, UNNEST($4::UUID[]), DEFAULT, DEFAULT);
-									"#,
-									login_id as _,
-									workspace_id as _,
-									permission_id as _,
-									&resource_ids
-										.iter()
-										.map(|id| (*id).into())
-										.collect::<Vec<_>>(),
-								)
-								.execute(&mut *db_connection)
-								.await?;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
 
 	redis_connection
 		.setex(

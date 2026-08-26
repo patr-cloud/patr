@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT COUNT(*) AS \"count!: i64\" FROM workspace_user WHERE workspace_id = $1 AND role_id = $2;",
+  "query": "SELECT COUNT(*) AS \"count!: i64\" FROM role_binding WHERE workspace_id = $1 AND role_id = $2;",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       null
     ]
   },
-  "hash": "92d3a155cdaaf1ad6021b894e9d88af44ec778b9d567ef0bdbb73852b9358b6f"
+  "hash": "aac247404ddae7617536f596ad3c7d5d9308be1396efd19043ab649e39681398"
 }

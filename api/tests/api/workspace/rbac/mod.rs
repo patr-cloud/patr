@@ -914,6 +914,100 @@ async fn update_user_roles_idempotent() {
 }
 
 #[tokio::test]
+async fn update_user_roles_empty_keeps_membership() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	// An empty roles list drops the user's bindings but keeps them a member
+	// — removal is RemoveUserFromWorkspace's job.
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: user_b.user_id,
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest { roles: vec![] })
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(
+			UpdateUserRolesInWorkspaceResponse,
+		));
+
+	let is_member: bool = sqlx::query_scalar(&format!(
+		"SELECT EXISTS(SELECT 1 FROM workspace_user WHERE user_id = '{}' AND workspace_id = '{}')",
+		user_b.user_id, workspace.id
+	))
+	.fetch_one(setup.database())
+	.await
+	.expect("membership query");
+	assert!(is_member, "empty roles must keep the membership row");
+
+	let bindings: i64 = sqlx::query_scalar(&format!(
+		"SELECT COUNT(*) FROM role_binding rb JOIN workspace_actor a ON a.id = rb.actor_id \
+		 WHERE a.user_id = '{}' AND rb.workspace_id = '{}'",
+		user_b.user_id, workspace.id
+	))
+	.fetch_one(setup.database())
+	.await
+	.expect("binding query");
+	assert_eq!(0, bindings, "empty roles must drop every binding");
+}
+
+#[tokio::test]
+async fn delete_role_soft_deletes_resource_row() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteRoleRequest>::builder()
+				.path(DeleteRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.query(DeleteRoleQuery {
+					remove_users: false,
+				})
+				.headers(DeleteRoleRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(DeleteRoleRequest)
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(DeleteRoleResponse));
+
+	// The role's resource row is tombstoned like every other deleted
+	// resource, not leaked live.
+	let deleted: bool = sqlx::query_scalar(&format!(
+		"SELECT deleted IS NOT NULL FROM resource WHERE id = '{}'",
+		role.id
+	))
+	.fetch_one(setup.database())
+	.await
+	.expect("resource query");
+	assert!(deleted, "deleted role must tombstone its resource row");
+}
+
+#[tokio::test]
 async fn remove_user_from_workspace_not_member() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;

@@ -32,6 +32,43 @@ pub async fn remove_user_from_workspace(
 ) -> Result<AppResponse<RemoveUserFromWorkspaceRequest>, ErrorType> {
 	info!("Removing user `{user_id}` from workspace `{workspace_id}`");
 
+	// The FK chain is role_binding -> actor -> workspace_user, so the
+	// teardown is ordered; membership presence is read off the last delete.
+	query!(
+		r#"
+		DELETE FROM
+			role_binding
+		WHERE
+			actor_id IN (
+				SELECT
+					id
+				FROM
+					workspace_actor
+				WHERE
+					user_id = $1 AND
+					workspace_id = $2
+			);
+		"#,
+		user_id as _,
+		workspace_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
+			workspace_actor
+		WHERE
+			user_id = $1 AND
+			workspace_id = $2;
+		"#,
+		user_id as _,
+		workspace_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
 	let rows_removed = query!(
 		r#"
 		DELETE FROM

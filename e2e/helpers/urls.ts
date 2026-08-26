@@ -23,9 +23,11 @@
 //                    are reading cookies set by a route that's only reachable
 //                    via Vinxi during dev mode (no Caddy in between).
 
-export const DASHBOARD_URL = 'http://localhost:3001';
-export const API_DIRECT_URL = 'http://localhost:3000';
-export const VINXI_DEV_URL = 'http://localhost:13030';
+// Overridable for running the suite against a stack on non-default ports
+// (e.g. when something else already occupies :3000 locally).
+export const DASHBOARD_URL = process.env.DASHBOARD_URL ?? 'http://localhost:3001';
+export const API_DIRECT_URL = process.env.API_DIRECT_URL ?? 'http://localhost:3000';
+export const VINXI_DEV_URL = process.env.VINXI_DEV_URL ?? 'http://localhost:13030';
 
 // The runner pulls Patr-registry images from the hardcoded `registry.patr.cloud`
 // (no code override). Inside the DinD we make that name resolve to the host's
