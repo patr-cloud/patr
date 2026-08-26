@@ -19,3 +19,4 @@ mod m016_audit_log_actor_client_id;
 mod m017_role_permission_flat_list;
 mod m018_workspace_actor;
 mod m019_role_binding;
+mod m020_backfill_role_bindings;
