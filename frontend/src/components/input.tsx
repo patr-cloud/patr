@@ -1,7 +1,8 @@
 import { FiChevronDown, FiEye, FiEyeOff } from "solid-icons/fi";
-import { createEffect, createSignal, For, mergeProps, onCleanup, Show, JSX } from "solid-js";
+import { createSignal, For, mergeProps, Show, JSX } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useClickOutside } from "~/hooks";
+import { createDropdownPosition } from "~/hooks/dropdown-position";
 import { get, variantBgClass } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -214,49 +215,7 @@ const Input = (rawProps: InputProps) => {
 	const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
 	const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
 	const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
-	const [dropdownRect, setDropdownRect] = createSignal<{
-		top: number;
-		left: number;
-		width: number;
-		bottomOffset: number;
-		direction: "down" | "up";
-	}>({
-		top: 0,
-		left: 0,
-		width: 0,
-		bottomOffset: 0,
-		direction: "down",
-	});
-
-	const DROPDOWN_MAX_HEIGHT_PX = 240;
-
-	const updateDropdownRect = () => {
-		const el = containerRef();
-		if (!el || typeof window === "undefined") return;
-		const rect = el.getBoundingClientRect();
-		const spaceBelow = window.innerHeight - rect.bottom;
-		const spaceAbove = rect.top;
-		const direction = spaceBelow < DROPDOWN_MAX_HEIGHT_PX && spaceAbove > spaceBelow ? "up" : "down";
-		setDropdownRect({
-			top: rect.bottom,
-			left: rect.left,
-			width: rect.width,
-			bottomOffset: window.innerHeight - rect.top,
-			direction,
-		});
-	};
-
-	createEffect(() => {
-		if (!showDropdown()) return;
-		updateDropdownRect();
-		const onResizeOrScroll = () => updateDropdownRect();
-		window.addEventListener("scroll", onResizeOrScroll, true);
-		window.addEventListener("resize", onResizeOrScroll);
-		onCleanup(() => {
-			window.removeEventListener("scroll", onResizeOrScroll, true);
-			window.removeEventListener("resize", onResizeOrScroll);
-		});
-	});
+	const dropdownRect = createDropdownPosition(containerRef, showDropdown);
 
 	useClickOutside(containerRef, (event) => {
 		const dd = dropdownRef();
@@ -453,10 +412,11 @@ const Input = (rawProps: InputProps) => {
 								: { top: `${dropdownRect().top}px` }),
 							left: `${dropdownRect().left}px`,
 							width: `${dropdownRect().width}px`,
+							"max-height": `${dropdownRect().maxHeight}px`,
 						}}
 						class={`${variantBgClass(
 							get(props.styleVariant)
-						)} border border-border-color z-50 rounded-xs shadow-lg overflow-y-scroll max-h-60 ${
+						)} border border-border-color z-50 rounded-xs shadow-lg overflow-y-auto ${
 							dropdownRect().direction === "up" ? "rounded-b-none" : "rounded-t-none"
 						}`}
 					>
