@@ -49,7 +49,7 @@ async function scopedToken(api: ApiClient, user: User, permName: string): Promis
 		permissions: {
 			[user.workspaceId]: {
 				type: 'member',
-				[id]: { permissionType: 'exclude', resources: [] },
+				[id]: { scopeType: 'workspace' },
 			} as any,
 		},
 	});
