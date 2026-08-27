@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use axum::http::StatusCode;
-use models::api::workspace::rbac::user::*;
+use models::{api::workspace::rbac::user::*, rbac::PermissionScope};
 
 use crate::prelude::*;
 
@@ -37,7 +37,10 @@ pub async fn list_workspace_invites(
 			workspace_user_invite.invited_by AS "invited_by: Uuid",
 			workspace_user_invite.created,
 			workspace_user_invite.token_expiry,
-			workspace_user_invite_role.role_id AS "role_id?: Uuid"
+			workspace_user_invite_role.role_id AS "role_id?: Uuid",
+			(workspace_user_invite_role.scope_id = workspace_user_invite_role.workspace_id)
+				AS "is_workspace_scope?",
+			workspace_user_invite_role.scope_id AS "scope_id?: Uuid"
 		FROM
 			workspace_user_invite
 		LEFT JOIN
@@ -55,30 +58,49 @@ pub async fn list_workspace_invites(
 	.fetch_all(&mut **database)
 	.await?;
 
-	// The LEFT JOIN gives one row per (invite, role), so fold them back into one
-	// entry per invite.
+	// The LEFT JOIN gives one row per (invite, role, scope), so fold them
+	// back into one entry per invite, accumulating per-resource rows of one
+	// role into a single grant.
 	let invites = rows
 		.into_iter()
 		.fold(
 			BTreeMap::<Uuid, WithId<WorkspaceInvite>>::new(),
 			|mut invites, row| {
-				invites
-					.entry(row.id)
-					.or_insert_with(|| {
-						WithId::new(
-							row.id,
-							WorkspaceInvite {
-								email: row.email,
-								roles: BTreeSet::new(),
-								invited_by: row.invited_by,
-								created: row.created,
-								expiry: row.token_expiry,
-							},
-						)
-					})
+				let invite = invites.entry(row.id).or_insert_with(|| {
+					WithId::new(
+						row.id,
+						WorkspaceInvite {
+							email: row.email.clone(),
+							roles: Vec::new(),
+							invited_by: row.invited_by,
+							created: row.created,
+							expiry: row.token_expiry,
+						},
+					)
+				});
+
+				let (Some(role_id), Some(is_workspace_scope), Some(scope_id)) =
+					(row.role_id, row.is_workspace_scope, row.scope_id)
+				else {
+					return invites;
+				};
+
+				let scope = if is_workspace_scope {
+					PermissionScope::Workspace
+				} else {
+					PermissionScope::Resources(BTreeSet::from([scope_id]))
+				};
+
+				if let Some(grant) = invite
 					.data
 					.roles
-					.extend(row.role_id);
+					.iter_mut()
+					.find(|grant| grant.role_id == role_id)
+				{
+					grant.scope.union_with(&scope);
+				} else {
+					invite.data.roles.push(RoleGrant { role_id, scope });
+				}
 
 				invites
 			},

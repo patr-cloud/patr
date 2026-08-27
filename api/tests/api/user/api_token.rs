@@ -794,7 +794,10 @@ async fn api_token_does_not_widen_on_promotion() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![write_role.id],
+					roles: vec![RoleGrant {
+						role_id: write_role.id,
+						scope: PermissionScope::Workspace,
+					}],
 				})
 				.build(),
 		)

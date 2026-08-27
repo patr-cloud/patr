@@ -1,9 +1,12 @@
+use std::collections::BTreeSet;
+
 use axum::http::StatusCode;
 use models::{
 	api::{
 		WithId,
 		workspace::rbac::user::{WorkspaceUserInfo, WorkspaceUserInfoSearchParams, *},
 	},
+	rbac::PermissionScope,
 	utils::TotalCountHeader,
 };
 
@@ -106,10 +109,9 @@ pub async fn list_users_in_workspace(
 			users_page.last_name AS "last_name!",
 			users_page.email AS "email!",
 			users_page.is_owner AS "is_owner!",
-			COALESCE(
-				ARRAY_REMOVE(ARRAY_AGG(DISTINCT role_binding.role_id), NULL),
-				'{}'
-			) AS "role_ids!: Vec<Uuid>",
+			role_binding.role_id AS "role_id?",
+			(role_binding.scope_id = role_binding.workspace_id) AS "is_workspace_scope?",
+			role_binding.scope_id AS "scope_id?",
 			(SELECT COUNT(*) FROM matched_users) AS "total_count!"
 		FROM
 			users_page
@@ -122,14 +124,9 @@ pub async fn list_users_in_workspace(
 			role_binding
 		ON
 			role_binding.actor_id = workspace_user.actor_id
-		GROUP BY
-			users_page.user_id,
-			users_page.first_name,
-			users_page.last_name,
-			users_page.email,
-			users_page.is_owner
 		ORDER BY
-			users_page.user_id;
+			users_page.user_id,
+			role_binding.role_id;
 		"#,
 		workspace_id as _,
 		email_filter,
@@ -141,22 +138,56 @@ pub async fn list_users_in_workspace(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|row| {
+	.fold(Vec::<WorkspaceMember>::new(), |mut users, row| {
 		total_count = row.total_count;
-		WorkspaceMember {
-			user: WithId::new(
-				row.user_id,
-				WorkspaceUserInfo {
-					first_name: row.first_name,
-					last_name: row.last_name,
-					email: row.email,
-				},
-			),
-			role_ids: row.role_ids,
-			is_owner: row.is_owner,
+		// Rows arrive ordered by user, so a member's bindings are contiguous
+		// and the member being filled is always the last one pushed.
+		if users
+			.last()
+			.is_none_or(|member| member.user.id != row.user_id.into())
+		{
+			users.push(WorkspaceMember {
+				user: WithId::new(
+					row.user_id,
+					WorkspaceUserInfo {
+						first_name: row.first_name,
+						last_name: row.last_name,
+						email: row.email,
+					},
+				),
+				roles: Vec::new(),
+				is_owner: row.is_owner,
+			});
 		}
-	})
-	.collect();
+		let member = users.last_mut().expect("pushed above if it was missing");
+
+		// A zero-binding member still gets an entry, with no grants; per-
+		// resource bindings of one role accumulate into a single grant.
+		let (Some(role_id), Some(is_workspace_scope), Some(scope_id)) =
+			(row.role_id, row.is_workspace_scope, row.scope_id)
+		else {
+			return users;
+		};
+		let role_id = role_id.into();
+
+		let scope = if is_workspace_scope {
+			PermissionScope::Workspace
+		} else {
+			PermissionScope::Resources(BTreeSet::from([scope_id.into()]))
+		};
+
+		if let Some(grant) = member
+			.roles
+			.iter_mut()
+			.find(|grant| grant.role_id == role_id)
+		{
+			grant.scope.union_with(&scope);
+		} else {
+			member.roles.push(RoleGrant { role_id, scope });
+		}
+
+		users
+	});
 
 	AppResponse::builder()
 		.body(ListUsersInWorkspaceResponse { users })

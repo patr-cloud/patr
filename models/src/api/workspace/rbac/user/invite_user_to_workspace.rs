@@ -28,9 +28,9 @@ macros::declare_api_endpoint!(
 		/// The email address to invite to the workspace
 		#[preprocess(trim, lowercase, email)]
 		pub email: String,
-		/// The roles the invitee will be granted once they accept
+		/// The role grants the invitee receives once they accept
 		#[preprocess(none)]
-		pub roles: Vec<Uuid>,
+		pub roles: Vec<super::RoleGrant>,
 	},
 	response = {
 		/// The ID of the created invite

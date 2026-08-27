@@ -138,111 +138,14 @@ pub async fn invite_user_to_workspace(
 	})?
 	.id;
 
-	// One row per (role, scope): the invite snapshots the role's scopes at
-	// invite time, and accepting mints bindings straight from these rows.
-	for role_id in &roles {
-		let role_exists = query!(
-			r#"
-			SELECT
-				1 AS "present"
-			FROM
-				role
-			WHERE
-				id = $1 AND
-				workspace_id = $2;
-			"#,
-			role_id as _,
-			workspace_id as _,
-		)
-		.fetch_optional(&mut **database)
-		.await?
-		.is_some();
-
-		if !role_exists {
-			return Err(ErrorType::RoleDoesNotExist);
+	// One row per (role, scope), straight from the request's grants.
+	for grant in &roles {
+		if matches!(&grant.scope, PermissionScope::Resources(resources) if resources.is_empty()) {
+			return Err(ErrorType::WrongParameters);
 		}
-
-		// Uniformity is enforced at role write time, so one permission's shape
-		// speaks for the whole role. Exclude with no children = workspace-wide.
-		let is_workspace_wide = query!(
-			r#"
-			SELECT
-				1 AS "present"
-			FROM
-				role_resource_permissions_type t
-			WHERE
-				t.role_id = $1 AND
-				t.permission_type = 'exclude' AND
-				NOT EXISTS (
-					SELECT
-						1
-					FROM
-						role_resource_permissions_exclude e
-					WHERE
-						e.role_id = t.role_id
-				);
-			"#,
-			role_id as _,
-		)
-		.fetch_optional(&mut **database)
-		.await?
-		.is_some();
-
-		// Include lists name resources directly; Exclude(S≠∅) expands to the live
-		// workspace resources not in S. The workspace's own resource row is never
-		// a scope — `scope_id = workspace_id` means workspace-wide.
-		let scopes = if is_workspace_wide {
-			PermissionScope::Workspace
-		} else {
-			PermissionScope::Resources(
-				query!(
-					r#"
-					SELECT
-						i.resource_id AS "resource_id!: Uuid"
-					FROM
-						(SELECT DISTINCT resource_id FROM role_resource_permissions_include WHERE role_id = $1) i
-					INNER JOIN
-						resource r
-					ON
-						r.id = i.resource_id AND
-						r.workspace_id = $2 AND
-						r.deleted IS NULL AND
-						r.id <> r.workspace_id
-					UNION
-					SELECT
-						r.id
-					FROM
-						resource r
-					WHERE
-						r.workspace_id = $2 AND
-						r.deleted IS NULL AND
-						r.id <> r.workspace_id AND
-						EXISTS (
-							SELECT 1 FROM role_resource_permissions_exclude e WHERE e.role_id = $1
-						) AND
-						NOT EXISTS (
-							SELECT
-								1
-							FROM
-								role_resource_permissions_exclude e
-							WHERE
-								e.role_id = $1 AND
-								e.resource_id = r.id
-						);
-					"#,
-					role_id as _,
-					workspace_id as _,
-				)
-				.fetch_all(&mut **database)
-				.await?
-				.into_iter()
-				.map(|row| row.resource_id)
-				.collect::<BTreeSet<_>>(),
-			)
-		};
-		let scope_ids = match scopes {
+		let scope_ids = match &grant.scope {
 			PermissionScope::Workspace => vec![workspace_id],
-			PermissionScope::Resources(resources) => resources.into_iter().collect(),
+			PermissionScope::Resources(resources) => resources.iter().copied().collect(),
 		};
 
 		query!(
@@ -261,14 +164,19 @@ pub async fn invite_user_to_workspace(
 			"#,
 			invite_id as _,
 			workspace_id as _,
-			role_id as _,
+			grant.role_id as _,
 			&scope_ids as _,
 		)
 		.execute(&mut **database)
 		.await
 		.map_err(|err| match err {
 			sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-				ErrorType::RoleDoesNotExist
+				match db_err.constraint() {
+					Some("workspace_user_invite_role_fk_scope_id_workspace_id") => {
+						ErrorType::ResourceDoesNotExist
+					}
+					_ => ErrorType::RoleDoesNotExist,
+				}
 			}
 			other => ErrorType::server_error(other),
 		})?;
