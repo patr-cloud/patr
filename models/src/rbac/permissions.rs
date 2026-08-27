@@ -4,80 +4,6 @@ use macros::RecursiveEnumIter;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumMessage, EnumString, IntoEnumIterator, VariantNames};
 
-/// A list of all permissions that can be granted on a Database.
-#[derive(
-	Eq,
-	Ord,
-	Copy,
-	Hash,
-	Debug,
-	Clone,
-	Display,
-	EnumIter,
-	PartialEq,
-	Serialize,
-	PartialOrd,
-	EnumString,
-	EnumMessage,
-	Deserialize,
-	VariantNames,
-)]
-#[strum(serialize_all = "camelCase")]
-#[serde(rename_all = "camelCase")]
-pub enum DatabasePermission {
-	/// This permission allows the user to create a new Database in a workspace.
-	Create,
-	/// This permission allows the user to view the details of an existing
-	/// database in a workspace.
-	View,
-	/// This permission allows the user to edit a database in a workspace, but
-	/// not delete it or create a new one.
-	Edit,
-	/// This permission allows the user to delete a database, but not add a new
-	/// one or edit an existing one.
-	Delete,
-	/// This permission allows the user to create backups of the database, but
-	/// not restore them on the same instance.
-	Backup,
-	/// This permission allows the user to restore a backup of the database, but
-	/// not create a new backup.
-	Restore,
-}
-
-/// A list of all permissions that can be granted on a DNS record.
-#[derive(
-	Eq,
-	Ord,
-	Copy,
-	Hash,
-	Debug,
-	Clone,
-	Display,
-	EnumIter,
-	PartialEq,
-	Serialize,
-	PartialOrd,
-	EnumString,
-	EnumMessage,
-	Deserialize,
-	VariantNames,
-)]
-#[strum(serialize_all = "camelCase")]
-#[serde(rename_all = "camelCase")]
-pub enum DnsRecordPermission {
-	/// This permission allows the user to add a DNS record to a domain.
-	Add,
-	/// This permission allows the user to view the already existing DNS
-	/// records in a domain.
-	View,
-	/// This permission allows the user to edit a DNS record in a domain, but
-	/// not delete it or create a new one.
-	Edit,
-	/// This permission allows the user to delete a DNS record from a domain,
-	/// but not add a new one or edit an existing one.
-	Delete,
-}
-
 /// A list of all permissions that can be granted on a domain.
 #[derive(
 	Eq,
@@ -300,57 +226,6 @@ pub enum ContainerRegistryRepositoryPermission {
 	DeleteManifest,
 }
 
-/// A list of all permissions that can be granted on a static site
-#[derive(
-	Eq,
-	Ord,
-	Copy,
-	Hash,
-	Debug,
-	Clone,
-	Display,
-	EnumIter,
-	PartialEq,
-	Serialize,
-	PartialOrd,
-	EnumString,
-	EnumMessage,
-	Deserialize,
-	VariantNames,
-)]
-#[strum(serialize_all = "camelCase")]
-#[serde(rename_all = "camelCase")]
-pub enum StaticSitePermission {
-	/// This permission allows the user to create a new static site in the
-	/// workspace. The user will be able to create a new site, but not view,
-	/// edit, or delete it.
-	Create,
-	/// This permission allows the user to only view the static site and it's
-	/// details. The user will not be able to edit the site, delete it, or
-	/// create a new one.
-	View,
-	/// This permission allows the user to edit the static site, but not delete
-	/// it or create a new one. The user will only be able to edit the site,
-	/// with no other updates allowed.
-	Edit,
-	/// This permission allows the user to delete the static site, but not
-	/// create a new one, view it, or edit it. This permission is useful for
-	/// users or API tokens that need to only delete sites by their ID.
-	Delete,
-	/// This permission allows the user to upload a new website file to the
-	/// static site, but not view it, edit it, or delete it. This permission is
-	/// useful for users or API tokens that need to only upload files to sites.
-	Upload,
-	/// This permission allows the user to start the static site, but not edit
-	/// it. The user will only be able to start the static site, with no other
-	/// updates allowed.
-	Start,
-	/// This permission allows the user to stop the static site, but not edit
-	/// it. The user will only be able to stop the static site with no other
-	/// updates allowed.
-	Stop,
-}
-
 /// A list of all permissions that can be used for a secret
 #[derive(
 	Eq,
@@ -478,9 +353,6 @@ pub enum Permission {
 	/// All permissions related to a domains
 	#[strum(to_string = "domain::{0}")]
 	Domain(DomainPermission),
-	/// All permissions related to a DNS records
-	#[strum(to_string = "dnsRecord::{0}")]
-	DnsRecord(DnsRecordPermission),
 	/// All permissions related to a deployments
 	#[strum(to_string = "deployment::{0}")]
 	Deployment(DeploymentPermission),
@@ -499,12 +371,6 @@ pub enum Permission {
 	/// All permissions for a Runner
 	#[strum(to_string = "runner::{0}")]
 	Runner(RunnerPermission),
-	/// All permissions for a database
-	#[strum(to_string = "database::{0}")]
-	Database(DatabasePermission),
-	/// All static site permissions
-	#[strum(to_string = "staticSite::{0}")]
-	StaticSite(StaticSitePermission),
 	/// All secret permissions
 	#[strum(to_string = "secret::{0}")]
 	Secret(SecretPermission),
@@ -537,14 +403,11 @@ impl Permission {
 	pub fn description(&self) -> String {
 		match self {
 			Permission::Domain(permission) => permission.get_documentation(),
-			Permission::DnsRecord(permission) => permission.get_documentation(),
 			Permission::Deployment(permission) => permission.get_documentation(),
 			Permission::ContainerRegistryRepository(permission) => permission.get_documentation(),
 			Permission::Billing(permission) => permission.get_documentation(),
 			Permission::ManagedURL(permission) => permission.get_documentation(),
 			Permission::Runner(permission) => permission.get_documentation(),
-			Permission::Database(permission) => permission.get_documentation(),
-			Permission::StaticSite(permission) => permission.get_documentation(),
 			Permission::Secret(permission) => permission.get_documentation(),
 			Permission::Volume(permission) => permission.get_documentation(),
 			Permission::ViewRoles | Permission::ModifyRoles | Permission::EditWorkspace => {
@@ -568,14 +431,11 @@ impl FromStr for Permission {
 
 		Ok(match permission_type {
 			"domain" => Self::Domain(permission.parse()?),
-			"dnsRecord" => Self::DnsRecord(permission.parse()?),
 			"deployment" => Self::Deployment(permission.parse()?),
 			"containerRegistryRepository" => Self::ContainerRegistryRepository(permission.parse()?),
 			"billing" => Self::Billing(permission.parse()?),
 			"managedURL" => Self::ManagedURL(permission.parse()?),
 			"runner" => Self::Runner(permission.parse()?),
-			"database" => Self::Database(permission.parse()?),
-			"staticSite" => Self::StaticSite(permission.parse()?),
 			"secret" => Self::Secret(permission.parse()?),
 			"volume" => Self::Volume(permission.parse()?),
 			"viewRoles" => Self::ViewRoles,

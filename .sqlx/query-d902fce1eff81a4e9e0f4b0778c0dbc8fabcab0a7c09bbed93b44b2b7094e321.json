@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT managed_url.path, managed_url.url_type AS \"url_type: ManagedUrlTypeDiscriminant\", managed_url.deployment_id AS \"deployment_id: Uuid\", deployment.runner AS \"runner?: Uuid\", managed_url.port, managed_url.static_site_id AS \"static_site_id: Uuid\", managed_url.url, managed_url.permanent_redirect, managed_url.http_only FROM managed_url INNER JOIN workspace_domain ON managed_url.domain_id = workspace_domain.id LEFT JOIN deployment ON managed_url.deployment_id = deployment.id WHERE managed_url.deleted IS NULL AND CONCAT(managed_url.sub_domain, '.', workspace_domain.name, '.', workspace_domain.tld) = $1;",
+  "query": "SELECT managed_url.path, managed_url.url_type AS \"url_type: ManagedUrlTypeDiscriminant\", managed_url.deployment_id AS \"deployment_id: Uuid\", deployment.runner AS \"runner?: Uuid\", managed_url.port, managed_url.url, managed_url.permanent_redirect, managed_url.http_only FROM managed_url INNER JOIN workspace_domain ON managed_url.domain_id = workspace_domain.id LEFT JOIN deployment ON managed_url.deployment_id = deployment.id WHERE managed_url.deleted IS NULL AND CONCAT(managed_url.sub_domain, '.', workspace_domain.name, '.', workspace_domain.tld) = $1;",
   "describe": {
     "columns": [
       {
@@ -42,21 +42,16 @@
       },
       {
         "ordinal": 5,
-        "name": "static_site_id: Uuid",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 6,
         "name": "url",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "permanent_redirect",
         "type_info": "Bool"
       },
       {
-        "ordinal": 8,
+        "ordinal": 7,
         "name": "http_only",
         "type_info": "Bool"
       }
@@ -74,9 +69,8 @@
       true,
       true,
       true,
-      true,
       true
     ]
   },
-  "hash": "cd13bf662da7815e8273e93570e14e90fefd812a84c6716ba0c18cdf935abfa6"
+  "hash": "d902fce1eff81a4e9e0f4b0778c0dbc8fabcab0a7c09bbed93b44b2b7094e321"
 }

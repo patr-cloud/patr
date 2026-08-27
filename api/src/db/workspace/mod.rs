@@ -12,11 +12,9 @@ mod invite;
 /// The list of deployments that are present in a workspace
 mod deployment;
 /// The list of databases that are created in a workspace
-mod managed_database;
 /// The list of Managed URLs that are created in a workspace
 mod managed_url;
 /// The list of static sites that are created in a workspace
-mod static_site;
 /// The list of deployment volumes that are created in a workspace
 mod volume;
 
@@ -50,9 +48,7 @@ pub async fn initialize_workspace_tables(
 	invite::initialize_workspace_user_invite_tables(connection).await?;
 
 	deployment::initialize_deployment_tables(connection).await?;
-	managed_database::initialize_managed_database_tables(connection).await?;
 	managed_url::initialize_managed_url_tables(connection).await?;
-	static_site::initialize_static_site_tables(connection).await?;
 	volume::initialize_volume_tables(connection).await?;
 
 	runner::initialize_runner_tables(connection).await?;
@@ -109,9 +105,7 @@ pub async fn initialize_workspace_indices(
 	invite::initialize_workspace_user_invite_indices(connection).await?;
 
 	deployment::initialize_deployment_indices(connection).await?;
-	managed_database::initialize_managed_database_indices(connection).await?;
 	managed_url::initialize_managed_url_indices(connection).await?;
-	static_site::initialize_static_site_indices(connection).await?;
 	volume::initialize_volume_indices(connection).await?;
 
 	runner::initialize_runner_indices(connection).await?;
@@ -144,9 +138,7 @@ pub async fn initialize_workspace_constraints(
 	invite::initialize_workspace_user_invite_constraints(connection).await?;
 
 	deployment::initialize_deployment_constraints(connection).await?;
-	managed_database::initialize_managed_database_constraints(connection).await?;
 	managed_url::initialize_managed_url_constraints(connection).await?;
-	static_site::initialize_static_site_constraints(connection).await?;
 	volume::initialize_volume_constraints(connection).await?;
 
 	runner::initialize_runner_constraints(connection).await?;

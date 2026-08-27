@@ -144,13 +144,6 @@ pub async fn apply(
 				port,
 			}
 		}
-		IaacManagedUrlType::ProxyStaticSite { static_site: _ } => {
-			// Find static site by name
-
-			return Err(AppError::IaacError(IaacError::Unsupported(String::from(
-				"Static sites are not supported yet",
-			))));
-		}
 		IaacManagedUrlType::ProxyUrl { url, http_only } => {
 			ManagedUrlType::ProxyUrl { url, http_only }
 		}

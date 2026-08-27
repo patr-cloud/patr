@@ -1222,7 +1222,7 @@ async fn add_member_to_unowned_workspace_denied() {
 	);
 }
 
-/// Creating a workspace seeds the default set of 36 roles (owner_id = the
+/// Creating a workspace seeds the default set of 27 roles (owner_id = the
 /// workspace id).
 #[tokio::test]
 async fn default_roles_seeded_on_workspace_create() {
@@ -1237,7 +1237,7 @@ async fn default_roles_seeded_on_workspace_create() {
 	.fetch_one(setup.database())
 	.await
 	.expect("count query");
-	assert_eq!(36, count, "a new workspace should seed 36 default roles");
+	assert_eq!(27, count, "a new workspace should seed 27 default roles");
 }
 
 #[tokio::test]

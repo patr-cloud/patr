@@ -32,7 +32,7 @@ import { httpRequest } from "~/utils/http-request";
 import DeploymentOption from "./-components/deployment-option";
 import ManageUrlRow from "./-components/managed-url-component";
 
-type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
+type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment";
 
 const DomainInfo = () => {
 	const params = Route.useParams();
@@ -120,9 +120,6 @@ const DomainInfo = () => {
 						permanentRedirect: false,
 						httpOnly: false,
 					};
-					break;
-				case "proxyStaticSite":
-					requestBody = { ...base, type: "proxyStaticSite", staticSiteId: targetVal };
 					break;
 			}
 

@@ -103,7 +103,6 @@ pub async fn update_managed_url(
 	let url_type;
 	let deployment_id;
 	let port;
-	let static_site_id;
 	let url;
 	let permanent_redirect;
 	let http_only;
@@ -147,18 +146,6 @@ pub async fn update_managed_url(
 			url_type = ManagedUrlTypeDiscriminant::ProxyDeployment;
 			deployment_id = Some(managed_url_deployment_id);
 			port = Some(managed_url_port);
-			static_site_id = None;
-			url = None;
-			permanent_redirect = None;
-			http_only = None;
-		}
-		ManagedUrlType::ProxyStaticSite {
-			static_site_id: managed_url_static_site_id,
-		} => {
-			url_type = ManagedUrlTypeDiscriminant::ProxyStaticSite;
-			deployment_id = None;
-			port = None;
-			static_site_id = Some(managed_url_static_site_id);
 			url = None;
 			permanent_redirect = None;
 			http_only = None;
@@ -170,7 +157,6 @@ pub async fn update_managed_url(
 			url_type = ManagedUrlTypeDiscriminant::ProxyUrl;
 			deployment_id = None;
 			port = None;
-			static_site_id = None;
 			url = Some(managed_url_url);
 			permanent_redirect = None;
 			http_only = Some(managed_url_http_only);
@@ -183,7 +169,6 @@ pub async fn update_managed_url(
 			url_type = ManagedUrlTypeDiscriminant::Redirect;
 			deployment_id = None;
 			port = None;
-			static_site_id = None;
 			url = Some(managed_url_url);
 			permanent_redirect = Some(managed_url_permanent_redirect);
 			http_only = Some(managed_url_http_only);
@@ -199,10 +184,9 @@ pub async fn update_managed_url(
 			url_type = $3,
 			deployment_id = $4,
 			port = $5,
-			static_site_id = $6,
-			url = $7,
-			permanent_redirect = $8,
-			http_only = $9
+			url = $6,
+			permanent_redirect = $7,
+			http_only = $8
 		WHERE
 			id = $1;
 		"#,
@@ -211,7 +195,6 @@ pub async fn update_managed_url(
 		url_type as _,
 		deployment_id as _,
 		port.map(|port| port as i32),
-		static_site_id as _,
 		url,
 		permanent_redirect,
 		http_only,

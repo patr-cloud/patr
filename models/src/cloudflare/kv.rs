@@ -16,14 +16,6 @@ pub enum ManagedUrlKVData {
 		/// The runner that is running the deployment
 		runner_id: Uuid,
 	},
-	/// URL is pointing to a static site
-	#[serde(rename_all = "camelCase")]
-	ProxyStaticSite {
-		/// Static site ID of the static site to point to
-		static_site_id: Uuid,
-		/// The upload ID of the static site
-		upload_id: Uuid,
-	},
 	/// URL is a proxy
 	#[serde(rename_all = "camelCase")]
 	ProxyUrl {

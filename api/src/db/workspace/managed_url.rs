@@ -10,7 +10,6 @@ pub async fn initialize_managed_url_tables(
 		r#"
 		CREATE TYPE MANAGED_URL_TYPE AS ENUM(
 			'proxy_to_deployment',
-			'proxy_to_static_site',
 			'proxy_url',
 			'redirect'
 		);
@@ -29,7 +28,6 @@ pub async fn initialize_managed_url_tables(
 			url_type MANAGED_URL_TYPE NOT NULL,
 			deployment_id UUID,
 			port INTEGER,
-			static_site_id UUID,
 			url TEXT,
 			workspace_id UUID NOT NULL,
 			deleted TIMESTAMPTZ,
@@ -97,15 +95,6 @@ pub async fn initialize_managed_url_constraints(
 					url_type = 'proxy_to_deployment' AND
 					deployment_id IS NOT NULL AND
 					port IS NOT NULL AND
-					static_site_id IS NULL AND
-					url IS NULL AND
-					permanent_redirect IS NULL AND
-					http_only IS NULL
-				) OR (
-					url_type = 'proxy_to_static_site' AND
-					deployment_id IS NULL AND
-					port IS NULL AND
-					static_site_id IS NOT NULL AND
 					url IS NULL AND
 					permanent_redirect IS NULL AND
 					http_only IS NULL
@@ -113,7 +102,6 @@ pub async fn initialize_managed_url_constraints(
 					url_type = 'proxy_url' AND
 					deployment_id IS NULL AND
 					port IS NULL AND
-					static_site_id IS NULL AND
 					url IS NOT NULL AND
 					permanent_redirect IS NULL AND
 					http_only IS NOT NULL
@@ -121,7 +109,6 @@ pub async fn initialize_managed_url_constraints(
 					url_type = 'redirect' AND
 					deployment_id IS NULL AND
 					port IS NULL AND
-					static_site_id IS NULL AND
 					url IS NOT NULL AND
 					permanent_redirect IS NOT NULL AND
 					http_only IS NOT NULL
@@ -139,8 +126,6 @@ pub async fn initialize_managed_url_constraints(
 						DEFERRABLE INITIALLY IMMEDIATE,
 			ADD CONSTRAINT managed_url_fk_deployment_id_workspace_id
 				FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id),
-			ADD CONSTRAINT managed_url_fk_static_site_id_workspace_id
-				FOREIGN KEY(static_site_id, workspace_id) REFERENCES static_site(id, workspace_id),
 			ADD CONSTRAINT managed_url_fk_custom_hostname
 				FOREIGN KEY(sub_domain, domain_id)
 					REFERENCES managed_url_custom_hostname(sub_domain, domain_id);
