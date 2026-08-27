@@ -34,7 +34,7 @@ test.describe('api token > permissions [UI]', () => {
 			permissions: {
 				[owner.workspaceId]: {
 					type: 'member',
-					[viewId]: { permissionType: 'exclude', resources: [] },
+					[viewId]: { scopeType: 'workspace' },
 				} as any,
 			},
 		});
@@ -73,7 +73,7 @@ test.describe('api token > permissions [UI]', () => {
 			permissions: {
 				[owner.workspaceId]: {
 					type: 'member',
-					[viewId]: { permissionType: 'exclude', resources: [] },
+					[viewId]: { scopeType: 'workspace' },
 				} as any,
 			},
 		});
