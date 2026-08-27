@@ -6,7 +6,7 @@ use models::{
 	rbac::{ContainerRegistryRepositoryPermission, Permission},
 };
 
-use super::{all, exclude, include, setup_permission_test};
+use super::{all, exclude, grant, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -61,7 +61,11 @@ async fn container_registry_delete_grants_access() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[repo.id])),
+		)
 		.await;
 
 	let response = setup
@@ -147,7 +151,11 @@ async fn container_registry_delete_include_grants_only_listed_resource() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[repo1.id])),
+		)
 		.await;
 
 	// repo2 — should fail
@@ -211,7 +219,11 @@ async fn container_registry_view_include_grants_only_listed_resource() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[repo1.id])),
+		)
 		.await;
 
 	let r1 = setup
@@ -251,7 +263,7 @@ async fn container_registry_view_include_grants_only_listed_resource() {
 }
 
 #[tokio::test]
-async fn container_registry_view_exclude_denies_only_listed_resource() {
+async fn container_registry_view_grant_omitting_a_resource_denies_it() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
@@ -267,13 +279,17 @@ async fn container_registry_view_exclude_denies_only_listed_resource() {
 		setup.get_permission_id(Permission::ContainerRegistryRepository(
 			ContainerRegistryRepositoryPermission::View,
 		)),
-		exclude(&[repo2.id]),
+		include(&[repo1.id]),
 	);
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[repo1.id])),
+		)
 		.await;
 
 	let r1 = setup

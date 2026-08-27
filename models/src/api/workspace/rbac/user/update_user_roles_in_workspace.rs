@@ -23,10 +23,10 @@ macros::declare_api_endpoint!(
 		}
 	},
 	request = {
-		/// The list of roles the user has after being
-		/// added to the workspace
+		/// The role grants the user holds after this call. Empty drops every
+		/// grant but keeps the user a member of the workspace.
 		#[preprocess(none)]
-		pub roles: Vec<Uuid>,
+		pub roles: Vec<super::RoleGrant>,
 	},
 	audit_logger = NoAuditLogger,
 );

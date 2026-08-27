@@ -1,0 +1,80 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH members AS (SELECT DISTINCT workspace_user.user_id FROM workspace_user WHERE workspace_user.workspace_id = $1 UNION SELECT workspace.super_admin_id AS user_id FROM workspace WHERE workspace.id = $1), matched_users AS (SELECT members.user_id, \"user\".first_name, \"user\".last_name, \"user\".email, (workspace.id IS NOT NULL) AS is_owner FROM members INNER JOIN \"user\" ON members.user_id = \"user\".id LEFT JOIN workspace ON workspace.id = $1 AND workspace.super_admin_id = members.user_id WHERE ($2::TEXT IS NULL OR \"user\".email ILIKE '%' || $2::TEXT || '%') AND ($3::TEXT IS NULL OR \"user\".first_name ILIKE '%' || $3::TEXT || '%') AND ($4::TEXT IS NULL OR \"user\".last_name ILIKE '%' || $4::TEXT || '%')), users_page AS (SELECT * FROM matched_users ORDER BY user_id LIMIT $5 OFFSET $6) SELECT users_page.user_id AS \"user_id!\", users_page.first_name AS \"first_name!\", users_page.last_name AS \"last_name!\", users_page.email AS \"email!\", users_page.is_owner AS \"is_owner!\", role_binding.role_id AS \"role_id?\", (role_binding.scope_id = role_binding.workspace_id) AS \"is_workspace_scope?\", role_binding.scope_id AS \"scope_id?\", (SELECT COUNT(*) FROM matched_users) AS \"total_count!\" FROM users_page LEFT JOIN workspace_actor ON workspace_actor.user_id = users_page.user_id AND workspace_actor.workspace_id = $1 LEFT JOIN role_binding ON role_binding.actor_id = workspace_actor.id ORDER BY users_page.user_id, role_binding.role_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "first_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "email!",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_owner!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "role_id?",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_workspace_scope?",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "scope_id?",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      false,
+      false,
+      false,
+      null,
+      false,
+      null,
+      false,
+      null
+    ]
+  },
+  "hash": "4a07efde089bbcf5ff290e567dcfcc584e844fdc84ea8f68a53e72656581a42c"
+}

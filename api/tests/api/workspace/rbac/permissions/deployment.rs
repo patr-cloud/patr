@@ -6,7 +6,7 @@ use models::{
 	rbac::{DeploymentPermission, Permission},
 };
 
-use super::{all, exclude, include, setup_permission_test};
+use super::{all, exclude, grant, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -29,7 +29,11 @@ async fn deployment_view_permission_grants_access() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment.id])),
+		)
 		.await;
 
 	let response = setup
@@ -136,7 +140,11 @@ async fn deployment_delete_permission_grants_access() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment.id])),
+		)
 		.await;
 
 	let response = setup
@@ -304,7 +312,11 @@ async fn deployment_include_grants_only_listed_resource() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment1.id])),
+		)
 		.await;
 
 	let r1 = setup
@@ -344,7 +356,7 @@ async fn deployment_include_grants_only_listed_resource() {
 }
 
 #[tokio::test]
-async fn deployment_exclude_denies_only_listed_resource() {
+async fn deployment_grant_omitting_a_resource_denies_it() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
@@ -364,13 +376,17 @@ async fn deployment_exclude_denies_only_listed_resource() {
 	let mut perms = BTreeMap::new();
 	perms.insert(
 		setup.get_permission_id(Permission::Deployment(DeploymentPermission::View)),
-		exclude(&[deployment2.id]),
+		include(&[deployment1.id, deployment3.id]),
 	);
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment1.id, deployment3.id])),
+		)
 		.await;
 
 	let r1 = setup
@@ -568,7 +584,11 @@ async fn deployment_view_does_not_grant_edit() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment.id])),
+		)
 		.await;
 
 	let r_view = setup
@@ -789,7 +809,11 @@ async fn deployment_view_does_not_grant_delete() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment.id])),
+		)
 		.await;
 
 	let response = setup
@@ -834,7 +858,11 @@ async fn deployment_stop_denied_without_permission() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment.id])),
+		)
 		.await;
 
 	let response = setup
@@ -885,7 +913,11 @@ async fn deployment_include_multiple_resources() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment1.id, deployment2.id])),
+		)
 		.await;
 
 	let r1 = setup
@@ -961,7 +993,11 @@ async fn deployment_view_does_not_grant_start() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment.id])),
+		)
 		.await;
 
 	let r_view = setup
@@ -1021,7 +1057,11 @@ async fn deployment_edit_does_not_grant_delete() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment.id])),
+		)
 		.await;
 
 	let response = setup
@@ -1065,7 +1105,11 @@ async fn deployment_start_does_not_grant_stop() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grant(
+			&admin.access_token,
+			workspace.id,
+			grant(role.id, resources_scope(&[deployment.id])),
+		)
 		.await;
 
 	let response = setup

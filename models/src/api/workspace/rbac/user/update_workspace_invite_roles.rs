@@ -26,9 +26,9 @@ macros::declare_api_endpoint!(
 	},
 	api = false,
 	request = {
-		/// The new set of roles the invitee will be granted on acceptance
+		/// The new role grants the invitee receives on acceptance
 		#[preprocess(none)]
-		pub roles: Vec<Uuid>,
+		pub roles: Vec<super::RoleGrant>,
 	},
 	audit_log = NoAuditLogger,
 );

@@ -16,7 +16,7 @@ use models::{
 			*,
 		},
 	},
-	rbac::{Permission, ResourcePermissionType, WorkspacePermission},
+	rbac::{Permission, PermissionScope, ResourcePermissionType, WorkspacePermission},
 	utils::{BearerToken, Uuid},
 };
 use rand::RngExt as _;
@@ -541,6 +541,24 @@ impl TestSetup {
 		workspace_id: Uuid,
 		role_id: Uuid,
 	) -> TestUser {
+		self.add_user_to_workspace_with_grant(
+			admin_token,
+			workspace_id,
+			RoleGrant {
+				role_id,
+				scope: PermissionScope::Workspace,
+			},
+		)
+		.await
+	}
+
+	/// Add a new user to a workspace with a role at a specific scope.
+	pub async fn add_user_to_workspace_with_grant(
+		&self,
+		admin_token: &BearerToken,
+		workspace_id: Uuid,
+		grant: RoleGrant,
+	) -> TestUser {
 		let user_b = self.create_test_user().await;
 
 		self.make_web_dashboard_call(
@@ -553,9 +571,7 @@ impl TestSetup {
 					authorization: admin_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![role_id],
-				})
+				.body(UpdateUserRolesInWorkspaceRequest { roles: vec![grant] })
 				.build(),
 		)
 		.await
