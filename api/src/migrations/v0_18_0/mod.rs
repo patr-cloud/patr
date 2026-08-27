@@ -12,3 +12,4 @@ mod m009_scope_roles_to_workspace;
 mod m010_workspace_user_invites;
 mod m011_email_as_identity;
 mod m012_remove_static_sites_and_databases;
+mod m013_drop_static_site_url_type;
