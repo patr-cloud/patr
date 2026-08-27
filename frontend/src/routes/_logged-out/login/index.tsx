@@ -312,6 +312,6 @@ const Login = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/login")({
+export const Route = createFileRoute("/_logged-out/login/")({
 	component: Login,
 });

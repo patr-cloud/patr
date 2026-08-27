@@ -39,7 +39,7 @@ async function withSignupContext(
 }
 
 test.describe('sign-up — happy path', () => {
-	test('valid credentials → navigates to /confirm-signup, email pre-filled', async ({
+	test('valid credentials → navigates to /sign-up/confirm, email pre-filled', async ({
 		browser,
 	}) => {
 		await withSignupContext(browser, async (page) => {
@@ -48,7 +48,7 @@ test.describe('sign-up — happy path', () => {
 			await submitSignup(page);
 			// The page strips ?email=... from the URL on mount, then renders
 			// "Confirming account for <email>" instead of the email input.
-			await expect(page).toHaveURL(/\/confirm-signup/, { timeout: 10_000 });
+			await expect(page).toHaveURL(/\/sign-up\/confirm/, { timeout: 10_000 });
 			await expect(
 				page.getByText(new RegExp(`Confirming account for.*${creds.email}`)),
 			).toBeVisible({ timeout: 5_000 });
@@ -292,7 +292,7 @@ test.describe('sign-up — server-side rejection (bypass client validation)', ()
 				button.click();
 				button.click();
 			});
-			await page.waitForURL(/\/confirm-signup/, { timeout: 10_000 });
+			await page.waitForURL(/\/sign-up\/confirm/, { timeout: 10_000 });
 			expect(signupCalls).toBe(1);
 		});
 	});

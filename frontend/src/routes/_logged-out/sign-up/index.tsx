@@ -128,7 +128,7 @@ const SignUp = () => {
 		});
 
 		if (resp.ok) {
-			navigate({ to: "/confirm-signup", search: { email: email(), otp: undefined } });
+			navigate({ to: "/sign-up/confirm", search: { email: email(), otp: undefined } });
 		} else {
 			switch (resp.data.error) {
 				case "emailUnavailable":
@@ -303,7 +303,7 @@ const SignUp = () => {
 					{/* Sign Up Button */}
 					<div class="pt-8 w-full flex flex-row items-center justify-between">
 						<Link
-							to="/confirm-signup"
+							to="/sign-up/confirm"
 							search={{ email: undefined, otp: undefined }}
 							class="text-primary text-xs hover:underline font-light"
 						>
@@ -360,7 +360,7 @@ const SignUp = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/sign-up")(
+export const Route = createFileRoute("/_logged-out/sign-up/")(
 	cloudOnly({
 		component: SignUp,
 	})

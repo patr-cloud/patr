@@ -50,7 +50,7 @@ export { randomIPv4 } from '@/helpers/ip';
 
 // Auth-flow infrastructure.
 export { computeTotp } from '@/helpers/totp';
-export { readMfaSetupSecret } from '@/helpers/redis';
+export { readMfaSetupSecret, seedGithubSetupToken } from '@/helpers/redis';
 export {
 	queryUser,
 	backdateSignupOtp,

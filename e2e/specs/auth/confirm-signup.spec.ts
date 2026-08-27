@@ -103,7 +103,7 @@ test.describe('confirm-signup — server-side rejection', () => {
 			const resp = await respPromise;
 			expect(resp.ok()).toBe(false);
 			// Still on confirm page.
-			await expect(page).toHaveURL(/\/confirm-signup/);
+			await expect(page).toHaveURL(/\/sign-up\/confirm/);
 		});
 	});
 
@@ -118,7 +118,7 @@ test.describe('confirm-signup — server-side rejection', () => {
 			await submitConfirm(page);
 			const resp = await respPromise;
 			expect(resp.ok()).toBe(false);
-			await expect(page).toHaveURL(/\/confirm-signup/);
+			await expect(page).toHaveURL(/\/sign-up\/confirm/);
 		});
 	});
 
@@ -171,8 +171,8 @@ test.describe('confirm-signup — URL parameter handling', () => {
 	test('URL params are stripped from the address bar on mount', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await page.goto(`/confirm-signup?email=${pending.email}&otp=${DEBUG_OTP}`);
-			// After mount, the SPA navigates to /confirm-signup with no params.
+			await page.goto(`/sign-up/confirm?email=${pending.email}&otp=${DEBUG_OTP}`);
+			// After mount, the SPA navigates to /sign-up/confirm with no params.
 			await page.waitForFunction(() => !window.location.search.includes('otp='), null, {
 				timeout: 5_000,
 			});

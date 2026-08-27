@@ -32,7 +32,7 @@ const ConfirmSignUp = () => {
 	// Clear URL params after reading them
 	onMount(() => {
 		if (search().email || search().otp) {
-			navigate({ to: "/confirm-signup", search: { email: undefined, otp: undefined }, replace: true });
+			navigate({ to: "/sign-up/confirm", search: { email: undefined, otp: undefined }, replace: true });
 		}
 	});
 
@@ -183,7 +183,7 @@ const ConfirmSignUp = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-out/confirm-signup")(
+export const Route = createFileRoute("/_logged-out/sign-up/confirm")(
 	cloudOnly({
 		validateSearch: (search: Record<string, unknown>): { email?: string; otp?: string } => ({
 			email: (search.email as string) || undefined,

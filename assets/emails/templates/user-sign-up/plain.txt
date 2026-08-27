@@ -4,7 +4,7 @@ Enter the code below to verify your email address and complete your Patr sign-up
 
 {{ otp }}
 
-Or visit: https://app.patr.cloud/confirm-signup?otp={{ otp }}&email={{ email }}
+Or visit: https://app.patr.cloud/sign-up/confirm?otp={{ otp }}&email={{ email }}
 
 This code will expire in {{ otp_expiry }}.
 
