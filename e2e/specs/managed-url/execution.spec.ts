@@ -14,7 +14,7 @@ import {
 
 // Full-fidelity: a ProxyDeployment managed URL is served by the runner's Caddy
 // ingress, routed by the managed-URL Host (`{sub}.{domain}`). Only
-// ProxyDeployment is runner-served; ProxyUrl/Redirect/StaticSite are
+// ProxyDeployment is runner-served; ProxyUrl/Redirect are
 // Cloudflare-Worker-only and out of @docker scope.
 
 function dockerVersionOf(testInfo: {

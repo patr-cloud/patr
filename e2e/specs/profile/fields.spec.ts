@@ -18,19 +18,19 @@ async function withProfile(
 }
 
 test.describe('profile > fields & connected accounts', () => {
-	test('disables the recovery-email input', async ({ browser, api }) => {
+	test('disables the email input', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		await withProfile(browser, user, async (page) => {
-			await expect(page.locator('#recovery-email')).toBeDisabled({
+			await expect(page.locator('#email')).toBeDisabled({
 				timeout: 10_000,
 			});
 		});
 	});
 
-	test('pre-fills the recovery-email input with the signup email', async ({ browser, api }) => {
+	test('pre-fills the email input with the signup email', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		await withProfile(browser, user, async (page) => {
-			await expect(page.locator('#recovery-email')).toHaveValue(user.email, {
+			await expect(page.locator('#email')).toHaveValue(user.email, {
 				timeout: 10_000,
 			});
 		});

@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 Your bill of {{ total_charges }} for {{ workspace_name }} ({{ month }}/{{ year }}) is still unpaid.
 

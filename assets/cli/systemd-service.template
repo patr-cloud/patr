@@ -1,5 +1,5 @@
 [Unit]
-Description=Patr Runner ({runner_type_str})
+Description=Patr Runner (docker)
 After=network-online.target docker.service
 After=network-online.target docker.service
 Requires=docker.service
@@ -8,7 +8,7 @@ Requires=docker.service
 Type=simple
 User={username}
 Group={groupname}
-ExecStart={patr_binary} runner run {runner_type_str} --config {config_path}
+ExecStart={patr_binary} runner run --config {config_path}
 Restart=on-failure
 RestartSec=5s
 Environment=PATR_ENV=prod

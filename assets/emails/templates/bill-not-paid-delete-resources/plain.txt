@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 Your resources on the {{ workspace_name }} workspace have been deleted due to an unpaid balance of {{ total_usage_charges }}.
 

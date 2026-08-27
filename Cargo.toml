@@ -1,5 +1,8 @@
 [workspace]
-members              = ["api", "cli", "ingress", "macros", "models", "runners/common", "runners/docker", "runners/kubernetes"]
+members              = ["api", "cli", "ingress", "macros", "models", "runners/common", "runners/docker"]
+# Kept in-tree as a reference implementation only — it predates the
+# common/actor design, doesn't implement `RunnerExecutor`, and is not built.
+exclude              = ["runners/kubernetes"]
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"
@@ -69,8 +72,6 @@ inventory                      = { default-features = false, version = "0.3" }
 ipinfo                         = { default-features = false, version = "3" }
 ipnetwork                      = { default-features = false, version = "0.20" }
 jsonwebtoken                   = { default-features = false, version = "10" }
-k8s-openapi                    = { default-features = false, version = "0.28" }
-kube                           = { default-features = false, version = "4" }
 lettre                         = { default-features = false, version = "0.11" }
 macros                         = { default-features = false, path = "macros" }
 mime_guess                     = { default-features = false, version = "2" }
@@ -142,8 +143,7 @@ worker                         = { default-features = false, version = "0.8" }
 zip                            = { default-features = false, version = "8" }
 
 [workspace.dev-dependencies]
-k8s-openapi = { features = ["latest"] }
-models      = { features = ["default"] }
+models = { features = ["default"] }
 
 [profile.dev]
 debug     = true

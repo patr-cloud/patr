@@ -10,7 +10,7 @@ async function loggedInPage(
 	const context = await newContext(browser);
 	const page = await context.newPage();
 	await openLoginPage(page);
-	await fillLoginForm(page, { userId: user.username, password: user.password });
+	await fillLoginForm(page, { email: user.email, password: user.password });
 	await submitLogin(page);
 	await waitForLoggedIn(page);
 	return { context, page, user };

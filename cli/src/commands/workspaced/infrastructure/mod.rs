@@ -28,10 +28,6 @@ pub enum InfrastructureCommand {
 	#[command(flatten)]
 	ContainerRegistryCommand(ContainerRegistryCommand),
 	// #[command(flatten)]
-	// DatabaseCommand(DatabaseCommand),
-	// #[command(flatten)]
-	// StaticSiteCommand(StaticSiteCommand),
-	// #[command(flatten)]
 	// SecretCommand(SecretCommand),
 }
 

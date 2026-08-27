@@ -23,7 +23,7 @@ async fn get_user_info_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
 
-	assert_eq!(user.username, info.response.basic_user_info.username);
+	assert_eq!(user.email, info.response.email);
 	assert_eq!("Test", info.response.basic_user_info.first_name);
 	assert_eq!("User", info.response.basic_user_info.last_name);
 }
@@ -69,7 +69,11 @@ async fn get_user_details_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserDetailsResponse>>();
 
-	assert_eq!(user.username, details.response.basic_user_info.username);
+	// `GetUserDetails` is callable by any authenticated user for any user ID,
+	// so it deliberately carries name only — never the email.
+	assert_eq!(user.user_id, details.response.basic_user_info.id);
+	assert_eq!("Test", details.response.basic_user_info.first_name);
+	assert_eq!("User", details.response.basic_user_info.last_name);
 }
 
 #[tokio::test]
@@ -184,7 +188,7 @@ async fn change_password_works() {
 		.assert_json(&ApiSuccessResponseBody::new(ChangePasswordResponse));
 
 	// Login with new password should work
-	let (_token, _refresh) = setup.login_test_user(&user.username, &new_password).await;
+	let (_token, _refresh) = setup.login_test_user(&user.email, &new_password).await;
 }
 
 #[tokio::test]
@@ -381,7 +385,11 @@ async fn get_user_details_own_id() {
 		.await
 		.json::<ApiSuccessResponseBody<GetUserDetailsResponse>>();
 
-	assert_eq!(user.username, details.response.basic_user_info.username);
+	// `GetUserDetails` is callable by any authenticated user for any user ID,
+	// so it deliberately carries name only — never the email.
+	assert_eq!(user.user_id, details.response.basic_user_info.id);
+	assert_eq!("Test", details.response.basic_user_info.first_name);
+	assert_eq!("User", details.response.basic_user_info.last_name);
 }
 
 #[tokio::test]

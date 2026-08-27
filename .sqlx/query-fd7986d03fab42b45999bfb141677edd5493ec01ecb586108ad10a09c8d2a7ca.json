@@ -1,0 +1,45 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".id, \"user\".password_reset_token, \"user\".password_reset_token_expiry, \"user\".password_reset_attempts FROM \"user\" WHERE \"user\".email = $1::CITEXT;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "password_reset_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "password_reset_token_expiry",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "password_reset_attempts",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "fd7986d03fab42b45999bfb141677edd5493ec01ecb586108ad10a09c8d2a7ca"
+}

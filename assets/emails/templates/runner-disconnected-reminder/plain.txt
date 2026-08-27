@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 Your runner {{ runner_name }} in {{ workspace_name }} is no longer connected to Patr. Any deployments on this runner may be affected.
 

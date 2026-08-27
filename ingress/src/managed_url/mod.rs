@@ -6,7 +6,6 @@ use crate::{
 };
 
 /// Handles static site serving from R2.
-mod static_site;
 
 /// Handles all requests to custom domains (managed URLs).
 pub async fn handle_request(req: Request, env: Env, ctx: Context, host: &str) -> Result<Response> {
@@ -94,22 +93,6 @@ pub async fn handle_request(req: Request, env: Env, ctx: Context, host: &str) ->
 				},
 			)?)
 			.send()
-			.await
-		}
-
-		ManagedUrlKVData::ProxyStaticSite {
-			static_site_id,
-			upload_id,
-		} => {
-			static_site::handle_static_site(
-				&req,
-				&url,
-				&env,
-				&ctx,
-				requested_path,
-				static_site_id,
-				upload_id,
-			)
 			.await
 		}
 

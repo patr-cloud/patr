@@ -76,7 +76,7 @@
             >Or click the button below:</mj-text
           >
           <mj-button
-            href="https://app.patr.cloud/sign-up/confirm?otp={{ otp|urlencode }}&amp;username={{ username|urlencode }}"
+            href="https://app.patr.cloud/sign-up/confirm?otp={{ otp|urlencode }}&amp;email={{ email|urlencode }}"
             >Verify Email</mj-button
           >
           <mj-text
@@ -85,7 +85,7 @@
             color="#9990a8"
             padding="5px 0 0 0"
           >
-            https://app.patr.cloud/sign-up/confirm?otp={{ otp|urlencode }}&amp;username={{ username|urlencode }}
+            https://app.patr.cloud/sign-up/confirm?otp={{ otp|urlencode }}&amp;email={{ email|urlencode }}
           </mj-text>
         </mj-column>
       </mj-section>

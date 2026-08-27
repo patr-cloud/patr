@@ -20,13 +20,13 @@ const UsersAssignedToRole = () => {
 			>
 				<Table
 					column_grids={["flex-1"]}
-					headings={["Username"]}
+					headings={["Email"]}
 					rows={usersQuery.data ?? []}
 					renderRow={(item) => (
 						<tr class="table-row">
 							<td class="flex-1 flex items-center justify-center gap-2">
 								<Initials firstName={item.firstName} lastName={item.lastName} size="xs" />
-								<span class="truncate font-mono">@{item.username}</span>
+								<span class="truncate font-mono">{item.email}</span>
 							</td>
 						</tr>
 					)}

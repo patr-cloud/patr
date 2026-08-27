@@ -125,11 +125,11 @@ const UserSettingsInfoSection = () => {
 				</InputWithLabel>
 			</form>
 
-			<InputWithLabel for="recovery-email" label="Email">
+			<InputWithLabel for="email" label="Email">
 				<Input
-					value={userInfoQuery.data?.recoveryEmail || ""}
-					id="recovery-email"
-					name="recovery-email"
+					value={userInfoQuery.data?.email || ""}
+					id="email"
+					name="email"
 					autocomplete="email"
 					placeholder="Recovery Email"
 					type={InputType.Text}

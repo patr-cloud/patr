@@ -14,10 +14,9 @@ macros::declare_api_endpoint!(
 		pub user_agent: UserAgent,
 	},
 	request = {
-		/// The user ID of the user — can be a username, email, or phone, all
-		/// of which the handler accepts for the recovery lookup.
-		#[preprocess(trim, length(min = 2))]
-		pub user_id: String,
+		/// The email address of the user resetting their password
+		#[preprocess(trim, email)]
+		pub email: String,
 		/// The new password entered by the user
 		#[preprocess(trim, length(min = 8), custom = "validate_password")]
 		pub password: String,

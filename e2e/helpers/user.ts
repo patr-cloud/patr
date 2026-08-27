@@ -3,7 +3,6 @@ import { randomIPv4 } from '@/helpers/ip';
 import { DEBUG_OTP, TURNSTILE_TOKEN } from '@/helpers/config';
 
 export type User = {
-	username: string;
 	password: string;
 	email: string;
 	firstName: string;
@@ -16,7 +15,6 @@ export type User = {
 export type UserHandle = User & AsyncDisposable;
 
 export type PendingSignup = {
-	username: string;
 	password: string;
 	email: string;
 	firstName: string;
@@ -33,11 +31,12 @@ export async function createPendingSignup(
 	overrides: Partial<PendingSignup> = {},
 ): Promise<PendingSignup> {
 	const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
-	const username = overrides.username ?? `e2euser${suffix}`;
 	const password = overrides.password ?? 'E2eTest!1Password';
-	const email = overrides.email ?? `${username}@example.com`;
+	const email = overrides.email ?? `e2euser${suffix}@example.com`;
 	const firstName = overrides.firstName ?? 'E2E';
-	const lastName = overrides.lastName ?? 'User';
+	// Unique per user: the member-search dropdown renders the name (never the
+	// email), so a shared 'E2E User' would make every result row look alike.
+	const lastName = overrides.lastName ?? `User${suffix}`;
 	const explicitIp = overrides.clientIp;
 
 	let lastErr: unknown;
@@ -47,15 +46,14 @@ export async function createPendingSignup(
 			await api.request('POST', '/auth/sign-up', {
 				clientIp,
 				body: {
-					username,
+					email,
 					password,
 					firstName,
 					lastName,
-					recoveryEmail: email,
 					cfTurnstileToken: TURNSTILE_TOKEN,
 				},
 			});
-			return { username, password, email, firstName, lastName, clientIp };
+			return { password, email, firstName, lastName, clientIp };
 		} catch (err) {
 			lastErr = err;
 			// Only retry on 429. If caller pinned an IP, don't change it.
@@ -71,14 +69,15 @@ export async function createPendingSignup(
 // screen. Use this when the test needs a workspace-scoped page to load.
 export async function createUserWithWorkspace(
 	api: ApiClient,
-): Promise<UserHandle & { workspaceId: string }> {
+): Promise<UserHandle & { workspaceId: string; workspaceName: string }> {
 	const user = await createUserAccount(api);
+	const workspaceName = `wks-${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
 	const resp = await api.request<{ id: string }>('POST', '/workspace', {
 		token: user.accessToken,
 		clientIp: user.clientIp,
-		body: { name: `wks-${user.username}` },
+		body: { name: workspaceName },
 	});
-	return Object.assign(user, { workspaceId: resp.id });
+	return Object.assign(user, { workspaceId: resp.id, workspaceName });
 }
 
 // Creates a verified user and N named workspaces. Names are passed in so the
@@ -170,8 +169,7 @@ export async function createSecondUserNoMembership(api: ApiClient): Promise<User
 }
 
 export async function createUserAccount(api: ApiClient): Promise<UserHandle> {
-	const { username, password, email, firstName, lastName, clientIp } =
-		await createPendingSignup(api);
+	const { password, email, firstName, lastName, clientIp } = await createPendingSignup(api);
 
 	const tokens = await api.request<{ accessToken: string; refreshToken: string }>(
 		'POST',
@@ -179,7 +177,7 @@ export async function createUserAccount(api: ApiClient): Promise<UserHandle> {
 		{
 			clientIp,
 			body: {
-				username,
+				email,
 				verificationToken: DEBUG_OTP,
 				cfTurnstileToken: TURNSTILE_TOKEN,
 			},
@@ -187,7 +185,6 @@ export async function createUserAccount(api: ApiClient): Promise<UserHandle> {
 	);
 
 	const handle: UserHandle = {
-		username,
 		password,
 		email,
 		firstName,
@@ -198,7 +195,7 @@ export async function createUserAccount(api: ApiClient): Promise<UserHandle> {
 		async [Symbol.asyncDispose]() {
 			// Best-effort logout. The API doesn't expose user-deletion to the user
 			// themselves, so the row stays in the DB until the next `just e2e-down`
-			// wipes the volume. That's fine — usernames are random per test.
+			// wipes the volume. That's fine — emails are random per test.
 			try {
 				await api.request('POST', '/auth/sign-out', {
 					token: handle.accessToken,

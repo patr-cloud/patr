@@ -55,7 +55,7 @@ test.describe('member > list', () => {
 			});
 			// Username appears in the user-dropdown header too; scope to the
 			// member row (use .first()).
-			await expect(page.getByText(`@${owner.username}`).first()).toBeVisible();
+			await expect(page.getByText(owner.email).first()).toBeVisible();
 			// No "1 role" / "2 roles" badges should appear — owner has no roles.
 			await expect(page.getByText(/^\d+\s+roles?$/)).toHaveCount(0);
 		});

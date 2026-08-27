@@ -37,7 +37,7 @@ pub enum ResourceType {
 	/// and provide users permissions only on those specific resources,
 	Project,
 	/// A runner within a workspace. A runner is used to run deployments,
-	/// databases, static sites, secrets, domains, etc.
+	/// secrets, domains, etc.
 	Runner,
 	/// A deployment within a workspace. A deployment is a running instance of a
 	/// container image. It can be scaled horizontally, and can be configured to
@@ -47,38 +47,22 @@ pub enum ResourceType {
 	/// be attached to a deployment. It can be used to store data that needs to
 	/// persist across deployments.
 	Volume,
-	/// A database within a workspace. A database is a running instance of a
-	/// database server, such as `MySQL`, `PostgreSQL`, etc. It can be scaled
-	/// and persists data across deployments. It can also be shelled into for
-	/// debugging purposes.
-	Database,
-	/// A static site within a workspace. A static site is a collection of files
-	/// that are served over HTTP. Static sites are automatically deployed and
-	/// are accessible via a managed URL.
-	StaticSite,
 	/// A container registry repository within a workspace. A container registry
 	/// repository is a collection of container images that can be deployed to
 	/// a deployment, which will be run on a runner.
 	ContainerRegistryRepository,
 	/// A secret within a workspace. A secret is a key-value pair that can be
-	/// used in deployments, databases, etc. It is encrypted at rest and in
-	/// transit. It can be rotated, and is only accessible by the deployment /
-	/// database that it is associated with.
+	/// used in deployments. It is encrypted at rest and in transit. It can be
+	/// rotated, and is only accessible by the deployment that it is associated
+	/// with.
 	Secret,
 	/// A domain added to a workspace. A domain can be used to access
-	/// deployments and static sites. It can be verified, and can have DNS
-	/// records added to it.
+	/// deployments. It can be verified, and used for managed URLs.
 	Domain,
-	/// A DNS record within a workspace. A DNS record is a record that points a
-	/// domain to an IP address. It can be added to a domain, and can be used to
-	/// point a domain to a deployment or static site. A DNS record can be used
-	/// to point a domain to a deployment or static site.
-	DnsRecord,
-	/// A Managed URL for a particular deployment / static site, or otherwise. A
-	/// managed URL is a URL that is managed by Patr, and is accessible over the
-	/// internet. It can be used to access deployments, static sites, etc. It is
-	/// managed by Patr, and is automatically updated when the deployment /
-	/// static site is updated.
+	/// A Managed URL for a particular deployment, or otherwise. A managed URL
+	/// is a URL that is managed by Patr, and is accessible over the internet.
+	/// It can be used to access deployments, etc. It is managed by Patr, and
+	/// is automatically updated when the deployment is updated.
 	ManagedURL,
 	/// A role within a workspace. A role is a collection of permissions that
 	/// can be granted to a user. It is associated with a workspace, and can be

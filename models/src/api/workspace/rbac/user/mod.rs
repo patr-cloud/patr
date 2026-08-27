@@ -1,3 +1,8 @@
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+use crate::prelude::*;
+
 /// The endpoint to invite a user, by email, to a workspace
 mod invite_user_to_workspace;
 /// The endpoint to list all the users in a workspace
@@ -25,3 +30,22 @@ pub use self::{
 	update_user_roles_in_workspace::*,
 	update_workspace_invite_roles::*,
 };
+
+/// A member of a workspace, as seen by their co-members.
+///
+/// This is [`BasicUserInfo`][crate::api::user::BasicUserInfo] plus the member's
+/// email address. Email is a user's unique identifier and is deliberately not
+/// public, but sharing a workspace is the one relationship that makes it
+/// visible: members need a stable, unambiguous handle for each other, and two
+/// people can easily share a display name. Endpoints returning this are all
+/// gated behind a workspace permission.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceUserInfo {
+	/// The first name of the member.
+	pub first_name: String,
+	/// The last name of the member.
+	pub last_name: String,
+	/// The email address of the member.
+	pub email: String,
+}

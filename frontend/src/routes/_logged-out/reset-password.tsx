@@ -23,11 +23,11 @@ const ResetPassword = () => {
 	const toast = useToast();
 
 	const search = Route.useSearch();
-	const initialUserId = search().userId || "";
+	const initialEmail = search().email || "";
 	const initialOtp = search().otp || "";
 
-	const [userId, setUserId] = createSignal(initialUserId);
-	const [userIdError, setUserIdError] = createSignal("");
+	const [email, setEmail] = createSignal(initialEmail);
+	const [emailError, setEmailError] = createSignal("");
 	const [otpDigits, setOtpDigits] = createSignal<string[]>(
 		initialOtp
 			? [...initialOtp.replace(/\D/g, "").slice(0, 6).padEnd(6, " ")].map((c) => (c === " " ? "" : c))
@@ -44,10 +44,10 @@ const ResetPassword = () => {
 
 	// Strip query params after reading them so the OTP doesn't linger in the URL.
 	onMount(() => {
-		if (search().userId || search().otp) {
+		if (search().email || search().otp) {
 			navigate({
 				to: "/reset-password",
-				search: { userId: undefined, otp: undefined },
+				search: { email: undefined, otp: undefined },
 				replace: true,
 			});
 		}
@@ -55,9 +55,9 @@ const ResetPassword = () => {
 
 	const { execute: handleSubmit, isLoading } = createAsyncAction(async () => {
 		// Re-validate at submit time so users get inline feedback for fields the
-		// disabled-button gate doesn't cover (userId, password rules, mismatch).
-		if (!userId().trim()) {
-			setUserIdError("Username or email is required.");
+		// disabled-button gate doesn't cover (email, password rules, mismatch).
+		if (!email().trim()) {
+			setEmailError("Email is required.");
 			return;
 		}
 
@@ -79,7 +79,7 @@ const ResetPassword = () => {
 		}
 
 		const body: ResetPasswordRequest = {
-			userId: userId().trim(),
+			email: email().trim(),
 			password: pwd,
 			verificationToken: otpDigits().join(""),
 			cfTurnstileToken: turnstileToken(),
@@ -95,7 +95,7 @@ const ResetPassword = () => {
 			navigate({ to: "/login" });
 		} else {
 			// Mirror the generic-error stance the backend takes — don't leak
-			// whether the userId existed or the OTP was wrong.
+			// whether the email existed or the OTP was wrong.
 			toast("Invalid or expired reset link. Please request a new one.", "error");
 		}
 	});
@@ -128,21 +128,21 @@ const ResetPassword = () => {
 
 				<Input
 					type={InputType.Text}
-					placeholder="Username or email"
-					autocomplete="username"
+					placeholder="Email"
+					autocomplete="email"
 					required={true}
-					name="userId"
-					id="userId"
-					value={userId}
+					name="email"
+					id="email"
+					value={email}
 					onInput={(e: Event) => {
-						setUserId((e.currentTarget as HTMLInputElement).value);
-						setUserIdError("");
+						setEmail((e.currentTarget as HTMLInputElement).value);
+						setEmailError("");
 					}}
 					styleVariant="medium"
 				/>
-				<Show when={userIdError()}>
+				<Show when={emailError()}>
 					<div class="mt-1">
-						<Alert message={userIdError()} type="error" />
+						<Alert message={emailError()} type="error" />
 					</div>
 				</Show>
 
@@ -239,8 +239,8 @@ const ResetPassword = () => {
 };
 
 export const Route = createFileRoute("/_logged-out/reset-password")({
-	validateSearch: (search: Record<string, unknown>): { userId?: string; otp?: string } => ({
-		userId: (search.userId as string) || undefined,
+	validateSearch: (search: Record<string, unknown>): { email?: string; otp?: string } => ({
+		email: (search.email as string) || undefined,
 		otp: (search.otp as string) || undefined,
 	}),
 	component: ResetPassword,

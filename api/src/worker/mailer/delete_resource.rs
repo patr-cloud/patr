@@ -12,8 +12,8 @@ use crate::utils::assets::email_images as filters;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct _DeleteResourceEmail {
-	/// The username of the user receiving the email.
-	pub username: String,
+	/// The first name of the user receiving the email.
+	pub first_name: String,
 	/// The type of the resource that was deleted.
 	pub resource_type: String,
 	/// The name of the resource that was deleted.

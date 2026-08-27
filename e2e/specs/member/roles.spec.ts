@@ -49,7 +49,7 @@ test.describe('member > roles [UI]', () => {
 		const r2 = roles.find((r) => /Deployment: Viewer/i.test(r.name))!;
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
 		await withUI(browser, owner, async (page) => {
-			await page.getByText(`@${invitee.username}`).click();
+			await page.getByText(invitee.email).click();
 			await clickEditRoles(page);
 			await addRoleViaChipDropdown(page, r2.name);
 			await saveMemberRoles(page);
@@ -71,7 +71,7 @@ test.describe('member > roles [UI]', () => {
 		const r2 = roles.find((r) => /Deployment: Viewer/i.test(r.name))!;
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id, r2.id]);
 		await withUI(browser, owner, async (page) => {
-			await page.getByText(`@${invitee.username}`).click();
+			await page.getByText(invitee.email).click();
 			await clickEditRoles(page);
 			await removeRoleChip(page, r2.name);
 			await saveMemberRoles(page);
@@ -92,7 +92,7 @@ test.describe('member > roles [UI]', () => {
 		const r1 = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
 		await withUI(browser, owner, async (page) => {
-			await page.getByText(`@${invitee.username}`).click();
+			await page.getByText(invitee.email).click();
 			await clickEditRoles(page);
 			await removeRoleChip(page, r1.name);
 			await cancelMemberRolesEdit(page);
@@ -112,7 +112,7 @@ test.describe('member > roles [UI]', () => {
 		const r1 = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
 		await withUI(browser, owner, async (page) => {
-			await page.getByText(`@${invitee.username}`).click();
+			await page.getByText(invitee.email).click();
 			await clickEditRoles(page);
 			const link = page.getByRole('link', { name: /create a new role/i });
 			await expect(link).toHaveAttribute('href', '/workspace/roles/new');

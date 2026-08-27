@@ -13,8 +13,8 @@ use crate::utils::assets::email_images as filters;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct _PurchaseCreditsSuccessEmail {
-	/// The username of the user.
-	pub username: String,
+	/// The first name of the user.
+	pub first_name: String,
 	/// The amount of credits added.
 	pub credit_amount: String,
 	/// The name of the workspace the credits were added to.

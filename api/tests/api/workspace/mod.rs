@@ -473,6 +473,37 @@ async fn is_name_available_true() {
 }
 
 #[tokio::test]
+async fn is_name_available_folds_case() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	// `workspace.name` is CITEXT and `workspace_uq_name` indexes it directly,
+	// so a case-variant of an existing name collides on insert. The
+	// availability check has to agree, or it green-lights a name that
+	// creation then rejects on the unique index.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<IsWorkspaceNameAvailableRequest>::builder()
+				.headers(IsWorkspaceNameAvailableRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(IsWorkspaceNameAvailableQuery {
+					name: workspace.name.to_uppercase(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<IsWorkspaceNameAvailableResponse>>();
+
+	assert!(
+		!response.response.available,
+		"a case-variant of a taken name must not be reported as available"
+	);
+}
+
+#[tokio::test]
 async fn is_name_available_false() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

@@ -9,8 +9,8 @@ use crate::utils::assets::email_images as filters;
 #[template(path = "domain-verified", subject = "Domain verified")]
 #[serde(rename_all = "camelCase")]
 pub struct _DomainVerifiedEmail {
-	/// The username of the user who owns the domain.
-	pub username: String,
+	/// The first name of the user who owns the domain.
+	pub first_name: String,
 	/// The domain name that has been verified.
 	pub domain_name: String,
 }

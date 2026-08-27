@@ -299,8 +299,7 @@ test.describe('member > invite > sign-up handoff [UI] @racy', () => {
 
 		// An address with no Patr account behind it.
 		const suffix = crypto.randomUUID().replace(/-/g, '').slice(0, 12);
-		const username = `e2einvitee${suffix}`;
-		const email = `${username}@example.com`;
+		const email = `e2einvitee${suffix}@example.com`;
 		const password = 'E2eTest!1Password';
 
 		let invite: Invite;
@@ -326,7 +325,6 @@ test.describe('member > invite > sign-up handoff [UI] @racy', () => {
 
 			await openSignupPage(page);
 			await fillSignupForm(page, {
-				username,
 				firstName: 'E2E',
 				lastName: 'Invitee',
 				email,
@@ -340,7 +338,7 @@ test.describe('member > invite > sign-up handoff [UI] @racy', () => {
 			// Confirming a sign-up does not log you in — it drops you on /login.
 			// Logging in is what resumes the invite: login.tsx reads the stash and
 			// redirects here, so this also covers that handoff.
-			await fillLoginForm(page, { userId: username, password });
+			await fillLoginForm(page, { email, password });
 			await submitLogin(page);
 			await waitForLoggedIn(page);
 
@@ -356,8 +354,8 @@ test.describe('member > invite > sign-up handoff [UI] @racy', () => {
 				`SELECT wu.user_id
 				 FROM workspace_user wu
 				 JOIN "user" u ON u.id = wu.user_id
-				 WHERE wu.workspace_id = $1 AND u.username = $2`,
-				[owner.workspaceId, username],
+				 WHERE wu.workspace_id = $1 AND u.email = $2::citext`,
+				[owner.workspaceId, email],
 			);
 			expect(membership).toHaveLength(1);
 		} finally {

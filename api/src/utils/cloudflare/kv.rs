@@ -38,7 +38,6 @@ pub async fn sync_ingress_kv_for_fqdn(
 			managed_url.deployment_id AS "deployment_id: Uuid",
 			deployment.runner AS "runner?: Uuid",
 			managed_url.port,
-			managed_url.static_site_id AS "static_site_id: Uuid",
 			managed_url.url,
 			managed_url.permanent_redirect,
 			managed_url.http_only
@@ -84,13 +83,6 @@ pub async fn sync_ingress_kv_for_fqdn(
 					runner_id: row
 						.runner
 						.ok_or(ErrorType::server_error("Cannot find runner_id"))?,
-				},
-				ManagedUrlTypeDiscriminant::ProxyStaticSite => ProxyStaticSite {
-					static_site_id: row.static_site_id.ok_or(ErrorType::server_error(
-						"static_site_id is NULL when it's a proxy static site",
-					))?,
-					upload_id: Uuid::nil(), /* TODO Placeholder, replace with actual upload_id
-					                         * retrieval when needed */
 				},
 				ManagedUrlTypeDiscriminant::ProxyUrl => ProxyUrl {
 					url: row

@@ -169,7 +169,6 @@ interface InputProps {
 	autocomplete?:
 		| "off"
 		| "on"
-		| "username"
 		| "email"
 		| "current-password"
 		| "new-password"

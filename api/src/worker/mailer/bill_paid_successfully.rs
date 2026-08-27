@@ -9,8 +9,8 @@ use crate::utils::assets::email_images as filters;
 #[template(path = "bill-paid-successfully", subject = "Payment received")]
 #[serde(rename_all = "camelCase")]
 pub struct _BillPaidSuccessfullyEmail {
-	/// The username of the user.
-	pub username: String,
+	/// The first name of the user.
+	pub first_name: String,
 	/// The payment amount, formatted as a string (e.g. "$12.00").
 	pub amount: String,
 	/// The billing month (e.g. "January").

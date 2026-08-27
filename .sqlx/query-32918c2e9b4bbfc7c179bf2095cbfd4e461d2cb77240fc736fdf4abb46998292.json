@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS(SELECT 1 FROM \"user\" WHERE id = $1 AND email = $2::CITEXT) AS \"owns_email!: bool\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owns_email!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "32918c2e9b4bbfc7c179bf2095cbfd4e461d2cb77240fc736fdf4abb46998292"
+}

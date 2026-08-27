@@ -11,7 +11,7 @@ pub async fn complete_sign_up(
 				headers: CompleteSignUpRequestHeaders { user_agent },
 				body:
 					CompleteSignUpRequestProcessed {
-						username,
+						email,
 						verification_token,
 						cf_turnstile_token,
 					},
@@ -28,7 +28,7 @@ pub async fn complete_sign_up(
 			// are seeded / invited by the operator. Mirror the frontend, which
 			// 404s the sign-up routes.
 			let _ = (
-				username,
+				email,
 				verification_token,
 				cf_turnstile_token,
 				user_agent,
@@ -75,7 +75,7 @@ pub async fn complete_sign_up(
 				return Err(ErrorType::TurnstileVerificationActionMismatch);
 			}
 
-			info!("Completing sign up for user: `{username}`");
+			info!("Completing sign up for user: `{email}`");
 
 			let row = query!(
 				r#"
@@ -84,19 +84,19 @@ pub async fn complete_sign_up(
 				FROM
 					user_to_sign_up
 				WHERE
-					username = $1 AND
+					email = $1::CITEXT AND
 					otp_expiry > NOW();
 				"#,
-				&username
+				&email
 			)
 			.fetch_optional(&mut **database)
 			.await?
 			.ok_or(ErrorType::UserNotFound)
 			.inspect_err(|_| {
-				info!("Could not find a row with the given username");
+				info!("Could not find a row with the given email");
 			})?;
 
-			trace!("Found a row with the given username");
+			trace!("Found a row with the given email");
 
 			// Mirror reset_password's attempt counter — gate at the same MAX so a
 			// brute-force attempt on the 6-digit OTP exhausts cheaply and
@@ -119,9 +119,9 @@ pub async fn complete_sign_up(
 				SET
 					sign_up_attempts = sign_up_attempts + 1
 				WHERE
-					username = $1;
+					email = $1::CITEXT;
 				"#,
-				&username,
+				&email,
 			)
 			.execute(&state.database)
 			.await?;
@@ -159,27 +159,14 @@ pub async fn complete_sign_up(
 
 			query!(
 				r#"
-				SET CONSTRAINTS ALL DEFERRED;
-				"#
-			)
-			.execute(&mut **database)
-			.await?;
-
-			trace!("Constraints deferred");
-
-			query!(
-				r#"
 				INSERT INTO
 					"user"(
 						id,
-						username,
 						password,
 						first_name,
 						last_name,
 						created,
-						recovery_email,
-						recovery_phone_country_code,
-						recovery_phone_number,
+						email,
 						workspace_limit,
 						password_reset_token,
 						password_reset_token_expiry,
@@ -195,9 +182,6 @@ pub async fn complete_sign_up(
 						$5,
 						$6,
 						$7,
-						$8,
-						$9,
-						$10,
 						NULL,
 						NULL,
 						NULL,
@@ -205,14 +189,14 @@ pub async fn complete_sign_up(
 					);
 				"#,
 				user_id as _,
-				&username,
 				row.password,
 				row.first_name,
 				row.last_name,
 				now,
-				row.recovery_email,
-				row.recovery_phone_country_code,
-				row.recovery_phone_number,
+				// `row.email`, not the request's — they match case-insensitively
+				// but may differ in casing, and the address they signed up with
+				// is the one worth keeping.
+				row.email,
 				constants::DEFAULT_WORKSPACE_LIMIT,
 			)
 			.execute(&mut **database)
@@ -220,80 +204,19 @@ pub async fn complete_sign_up(
 
 			trace!("User inserted into the database");
 
-			match (
-				row.recovery_email,
-				row.recovery_phone_country_code,
-				row.recovery_phone_number,
-			) {
-				(Some(recovery_email), None, None) => {
-					trace!("Inserting recovery email");
-					query!(
-						r#"
-						INSERT INTO
-							user_email(
-								user_id,
-								email
-							)
-						VALUES
-							($1, $2);
-						"#,
-						user_id as _,
-						recovery_email
-					)
-					.execute(&mut **database)
-					.await?;
-				}
-				(None, Some(recovery_phone_country_code), Some(recovery_phone_number)) => {
-					trace!("Inserting recovery phone number");
-					query!(
-						r#"
-						INSERT INTO
-							user_phone_number(
-								user_id,
-								country_code,
-								number
-							)
-						VALUES
-							($1, $2, $3);
-						"#,
-						user_id as _,
-						recovery_phone_country_code,
-						recovery_phone_number
-					)
-					.execute(&mut **database)
-					.await?;
-				}
-				_ => {
-					error!("No recovery email or phone number in user_to_sign_up table");
-					return Err(ErrorType::server_error(
-						"user_to_sign_up row has no recovery email or phone number",
-					));
-				}
-			}
-
 			query!(
 				r#"
 				DELETE FROM
 					user_to_sign_up
 				WHERE
-					username = $1;
+					email = $1::CITEXT;
 				"#,
-				&username
+				&email
 			)
 			.execute(&mut **database)
 			.await?;
 
 			trace!("Deleted user_to_sign_up entry");
-
-			query!(
-				r#"
-				SET CONSTRAINTS ALL IMMEDIATE;
-				"#
-			)
-			.execute(&mut **database)
-			.await?;
-
-			trace!("Constraints set to immediate");
 
 			let refresh_token = Uuid::new_v4().to_string();
 			let hashed_refresh_token = argon2::Argon2::new_with_secret(

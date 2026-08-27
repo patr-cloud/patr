@@ -97,38 +97,6 @@ impl IsEmpty for () {
 	}
 }
 
-/// Accepts either a username (matching [`constants::USERNAME_VALIDITY_REGEX`])
-/// or an email-shaped string. Rejects phone numbers and other shapes. Used on
-/// the login endpoint where the handler already does a username-or-email
-/// lookup. The email check here is intentionally loose — the handler does the
-/// authoritative DB lookup.
-///
-/// # Errors
-/// Returns an error if the value is neither a valid username nor a
-/// vaguely-email-shaped string.
-pub fn validate_username_or_email(value: Cow<'_, str>) -> Result<Cow<'_, str>, preprocess::Error> {
-	use std::sync::LazyLock;
-
-	use preprocess::Error;
-	use regex::Regex;
-
-	static USERNAME_RE: LazyLock<Regex> =
-		LazyLock::new(|| Regex::new(constants::USERNAME_VALIDITY_REGEX).unwrap());
-
-	let v = value.as_ref();
-	if v.contains('@') {
-		// Loose email-shape check; handler does the real DB lookup.
-		if v.contains('.') && v.len() >= 5 {
-			return Ok(value);
-		}
-		return Err(Error::new("Not a valid email address"));
-	}
-	if USERNAME_RE.is_match(v) {
-		return Ok(value);
-	}
-	Err(Error::new("Must be a valid username or email"))
-}
-
 /// The function to validate if a password has:
 /// - A minimum of 8 characters
 /// - Must contain atleast one digit
@@ -200,27 +168,6 @@ pub mod constants {
 	/// A `NodeID` for Uuid v1.
 	/// Spells "*Patr*" in bytes
 	pub const UUID_NODE_ID: [u8; 6] = [42, 80, 97, 116, 114, 42];
-
-	/// The regular expression used to validate a username.
-	///
-	/// The username must start with an alphanumeric character or an underscore,
-	/// and end with an alphanumeric character. The username can contain
-	/// alphanumeric characters, underscores, dots, and hyphens.
-	pub const USERNAME_VALIDITY_REGEX: &str =
-		macros::verify_regex!(r"^[a-z0-9_][a-z0-9_\.\-]*[a-z0-9_]$");
-
-	/// Regex to validate The Country Code of the phone number.
-	///
-	/// The country code is a 2-letter code that represents the country of the
-	/// phone number. The country code must be in the format `US`, `IN`, `UK`,
-	/// etc.
-	pub const PHONE_NUMBER_COUNTRY_CODE_REGEX: &str = macros::verify_regex!(r"^[A-Z][A-Z]$");
-
-	/// The Regex to validate the phone number. The phone number must be in the
-	/// standard 10-digit number format. The number must be in the format `(123)
-	/// 456 7890`, `123-456-7890, 1234567890, 123.456.7890`,
-	pub const PHONE_NUMBER_REGEX: &str =
-		macros::verify_regex!(r"^\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}$");
 
 	/// The Regex to validate OTP of the user. The OTP must be a 6-digit number.
 	/// The OTP can be of the format `123456` or `123-456`.

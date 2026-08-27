@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_to_sign_up SET sign_up_attempts = sign_up_attempts + 1 WHERE email = $1::CITEXT;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f1b8d8aaf0b9ecd8e7eda1411448ee72a5726ba4b10823c36dd81f4193403bd7"
+}

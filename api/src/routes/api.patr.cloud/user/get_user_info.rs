@@ -28,14 +28,11 @@ pub async fn get_user_info(
 	let row = query!(
 		r#"
 		SELECT
-			"user".username,
+			"user".email,
 			"user".first_name,
 			"user".last_name,
 			"user".created,
-			"user".mfa_secret,
-			"user".recovery_phone_country_code,
-			"user".recovery_phone_number,
-			"user".recovery_email
+			"user".mfa_secret
 		FROM
 			"user"
 		WHERE
@@ -50,21 +47,13 @@ pub async fn get_user_info(
 		basic_user_info: WithId::new(
 			user_data.id,
 			BasicUserInfo {
-				username: row.username,
 				first_name: row.first_name,
 				last_name: row.last_name,
 			},
 		),
 		created: row.created,
 		is_mfa_enabled: row.mfa_secret.is_some(),
-		recovery_email: row.recovery_email,
-		recovery_phone_number: row
-			.recovery_phone_country_code
-			.zip(row.recovery_phone_number)
-			.map(|(country_code, phone_number)| UserPhoneNumber {
-				country_code,
-				phone_number,
-			}),
+		email: row.email,
 	};
 
 	AppResponse::builder()

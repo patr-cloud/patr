@@ -70,7 +70,7 @@ pub async fn activate_mfa(
 				);
 			})?,
 		Some(constants::TOTP_ISSUER.to_string()),
-		user_data.username,
+		user_data.email,
 	)
 	.inspect_err(|err| {
 		error!(

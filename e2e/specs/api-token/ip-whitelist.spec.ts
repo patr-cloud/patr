@@ -88,7 +88,7 @@ test.describe('api token > IP/CIDR client validation', () => {
 			await addAllowedIp(page, '1.1.1.1', 'Enter');
 			await addAllowedIp(page, '2.2.2.2', 'Enter');
 			await page.getByRole('button', { name: 'Remove 1.1.1.1' }).click();
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().endsWith('/api/user/api-token') && r.request().method() === 'POST',

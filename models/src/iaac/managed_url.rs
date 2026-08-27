@@ -48,13 +48,6 @@ pub enum IaacManagedUrlType {
 		/// Deployment port of the deployment to point to
 		port: u16,
 	},
-	/// URL is pointing to a static site
-	#[serde(rename_all = "snake_case")]
-	ProxyStaticSite {
-		/// Name of the static site to point to
-		#[serde(alias = "staticSite")]
-		static_site: String,
-	},
 	/// URL is a proxy
 	#[serde(alias = "url", rename_all = "snake_case")]
 	ProxyUrl {

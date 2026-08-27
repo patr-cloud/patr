@@ -6,7 +6,7 @@ import {
 	backdateSignupOtp,
 	DEBUG_OTP,
 } from '@/prelude';
-import { openConfirmSignup, fillUsername, fillOtp, submitConfirm } from '@/helpers/ui/confirm';
+import { openConfirmSignup, fillEmail, fillOtp, submitConfirm } from '@/helpers/ui/confirm';
 
 async function withContext(
 	browser: import('@playwright/test').Browser,
@@ -25,7 +25,7 @@ test.describe('confirm-signup — happy path', () => {
 	test('correct OTP → toast + navigate to /login', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page, pending.username);
+			await openConfirmSignup(page, pending.email);
 			await fillOtp(page, DEBUG_OTP);
 			await submitConfirm(page);
 			await expect(page).toHaveURL(/\/login$/, { timeout: 10_000 });
@@ -37,7 +37,7 @@ test.describe('confirm-signup — OTP input behaviour', () => {
 	test('submit disabled until all 6 digits filled', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page, pending.username);
+			await openConfirmSignup(page, pending.email);
 			const submit = page.locator('button[type=submit]', { hasText: /^Confirm$/ });
 			// Wait for Turnstile to enable the only-Turnstile-blocked state; submit
 			// should still be disabled because OTP digits are empty.
@@ -51,7 +51,7 @@ test.describe('confirm-signup — OTP input behaviour', () => {
 	test('typing a digit auto-focuses the next input', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page, pending.username);
+			await openConfirmSignup(page, pending.email);
 			await page.locator('#otp-0').fill('1');
 			await expect(page.locator('#otp-1')).toBeFocused();
 		});
@@ -60,7 +60,7 @@ test.describe('confirm-signup — OTP input behaviour', () => {
 	test('backspace on filled digit clears and focuses previous', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page, pending.username);
+			await openConfirmSignup(page, pending.email);
 			await page.locator('#otp-0').fill('1');
 			await page.locator('#otp-1').fill('2');
 			await page.locator('#otp-1').press('Backspace');
@@ -72,7 +72,7 @@ test.describe('confirm-signup — OTP input behaviour', () => {
 	test('pasting 6-digit string fills all inputs', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page, pending.username);
+			await openConfirmSignup(page, pending.email);
 			// Use the page's clipboard via a manual paste event.
 			await page.locator('#otp-0').focus();
 			await page.evaluate(() => {
@@ -94,7 +94,7 @@ test.describe('confirm-signup — server-side rejection', () => {
 	test('wrong OTP → generic credentials toast', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page, pending.username);
+			await openConfirmSignup(page, pending.email);
 			await fillOtp(page, '123456');
 			const respPromise = page.waitForResponse(
 				(r) => r.url().includes('/auth/join') && r.request().method() === 'POST',
@@ -103,14 +103,14 @@ test.describe('confirm-signup — server-side rejection', () => {
 			const resp = await respPromise;
 			expect(resp.ok()).toBe(false);
 			// Still on confirm page.
-			await expect(page).toHaveURL(/\/confirm-signup/);
+			await expect(page).toHaveURL(/\/sign-up\/confirm/);
 		});
 	});
 
-	test('OTP for nonexistent username → generic error (no enumeration)', async ({ browser }) => {
+	test('OTP for nonexistent email → generic error (no enumeration)', async ({ browser }) => {
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page); // no prefill — username field shown
-			await fillUsername(page, 'doesnotexist' + Date.now());
+			await openConfirmSignup(page); // no prefill — email field shown
+			await fillEmail(page, `doesnotexist${Date.now()}@example.com`);
 			await fillOtp(page, DEBUG_OTP);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().includes('/auth/join') && r.request().method() === 'POST',
@@ -118,15 +118,15 @@ test.describe('confirm-signup — server-side rejection', () => {
 			await submitConfirm(page);
 			const resp = await respPromise;
 			expect(resp.ok()).toBe(false);
-			await expect(page).toHaveURL(/\/confirm-signup/);
+			await expect(page).toHaveURL(/\/sign-up\/confirm/);
 		});
 	});
 
-	test('OTP for already-joined username → fails', async ({ browser, api }) => {
+	test('OTP for already-joined email → fails', async ({ browser, api }) => {
 		await using user = await createUserAccount_(api);
 		await withContext(browser, async (page) => {
 			await openConfirmSignup(page); // no prefill
-			await fillUsername(page, user.username);
+			await fillEmail(page, user.email);
 			await fillOtp(page, DEBUG_OTP);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().includes('/auth/join') && r.request().method() === 'POST',
@@ -139,9 +139,9 @@ test.describe('confirm-signup — server-side rejection', () => {
 
 	test('OTP for signup with backdated expiry → fails', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
-		await backdateSignupOtp(pending.username, '1 hour');
+		await backdateSignupOtp(pending.email, '1 hour');
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page, pending.username);
+			await openConfirmSignup(page, pending.email);
 			await fillOtp(page, DEBUG_OTP);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().includes('/auth/join') && r.request().method() === 'POST',
@@ -154,16 +154,16 @@ test.describe('confirm-signup — server-side rejection', () => {
 });
 
 test.describe('confirm-signup — URL parameter handling', () => {
-	test('prefilled username is shown as text, no input field', async ({ browser, api }) => {
+	test('prefilled email is shown as text, no input field', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page, pending.username);
-			// Username input should NOT be present (the spec says it's rendered
-			// as text when prefilled).
-			await expect(page.locator('#username')).toHaveCount(0);
-			// The username appears as text inside the confirming-for message.
+			await openConfirmSignup(page, pending.email);
+			// Email input should NOT be present (it's rendered as text when
+			// prefilled).
+			await expect(page.locator('#email')).toHaveCount(0);
+			// The email appears as text inside the confirming-for message.
 			await expect(
-				page.getByText(new RegExp(`Confirming account for.*${pending.username}`)),
+				page.getByText(new RegExp(`Confirming account for.*${pending.email}`)),
 			).toBeVisible();
 		});
 	});
@@ -171,8 +171,8 @@ test.describe('confirm-signup — URL parameter handling', () => {
 	test('URL params are stripped from the address bar on mount', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await page.goto(`/confirm-signup?username=${pending.username}&otp=${DEBUG_OTP}`);
-			// After mount, the SPA navigates to /confirm-signup with no params.
+			await page.goto(`/sign-up/confirm?email=${pending.email}&otp=${DEBUG_OTP}`);
+			// After mount, the SPA navigates to /sign-up/confirm with no params.
 			await page.waitForFunction(() => !window.location.search.includes('otp='), null, {
 				timeout: 5_000,
 			});
@@ -180,17 +180,17 @@ test.describe('confirm-signup — URL parameter handling', () => {
 		});
 	});
 
-	test('no params → username input is shown and required', async ({ browser }) => {
+	test('no params → email input is shown and required', async ({ browser }) => {
 		await withContext(browser, async (page) => {
 			await openConfirmSignup(page);
-			await expect(page.locator('#username')).toBeVisible();
-			// Submit without username; client validation fires.
+			await expect(page.locator('#email')).toBeVisible();
+			// Submit without an email; client validation fires.
 			await fillOtp(page, DEBUG_OTP);
-			// Turnstile button enable + submit; expect inline username-required alert.
+			// Turnstile button enable + submit; expect inline email-required alert.
 			const submit = page.locator('button[type=submit]', { hasText: /^Confirm$/ });
 			await expect(submit).toBeEnabled({ timeout: 15_000 });
 			await submit.click();
-			await expect(page.getByText(/Username is required/i)).toBeVisible();
+			await expect(page.getByText(/Email is required/i)).toBeVisible();
 		});
 	});
 });
@@ -199,7 +199,7 @@ test.describe('confirm-signup — navigation', () => {
 	test('"Resend Code" button navigates back to /sign-up', async ({ browser, api }) => {
 		const pending = await createPendingSignup(api);
 		await withContext(browser, async (page) => {
-			await openConfirmSignup(page, pending.username);
+			await openConfirmSignup(page, pending.email);
 			await page.getByRole('button', { name: /Resend Code/ }).click();
 			await expect(page).toHaveURL(/\/sign-up$/, { timeout: 10_000 });
 		});

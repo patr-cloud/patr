@@ -63,7 +63,7 @@ test.describe('workspace setup > route guards', () => {
 		const page = await context.newPage();
 		try {
 			await openLoginPage(page);
-			await fillLoginForm(page, { userId: user.username, password: user.password });
+			await fillLoginForm(page, { email: user.email, password: user.password });
 			await submitLogin(page);
 			await waitForLoggedIn(page);
 			// No separate /onboard route — the dashboard renders the inline create

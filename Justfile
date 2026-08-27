@@ -11,6 +11,12 @@ mod e2e
 bindings:
     #!/usr/bin/env bash
     set -euo pipefail
+    # Wipe first. ts-rs only ever writes files, it never deletes them, and the
+    # barrel below is built by listing this directory — so a leftover file for
+    # a type that no longer exists gets re-exported, and the barrel looks
+    # perfectly self-consistent locally while CI (which generates into a clean
+    # checkout) sees dangling exports and fails to compile.
+    find frontend/src/bindings -maxdepth 1 -name '*.ts' -delete
     cargo bindings
     cd frontend/src/bindings
     {

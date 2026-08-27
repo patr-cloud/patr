@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Get a user's details by userId. This will return the user's basic info,
-	/// such as their username, first name, last name, etc.
+	/// such as their first name and last name.
 	GetUserDetails,
 	GET "/user/{user_id}" {
 		/// The userId of the user whose details are being requested.

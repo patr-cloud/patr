@@ -43,7 +43,7 @@ test.describe('api token > create', () => {
 		await using user = await createUserWithWorkspace(api);
 		await withCreate(browser, user, async (page) => {
 			await fillTokenName(page, `ui-${Date.now().toString(36)}`);
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			await clickCreateToken(page);
 			await expect(page.getByText(/API Token Created Successfully/i)).toBeVisible({
@@ -62,7 +62,7 @@ test.describe('api token > create', () => {
 		let token = '';
 		await withCreate(browser, user, async (page) => {
 			await fillTokenName(page, `auth-${Date.now().toString(36)}`);
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			await clickCreateToken(page);
 			token = await readNewTokenFromModal(page);
@@ -92,7 +92,7 @@ test.describe('api token > create', () => {
 		await using user = await createUserWithWorkspace(api);
 		await withCreate(browser, user, async (page) => {
 			await fillTokenName(page, 'ok-${Date.now().toString(36)}');
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			await expect(page.getByRole('button', { name: /^Create Token$/ })).toBeEnabled();
 		});
@@ -130,7 +130,7 @@ test.describe('api token > create', () => {
 			const tokenName = `nbf-${Date.now().toString(36)}`;
 			await fillTokenName(page, tokenName);
 			await setTokenNbfInput(page, nbfIso);
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().endsWith('/api/user/api-token') && r.request().method() === 'POST',
@@ -157,7 +157,7 @@ test.describe('api token > create', () => {
 		await withCreate(browser, user, async (page) => {
 			await fillTokenName(page, `exp-${Date.now().toString(36)}`);
 			await setTokenExpInput(page, expIso);
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().endsWith('/api/user/api-token') && r.request().method() === 'POST',
@@ -188,7 +188,7 @@ test.describe('api token > create', () => {
 		});
 		await withCreate(browser, user, async (page) => {
 			await fillTokenName(page, name);
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().endsWith('/api/user/api-token') && r.request().method() === 'POST',
@@ -211,7 +211,7 @@ test.describe('api token > create', () => {
 		await using user = await createUserWithWorkspace(api);
 		await withCreate(browser, user, async (page) => {
 			await fillTokenName(page, 'abc');
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().endsWith('/api/user/api-token') && r.request().method() === 'POST',
@@ -236,7 +236,7 @@ test.describe('api token > create', () => {
 		try {
 			await openNewTokenPage(page);
 			await fillTokenName(page, `clip-${Date.now().toString(36)}`);
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			await clickCreateToken(page);
 			const tokenText = await readNewTokenFromModal(page);
@@ -260,7 +260,7 @@ test.describe('api token > create', () => {
 		let tokenId = '';
 		await withCreate(browser, user, async (page) => {
 			await fillTokenName(page, `once-${Date.now().toString(36)}`);
-			await enableWorkspaceCheckbox(page, `wks-${user.username}`);
+			await enableWorkspaceCheckbox(page, user.workspaceName);
 			await selectSuperAdminRadio(page);
 			const respPromise = page.waitForResponse(
 				(r) => r.url().endsWith('/api/user/api-token') && r.request().method() === 'POST',

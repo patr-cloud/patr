@@ -16,7 +16,7 @@ import DeploymentOption from "./deployment-option";
 import { domainTypeToTitle } from "./utils";
 import { FiAlertCircle, FiEdit2, FiTrash, FiX } from "solid-icons/fi";
 
-type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment" | "proxyStaticSite";
+type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment";
 
 interface ManageUrlRowProps {
 	managedUrl: WithId<ManagedUrl>;

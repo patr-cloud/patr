@@ -31,11 +31,6 @@ fn token_from_accept_url(accept_url: &str) -> String {
 		.to_string()
 }
 
-/// The recovery email a `create_test_user` account is created with.
-fn user_email(user: &TestUser) -> String {
-	format!("{}@example.com", user.username)
-}
-
 /// Invite an email to a workspace with a single role, returning the raw
 /// response.
 async fn invite(
@@ -150,6 +145,9 @@ async fn members(
 		.json::<ApiSuccessResponseBody<ListUsersInWorkspaceResponse>>()
 		.response
 		.users
+		.into_iter()
+		.map(|member| (member.user.id, member.role_ids))
+		.collect()
 }
 
 #[tokio::test]
@@ -166,7 +164,7 @@ async fn invite_and_accept_adds_member_with_role() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -220,7 +218,7 @@ async fn invite_requires_modify_roles() {
 		&setup,
 		&member.access_token,
 		workspace.id,
-		&user_email(&outsider),
+		&outsider.email.clone(),
 		vec![view_role.id],
 	)
 	.await;
@@ -247,7 +245,7 @@ async fn invite_existing_member_fails() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&member),
+		&member.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -267,7 +265,7 @@ async fn invite_invalid_role_fails() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![Uuid::new_v4()],
 	)
 	.await;
@@ -289,7 +287,7 @@ async fn list_and_revoke_invite() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -297,7 +295,7 @@ async fn list_and_revoke_invite() {
 	let invites = list_invites(&setup, &admin.access_token, workspace.id).await;
 	assert_eq!(invites.len(), 1);
 	assert_eq!(invites[0].id, invite_id);
-	assert_eq!(invites[0].data.email, user_email(&invitee));
+	assert_eq!(invites[0].data.email, invitee.email.clone());
 
 	let revoke_response = setup
 		.make_web_dashboard_call(
@@ -342,7 +340,7 @@ async fn accept_wrong_account_fails() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -366,7 +364,7 @@ async fn accept_expired_fails() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -396,7 +394,7 @@ async fn accept_bad_token_fails() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -454,7 +452,7 @@ async fn invite_duplicate_email_fails() {
 		.create_test_role(&admin.access_token, workspace.id)
 		.await;
 	let invitee = setup.create_test_user().await;
-	let email = user_email(&invitee);
+	let email = invitee.email.clone();
 
 	let first = invite(
 		&setup,
@@ -495,7 +493,7 @@ async fn update_invite_roles_works() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role_a.id],
 	)
 	.await;
@@ -545,7 +543,7 @@ async fn resend_invite_works() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -601,7 +599,7 @@ async fn preview_returns_workspace_name() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -643,7 +641,7 @@ async fn preview_bad_token_fails() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -676,7 +674,7 @@ async fn preview_expired_fails() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -705,7 +703,7 @@ async fn repeated_wrong_tokens_do_not_lock_invite() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;
@@ -825,7 +823,7 @@ async fn expired_invite_without_token_looks_missing() {
 		&setup,
 		&admin.access_token,
 		workspace.id,
-		&user_email(&invitee),
+		&invitee.email.clone(),
 		vec![role.id],
 	)
 	.await;

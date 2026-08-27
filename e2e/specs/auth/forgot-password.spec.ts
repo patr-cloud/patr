@@ -86,7 +86,7 @@ test.describe('forgot-password — state', () => {
 			await expectCheckEmailView(page);
 		});
 		// Backdate the freshly-issued token.
-		await backdatePasswordResetToken(user.username, '20 min');
+		await backdatePasswordResetToken(user.email, '20 min');
 		// Re-issue should now succeed (the existing token is expired).
 		await withContext(browser, async (page) => {
 			await openForgotPassword(page);

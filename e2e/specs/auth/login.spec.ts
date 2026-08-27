@@ -24,19 +24,10 @@ async function loginWith(
 }
 
 test.describe('login — happy paths', () => {
-	test('username + password via UI lands off /login', async ({ browser, api }) => {
+	test('email + password via UI lands off /login', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
 		await loginWith(browser, async (page) => {
-			await fillLoginForm(page, { userId: user.username, password: user.password });
-			await submitLogin(page);
-			await waitForLoggedIn(page);
-		});
-	});
-
-	test('login with recovery email instead of username', async ({ browser, api }) => {
-		await using user = await createUserAccount(api);
-		await loginWith(browser, async (page) => {
-			await fillLoginForm(page, { userId: user.email, password: user.password });
+			await fillLoginForm(page, { email: user.email, password: user.password });
 			await submitLogin(page);
 			await waitForLoggedIn(page);
 		});
@@ -65,7 +56,7 @@ test.describe('login — server-side rejection', () => {
 		await using user = await createUserAccount(api);
 		await loginWith(browser, async (page) => {
 			await fillLoginForm(page, {
-				userId: user.username,
+				email: user.email,
 				password: 'WrongPassw0rd!',
 			});
 			await submitAndExpectInlineError(page, /Incorrect password/i);
@@ -73,23 +64,23 @@ test.describe('login — server-side rejection', () => {
 		});
 	});
 
-	test('nonexistent username → "User not found" alert', async ({ browser }) => {
+	test('nonexistent email → "User not found" alert', async ({ browser }) => {
 		await loginWith(browser, async (page) => {
 			await fillLoginForm(page, {
-				userId: 'doesnotexist' + Date.now(),
+				email: `doesnotexist${Date.now()}@example.com`,
 				password: 'E2eTest!1Password',
 			});
 			await submitAndExpectInlineError(page, /User not found/i);
 		});
 	});
 
-	// Email-format input fails the userId regex preprocessor → server returns
-	// a generic WrongParameters error. The frontend's only inline-alert branch
-	// is `userNotFound | invalidEmail`; everything else hits the toast default.
+	// An unknown but well-formed email reaches the handler and comes back
+	// userNotFound. The frontend's only inline-alert branch is
+	// `userNotFound | invalidEmail`; everything else hits the toast default.
 	test('email-formatted nonexistent user → request rejected', async ({ browser }) => {
 		await loginWith(browser, async (page) => {
 			await fillLoginForm(page, {
-				userId: `nobody${Date.now()}@example.com`,
+				email: `nobody${Date.now()}@example.com`,
 				password: 'E2eTest!1Password',
 			});
 			const respPromise = page.waitForResponse(
@@ -105,7 +96,7 @@ test.describe('login — server-side rejection', () => {
 	test('empty password blocks submit (no network request)', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
 		await loginWith(browser, async (page) => {
-			await page.locator('#userId').fill(user.username);
+			await page.locator('#email').fill(user.email);
 			// Password left empty.
 			let fired = false;
 			page.on('request', (req) => {
@@ -120,26 +111,7 @@ test.describe('login — server-side rejection', () => {
 		});
 	});
 
-	// Username min-length (2) is enforced client-side, matching sign-up and the
-	// backend's `length(min = 2)`. A single-char username blocks submit without
-	// firing a request.
-	test('single-char username blocks submit (no network request)', async ({ browser }) => {
-		await loginWith(browser, async (page) => {
-			let fired = false;
-			page.on('request', (req) => {
-				if (req.url().includes('/auth/sign-in')) fired = true;
-			});
-			await fillLoginForm(page, { userId: 'a', password: 'E2eTest!1Password' });
-			const submit = page.locator('button[type=submit]', { hasText: /^Login$/ });
-			await expect(submit).toBeEnabled({ timeout: 15_000 });
-			await submit.click();
-			await page.waitForTimeout(500);
-			expect(fired).toBe(false);
-			await expect(page.getByText(/at least 2 characters/i)).toBeVisible();
-		});
-	});
-
-	// SQLi-in-userId and case-sensitive-username rejection are API-contract
+	// SQLi-in-email and case-sensitivity rejection are API-contract
 	// behaviors covered in the Rust API suite (api/tests/api/auth.rs).
 });
 
@@ -153,7 +125,7 @@ test.describe('login — concurrency & state @racy', () => {
 		const page = await context.newPage();
 		try {
 			await openLoginPage(page);
-			await fillLoginForm(page, { userId: user.username, password: user.password });
+			await fillLoginForm(page, { email: user.email, password: user.password });
 			await submitLogin(page);
 			await waitForLoggedIn(page);
 
@@ -175,7 +147,7 @@ test.describe('login — concurrency & state @racy', () => {
 			const page = await context.newPage();
 			try {
 				await openLoginPage(page);
-				await fillLoginForm(page, { userId: user.username, password: user.password });
+				await fillLoginForm(page, { email: user.email, password: user.password });
 				await submitLogin(page);
 				await waitForLoggedIn(page);
 				return true;
@@ -213,7 +185,7 @@ test.describe('login — rate limiting (per-IP wiring sanity)', () => {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify({
-							userId: 'doesnotexist',
+							email: 'doesnotexist@example.com',
 							password: 'X',
 							cfTurnstileToken,
 						}),

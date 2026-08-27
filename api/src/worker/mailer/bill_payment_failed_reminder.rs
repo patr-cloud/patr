@@ -13,8 +13,8 @@ use crate::utils::assets::email_images as filters;
 )]
 #[serde(rename_all = "camelCase")]
 pub struct _BillPaymentFailedReminderEmail {
-	/// The username of the user.
-	pub username: String,
+	/// The first name of the user.
+	pub first_name: String,
 	/// The billing month.
 	pub month: String,
 	/// The billing year.

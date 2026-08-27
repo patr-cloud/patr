@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT (EXISTS(SELECT 1 FROM \"user\" INNER JOIN workspace_user ON workspace_user.user_id = \"user\".id WHERE \"user\".email = $1::CITEXT AND workspace_user.workspace_id = $2) OR EXISTS(SELECT 1 FROM \"user\" INNER JOIN workspace ON workspace.super_admin_id = \"user\".id WHERE \"user\".email = $1::CITEXT AND workspace.id = $2)) AS \"already_member!: bool\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "already_member!: bool",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "5a00c133f0be444a2fcdc0e578683a8e8ece0977d380b787f76660463af2858c"
+}

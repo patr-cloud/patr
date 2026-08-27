@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 The domain {{ domain_name }} added to your workspace {{ workspace_name }} hasn't been verified yet. Until DNS verification is complete, you won't be able to use Managed URLs with this domain.
 

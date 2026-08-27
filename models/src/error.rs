@@ -64,14 +64,8 @@ pub enum ErrorType {
 	Unauthorized,
 	/// The access token (JWT) provided is invalid
 	AuthorizationTokenInvalid,
-	/// The username provided is not available. It is being used by another
-	/// account
-	UsernameUnavailable,
 	/// The email provided is not available. It is being used by another account
 	EmailUnavailable,
-	/// The phone number provided is not available. It is being used by another
-	/// account
-	PhoneUnavailable,
 	/// The reset token used to reset the given user's password is invalid.
 	InvalidPasswordResetToken,
 	/// The resource that the user is trying to access does not exist.
@@ -173,9 +167,7 @@ impl ErrorType {
 			Self::MalformedRefreshToken => StatusCode::BAD_REQUEST,
 			Self::Unauthorized => StatusCode::UNAUTHORIZED,
 			Self::AuthorizationTokenInvalid => StatusCode::UNAUTHORIZED,
-			Self::UsernameUnavailable => StatusCode::CONFLICT,
 			Self::EmailUnavailable => StatusCode::CONFLICT,
-			Self::PhoneUnavailable => StatusCode::CONFLICT,
 			Self::InvalidPasswordResetToken => StatusCode::BAD_REQUEST,
 			Self::ResourceDoesNotExist => StatusCode::NOT_FOUND,
 			Self::ResourceAlreadyExists => StatusCode::CONFLICT,
@@ -235,9 +227,7 @@ impl ErrorType {
 			Self::MalformedRefreshToken => "Your refresh token is invalid. Please login again",
 			Self::Unauthorized => "You are not authorized to perform that action",
 			Self::AuthorizationTokenInvalid => "Your access token has expired. Please login again",
-			Self::UsernameUnavailable => "An account already exists with that username",
 			Self::EmailUnavailable => "An account already exists with that email",
-			Self::PhoneUnavailable => "An account already exists with that phone number",
 			Self::InvalidPasswordResetToken => {
 				"The token provided to reset your password is not valid"
 			}

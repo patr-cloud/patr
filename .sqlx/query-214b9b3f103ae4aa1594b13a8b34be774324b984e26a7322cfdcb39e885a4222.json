@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT \"user\".first_name, \"user\".last_name FROM \"user\" WHERE id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_name",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "214b9b3f103ae4aa1594b13a8b34be774324b984e26a7322cfdcb39e885a4222"
+}

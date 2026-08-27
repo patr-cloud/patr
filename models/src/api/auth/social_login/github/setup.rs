@@ -1,8 +1,4 @@
-use crate::{
-	api::auth::SocialLoginProvider,
-	prelude::*,
-	utils::constants::USERNAME_VALIDITY_REGEX,
-};
+use crate::{api::auth::SocialLoginProvider, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Creates a new Patr account from a social-login identity after the
@@ -24,9 +20,6 @@ macros::declare_api_endpoint!(
 		/// The setup token returned by the callback endpoint
 		#[preprocess(trim, length(min = 1))]
 		pub setup_token: String,
-		/// The chosen Patr username
-		#[preprocess(trim, length(min = 2), regex = USERNAME_VALIDITY_REGEX)]
-		pub username: String,
 		/// The user's first name
 		#[preprocess(trim, length(min = 1))]
 		pub first_name: String,

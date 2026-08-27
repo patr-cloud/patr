@@ -15,9 +15,9 @@ New crate depending on `common`, implement `RunnerExecutor`, `main = Runner::<E>
 
 Adding a new *resource type* (database, static site) is scaffolded for but not wired: `ResourceSupervisorMessage` carries a `resource_type` field that's currently `#[allow(dead_code)]`.
 
-## `runners/kubernetes` — legacy, do not touch
+## `runners/kubernetes` — reference only, not built
 
-Crate name is `controller`. It predates the common-library/actor design, does **not** depend on `common`, doesn't implement `RunnerExecutor`, has an empty DB stub, and its `main` is effectively dead. The project pivoted to the docker/common architecture and left this behind. **Treat it as deprecated — don't extend it or bring it up to parity.**
+Crate name is `controller`. It predates the common-library/actor design, does **not** depend on `common`, doesn't implement `RunnerExecutor`, and its `main` is effectively dead. It's `exclude`d from the workspace, so nothing builds it and its `workspace = true` dependency inheritance no longer resolves — it's kept purely as a reference for a future Kubernetes runner. **Don't extend it or wire it back up without rewriting it against `RunnerExecutor`.**
 
 ## SelfHosted mode → headless executor
 
@@ -25,4 +25,4 @@ SelfHosted mode currently runs standalone: its own auth + workspace HTTP API and
 
 So: **don't invest in the runner's frontend/API surface.** When a shared `models` change breaks its exhaustive destructuring, take the **minimal compile fix** (`field: _,`, `cfg_if` to `FeatureNotSupported`) — never reimplement feature parity.
 
-All three crates need the nightly toolchain (`impl_trait_in_assoc_type`, `never_type`).
+Both crates need the nightly toolchain (`impl_trait_in_assoc_type`, `never_type`).

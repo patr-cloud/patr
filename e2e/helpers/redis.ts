@@ -30,6 +30,26 @@ export async function deleteRunnerLock(runnerId: string): Promise<void> {
 	await redis.del(runnerLockKey(runnerId));
 }
 
+// The GitHub OAuth callback stashes the resolved GitHub identity in Redis and
+// hands the browser a setup token, which /sign-up/confirm's sibling
+// /sign-up/github then redeems. Minting the token directly is the only way to
+// reach that page without talking to GitHub: the token exchange in
+// api/src/routes/api.patr.cloud/auth/social_login/github/callback.rs posts to
+// hardcoded github.com URLs, so there is nothing to point at a mock.
+//
+// Mirrors `seed_github_setup` in api/tests/api/social_login.rs — same key, same
+// payload shape (serde default naming, so snake_case), same 10-minute TTL as
+// the API writes.
+export async function seedGithubSetupToken(email: string): Promise<string> {
+	const token = crypto.randomUUID();
+	const payload = JSON.stringify({
+		external_id: `gh-${Math.floor(Math.random() * 1e15)}`,
+		email,
+	});
+	await redis.set(`socialLogin:github:setup:${token}`, payload, 'EX', 600);
+	return token;
+}
+
 // The unhashed MFA secret lives in Redis for 5 minutes during the enable flow
 // (see api/src/routes/api.patr.cloud/user/mfa/get_mfa_secret.rs — keyed by
 // user_id via redis::user_mfa_secret). We read it so we can compute the TOTP
@@ -37,9 +57,9 @@ export async function deleteRunnerLock(runnerId: string): Promise<void> {
 //
 // UUIDs are stored hyphenless throughout this codebase, but pg returns the
 // hyphenated string form by default — strip hyphens before key construction.
-export async function readMfaSetupSecret(username: string): Promise<string> {
-	const user = await queryUser(username);
-	if (!user) throw new Error(`No such user: ${username}`);
+export async function readMfaSetupSecret(email: string): Promise<string> {
+	const user = await queryUser(email);
+	if (!user) throw new Error(`No such user: ${email}`);
 	const userIdHex = user.id.replace(/-/g, '');
 	// The secret is written when the API handles GET /user/mfa, which the caller
 	// races after opening the 2FA modal (the request is still in flight). Poll
@@ -50,7 +70,7 @@ export async function readMfaSetupSecret(username: string): Promise<string> {
 		if (secret) return secret;
 		if (Date.now() >= deadline) {
 			throw new Error(
-				`No MFA secret in Redis for user ${username} (${user.id}); ` +
+				`No MFA secret in Redis for user ${email} (${user.id}); ` +
 					`was GET /user/mfa called and within the 5-min TTL?`,
 			);
 		}

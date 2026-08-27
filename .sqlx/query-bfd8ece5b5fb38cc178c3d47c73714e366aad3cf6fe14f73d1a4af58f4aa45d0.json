@@ -1,0 +1,121 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url.id, managed_url.sub_domain, managed_url.domain_id, managed_url.path, managed_url.url_type AS \"url_type: ManagedUrlTypeDiscriminant\", managed_url.deployment_id, managed_url.port, managed_url.url, managed_url_custom_hostname.is_active, managed_url.permanent_redirect, managed_url.http_only, COUNT(*) OVER() AS \"total_count!\" FROM managed_url INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON managed_url.id = resource.id INNER JOIN managed_url_custom_hostname ON managed_url.sub_domain = managed_url_custom_hostname.sub_domain AND managed_url.domain_id = managed_url_custom_hostname.domain_id WHERE managed_url.workspace_id = $1 AND managed_url.deleted IS NULL AND ($4::TEXT IS NULL OR managed_url.sub_domain ILIKE '%' || $4 || '%') AND ($5::UUID IS NULL OR managed_url.domain_id = $5) AND ($6::TEXT IS NULL OR managed_url.path ILIKE '%' || $6 || '%') AND ($7::MANAGED_URL_TYPE IS NULL OR managed_url.url_type = $7) AND ($8::BOOLEAN IS NULL OR managed_url_custom_hostname.is_active = $8) ORDER BY resource.created DESC LIMIT $9 OFFSET $10;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "sub_domain",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "domain_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "url_type: ManagedUrlTypeDiscriminant",
+        "type_info": {
+          "Custom": {
+            "name": "managed_url_type",
+            "kind": {
+              "Enum": [
+                "proxy_to_deployment",
+                "proxy_to_static_site",
+                "proxy_url",
+                "redirect"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "deployment_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "port",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "is_active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "permanent_redirect",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "http_only",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 11,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        {
+          "Custom": {
+            "name": "managed_url_type",
+            "kind": {
+              "Enum": [
+                "proxy_to_deployment",
+                "proxy_to_static_site",
+                "proxy_url",
+                "redirect"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "bfd8ece5b5fb38cc178c3d47c73714e366aad3cf6fe14f73d1a4af58f4aa45d0"
+}

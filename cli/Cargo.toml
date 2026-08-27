@@ -53,7 +53,6 @@ serde_path_to_error = { workspace = true, features = [] }
 serde_qs            = { workspace = true, features = [] }
 serde_yaml2         = { workspace = true, features = [] }
 sha2                = { workspace = true, features = ["default"] }
-strum               = { workspace = true, features = ["derive"] }
 tar                 = { workspace = true, features = [] }
 tempfile            = { workspace = true, features = [] }
 thiserror           = { workspace = true, features = ["default"] }

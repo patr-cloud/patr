@@ -13,7 +13,12 @@
       "Left": [
         "Uuid",
         "Uuid",
-        "Text",
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
         "Text",
         "Timestamptz",
         "Uuid",

@@ -11,7 +11,7 @@ pub async fn initialize_workspace_user_invite_tables(
 		CREATE TABLE workspace_user_invite(
 			id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
-			email TEXT NOT NULL,
+			email CITEXT NOT NULL,
 
 			token_hash TEXT NOT NULL,
 			token_expiry TIMESTAMPTZ NOT NULL,
@@ -105,9 +105,6 @@ pub async fn initialize_workspace_user_invite_constraints(
 	query!(
 		r#"
 		ALTER TABLE workspace_user_invite
-			ADD CONSTRAINT workspace_user_invite_chk_email_is_lower_case CHECK(
-				email = LOWER(email)
-			),
 			ADD CONSTRAINT workspace_user_invite_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
 			ADD CONSTRAINT workspace_user_invite_fk_invited_by

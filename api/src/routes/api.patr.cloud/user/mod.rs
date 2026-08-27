@@ -12,8 +12,6 @@ mod list_workspaces;
 mod mfa;
 /// The endpoint to preview a workspace invite before accepting
 mod preview_workspace_invite;
-#[expect(unused_variables)]
-mod recovery_options;
 #[cfg(feature = "cloud")]
 mod social_logins;
 mod update_user_info;
@@ -36,7 +34,6 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 	Router::new()
 		.merge(api_token::setup_routes(state, allowed_client_type).await)
 		.merge(mfa::setup_routes(state, allowed_client_type).await)
-		.merge(recovery_options::setup_routes(state, allowed_client_type).await)
 		.merge(
 			#[cfg(feature = "cloud")]
 			{

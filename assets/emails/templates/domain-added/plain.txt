@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 Your domain {{ domain_name }} has been added to the workspace {{ workspace_name }}.
 

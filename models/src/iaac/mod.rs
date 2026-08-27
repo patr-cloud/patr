@@ -7,11 +7,9 @@ use std::{
 use either::Either;
 use serde::{Deserialize, Serialize};
 
-pub use self::{database::*, deployment::*, domain::*, error::*, managed_url::*};
+pub use self::{deployment::*, domain::*, error::*, managed_url::*};
 use crate::{prelude::*, rbac::ResourceType};
 
-/// All database related IaaC structs and functions.
-mod database;
 /// All deployment related IaaC structs and functions.
 mod deployment;
 /// All domain related IaaC structs and functions.
@@ -25,16 +23,16 @@ mod managed_url;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct IaacResource {
-	/// The resource data, which can be a deployment, database, etc.
+	/// The resource data, which can be a deployment, managed URL, etc.
 	#[serde(flatten)]
 	pub data: IaacResourceData,
-	/// What the resource depends on, e.g. a database or another deployment.
+	/// What the resource depends on, e.g. a domain or another deployment.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub depends_on: Option<OneOrMore<Dependency>>,
 }
 
 impl IaacResource {
-	/// Returns the type of the resource, e.g. `deployment`, `database`, etc.
+	/// Returns the type of the resource, e.g. `deployment`, `managed_url`, etc.
 	pub fn resource_type(&self) -> ResourceType {
 		self.data.get_resource_type()
 	}
@@ -65,8 +63,8 @@ impl Hash for IaacResource {
 }
 
 /// The Iaac resource that is defined in the Iaac file. This is a particular
-/// resource that can be deployed, such as a deployment, database, static site,
-/// managed URL, domain, Docker repository, or secret.
+/// resource that can be deployed, such as a deployment, managed URL, domain,
+/// Docker repository, or secret.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum IaacResourceData {
@@ -80,7 +78,7 @@ pub enum IaacResourceData {
 }
 
 impl IaacResourceData {
-	/// Returns the type of the resource, e.g. `deployment`, `database`, etc.
+	/// Returns the type of the resource, e.g. `deployment`, `managed_url`, etc.
 	pub fn get_resource_type(&self) -> ResourceType {
 		match self {
 			Self::Deployment(_) => ResourceType::Deployment,
@@ -101,14 +99,14 @@ impl IaacResourceData {
 }
 
 /// A dependency of a resource, which can either be a UUID or a name. This is
-/// used to define what a resource depends on, e.g. a database or another
+/// used to define what a resource depends on, e.g. a domain or another
 /// deployment.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Dependency {
 	/// The type of the resource that this dependency is for, e.g. `deployment`,
-	/// `database`, etc. This is only required if the identifier is a name AND
-	/// multiple resources with that name exist.
+	/// `managed_url`, etc. This is only required if the identifier is a name
+	/// AND multiple resources with that name exist.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub resource: Option<ResourceType>,
 	/// The identifier of the resource that this dependency is for. This can be

@@ -19,7 +19,7 @@ pub async fn resend_otp(
 				path: ResendOtpPath,
 				query: (),
 				headers: ResendOtpRequestHeaders { user_agent: _ },
-				body: ResendOtpRequestProcessed { username, password },
+				body: ResendOtpRequestProcessed { email, password },
 			},
 		database,
 		redis: _,
@@ -27,7 +27,7 @@ pub async fn resend_otp(
 		state,
 	}: AppRequest<'_, ResendOtpRequest>,
 ) -> Result<AppResponse<ResendOtpRequest>, ErrorType> {
-	info!("Resending OTP to username: `{username}`");
+	info!("Resending OTP to email: `{email}`");
 
 	let row = query!(
 		r#"
@@ -36,9 +36,9 @@ pub async fn resend_otp(
 		FROM
 			user_to_sign_up
 		WHERE
-			username = $1;
+			email = $1::CITEXT;
 		"#,
-		&username
+		&email
 	)
 	.fetch_optional(&mut **database)
 	.await?;
@@ -89,10 +89,10 @@ pub async fn resend_otp(
 				SET
 					otp_hash = $1
 				WHERE
-					username = $2;
+					email = $2::CITEXT;
 				"#,
 				hashed_otp,
-				&username
+				&email
 			)
 			.execute(&mut **database)
 			.await?;

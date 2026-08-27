@@ -27,26 +27,26 @@ export async function sql<T extends Record<string, unknown> = Record<string, unk
 	return rows;
 }
 
-export async function queryUser(username: string): Promise<{
+export async function queryUser(email: string): Promise<{
 	id: string;
-	username: string;
+	email: string;
 	mfaSecret: string | null;
 	passwordResetAttempts: number;
 } | null> {
 	const { rows } = await pool.query<{
 		id: string;
-		username: string;
+		email: string;
 		mfa_secret: string | null;
 		password_reset_attempts: number;
 	}>(
-		`SELECT id, username, mfa_secret, password_reset_attempts
-     FROM "user" WHERE username = $1`,
-		[username],
+		`SELECT id, email, mfa_secret, password_reset_attempts
+     FROM "user" WHERE email = $1::citext`,
+		[email],
 	);
 	if (!rows[0]) return null;
 	return {
 		id: rows[0].id,
-		username: rows[0].username,
+		email: rows[0].email,
 		mfaSecret: rows[0].mfa_secret,
 		passwordResetAttempts: rows[0].password_reset_attempts,
 	};
@@ -54,21 +54,21 @@ export async function queryUser(username: string): Promise<{
 
 // Backdate the OTP expiry on a pending signup so /auth/join treats it as
 // expired without us having to actually wait 15 minutes.
-export async function backdateSignupOtp(username: string, age: string): Promise<void> {
+export async function backdateSignupOtp(email: string, age: string): Promise<void> {
 	await pool.query(
 		`UPDATE user_to_sign_up
      SET otp_expiry = NOW() - $1::interval
-     WHERE username = $2`,
-		[age, username],
+     WHERE email = $2::citext`,
+		[age, email],
 	);
 }
 
-export async function backdatePasswordResetToken(username: string, age: string): Promise<void> {
+export async function backdatePasswordResetToken(email: string, age: string): Promise<void> {
 	await pool.query(
 		`UPDATE "user"
      SET password_reset_token_expiry = NOW() - $1::interval
-     WHERE username = $2`,
-		[age, username],
+     WHERE email = $2::citext`,
+		[age, email],
 	);
 }
 

@@ -192,15 +192,7 @@ pub async fn social_login_callback(
 			FROM
 				"user"
 			WHERE
-				recovery_email = $1
-			UNION
-			SELECT
-				user_email.user_id AS "id!"
-			FROM
-				user_email
-			WHERE
-				email = $1
-			LIMIT 1;
+				"user".email = $1::CITEXT;
 			"#,
 			&github_email,
 		)
@@ -272,7 +264,6 @@ pub async fn social_login_callback(
 			.body(SocialLoginCallbackResponse {
 				status: GithubCallbackStatus::SetupRequired {
 					setup_token,
-					prefilled_username: github_user.login,
 					prefilled_first_name,
 					prefilled_last_name,
 					prefilled_email: github_email,

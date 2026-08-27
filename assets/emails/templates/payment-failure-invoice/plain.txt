@@ -1,4 +1,4 @@
-Hi {{ username }},
+Hi {{ first_name }},
 
 The payment of ${{ card_amount_to_be_charged_in_cents }} for workspace {{ workspace_name }} failed to process. This covers all outstanding charges through {{ bill_month }} {{ bill_year }}. A detailed breakdown of your usage is included below.
 

@@ -7,16 +7,13 @@ import { ButtonVariant } from "~/utils/color";
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { cloudOnly } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
-import { USERNAME_VALIDITY_PATTERN } from "~/utils/validation";
 
 interface FieldErrors {
-	username: string;
 	firstName: string;
 	lastName: string;
 }
 
 const emptyErrors: FieldErrors = {
-	username: "",
 	firstName: "",
 	lastName: "",
 };
@@ -29,7 +26,6 @@ const CompleteGithubSignup = () => {
 
 	const search = Route.useSearch();
 
-	const [username, setUsername] = createSignal(search().username ?? "");
 	const [firstName, setFirstName] = createSignal(search().firstName ?? "");
 	const [lastName, setLastName] = createSignal(search().lastName ?? "");
 	const [errors, setErrors] = createSignal<FieldErrors>({ ...emptyErrors });
@@ -50,15 +46,6 @@ const CompleteGithubSignup = () => {
 		const newErrors = { ...emptyErrors };
 		let valid = true;
 
-		const trimmedUsername = username().trim();
-		if (!trimmedUsername) {
-			newErrors.username = "Username is required.";
-			valid = false;
-		} else if (!new RegExp(`^${USERNAME_VALIDITY_PATTERN}$`).test(trimmedUsername)) {
-			newErrors.username =
-				"Username must start and end with a lowercase letter, number, or underscore, and may contain dots or hyphens in between.";
-			valid = false;
-		}
 		if (!firstName().trim()) {
 			newErrors.firstName = "First name is required.";
 			valid = false;
@@ -79,7 +66,6 @@ const CompleteGithubSignup = () => {
 
 		const body: SocialLoginSetupRequest = {
 			setupToken,
-			username: username(),
 			firstName: firstName(),
 			lastName: lastName(),
 		};
@@ -107,9 +93,6 @@ const CompleteGithubSignup = () => {
 			navigate({ to: "/", replace: true });
 		} else {
 			switch (resp.data?.error) {
-				case "usernameUnavailable":
-					setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
-					break;
 				case "socialLoginFailed":
 					toast("Your GitHub session has expired. Please sign in with GitHub again.", "error");
 					navigate({ to: "/login", replace: true });
@@ -145,28 +128,6 @@ const CompleteGithubSignup = () => {
 
 				{/* Form */}
 				<div>
-					<Input
-						type={InputType.Text}
-						placeholder="Username"
-						autocomplete="username"
-						required={true}
-						name="username"
-						id="username"
-						pattern={USERNAME_VALIDITY_PATTERN}
-						title="Username must be 2–32 characters, lowercase letters, numbers, or underscores."
-						value={username}
-						onInput={(e) => {
-							setUsername(e.currentTarget.value);
-							clearError("username");
-						}}
-						styleVariant="medium"
-					/>
-					<Show when={errors().username}>
-						<div class="mt-1">
-							<Alert message={errors().username} type="error" />
-						</div>
-					</Show>
-
 					{/* Name Inputs */}
 					<div class="flex items-center gap-4 mt-4">
 						<div class="flex-1">
@@ -252,13 +213,11 @@ export const Route = createFileRoute("/_logged-out/sign-up/github")(
 			search: Record<string, unknown>
 		): {
 			setupToken?: string;
-			username?: string;
 			firstName?: string;
 			lastName?: string;
 			email?: string;
 		} => ({
 			setupToken: (search.setupToken as string) || undefined,
-			username: (search.username as string) || undefined,
 			firstName: (search.firstName as string) || undefined,
 			lastName: (search.lastName as string) || undefined,
 			email: (search.email as string) || undefined,

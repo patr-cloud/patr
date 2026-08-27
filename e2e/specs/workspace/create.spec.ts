@@ -142,7 +142,7 @@ test.describe('workspace create > happy path', () => {
 			await openWorkspaceSwitcher(page);
 			await expect
 				.poll(() => listSwitcherWorkspaceNames(page), { timeout: 10_000 })
-				.toEqual(expect.arrayContaining([`wks-${user.username}`, newName]));
+				.toEqual(expect.arrayContaining([user.workspaceName, newName]));
 		});
 	});
 
@@ -230,7 +230,7 @@ test.describe('workspace create > validation', () => {
 	}) => {
 		await using user = await createUserWithWorkspace(api);
 		await withCreate(browser, user, async (page) => {
-			await fillCreateName(page, `wks-${user.username}`); // exact match to seeded ws
+			await fillCreateName(page, user.workspaceName); // exact match to seeded ws
 			await expectServerRejectionInline(page);
 		});
 	});

@@ -46,7 +46,7 @@ test.describe('profile > 2FA toggle label', () => {
 			await respPromise;
 			// Tiny settle to let the redis write land before we read it.
 			await page.waitForTimeout(200);
-			const secret = await readMfaSetupSecret(user.username);
+			const secret = await readMfaSetupSecret(user.email);
 			const otp = computeTotp(secret);
 			await fillMfaModalOtp(page, otp);
 			await submitMfaModal(page);

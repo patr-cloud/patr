@@ -2,11 +2,10 @@ import type { Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 // Frontend reference: frontend/src/routes/_logged-out/sign-up.tsx
-// Selectors: #username, #first-name, #last-name, #email, #password,
+// Selectors: #first-name, #last-name, #email, #password,
 //            #confirm-password, button[type=submit] text "Sign Up".
 
 export type SignupFields = {
-	username: string;
 	firstName: string;
 	lastName: string;
 	email: string;
@@ -19,7 +18,6 @@ export async function openSignupPage(page: Page): Promise<void> {
 }
 
 export async function fillSignupForm(page: Page, fields: SignupFields): Promise<void> {
-	await page.locator('#username').fill(fields.username);
 	await page.locator('#first-name').fill(fields.firstName);
 	await page.locator('#last-name').fill(fields.lastName);
 	await page.locator('#email').fill(fields.email);
