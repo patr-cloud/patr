@@ -14,8 +14,8 @@ use crate::prelude::*;
 pub struct WorkspaceInvite {
 	/// The email address the invite was sent to
 	pub email: String,
-	/// The roles the invitee will be granted once they accept
-	pub roles: BTreeSet<Uuid>,
+	/// The role grants the invitee receives once they accept
+	pub roles: Vec<super::RoleGrant>,
 	/// The user who sent the invite
 	pub invited_by: Uuid,
 	/// When the invite was created
