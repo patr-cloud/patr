@@ -185,6 +185,16 @@ where
 {
 	let deployment_id = state.deployment_id;
 
+	// Drop the status-report dedupe so the next `CheckStatus` re-reports
+	// upstream. A report can be lost silently — `SendStatusUpdate` discards the
+	// update when the socket is down (`ws_sink` is `None`) — and because
+	// `report_status_if_changed` marks the status as reported before the send,
+	// nothing would ever regenerate it. The supervisor sends `ConfigUpdated` to
+	// every live actor on each reconcile, which runs on WebSocket reconnect and
+	// on the resync timer, so clearing it here bounds how long upstream can stay
+	// stale instead of leaving it wrong forever.
+	state.last_reported_status = None;
+
 	let (desired_deployment, desired_details) =
 		match get_local_deployment_info(&state.database, deployment_id).await {
 			Ok(info) => info,
