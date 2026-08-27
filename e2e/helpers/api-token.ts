@@ -3,12 +3,13 @@ import { API_DIRECT_URL } from '@/helpers/urls';
 import { USER_AGENT } from '@/helpers/config';
 
 // Mirrors models/src/rbac/workspace_permission.rs — tagged enum, camelCase.
+// The member arm carries a PermissionScope per permission: workspace-wide, or
+// an explicit resource set.
+export type PermissionScopeInput =
+	{ scopeType: 'workspace' } | { scopeType: 'resources'; resources: string[] };
+
 export type WorkspacePermissionInput =
-	| { type: 'superAdmin' }
-	| ({ type: 'member' } & Record<
-			string,
-			{ permissionType: 'include' | 'exclude'; resources: string[] }
-	  >);
+	{ type: 'superAdmin' } | ({ type: 'member' } & Record<string, PermissionScopeInput>);
 
 export type CreateApiTokenOpts = {
 	name?: string;
