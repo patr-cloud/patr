@@ -1,10 +1,9 @@
 //! Utility functions for registry operations.
 //!
 //! This module contains utilities for:
-//! - Managing S3 multipart upload sessions, including tracking state in Redis
-//!   and computing digests on-the-fly.
-//! - Converting Axum request bodies into a format compatible with AWS SDK S3
-//!   uploads.
+//! - Managing S3 multipart upload sessions, including tracking state in Redis and computing digests
+//!   on-the-fly.
+//! - Converting Axum request bodies into a format compatible with AWS SDK S3 uploads.
 //! - Common database queries related to manifests and blobs.
 
 use std::{

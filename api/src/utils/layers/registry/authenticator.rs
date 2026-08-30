@@ -23,13 +23,11 @@ use crate::{models::permissions, routes::registry_patr_cloud::prelude::*};
 ///
 /// This layer:
 /// 1. Extracts the Authorization header (Bearer token)
-/// 2. Validates the token as an API token (format:
-///    patrv1.{refresh_token}.{login_id})
+/// 2. Validates the token as an API token (format: patrv1.{refresh_token}.{login_id})
 /// 3. Verifies the token against the database
 /// 4. Checks token expiration, revocation, and IP restrictions
 /// 5. Loads user permissions from Redis cache or database
-/// 6. Converts `RegistryRequestWithConnections` to
-///    `AuthenticatedRegistryRequest`
+/// 6. Converts `RegistryRequestWithConnections` to `AuthenticatedRegistryRequest`
 /// 7. Returns 401 with WWW-Authenticate header on failure
 #[derive(Clone)]
 pub struct RegistryAuthenticationLayer<E>

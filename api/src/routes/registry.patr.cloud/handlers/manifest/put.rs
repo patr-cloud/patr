@@ -74,8 +74,7 @@ macros::declare_registry_endpoint!(
 /// 3. Validates the digest against the reference (if reference is a digest)
 /// 4. Stores the manifest in S3
 /// 5. Records manifest metadata and repository linkage in the database
-/// 6. If the manifest is a valid OCI ImageManifest, records config and layer
-///    blobs
+/// 6. If the manifest is a valid OCI ImageManifest, records config and layer blobs
 /// 7. Creates or updates a tag if the reference is a tag name
 /// 8. Returns 201 Created with Location and Docker-Content-Digest headers
 pub async fn upload_manifest(

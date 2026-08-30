@@ -5,18 +5,17 @@
 //! `NOT NULL`), which made multi-arch indexes and OCI artifacts unstorable.
 //!
 //! What changes:
-//! - `blob`/`manifest` digest CHECK relaxed to the general OCI form (sha256,
-//!   sha512, …); size CHECK `> 0` → `>= 0` (the OCI empty blob is valid).
-//! - `manifest`: `content_type` → `media_type`; add `kind`
-//!   (image|index|artifact), `artifact_type`, `subject_digest`; drop
-//!   `config_blob_digest`/`platform` (moved to `manifest_image`).
-//! - new `manifest_image` (config + structured platform) and `manifest_layer`
-//!   (ordered layers) replace `manifest_blob`.
-//! - `manifest_reference` gains `ordinal` + descriptor/platform columns and is
-//!   re-keyed on `(manifest_digest, ordinal)`.
-//! - each child table gains a `manifest_kind` column pinned (CHECK) and joined
-//!   to the parent via a composite FK on `(digest, kind)`, so a subtype row can
-//!   only attach to a manifest of the right kind (image↔manifest_image, …).
+//! - `blob`/`manifest` digest CHECK relaxed to the general OCI form (sha256, sha512, …); size CHECK
+//!   `> 0` → `>= 0` (the OCI empty blob is valid).
+//! - `manifest`: `content_type` → `media_type`; add `kind` (image|index|artifact), `artifact_type`,
+//!   `subject_digest`; drop `config_blob_digest`/`platform` (moved to `manifest_image`).
+//! - new `manifest_image` (config + structured platform) and `manifest_layer` (ordered layers)
+//!   replace `manifest_blob`.
+//! - `manifest_reference` gains `ordinal` + descriptor/platform columns and is re-keyed on
+//!   `(manifest_digest, ordinal)`.
+//! - each child table gains a `manifest_kind` column pinned (CHECK) and joined to the parent via a
+//!   composite FK on `(digest, kind)`, so a subtype row can only attach to a manifest of the right
+//!   kind (image↔manifest_image, …).
 //! - `repository_tag` PK reordered to `(repository_id, name)`.
 //! - reverse-lookup indices added.
 //!

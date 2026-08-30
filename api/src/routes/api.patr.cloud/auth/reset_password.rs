@@ -100,11 +100,11 @@ pub async fn reset_password(
 
 	// Two things keep the ceiling above reachable, and it needs both:
 	//
-	// - Counted on the pool, not the request transaction. Every path below that
-	//   rejects the attempt returns an `Err`, which rolls the transaction back; an
-	//   increment written there would be discarded along with it.
-	// - COALESCE, because the column is nullable and rests at NULL — nothing
-	//   initialises it on sign-up, and a successful reset nulls it again. `NULL
+	// - Counted on the pool, not the request transaction. Every path below that rejects the attempt
+	//   returns an `Err`, which rolls the transaction back; an increment written there would be
+	//   discarded along with it.
+	// - COALESCE, because the column is nullable and rests at NULL — nothing initialises it on
+	//   sign-up, and a successful reset nulls it again. `NULL
 	//   + 1` is `NULL`, so a bare increment would never leave NULL.
 	query!(
 		r#"

@@ -1,29 +1,23 @@
 //!
 //! Lessons learned from OAuth2.1 spec research:
-//! - **Client Credentials** flow: `client_credentials` grant type is for
-//!   machine-to-machine communication. This is when a backend server wants to
-//!   communicate with our API and has no user interaction whatsoever. Just
-//!   wants to communicate with our API directly from their backend. They are
-//!   given a client ID and a client secret. The 3rd part app (client) sends
-//!   these to the API server to get an access token. It's pretty much like a
-//!   username and password.
-//! - **Authorization Code** flow: First, the `code` grant type is used to tell
-//!   the API server that the client wants to exchange a temporary code for an
-//!   access token and a refresh token. Along with this request, it sends a
-//!   code_challenge (a hash of a random set of characters) and a
-//!   code_challenge_method (the method used to hash the code_challenge). The
-//!   API server just happily carries this code_challenge along for all the next
-//!   set of steps (till the callback URL). The client sends the user to the API
-//!   server to authorize the client. The user logs in and gives the client
-//!   permission to access their data. The API server then redirects to a
-//!   specific callback URL (that has to be an exact match of something that was
-//!   pre-registered with the client) along with a temporary code and the
-//!   code_challenge. The client sends this code to the API server (with the
-//!   `authorization_code` grant) along with the original un-hashed
-//!   code_challenge to exchange it for an access token and a refresh token. The
-//!   API server verifies that the un-hashed code_challenge and the hashed value
-//!   that was originally provided match. The client can then use the access
-//!   token to access the user's data.
+//! - **Client Credentials** flow: `client_credentials` grant type is for machine-to-machine
+//!   communication. This is when a backend server wants to communicate with our API and has no user
+//!   interaction whatsoever. Just wants to communicate with our API directly from their backend.
+//!   They are given a client ID and a client secret. The 3rd part app (client) sends these to the
+//!   API server to get an access token. It's pretty much like a username and password.
+//! - **Authorization Code** flow: First, the `code` grant type is used to tell the API server that
+//!   the client wants to exchange a temporary code for an access token and a refresh token. Along
+//!   with this request, it sends a code_challenge (a hash of a random set of characters) and a
+//!   code_challenge_method (the method used to hash the code_challenge). The API server just
+//!   happily carries this code_challenge along for all the next set of steps (till the callback
+//!   URL). The client sends the user to the API server to authorize the client. The user logs in
+//!   and gives the client permission to access their data. The API server then redirects to a
+//!   specific callback URL (that has to be an exact match of something that was pre-registered with
+//!   the client) along with a temporary code and the code_challenge. The client sends this code to
+//!   the API server (with the `authorization_code` grant) along with the original un-hashed
+//!   code_challenge to exchange it for an access token and a refresh token. The API server verifies
+//!   that the un-hashed code_challenge and the hashed value that was originally provided match. The
+//!   client can then use the access token to access the user's data.
 
 /// The endpoint to authorize a user.
 ///

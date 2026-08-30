@@ -34,17 +34,15 @@ use crate::{prelude::*, redis::keys};
 /// All commands for all windows are batched into a single Redis pipeline (one
 /// round trip):
 ///
-/// 1. **`ZADD key score member`** — optimistically record this request in the
-///    sorted set, *before* checking if the limit is exceeded. This ensures
-///    rejected requests still count against the limit, preventing attackers
-///    from retrying without penalty.
-/// 2. **`ZREMRANGEBYSCORE key -inf (now - window)`** — prune all entries whose
-///    timestamp falls outside the current sliding window.
-/// 3. **`ZCARD key`** — count the remaining entries. If this exceeds the limit,
-///    the request is rejected.
-/// 4. **`EXPIRE key (window_secs + 10)`** — refresh the key's TTL so it
-///    auto-expires if no further requests arrive. The 10-second buffer prevents
-///    premature expiry at window boundaries.
+/// 1. **`ZADD key score member`** — optimistically record this request in the sorted set, *before*
+///    checking if the limit is exceeded. This ensures rejected requests still count against the
+///    limit, preventing attackers from retrying without penalty.
+/// 2. **`ZREMRANGEBYSCORE key -inf (now - window)`** — prune all entries whose timestamp falls
+///    outside the current sliding window.
+/// 3. **`ZCARD key`** — count the remaining entries. If this exceeds the limit, the request is
+///    rejected.
+/// 4. **`EXPIRE key (window_secs + 10)`** — refresh the key's TTL so it auto-expires if no further
+///    requests arrive. The 10-second buffer prevents premature expiry at window boundaries.
 ///
 /// ## Scope
 ///

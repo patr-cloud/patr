@@ -171,15 +171,14 @@ pub(crate) async fn get_permissions(
 /// Compute the effective permission map for an API token. On a valid cache
 /// hit the cached map is returned directly. Otherwise:
 ///
-/// 1. Reads the user's current role-derived permissions for the workspaces they
-///    are a member of (the upper bound).
-/// 2. Reads the token's declared permissions from `user_api_token_*` tables
-///    (the snapshot taken at mint/patch time).
-/// 3. Computes the intersection — anything the user has lost since the token
-///    was minted is dropped from the token's effective scope.
-/// 4. Rewrites the token's DB rows for any workspace whose intersection differs
-///    from the declared rows, so subsequent reads (auth and
-///    `get_api_token_info`) see the converged state directly.
+/// 1. Reads the user's current role-derived permissions for the workspaces they are a member of
+///    (the upper bound).
+/// 2. Reads the token's declared permissions from `user_api_token_*` tables (the snapshot taken at
+///    mint/patch time).
+/// 3. Computes the intersection — anything the user has lost since the token was minted is dropped
+///    from the token's effective scope.
+/// 4. Rewrites the token's DB rows for any workspace whose intersection differs from the declared
+///    rows, so subsequent reads (auth and `get_api_token_info`) see the converged state directly.
 /// 5. Caches and returns the effective map.
 #[tracing::instrument(skip(db_connection, redis_connection))]
 pub async fn get_permissions_for_api_token(
