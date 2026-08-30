@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use bollard::{
+	Docker,
 	auth::DockerCredentials,
+	container::LogOutput,
+	exec::{CreateExecOptions, ResizeExecOptions, StartExecOptions, StartExecResults},
 	models::{
 		HealthConfig,
 		NetworkAttachmentConfig,
@@ -12,16 +15,20 @@ use bollard::{
 		TaskSpecContainerSpec,
 		TaskSpecContainerSpecConfigs,
 		TaskSpecContainerSpecFile1,
+		TaskState,
 	},
 	query_parameters::{
 		ListConfigsOptions,
 		ListServicesOptions,
 		ListServicesOptionsBuilder,
+		ListTasksOptionsBuilder,
 		UpdateServiceOptionsBuilder,
 	},
 };
+use common::shell_session::{ShellInput, ShellIo};
 use futures::{Stream, StreamExt};
 use models::api::workspace::{container_registry::*, deployment::*};
+use tokio::io::AsyncWriteExt;
 
 use crate::prelude::*;
 
@@ -535,4 +542,154 @@ pub(crate) async fn get_status(
 		.unwrap_or(DeploymentStatus::Stopped);
 
 	Ok(status)
+}
+
+/// Resolve the container ID of a running task for the deployment's swarm
+/// service. Deployments run as swarm services (`patr-{id}`), which can't be
+/// `exec`ed directly — we have to find the underlying task's container. If the
+/// service has multiple replicas we attach to an arbitrary running one.
+async fn resolve_running_container(
+	docker: &Docker,
+	deployment_id: Uuid,
+) -> Result<String, RunnerError> {
+	let service_name = format!("patr-{}", deployment_id);
+
+	let tasks = docker
+		.list_tasks(Some(
+			ListTasksOptionsBuilder::new()
+				.filters(&HashMap::from([
+					("service", vec![service_name.as_str()]),
+					("desired-state", vec!["running"]),
+				]))
+				.build(),
+		))
+		.await
+		.map_err(RunnerError::host)?;
+
+	tasks
+		.into_iter()
+		.find_map(|task| {
+			let status = task.status?;
+			if status.state != Some(TaskState::RUNNING) {
+				return None;
+			}
+			status.container_status?.container_id
+		})
+		.ok_or_else(|| {
+			RunnerError::host(format!(
+				"no running container found for deployment {deployment_id}"
+			))
+		})
+}
+
+/// Open an interactive `/bin/sh` inside the deployment's running container and
+/// pump bytes between the exec and [`ShellIo`] until the shell exits or the
+/// session closes. Returns the shell's exit code.
+pub(crate) async fn open_shell(
+	docker: &Docker,
+	deployment_id: Uuid,
+	io: ShellIo,
+) -> Result<i32, RunnerError> {
+	let ShellIo {
+		mut inbound,
+		outbound,
+	} = io;
+
+	let container_id = resolve_running_container(docker, deployment_id).await?;
+
+	let exec = docker
+		.create_exec(
+			&container_id,
+			CreateExecOptions::<String> {
+				attach_stdin: Some(true),
+				attach_stdout: Some(true),
+				attach_stderr: Some(true),
+				tty: Some(true),
+				cmd: Some(vec!["/bin/sh".to_string()]),
+				..Default::default()
+			},
+		)
+		.await
+		.map_err(RunnerError::host)?;
+
+	let StartExecResults::Attached {
+		mut output,
+		mut input,
+	} = docker
+		.start_exec(
+			&exec.id,
+			Some(StartExecOptions {
+				detach: false,
+				tty: true,
+				output_capacity: None,
+			}),
+		)
+		.await
+		.map_err(RunnerError::host)?
+	else {
+		return Err(RunnerError::host("exec started detached unexpectedly"));
+	};
+
+	let exec_id = exec.id.clone();
+	let resize_docker = docker.clone();
+
+	// Feed stdin + resize events into the exec. Ends when `inbound` closes,
+	// which drops `input` and sends EOF to the shell.
+	let input_task = async move {
+		while let Some(msg) = inbound.recv().await {
+			match msg {
+				ShellInput::Data(bytes) => {
+					if input.write_all(&bytes).await.is_err() {
+						break;
+					}
+					let _ = input.flush().await;
+				}
+				ShellInput::Resize { rows, cols } => {
+					let _ = resize_docker
+						.resize_exec(
+							&exec_id,
+							ResizeExecOptions {
+								height: rows,
+								width: cols,
+							},
+						)
+						.await;
+				}
+			}
+		}
+	};
+
+	// Forward the container's output. `outbound.send` is bounded, so a
+	// fast-printing process blocks here — that stall stops us reading `output`,
+	// which (via TCP) throttles the container. Nothing is dropped.
+	let output_task = async move {
+		while let Some(chunk) = output.next().await {
+			let Ok(log) = chunk else { break };
+			let bytes = match log {
+				LogOutput::StdOut { message } |
+				LogOutput::StdErr { message } |
+				LogOutput::Console { message } |
+				LogOutput::StdIn { message } => message,
+			};
+			if outbound.send(bytes.to_vec()).await.is_err() {
+				break;
+			}
+		}
+	};
+
+	// Whichever side ends first, tear the other down (dropping the futures
+	// drops `input`/`output`, which terminates the exec).
+	tokio::select! {
+		_ = input_task => {}
+		_ = output_task => {}
+	}
+
+	let code = docker
+		.inspect_exec(&exec.id)
+		.await
+		.ok()
+		.and_then(|resp| resp.exit_code)
+		.unwrap_or(0);
+
+	Ok(code as i32)
 }

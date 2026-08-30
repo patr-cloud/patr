@@ -8,6 +8,8 @@ mod create;
 mod delete;
 /// List all deployments in the workspace
 mod list;
+/// Open an interactive shell inside a deployment
+mod shell;
 /// Start a deployment
 mod start;
 /// Stop a deployment
@@ -41,6 +43,9 @@ pub enum DeploymentActionCommand {
 	/// The command to stop a deployment
 	#[command(name = "stop", alias = "down")]
 	Stop(stop::Args),
+	/// The command to open an interactive shell inside a deployment
+	#[command(name = "shell", alias = "exec", alias = "sh")]
+	Shell(shell::Args),
 	/// The command to delete a deployment
 	#[command(name = "delete", alias = "remove", alias = "rm")]
 	Delete(delete::Args),
@@ -66,6 +71,9 @@ pub async fn execute(
 		}
 		DeploymentCommand::DeploymentAction(Stop(args)) => {
 			stop::execute(args, global_args, state).await
+		}
+		DeploymentCommand::DeploymentAction(Shell(args)) => {
+			shell::execute(args, global_args, state).await
 		}
 		DeploymentCommand::DeploymentAction(Delete(args)) => {
 			delete::execute(args, global_args, state).await

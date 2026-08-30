@@ -50,6 +50,13 @@ export async function seedGithubSetupToken(email: string): Promise<string> {
 	return token;
 }
 
+// Length of a Redis list. Used by the deployment-shell backpressure test to
+// watch the `shell:{sessionId}:to-client` queue depth (the runner-facing
+// producer gates on this — see api/src/models/shell_session.rs).
+export async function listLen(key: string): Promise<number> {
+	return redis.llen(key);
+}
+
 // The unhashed MFA secret lives in Redis for 5 minutes during the enable flow
 // (see api/src/routes/api.patr.cloud/user/mfa/get_mfa_secret.rs — keyed by
 // user_id via redis::user_mfa_secret). We read it so we can compute the TOTP

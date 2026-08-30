@@ -14,6 +14,7 @@ mod list_deployment;
 mod start_deployment;
 mod stop_deployment;
 mod stream_deployment_logs;
+mod stream_deployment_shell;
 mod update_deployment;
 
 use self::{
@@ -27,6 +28,7 @@ use self::{
 	start_deployment::*,
 	stop_deployment::*,
 	stream_deployment_logs::*,
+	stream_deployment_shell::*,
 	update_deployment::*,
 };
 use crate::prelude::*;
@@ -52,4 +54,5 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_auth_endpoint(update_deployment, state, allowed_client_type)
 		.mount_auth_endpoint(get_deployment_metric, state, allowed_client_type)
 		.mount_auth_endpoint(stream_deployment_logs, state, allowed_client_type)
+		.mount_auth_endpoint(stream_deployment_shell, state, allowed_client_type)
 }

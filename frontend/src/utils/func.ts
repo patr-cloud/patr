@@ -5,7 +5,7 @@ import { ActionTypes, ResourceTypes } from "./types";
 const resourceActionMap: Record<ResourceTypes, ActionTypes[]> = {
 	billing: ["view", "edit", "makePayment"],
 	containerRegistryRepository: ["create", "edit", "delete", "view", "push", "pull", "deleteImage"],
-	deployment: ["view", "edit", "create", "delete", "start", "stop"],
+	deployment: ["view", "edit", "create", "delete", "start", "stop", "shell"],
 	domain: ["view", "add", "verify", "delete"],
 	managedURL: ["view", "edit", "delete", "add", "verify"],
 	runner: ["view", "edit", "create", "delete", "regenerateToken"],
@@ -77,6 +77,7 @@ const userActionTypes = [
 	"restore",
 	"start",
 	"stop",
+	"shell",
 	"add",
 	"verify",
 	"regenerateToken",

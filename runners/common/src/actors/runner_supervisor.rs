@@ -108,6 +108,7 @@ where
 					config: args.config.clone(),
 					database: args.database.clone(),
 					supervisor_ref: supervisor_ref.clone(),
+					runner_state: args.runner_state.clone(),
 				},
 				myself.get_cell(),
 			)
@@ -215,6 +216,7 @@ where
 					config: state.config.clone(),
 					database: state.database.clone(),
 					supervisor_ref: state.supervisor_ref.clone(),
+					runner_state: state.runner_state.clone(),
 				},
 				myself.get_cell(),
 			)

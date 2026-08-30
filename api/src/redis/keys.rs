@@ -88,6 +88,39 @@ pub fn runner_id_for_deployment(deployment_id: &Uuid) -> String {
 	format!("runnerIdForDeployment:{}", deployment_id)
 }
 
+/// The key holding a pending/live deployment-shell session, keyed by the
+/// server-minted session ID. The value is a JSON
+/// [`crate::models::ShellSession`] (`{workspace_id, runner_id,
+/// deployment_id}`). Set with a short TTL for the dial-back window, then
+/// refreshed by the CLI-facing handler as its liveness beacon while the session
+/// runs — the runner-facing handler treats its absence as "the CLI-facing
+/// instance died" and tears the session down.
+pub fn shell_session(session_id: &Uuid) -> String {
+	format!("shellSession:{}", session_id)
+}
+
+/// The runner-side liveness beacon for a deployment-shell session, refreshed by
+/// the runner-facing handler once the runner has dialed back. The CLI-facing
+/// handler treats its absence as "the runner-facing instance died".
+pub fn shell_runner_alive(session_id: &Uuid) -> String {
+	format!("shellRunnerAlive:{}", session_id)
+}
+
+/// The bounded byte-bridge list carrying frames from the CLI-facing handler to
+/// the runner-facing handler (stdin / resize / close). The CLI-facing side
+/// `LPUSH`es, the runner-facing side `RPOP`s.
+pub fn shell_list_to_runner(session_id: &Uuid) -> String {
+	format!("shell:{}:to-runner", session_id)
+}
+
+/// The bounded byte-bridge list carrying frames from the runner-facing handler
+/// to the CLI-facing handler (connected / output / exit / error). The
+/// runner-facing side `LPUSH`es, the CLI-facing side `RPOP`s; the runner-facing
+/// producer gates on this list's `LLEN` for backpressure.
+pub fn shell_list_to_client(session_id: &Uuid) -> String {
+	format!("shell:{}:to-client", session_id)
+}
+
 /// The key used to store the IP lookup data for an IP address. This is used to
 /// cache the results of IP lookups to avoid making repeated calls to the IPInfo
 /// API for the same IP address, both to reduce latency and to reduce costs.

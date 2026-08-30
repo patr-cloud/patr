@@ -3,7 +3,10 @@ use std::{
 	sync::{Arc, Mutex},
 };
 
-use common::prelude::*;
+use common::{
+	prelude::*,
+	shell_session::{ShellInput, ShellIo},
+};
 use futures::stream;
 use models::api::workspace::deployment::*;
 
@@ -14,6 +17,7 @@ pub enum ExecutorCall {
 	Delete(Uuid),
 	GetStatus(Uuid),
 	ListRunning,
+	OpenShell(Uuid),
 }
 
 /// Shared mutable state backing all MockExecutor instances in a test.
@@ -167,5 +171,29 @@ impl RunnerExecutor for MockExecutor {
 
 	async fn list_running_managed_urls(&self) -> Result<Vec<Uuid>, RunnerError> {
 		Ok(Vec::new())
+	}
+
+	async fn open_deployment_shell(
+		&self,
+		deployment_id: Uuid,
+		mut io: ShellIo,
+	) -> Result<i32, RunnerError> {
+		self.state
+			.calls
+			.lock()
+			.unwrap()
+			.push(ExecutorCall::OpenShell(deployment_id));
+
+		// Echo stdin back as output until the session closes (`inbound` yields
+		// `None`), then report a clean exit. Exercises the `ShellIo` contract
+		// and the bounded-channel pump without needing a real container.
+		while let Some(input) = io.inbound.recv().await {
+			if let ShellInput::Data(bytes) = input {
+				if io.outbound.send(bytes).await.is_err() {
+					break;
+				}
+			}
+		}
+		Ok(0)
 	}
 }

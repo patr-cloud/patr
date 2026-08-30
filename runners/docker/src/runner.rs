@@ -242,4 +242,12 @@ impl RunnerExecutor for DockerRunner {
 	async fn list_running_managed_urls(&self) -> Result<Vec<Uuid>, RunnerError> {
 		managed_url::list_running(self).await
 	}
+
+	async fn open_deployment_shell(
+		&self,
+		deployment_id: Uuid,
+		io: common::shell_session::ShellIo,
+	) -> Result<i32, RunnerError> {
+		deployment::open_shell(&self.docker, deployment_id, io).await
+	}
 }
