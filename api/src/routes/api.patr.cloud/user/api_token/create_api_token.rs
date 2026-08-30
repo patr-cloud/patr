@@ -79,6 +79,13 @@ pub async fn create_api_token(
 
 	let token_id = query!(
 		r#"
+		WITH client AS (
+			INSERT INTO
+				actor_client(id, actor_client_type)
+			VALUES
+				(GENERATE_LOGIN_ID(), 'user_login')
+			RETURNING id
+		)
 		INSERT INTO
 			user_login(
 				login_id,
@@ -86,14 +93,14 @@ pub async fn create_api_token(
 				login_type,
 				created
 			)
-		VALUES
-			(
-				GENERATE_LOGIN_ID(),
-				$1,
-				'api_token',
-				$2
-			)
-		RETURNING login_id;
+		SELECT
+			client.id,
+			$1,
+			'api_token',
+			$2
+		FROM
+			client
+		RETURNING user_login.login_id;
 		"#,
 		user_data.id as _,
 		now,
