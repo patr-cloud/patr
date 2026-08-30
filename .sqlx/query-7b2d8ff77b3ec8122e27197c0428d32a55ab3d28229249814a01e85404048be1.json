@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_api_token_resource_permissions_type.workspace_id AS \"workspace_id!\", user_api_token_resource_permissions_type.permission_id AS \"permission_id!\", user_api_token_resource_permissions_include.resource_id AS \"resource_id?\" FROM user_api_token_resource_permissions_type LEFT JOIN user_api_token_resource_permissions_include ON user_api_token_resource_permissions_include.token_id = user_api_token_resource_permissions_type.token_id AND user_api_token_resource_permissions_include.workspace_id = user_api_token_resource_permissions_type.workspace_id AND user_api_token_resource_permissions_include.permission_id = user_api_token_resource_permissions_type.permission_id WHERE user_api_token_resource_permissions_type.token_id = $1 AND user_api_token_resource_permissions_type.resource_permission_type = 'include';",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "permission_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "resource_id?",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7b2d8ff77b3ec8122e27197c0428d32a55ab3d28229249814a01e85404048be1"
+}

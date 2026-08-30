@@ -206,7 +206,9 @@ pub async fn get_permissions_for_web_login(
 		LEFT JOIN
 			role_resource_permissions_exclude
 		ON
-			role_resource_permissions_exclude.role_id = workspace_user.role_id
+			role_resource_permissions_exclude.role_id = role_resource_permissions_type.role_id AND
+			role_resource_permissions_exclude.permission_id =
+				role_resource_permissions_type.permission_id
 		WHERE
 			workspace_user.user_id = $1;
 		"#,
@@ -265,7 +267,9 @@ pub async fn get_permissions_for_web_login(
 		LEFT JOIN
 			role_resource_permissions_include
 		ON
-			role_resource_permissions_include.role_id = workspace_user.role_id
+			role_resource_permissions_include.role_id = role_resource_permissions_type.role_id AND
+			role_resource_permissions_include.permission_id =
+				role_resource_permissions_type.permission_id
 		WHERE
 			workspace_user.user_id = $1;
 		"#,
