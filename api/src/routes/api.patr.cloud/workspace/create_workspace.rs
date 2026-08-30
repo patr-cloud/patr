@@ -549,14 +549,16 @@ async fn create_default_roles_for_workspace(
 					id,
 					workspace_id,
 					name,
-					description
+					description,
+					is_immutable
 				)
 			VALUES
 				(
 					$1,
 					$2,
 					$3,
-					$4
+					$4,
+					TRUE
 				);
 			"#,
 			role_id as _,

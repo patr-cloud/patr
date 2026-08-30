@@ -22,6 +22,11 @@
         "ordinal": 3,
         "name": "workspace_id",
         "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_immutable",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -31,6 +36,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,

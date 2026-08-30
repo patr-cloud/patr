@@ -86,14 +86,16 @@ pub async fn create_new_role(
 				id,
 				workspace_id,
 				name,
-				description
+				description,
+				is_immutable
 			)
 		VALUES
 			(
 				$1,
 				$2,
 				$3,
-				$4
+				$4,
+				FALSE
 			);
 		"#,
 		role_id as _,
