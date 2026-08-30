@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO audit_log(id,  timestamp, ip, location, user_agent, country, region, city, timezone,  login_id, action, workspace_id, resource_id) VALUES (GENERATE_AUDIT_LOG_ID(),  NOW(), $1, ST_SetSRID(POINT($2, $3)::GEOMETRY, 4326), $4, $5, $6, $7, $8,  $9, $10, (SELECT workspace_id FROM resource WHERE id = $11), $11);",
+  "query": "INSERT INTO audit_log(id,  timestamp, ip, location, user_agent, country, region, city, timezone,  actor_client_id, action, workspace_id, resource_id) VALUES (GENERATE_AUDIT_LOG_ID(),  NOW(), $1, ST_SetSRID(POINT($2, $3)::GEOMETRY, 4326), $4, $5, $6, $7, $8,  $9, $10, (SELECT workspace_id FROM resource WHERE id = $11), $11);",
   "describe": {
     "columns": [],
     "parameters": {
@@ -31,5 +31,5 @@
     },
     "nullable": []
   },
-  "hash": "cb19fc0a4ec39770b6e798ada3171210801b74e49f73e6216a306f7c7b0c3bd0"
+  "hash": "4a3eb5ffa28ccc25369a3552a8a1c36686fa653e115a164c839680e2ec60ef0a"
 }

@@ -220,7 +220,7 @@ where
 						city,
 						timezone,
 
-						login_id,
+						actor_client_id,
 						action,
 						workspace_id,
 						resource_id

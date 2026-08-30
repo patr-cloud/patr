@@ -15,3 +15,4 @@ mod m012_remove_static_sites_and_databases;
 mod m013_drop_static_site_url_type;
 mod m014_rename_owner_id_to_workspace_id;
 mod m015_actor_client_registry;
+mod m016_audit_log_actor_client_id;
