@@ -27,7 +27,7 @@ pub async fn initialize_rbac_tables(
 		CREATE TABLE resource(
 			id UUID NOT NULL,
 			resource_type_id UUID NOT NULL,
-			owner_id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
 			created TIMESTAMPTZ NOT NULL,
 			deleted TIMESTAMPTZ
 		);
@@ -43,7 +43,7 @@ pub async fn initialize_rbac_tables(
 			id UUID NOT NULL,
 			name VARCHAR(100) NOT NULL,
 			description VARCHAR(500) NOT NULL,
-			owner_id UUID NOT NULL
+			workspace_id UUID NOT NULL
 		);
 		"#
 	)
@@ -140,8 +140,8 @@ pub async fn initialize_rbac_indices(
 		r#"
 		ALTER TABLE resource
 			ADD CONSTRAINT resource_pk PRIMARY KEY(id),
-			ADD CONSTRAINT resource_uq_id_owner_id UNIQUE(id, owner_id),
-			ADD CONSTRAINT resource_uq_id_owner_id_deleted UNIQUE(id, owner_id, deleted);
+			ADD CONSTRAINT resource_uq_id_workspace_id UNIQUE(id, workspace_id),
+			ADD CONSTRAINT resource_uq_id_workspace_id_deleted UNIQUE(id, workspace_id, deleted);
 		"#
 	)
 	.execute(&mut *connection)
@@ -150,10 +150,10 @@ pub async fn initialize_rbac_indices(
 	query!(
 		r#"
 		CREATE INDEX
-			resource_idx_owner_id
+			resource_idx_workspace_id
 		ON
 			resource
-		(owner_id);
+		(workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -165,12 +165,12 @@ pub async fn initialize_rbac_indices(
 		ALTER TABLE role
 			ADD CONSTRAINT role_pk
 				PRIMARY KEY(id),
-			ADD CONSTRAINT role_fk_id_owner_id
-				FOREIGN KEY(id, owner_id) REFERENCES resource(id, owner_id),
-			ADD CONSTRAINT role_uq_name_owner_id
-				UNIQUE(name, owner_id),
-			ADD CONSTRAINT role_uq_id_owner_id
-				UNIQUE(id, owner_id);
+			ADD CONSTRAINT role_fk_id_workspace_id
+				FOREIGN KEY(id, workspace_id) REFERENCES resource(id, workspace_id),
+			ADD CONSTRAINT role_uq_name_workspace_id
+				UNIQUE(name, workspace_id),
+			ADD CONSTRAINT role_uq_id_workspace_id
+				UNIQUE(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -273,8 +273,8 @@ pub async fn initialize_rbac_constraints(
 		ALTER TABLE resource
 			ADD CONSTRAINT resource_fk_resource_type_id
 				FOREIGN KEY(resource_type_id) REFERENCES resource_type(id),
-			ADD CONSTRAINT resource_fk_owner_id
-				FOREIGN KEY(owner_id) REFERENCES workspace(id)
+			ADD CONSTRAINT resource_fk_workspace_id
+				FOREIGN KEY(workspace_id) REFERENCES workspace(id)
 					DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
@@ -285,8 +285,8 @@ pub async fn initialize_rbac_constraints(
 	query!(
 		r#"
 		ALTER TABLE role
-		ADD CONSTRAINT role_fk_owner_id
-		FOREIGN KEY(owner_id) REFERENCES workspace(id);
+		ADD CONSTRAINT role_fk_workspace_id
+		FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -301,7 +301,7 @@ pub async fn initialize_rbac_constraints(
 			ADD CONSTRAINT workspace_user_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
 			ADD CONSTRAINT workspace_user_fk_role_id_workspace_id
-				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, owner_id);
+				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -432,7 +432,7 @@ pub async fn initialize_rbac_constraints(
 		) RETURNS TABLE(
 			id UUID,
 			resource_type_id UUID,
-			owner_id UUID,
+			workspace_id UUID,
 			created TIMESTAMPTZ,
 			deleted TIMESTAMPTZ
 		) AS $$
@@ -575,7 +575,7 @@ pub async fn initialize_rbac_constraints(
 					FROM
 						super_admin_workspaces
 					WHERE
-						super_admin_workspaces.workspace_id = resource.owner_id
+						super_admin_workspaces.workspace_id = resource.workspace_id
 				)
 				/* Include: any role or API token explicitly grants this resource
 				(also overrides exclude — include always wins) */
@@ -586,7 +586,7 @@ pub async fn initialize_rbac_constraints(
 						included_resources
 					WHERE
 						included_resources.resource_id = resource.id AND
-						included_resources.workspace_id = resource.owner_id
+						included_resources.workspace_id = resource.workspace_id
 				)
 				/* Exclude: resource is in a workspace with an exclude-type
 				permission and is not on any deny list */
@@ -597,7 +597,7 @@ pub async fn initialize_rbac_constraints(
 						FROM
 							exclude_workspaces
 						WHERE
-							exclude_workspaces.workspace_id = resource.owner_id
+							exclude_workspaces.workspace_id = resource.workspace_id
 					) AND NOT EXISTS (
 						SELECT
 							1

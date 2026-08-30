@@ -53,7 +53,7 @@ pub async fn list_runners_for_workspace(
 		ON
 			runner.id = resource.id
 		WHERE
-			workspace_id = $1 AND
+			runner.workspace_id = $1 AND
 			runner.deleted IS NULL AND
 			($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') AND
 			($5::BOOLEAN IS NULL OR is_connected = $5) AND

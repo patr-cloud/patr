@@ -1222,7 +1222,7 @@ async fn add_member_to_unowned_workspace_denied() {
 	);
 }
 
-/// Creating a workspace seeds the default set of 27 roles (owner_id = the
+/// Creating a workspace seeds the default set of 27 roles (workspace_id = the
 /// workspace id).
 #[tokio::test]
 async fn default_roles_seeded_on_workspace_create() {
@@ -1231,7 +1231,7 @@ async fn default_roles_seeded_on_workspace_create() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let count: i64 = sqlx::query_scalar(&format!(
-		"SELECT COUNT(*) FROM role WHERE owner_id = '{}'",
+		"SELECT COUNT(*) FROM role WHERE workspace_id = '{}'",
 		workspace.id
 	))
 	.fetch_one(setup.database())

@@ -35,7 +35,7 @@ pub async fn create_repository(
 			resource(
 				id,
 				resource_type_id,
-				owner_id,
+				workspace_id,
 				created
 			)
 		VALUES

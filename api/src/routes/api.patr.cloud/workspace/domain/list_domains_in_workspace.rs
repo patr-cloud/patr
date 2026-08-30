@@ -53,7 +53,7 @@ pub async fn list_domains_in_workspace(
 		ON
 			workspace_domain.id = resource.id
 		WHERE
-			workspace_id = $1 AND
+			workspace_domain.workspace_id = $1 AND
 			workspace_domain.deleted IS NULL AND
 			($4::TEXT IS NULL OR CONCAT(name, tld) ILIKE '%' || $4::TEXT || '%') AND
 			($5::BOOLEAN IS NULL OR is_verified = $5) AND

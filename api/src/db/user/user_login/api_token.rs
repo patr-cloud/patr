@@ -322,7 +322,7 @@ pub async fn initialize_api_token_constraints(
 				resource_deleted
 			) REFERENCES resource(
 				id,
-				owner_id,
+				workspace_id,
 				deleted
 			);
 		"#
@@ -350,7 +350,7 @@ pub async fn initialize_api_token_constraints(
 				resource_deleted
 			) REFERENCES resource(
 				id,
-				owner_id,
+				workspace_id,
 				deleted
 			);
 		"#

@@ -62,8 +62,8 @@ pub async fn delete_workspace(
 		FROM
 			resource
 		WHERE
-			owner_id = $1 AND
-			id <> owner_id AND
+			workspace_id = $1 AND
+			id <> workspace_id AND
 			deleted IS NULL;
 		"#,
 		&workspace_id as _,

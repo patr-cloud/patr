@@ -125,7 +125,7 @@ pub async fn initialize_workspace_user_invite_constraints(
 				FOREIGN KEY(invite_id, workspace_id)
 					REFERENCES workspace_user_invite(id, workspace_id),
 			ADD CONSTRAINT workspace_user_invite_role_fk_role_id_workspace_id
-				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, owner_id);
+				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)

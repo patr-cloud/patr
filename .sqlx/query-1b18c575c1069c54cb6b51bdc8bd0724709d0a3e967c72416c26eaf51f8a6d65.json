@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE role ADD CONSTRAINT role_pk PRIMARY KEY(id), ADD CONSTRAINT role_fk_id_workspace_id FOREIGN KEY(id, workspace_id) REFERENCES resource(id, workspace_id), ADD CONSTRAINT role_uq_name_workspace_id UNIQUE(name, workspace_id), ADD CONSTRAINT role_uq_id_workspace_id UNIQUE(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "1b18c575c1069c54cb6b51bdc8bd0724709d0a3e967c72416c26eaf51f8a6d65"
+}

@@ -66,7 +66,7 @@ pub async fn initialize_secret_constraints(
 			ADD CONSTRAINT secret_chk_name_is_trimmed CHECK(name = TRIM(name)),
 			ADD CONSTRAINT secret_fk_id_workspace_id_deleted
 				FOREIGN KEY(id, workspace_id, deleted)
-					REFERENCES resource(id, owner_id, deleted)
+					REFERENCES resource(id, workspace_id, deleted)
 					DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)
