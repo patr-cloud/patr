@@ -124,10 +124,9 @@ fn restore_template_expressions(html: &str, expressions: &[String]) -> String {
 /// The macro:
 /// 1. Reads the MJML template file at compile time.
 /// 2. Uses mrml to compile it to HTML (resolving `<mj-include>` directives).
-/// 3. Embeds the HTML as an Askama inline source template for variable
-///    substitution and filters at runtime.
-/// 4. Generates `render_subject()`, `render_html()`, and `render_text()`
-///    methods.
+/// 3. Embeds the HTML as an Askama inline source template for variable substitution and filters at
+///    runtime.
+/// 4. Generates `render_subject()`, `render_html()`, and `render_text()` methods.
 pub fn parse(input: TokenStream) -> TokenStream {
 	let EmailTemplate {
 		name,

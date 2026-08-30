@@ -17,15 +17,13 @@ impl RequiresRequestHeaders for NoAuthentication {
 /// for an API endpoint.
 ///
 /// The variants are:
-/// - [`PlainTokenAuthenticator`][1]: Any logged in user can access this
-///   endpoint.
-/// - [`WorkspaceSuperAdminAuthenticator`][2]: Only the super admin of the
-///   workspace that is specified in the request can access this endpoint.
-/// - [`WorkspaceMembershipAuthenticator`][3]: Only users that are members of
-///   the workspace that is specified in the request can access this endpoint.
-/// - [`ResourcePermissionAuthenticator`][4]: Only users that have the specified
-///   permission on the resource that is specified in the request can access
-///   this endpoint.
+/// - [`PlainTokenAuthenticator`][1]: Any logged in user can access this endpoint.
+/// - [`WorkspaceSuperAdminAuthenticator`][2]: Only the super admin of the workspace that is
+///   specified in the request can access this endpoint.
+/// - [`WorkspaceMembershipAuthenticator`][3]: Only users that are members of the workspace that is
+///   specified in the request can access this endpoint.
+/// - [`ResourcePermissionAuthenticator`][4]: Only users that have the specified permission on the
+///   resource that is specified in the request can access this endpoint.
 ///
 /// This enum is used in the [`ApiEndpoint`] trait to specify the authentication
 /// type of an endpoint. The constant in the trait is used by the router

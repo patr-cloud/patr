@@ -19,12 +19,12 @@ pub enum ExecutorCall {
 /// Shared mutable state backing all MockExecutor instances in a test.
 ///
 /// Each field controls a different aspect of the mock:
-/// - `calls`: append-only log of every method invocation, in order. Tests
-///   assert on this to verify the actor called the right methods.
-/// - `statuses`: what `get_deployment_status()` returns per deployment. Default
-///   (missing key) returns `DeploymentStatus::Stopped`.
-/// - `upsert_errors` / `delete_errors`: if set for a deployment ID, the
-///   corresponding method returns this error string as `RunnerError`.
+/// - `calls`: append-only log of every method invocation, in order. Tests assert on this to verify
+///   the actor called the right methods.
+/// - `statuses`: what `get_deployment_status()` returns per deployment. Default (missing key)
+///   returns `DeploymentStatus::Stopped`.
+/// - `upsert_errors` / `delete_errors`: if set for a deployment ID, the corresponding method
+///   returns this error string as `RunnerError`.
 /// - `running`: the list of UUIDs returned by `list_running_deployments()`.
 pub struct MockExecutorState {
 	pub calls: Mutex<Vec<ExecutorCall>>,

@@ -1,8 +1,8 @@
 //! Migrate from per-domain custom hostnames to per-URL custom hostnames.
 //!
 //! - Creates the `managed_url_custom_hostname` table
-//! - Moves `cloudflare_custom_hostname_id` from `workspace_domain` into new
-//!   per-URL entries (one per distinct sub_domain + domain_id in managed_url)
+//! - Moves `cloudflare_custom_hostname_id` from `workspace_domain` into new per-URL entries (one
+//!   per distinct sub_domain + domain_id in managed_url)
 //! - Drops the old column from `workspace_domain`
 //! - Drops `is_active` from `managed_url`
 //! - Adds FK from `managed_url` to `managed_url_custom_hostname`

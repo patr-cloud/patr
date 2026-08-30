@@ -62,13 +62,11 @@ where
 /// for an API endpoint.
 ///
 /// The variants are:
-/// - [`NoAuditLogger`][1]: This struct is used to specify that an API endpoint
-///   does not require auditing. It does not log any actions performed on this
-///   endpoint.
-/// - [`AppAuditLogger`][2]: This struct is used to specify that an API endpoint
-///   requires auditing. It logs all actions performed on this resource,
-///   including the request, the response, and the user that performed the
-///   action.
+/// - [`NoAuditLogger`][1]: This struct is used to specify that an API endpoint does not require
+///   auditing. It does not log any actions performed on this endpoint.
+/// - [`AppAuditLogger`][2]: This struct is used to specify that an API endpoint requires auditing.
+///   It logs all actions performed on this resource, including the request, the response, and the
+///   user that performed the action.
 ///
 /// This enum is used in the [`ApiEndpoint`] trait to specify the AuditLogger
 /// type of an endpoint. The constant in the trait is used by the router

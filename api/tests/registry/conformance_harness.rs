@@ -16,8 +16,8 @@
 //! (`OCI_NAMESPACE` and `OCI_CROSSMOUNT_NAMESPACE`), then serves a combined
 //! router on `0.0.0.0:3000`:
 //! - `/v2/*` → the OCI registry
-//! - everything else → the API router (only `/auth/docker-login` matters here,
-//!   which is the `Bearer realm=` the registry challenge points at)
+//! - everything else → the API router (only `/auth/docker-login` matters here, which is the `Bearer
+//!   realm=` the registry challenge points at)
 //!
 //! It prints the `OCI_*` environment the conformance container needs and then
 //! blocks. Ctrl-C to stop.

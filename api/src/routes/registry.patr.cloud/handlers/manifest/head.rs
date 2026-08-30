@@ -58,8 +58,7 @@ macros::declare_registry_endpoint!(
 /// 2. Verifies workspace access
 /// 3. Resolves the reference (tag or digest) to a manifest digest
 /// 4. Queries the database for manifest metadata
-/// 5. Returns headers only (no body) with Content-Length and
-///    Docker-Content-Digest
+/// 5. Returns headers only (no body) with Content-Length and Docker-Content-Digest
 pub async fn check_manifest(
 	AuthenticatedRegistryAppRequest {
 		request:

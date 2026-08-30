@@ -8,13 +8,12 @@
 //!
 //! The destructive parts, in order:
 //!
-//! - Managed URLs of type `proxy_to_static_site` are deleted. The static sites
-//!   they proxy to are going away, so there is nothing left for them to serve.
-//! - `permission` and `resource_type` rows for the three removed resources are
-//!   deleted, cascading through the `role_resource_permissions_*` tables.
-//! - Any role left holding no permissions at all is deleted, along with the
-//!   `workspace_user` rows assigning it. A user whose only role was one of
-//!   these loses their workspace membership.
+//! - Managed URLs of type `proxy_to_static_site` are deleted. The static sites they proxy to are
+//!   going away, so there is nothing left for them to serve.
+//! - `permission` and `resource_type` rows for the three removed resources are deleted, cascading
+//!   through the `role_resource_permissions_*` tables.
+//! - Any role left holding no permissions at all is deleted, along with the `workspace_user` rows
+//!   assigning it. A user whose only role was one of these loses their workspace membership.
 
 use crate::prelude::*;
 
