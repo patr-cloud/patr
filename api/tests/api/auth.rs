@@ -4,7 +4,6 @@ use headers::authorization::Authorization;
 use models::{
 	ApiSuccessResponseBody,
 	api::{auth::*, user::*},
-	rbac::WorkspacePermission,
 };
 
 use crate::prelude::*;

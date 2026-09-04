@@ -29,7 +29,6 @@ use std::{
 
 use axum::{Router, body::Body, routing::any};
 use http::Request;
-use models::rbac::WorkspacePermission;
 use tokio::net::TcpListener;
 use tower::ServiceExt as _;
 
