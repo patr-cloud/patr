@@ -3,7 +3,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::{container_registry::*, deployment::*},
-	rbac::WorkspacePermission,
 	utils::{ListResourceQuery, Uuid},
 };
 

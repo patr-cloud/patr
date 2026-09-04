@@ -4,12 +4,7 @@ use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
 use headers::{ContentLength, ContentType};
 use models::{
 	api::{user::PermissionGrant, workspace::container_registry::*},
-	rbac::{
-		ContainerRegistryRepositoryPermission,
-		DeploymentPermission,
-		Permission,
-		WorkspacePermission,
-	},
+	rbac::{ContainerRegistryRepositoryPermission, DeploymentPermission, Permission},
 };
 
 use super::helpers::*;
@@ -430,9 +425,6 @@ async fn head_blob_with_push_only_token_is_allowed() {
 	let push_perm = setup.get_permission_id(Permission::ContainerRegistryRepository(
 		ContainerRegistryRepositoryPermission::Push,
 	));
-	let push_role = setup
-		.create_role_with_permissions(&user.access_token, workspace.id, vec![push_perm])
-		.await;
 	let push_only = setup
 		.create_test_api_token(
 			&user.access_token,

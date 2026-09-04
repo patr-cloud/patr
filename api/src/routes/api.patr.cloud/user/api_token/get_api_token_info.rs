@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use models::api::user::*;
 use reqwest::StatusCode;
 
@@ -19,7 +17,7 @@ pub async fn get_api_token_info(
 				body: GetApiTokenInfoRequestProcessed,
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		user_data,
 		state: _,

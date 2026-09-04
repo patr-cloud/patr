@@ -68,14 +68,7 @@ async fn loki_push_no_execute_permission_returns_403() {
 		.await;
 
 	// Create an API token for the admin whose ceiling carries only a
-	// harmless role (no Runner::Execute).
-	let view_role = setup
-		.create_role_with_permissions(
-			&admin.access_token,
-			workspace.id,
-			vec![setup.get_permission_id(Permission::ViewRoles)],
-		)
-		.await;
+	// harmless permission (no Runner::Execute).
 	let api_token = setup
 		.create_test_api_token(
 			&admin.access_token,
