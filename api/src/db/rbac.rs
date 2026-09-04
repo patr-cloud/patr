@@ -76,13 +76,41 @@ pub async fn initialize_rbac_tables(
 	.execute(&mut *connection)
 	.await?;
 
+	// The workspace-scoped principal that role bindings are granted on. A
+	// user's actor requires membership. One actor per principal per workspace.
+	// Service accounts get their own variant and column when that table lands.
+	query!(
+		r#"
+		CREATE TYPE WORKSPACE_ACTOR_TYPE AS ENUM(
+			'user'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE TABLE workspace_actor(
+			id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
+			actor_type WORKSPACE_ACTOR_TYPE NOT NULL
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// Users belong to an workspace through a role
 	query!(
 		r#"
 		CREATE TABLE workspace_user(
 			user_id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
-			role_id UUID NOT NULL
+			role_id UUID NOT NULL,
+			actor_id UUID,
+			actor_type WORKSPACE_ACTOR_TYPE NOT NULL
+				GENERATED ALWAYS AS ('user') STORED
 		);
 		"#
 	)
@@ -210,6 +238,17 @@ pub async fn initialize_rbac_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		ALTER TABLE workspace_actor
+			ADD CONSTRAINT workspace_actor_pk PRIMARY KEY(id),
+			ADD CONSTRAINT workspace_actor_uq_id_workspace_id UNIQUE(id, workspace_id),
+			ADD CONSTRAINT workspace_actor_uq_id_actor_type UNIQUE(id, actor_type);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	// Users belong to an workspace through a role
 	query!(
 		r#"
@@ -323,6 +362,18 @@ pub async fn initialize_rbac_constraints(
 				FOREIGN KEY(role_id) REFERENCES role(id),
 			ADD CONSTRAINT role_permission_fk_permission_id
 				FOREIGN KEY(permission_id) REFERENCES permission(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// The (user_id, workspace_id) FK up to workspace_user arrives with the
+	// cutover, once that table's primary key no longer carries role_id.
+	query!(
+		r#"
+		ALTER TABLE workspace_actor
+			ADD CONSTRAINT workspace_actor_fk_workspace_id
+				FOREIGN KEY(workspace_id) REFERENCES workspace(id);
 		"#
 	)
 	.execute(&mut *connection)
