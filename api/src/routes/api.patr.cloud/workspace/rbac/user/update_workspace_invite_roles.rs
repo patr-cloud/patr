@@ -76,38 +76,45 @@ pub async fn update_workspace_invite_roles(
 	.await?;
 
 	// One row per grant, straight from the request.
-	for grant in &roles {
-		query!(
-			r#"
-			INSERT INTO
-				workspace_user_invite_role(
-					invite_id,
-					workspace_id,
-					role_id,
-					scope_id
-				)
-			VALUES
-				($1, $2, $3, $4);
-			"#,
-			invite_id as _,
-			workspace_id as _,
-			grant.role_id as _,
-			&grant.resource_id as _,
-		)
-		.execute(&mut **database)
-		.await
-		.map_err(|err| match err {
-			sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-				match db_err.constraint() {
-					Some("workspace_user_invite_role_fk_scope_id_workspace_id") => {
-						ErrorType::ResourceDoesNotExist
-					}
-					_ => ErrorType::RoleDoesNotExist,
+	let role_ids = roles.iter().map(|grant| grant.role_id).collect::<Vec<_>>();
+	let scope_ids = roles
+		.iter()
+		.map(|grant| grant.resource_id)
+		.collect::<Vec<_>>();
+
+	query!(
+		r#"
+		INSERT INTO
+			workspace_user_invite_role(
+				invite_id,
+				workspace_id,
+				role_id,
+				scope_id
+			)
+		SELECT
+			$1,
+			$2,
+			UNNEST($3::UUID[]),
+			UNNEST($4::UUID[]);
+		"#,
+		invite_id as _,
+		workspace_id as _,
+		&role_ids as _,
+		&scope_ids as _,
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			match db_err.constraint() {
+				Some("workspace_user_invite_role_fk_scope_id_workspace_id") => {
+					ErrorType::ResourceDoesNotExist
 				}
+				_ => ErrorType::RoleDoesNotExist,
 			}
-			other => ErrorType::server_error(other),
-		})?;
-	}
+		}
+		other => ErrorType::server_error(other),
+	})?;
 
 	AppResponse::builder()
 		.body(UpdateWorkspaceInviteRolesResponse)
