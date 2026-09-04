@@ -1,11 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use api::routes::registry_patr_cloud::handlers::manifest::*;
-use models::{
-	ApiSuccessResponseBody,
-	api::workspace::container_registry::*,
-	rbac::WorkspacePermission,
-};
+use models::{ApiSuccessResponseBody, api::workspace::container_registry::*};
 
 use super::helpers::*;
 use crate::prelude::*;

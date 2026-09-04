@@ -1,7 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use models::rbac::WorkspacePermission;
-
 use super::helpers::*;
 use crate::prelude::*;
 

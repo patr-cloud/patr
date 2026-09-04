@@ -16,7 +16,7 @@ use models::{
 			*,
 		},
 	},
-	rbac::{Permission, WorkspacePermission},
+	rbac::Permission,
 	utils::{BearerToken, Uuid},
 };
 use rand::RngExt as _;

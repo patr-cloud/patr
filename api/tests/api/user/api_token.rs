@@ -18,7 +18,7 @@ use models::{
 			rbac::{role::*, user::*},
 		},
 	},
-	rbac::{DeploymentPermission, Permission, WorkspacePermission},
+	rbac::{DeploymentPermission, Permission},
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -379,19 +379,12 @@ async fn api_token_member_cannot_exceed_creator() {
 	let owner = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&owner.access_token).await;
 
-	// Member has only deployment::view; a second role carries modifyRoles.
+	// Member has only deployment::view.
 	let view_role = setup
 		.create_role_with_permissions(
 			&owner.access_token,
 			workspace.id,
 			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
-		)
-		.await;
-	let modify_role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			vec![setup.get_permission_id(Permission::ModifyRoles)],
 		)
 		.await;
 	let member = setup
@@ -837,12 +830,6 @@ async fn api_token_patch_revokes_access() {
 	let modify = setup.get_permission_id(Permission::ModifyRoles);
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
-	let write_role = setup
-		.create_role_with_permissions(&owner.access_token, workspace.id, vec![view, modify])
-		.await;
-	let view_role = setup
-		.create_role_with_permissions(&owner.access_token, workspace.id, vec![view])
-		.await;
 	let token = setup
 		.create_test_api_token(
 			&owner.access_token,
@@ -917,18 +904,21 @@ async fn token_loses_workspace_when_owner_is_removed() {
 	let token = setup
 		.create_test_api_token(
 			&member.access_token,
+			BTreeSet::new(),
 			BTreeMap::from([
 				(
 					workspace.id,
-					WorkspacePermission::Member {
-						permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
-					},
+					vec![PermissionGrant {
+						permission_id: modify,
+						resource_id: workspace.id,
+					}],
 				),
 				(
 					own_workspace.id,
-					WorkspacePermission::Member {
-						permissions: BTreeMap::from([(modify, workspace_scope(own_workspace.id))]),
-					},
+					vec![PermissionGrant {
+						permission_id: modify,
+						resource_id: own_workspace.id,
+					}],
 				),
 			]),
 		)
@@ -999,12 +989,8 @@ async fn token_loses_workspace_when_owner_leaves() {
 	let token = setup
 		.create_test_api_token(
 			&member.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
-				},
-			)]),
+			BTreeSet::new(),
+			permission_grants(workspace.id, modify, &[workspace.id]),
 		)
 		.await;
 
@@ -1776,9 +1762,6 @@ async fn api_token_with_scoped_permissions_allows_resource() {
 		.await;
 
 	let view_perm = setup.get_permission_id(Permission::Deployment(DeploymentPermission::View));
-	let scoped_role = setup
-		.create_role_with_permissions(&user.access_token, workspace.id, vec![view_perm])
-		.await;
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
@@ -1826,9 +1809,6 @@ async fn api_token_with_scoped_permissions_denies_other_resource() {
 		.await;
 
 	let view_perm = setup.get_permission_id(Permission::Deployment(DeploymentPermission::View));
-	let scoped_role = setup
-		.create_role_with_permissions(&user.access_token, workspace.id, vec![view_perm])
-		.await;
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
@@ -1870,9 +1850,6 @@ async fn api_token_view_permission_denies_create() {
 		.await;
 
 	let view_perm = setup.get_permission_id(Permission::Deployment(DeploymentPermission::View));
-	let view_role = setup
-		.create_role_with_permissions(&user.access_token, workspace.id, vec![view_perm])
-		.await;
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
