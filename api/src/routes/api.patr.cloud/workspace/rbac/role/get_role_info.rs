@@ -75,7 +75,7 @@ pub async fn get_role_info(
 		.body(GetRoleInfoResponse {
 			role: WithId::new(
 				role.id,
-				WorkspaceRole {
+				RoleInfo {
 					name: role.name,
 					description: role.description,
 					is_immutable: role.is_immutable,
