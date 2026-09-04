@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT 1 AS \"present\" FROM role WHERE id = $1 AND workspace_id = $2;",
+  "query": "SELECT 1 AS \"present\" FROM workspace_user WHERE user_id = $1 AND workspace_id = $2;",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       null
     ]
   },
-  "hash": "b51e80a2a85645a6c58d95f7e254ede3a09e1c4068d0e4aee408c015f7539dd2"
+  "hash": "44342542e45c4a80082f91192f279fc84de6ed49f02ebc42d6359a2f5e44840a"
 }

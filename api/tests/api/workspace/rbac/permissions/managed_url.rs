@@ -6,7 +6,7 @@ use models::{
 	rbac::{ManagedURLPermission, Permission},
 };
 
-use super::{all, grant, include, resources_scope};
+use super::{all, grants, include, resources_scope};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -81,10 +81,10 @@ async fn managed_url_delete_grants_access() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[url_id])),
+			grants(role.id, &[url_id]),
 		)
 		.await;
 
@@ -185,10 +185,10 @@ async fn managed_url_delete_include_grants_only_listed_resource() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[url1])),
+			grants(role.id, &[url1]),
 		)
 		.await;
 
@@ -254,10 +254,10 @@ async fn managed_url_delete_grant_omitting_a_resource_denies_it() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[url1])),
+			grants(role.id, &[url1]),
 		)
 		.await;
 

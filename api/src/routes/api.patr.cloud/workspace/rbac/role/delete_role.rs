@@ -85,10 +85,6 @@ pub async fn delete_role(
 		}
 	}
 
-	// Only user bindings FK the role; membership rows are untouched — deleting
-	// a role no longer evicts anyone from the workspace. Token ceilings carry
-	// permissions rather than roles, so they survive; a token's effective
-	// access still shrinks, because the owner's bindings just went.
 	let grants_removed = query!(
 		r#"
 		DELETE FROM

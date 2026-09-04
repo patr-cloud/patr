@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, ops::Add};
 
 use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
-use models::{api::workspace::rbac::user::*, rbac::PermissionScope};
+use models::api::workspace::rbac::user::*;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -138,16 +138,8 @@ pub async fn invite_user_to_workspace(
 	})?
 	.id;
 
-	// One row per (role, scope), straight from the request's grants.
+	// One row per grant, straight from the request.
 	for grant in &roles {
-		if matches!(&grant.scope, PermissionScope::Resources(resources) if resources.is_empty()) {
-			return Err(ErrorType::WrongParameters);
-		}
-		let scope_ids = match &grant.scope {
-			PermissionScope::Workspace => vec![workspace_id],
-			PermissionScope::Resources(resources) => resources.iter().copied().collect(),
-		};
-
 		query!(
 			r#"
 			INSERT INTO
@@ -157,15 +149,13 @@ pub async fn invite_user_to_workspace(
 					role_id,
 					scope_id
 				)
-			SELECT
-				$1, $2, $3, *
-			FROM
-				UNNEST($4::UUID[]);
+			VALUES
+				($1, $2, $3, $4);
 			"#,
 			invite_id as _,
 			workspace_id as _,
 			grant.role_id as _,
-			&scope_ids as _,
+			&grant.resource_id as _,
 		)
 		.execute(&mut **database)
 		.await

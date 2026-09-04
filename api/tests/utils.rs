@@ -16,7 +16,7 @@ use models::{
 			*,
 		},
 	},
-	rbac::{Permission, PermissionScope, ResourcePermissionType, WorkspacePermission},
+	rbac::{Permission, ResourcePermissionType, WorkspacePermission},
 	utils::{BearerToken, Uuid},
 };
 use rand::RngExt as _;
@@ -536,43 +536,69 @@ impl TestSetup {
 		workspace_id: Uuid,
 		role_id: Uuid,
 	) -> TestUser {
-		self.add_user_to_workspace_with_grant(
+		self.add_user_to_workspace_with_grants(
 			admin_token,
 			workspace_id,
-			RoleGrant {
+			vec![RoleGrant {
 				role_id,
-				scope: PermissionScope::Workspace,
-			},
+				resource_id: workspace_id,
+			}],
 		)
 		.await
 	}
 
-	/// Add a new user to a workspace with a role at a specific scope.
-	pub async fn add_user_to_workspace_with_grant(
+	/// Add a new user to a workspace with a role at the given scopes.
+	///
+	/// Membership comes from accepting an invite — UpdateUserRoles only edits
+	/// the grants of someone who is already a member, so the invite carries
+	/// the grants and acceptance mints the bindings.
+	pub async fn add_user_to_workspace_with_grants(
 		&self,
 		admin_token: &BearerToken,
 		workspace_id: Uuid,
-		grant: RoleGrant,
+		grants: Vec<RoleGrant>,
 	) -> TestUser {
 		let user_b = self.create_test_user().await;
 
+		let invite = self
+			.make_web_dashboard_call(
+				ApiRequest::<InviteUserToWorkspaceRequest>::builder()
+					.path(InviteUserToWorkspacePath { workspace_id })
+					.headers(InviteUserToWorkspaceRequestHeaders {
+						authorization: admin_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(InviteUserToWorkspaceRequest {
+						email: user_b.email.clone(),
+						roles: grants,
+					})
+					.build(),
+			)
+			.await
+			.json::<ApiSuccessResponseBody<InviteUserToWorkspaceResponse>>()
+			.response;
+
+		let invite_token = invite
+			.accept_url
+			.split_once("token=")
+			.expect("accept_url should carry the invite token")
+			.1
+			.to_string();
+
 		self.make_web_dashboard_call(
-			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
-				.path(UpdateUserRolesInWorkspacePath {
-					workspace_id,
-					user_id: user_b.user_id,
-				})
-				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
-					authorization: admin_token.clone(),
+			ApiRequest::<AcceptWorkspaceInviteRequest>::builder()
+				.headers(AcceptWorkspaceInviteRequestHeaders {
+					authorization: user_b.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(UpdateUserRolesInWorkspaceRequest { roles: vec![grant] })
+				.body(AcceptWorkspaceInviteRequest {
+					invite_id: invite.id.id,
+					token: invite_token,
+				})
 				.build(),
 		)
 		.await
-		.assert_json(&ApiSuccessResponseBody::new(
-			UpdateUserRolesInWorkspaceResponse,
-		));
+		.assert_status(StatusCode::ACCEPTED);
 
 		user_b
 	}

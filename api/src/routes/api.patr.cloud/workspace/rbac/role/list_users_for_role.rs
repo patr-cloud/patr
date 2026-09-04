@@ -54,13 +54,7 @@ pub async fn list_users_for_role(
 	let mut total_count = 0;
 	let users = query!(
 		r#"
-		SELECT
-			holders.user_id AS "user_id!: Uuid",
-			holders.first_name AS "first_name!",
-			holders.last_name AS "last_name!",
-			holders.email AS "email!",
-			COUNT(*) OVER() AS "total_count!"
-		FROM (
+		WITH holders AS (
 			SELECT DISTINCT
 				workspace_user.user_id,
 				"user".first_name,
@@ -82,7 +76,15 @@ pub async fn list_users_for_role(
 				($3::TEXT IS NULL OR "user".email ILIKE '%' || $3::TEXT || '%') AND
 				($4::TEXT IS NULL OR "user".first_name ILIKE '%' || $4::TEXT || '%') AND
 				($5::TEXT IS NULL OR "user".last_name ILIKE '%' || $5::TEXT || '%')
-		) holders
+		)
+		SELECT
+			holders.user_id AS "user_id!: Uuid",
+			holders.first_name AS "first_name!",
+			holders.last_name AS "last_name!",
+			holders.email AS "email!",
+			COUNT(*) OVER() AS "total_count!"
+		FROM
+			holders
 		ORDER BY
 			holders.user_id
 		LIMIT $6

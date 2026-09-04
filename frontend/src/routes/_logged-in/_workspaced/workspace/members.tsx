@@ -133,8 +133,8 @@ const ManageWorkspace = () => {
 		if (!userId) return;
 
 		const requestBody: UpdateUserRolesInWorkspaceRequest = {
-			// Grants are workspace-wide until the scope picker lands.
-			roles: editingRoleIds().map((roleId) => ({ roleId, scope: { scopeType: "workspace" as const } })),
+			// Grants sit at the workspace root until the scope picker lands.
+			roles: editingRoleIds().map((roleId) => ({ roleId, resourceId: workspaceId })),
 		};
 
 		const response = await httpRequest(
@@ -170,7 +170,7 @@ const ManageWorkspace = () => {
 		async ({ workspaceId }) => {
 			const requestBody: InviteUserToWorkspaceRequest = {
 				email: inviteEmail().trim(),
-				roles: inviteRoleIds().map((roleId) => ({ roleId, scope: { scopeType: "workspace" as const } })),
+				roles: inviteRoleIds().map((roleId) => ({ roleId, resourceId: workspaceId })),
 			};
 
 			const response = await httpRequest<InviteUserToWorkspaceResponse>(
@@ -254,10 +254,7 @@ const ManageWorkspace = () => {
 			if (!inviteId) return;
 
 			const body: UpdateWorkspaceInviteRolesRequest = {
-				roles: editingInviteRoleIds().map((roleId) => ({
-					roleId,
-					scope: { scopeType: "workspace" as const },
-				})),
+				roles: editingInviteRoleIds().map((roleId) => ({ roleId, resourceId: workspaceId })),
 			};
 			const response = await httpRequest(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/rbac/user/invite/${inviteId}`,

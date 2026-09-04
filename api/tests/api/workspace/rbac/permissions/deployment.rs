@@ -6,7 +6,7 @@ use models::{
 	rbac::{DeploymentPermission, Permission},
 };
 
-use super::{all, grant, include, resources_scope, setup_permission_test};
+use super::{all, grants, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -27,10 +27,10 @@ async fn deployment_view_permission_grants_access() {
 		.create_role_with_permissions(&admin.access_token, workspace.id, vec![view_id])
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment.id])),
+			grants(role.id, &[deployment.id]),
 		)
 		.await;
 
@@ -137,10 +137,10 @@ async fn deployment_delete_permission_grants_access() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment.id])),
+			grants(role.id, &[deployment.id]),
 		)
 		.await;
 
@@ -306,10 +306,10 @@ async fn deployment_include_grants_only_listed_resource() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment1.id])),
+			grants(role.id, &[deployment1.id]),
 		)
 		.await;
 
@@ -375,10 +375,10 @@ async fn deployment_grant_omitting_a_resource_denies_it() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment1.id, deployment3.id])),
+			grants(role.id, &[deployment1.id, deployment3.id]),
 		)
 		.await;
 
@@ -574,10 +574,10 @@ async fn deployment_view_does_not_grant_edit() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment.id])),
+			grants(role.id, &[deployment.id]),
 		)
 		.await;
 
@@ -798,10 +798,10 @@ async fn deployment_view_does_not_grant_delete() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment.id])),
+			grants(role.id, &[deployment.id]),
 		)
 		.await;
 
@@ -846,10 +846,10 @@ async fn deployment_stop_denied_without_permission() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment.id])),
+			grants(role.id, &[deployment.id]),
 		)
 		.await;
 
@@ -900,10 +900,10 @@ async fn deployment_include_multiple_resources() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment1.id, deployment2.id])),
+			grants(role.id, &[deployment1.id, deployment2.id]),
 		)
 		.await;
 
@@ -979,10 +979,10 @@ async fn deployment_view_does_not_grant_start() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment.id])),
+			grants(role.id, &[deployment.id]),
 		)
 		.await;
 
@@ -1042,10 +1042,10 @@ async fn deployment_edit_does_not_grant_delete() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment.id])),
+			grants(role.id, &[deployment.id]),
 		)
 		.await;
 
@@ -1089,10 +1089,10 @@ async fn deployment_start_does_not_grant_stop() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[deployment.id])),
+			grants(role.id, &[deployment.id]),
 		)
 		.await;
 

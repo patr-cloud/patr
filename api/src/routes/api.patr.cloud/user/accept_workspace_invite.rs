@@ -172,7 +172,15 @@ pub async fn accept_workspace_invite(
 	query!(
 		r#"
 		INSERT INTO
-			role_binding(id, workspace_id, actor_id, role_id, scope_id, created, created_by)
+			role_binding(
+				id,
+				workspace_id,
+				actor_id,
+				role_id,
+				scope_id,
+				created,
+				created_by
+			)
 		SELECT
 			gen_random_uuid(),
 			ir.workspace_id,

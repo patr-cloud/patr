@@ -6,7 +6,7 @@ use models::{
 	rbac::{Permission, RunnerPermission},
 };
 
-use super::{all, grant, include, resources_scope, setup_permission_test};
+use super::{all, grants, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -99,10 +99,10 @@ async fn runner_include_grants_only_listed_resource() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[runner1.id])),
+			grants(role.id, &[runner1.id]),
 		)
 		.await;
 
@@ -159,10 +159,10 @@ async fn runner_grant_omitting_a_resource_denies_it() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[runner1.id])),
+			grants(role.id, &[runner1.id]),
 		)
 		.await;
 
@@ -361,10 +361,10 @@ async fn runner_view_does_not_grant_delete() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[runner.id])),
+			grants(role.id, &[runner.id]),
 		)
 		.await;
 

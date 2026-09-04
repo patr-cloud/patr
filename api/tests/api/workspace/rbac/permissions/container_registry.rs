@@ -6,7 +6,7 @@ use models::{
 	rbac::{ContainerRegistryRepositoryPermission, Permission},
 };
 
-use super::{all, grant, include, resources_scope, setup_permission_test};
+use super::{all, grants, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -62,10 +62,10 @@ async fn container_registry_delete_grants_access() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[repo.id])),
+			grants(role.id, &[repo.id]),
 		)
 		.await;
 
@@ -155,10 +155,10 @@ async fn container_registry_delete_include_grants_only_listed_resource() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[repo1.id])),
+			grants(role.id, &[repo1.id]),
 		)
 		.await;
 
@@ -224,10 +224,10 @@ async fn container_registry_view_include_grants_only_listed_resource() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[repo1.id])),
+			grants(role.id, &[repo1.id]),
 		)
 		.await;
 
@@ -291,10 +291,10 @@ async fn container_registry_view_grant_omitting_a_resource_denies_it() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[repo1.id])),
+			grants(role.id, &[repo1.id]),
 		)
 		.await;
 

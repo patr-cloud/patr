@@ -36,7 +36,8 @@ export const EditUserRoles = (props: EditRolesProps) => {
 
 	const { execute: handleSave, isLoading: isSaving } = createLoggedInAction(async () => {
 		const requestBody: UpdateUserRolesInWorkspaceRequest = {
-			roles: selectedRoles().map((roleId) => ({ roleId, scope: { scopeType: "workspace" as const } })),
+			// The workspace id is the root scope: a grant there covers everything in it.
+			roles: selectedRoles().map((roleId) => ({ roleId, resourceId: props.workspaceId })),
 		};
 
 		const response = await httpRequest(

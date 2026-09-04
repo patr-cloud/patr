@@ -32,8 +32,6 @@ pub async fn remove_user_from_workspace(
 ) -> Result<AppResponse<RemoveUserFromWorkspaceRequest>, ErrorType> {
 	info!("Removing user `{user_id}` from workspace `{workspace_id}`");
 
-	// The FK chain is role_binding -> actor -> workspace_user, so the
-	// teardown is ordered; membership presence is read off the last delete.
 	query!(
 		r#"
 		DELETE FROM

@@ -1,8 +1,4 @@
-use models::{
-	api::workspace::rbac::user::RoleGrant,
-	rbac::{Permission, PermissionScope},
-	utils::Uuid,
-};
+use models::{api::workspace::rbac::user::RoleGrant, rbac::Permission, utils::Uuid};
 
 use crate::prelude::*;
 
@@ -20,7 +16,7 @@ pub mod workspace;
 /// permissions. Returns (admin, workspace_id, user_b).
 async fn setup_permission_test(
 	setup: &TestSetup,
-	perm_entries: Vec<(Permission, PermissionScope)>,
+	perm_entries: Vec<(Permission, Vec<Uuid>)>,
 ) -> (TestUser, Uuid, TestUser) {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
@@ -37,39 +33,49 @@ async fn setup_permission_test(
 		scope = Some(perm_scope);
 	}
 	let scope = scope.expect("at least one permission");
+	// An empty scope list means the whole workspace: the grant sits at the root.
+	let resource_ids = if scope.is_empty() {
+		vec![workspace.id]
+	} else {
+		scope
+	};
 
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, permissions)
 		.await;
 
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			RoleGrant {
-				role_id: role.id,
-				scope,
-			},
+			grants(role.id, &resource_ids),
 		)
 		.await;
 
 	(admin, workspace.id, user_b)
 }
 
-fn include(ids: &[Uuid]) -> PermissionScope {
-	PermissionScope::Resources(ids.iter().copied().collect())
+fn include(ids: &[Uuid]) -> Vec<Uuid> {
+	ids.to_vec()
 }
 
-fn all() -> PermissionScope {
-	PermissionScope::Workspace
+/// The whole workspace — an empty list, resolved to the workspace root.
+fn all() -> Vec<Uuid> {
+	Vec::new()
 }
 
 /// A grant scope covering exactly these resources.
-fn resources_scope(ids: &[Uuid]) -> PermissionScope {
-	PermissionScope::Resources(ids.iter().copied().collect())
+fn resources_scope(ids: &[Uuid]) -> Vec<Uuid> {
+	ids.to_vec()
 }
 
-/// A role grant at a specific scope.
-fn grant(role_id: Uuid, scope: PermissionScope) -> RoleGrant {
-	RoleGrant { role_id, scope }
+/// One grant of `role_id` per resource it applies at.
+fn grants(role_id: Uuid, resource_ids: &[Uuid]) -> Vec<RoleGrant> {
+	resource_ids
+		.iter()
+		.map(|resource_id| RoleGrant {
+			role_id,
+			resource_id: *resource_id,
+		})
+		.collect::<Vec<_>>()
 }
