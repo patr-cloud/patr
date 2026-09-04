@@ -41,11 +41,12 @@ pub struct Role {
 	pub description: String,
 }
 
-/// A role as it exists in a workspace. Immutable roles are the seeded
+/// A role as the API returns it: the request shape [`Role`] plus the
+/// server-controlled immutability flag. Immutable roles are the seeded
 /// defaults — not editable, not deletable.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
-pub struct WorkspaceRole {
+pub struct RoleInfo {
 	/// The name of the role
 	pub name: String,
 	/// The description of the role
