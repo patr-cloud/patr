@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use models::{
 	api::workspace::{
 		container_registry::*,
@@ -12,7 +10,6 @@ use models::{
 	rbac::Permission,
 };
 
-use super::all;
 use crate::prelude::*;
 
 #[tokio::test]

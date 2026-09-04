@@ -1,8 +1,4 @@
-use std::{
-	collections::{BTreeMap, BTreeSet},
-	net::IpAddr,
-	ops::Sub,
-};
+use std::{collections::BTreeMap, net::IpAddr, ops::Sub};
 
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{RequestUserData, rbac::WorkspacePermission};

@@ -1,7 +1,4 @@
-use std::{
-	collections::{BTreeMap, BTreeSet},
-	net::IpAddr,
-};
+use std::{collections::BTreeMap, net::IpAddr};
 
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
 use models::{

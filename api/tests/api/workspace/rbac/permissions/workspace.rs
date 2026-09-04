@@ -1,8 +1,6 @@
-use std::collections::BTreeMap;
-
 use models::{api::workspace::*, rbac::Permission};
 
-use super::{all, grants, resources_scope, setup_permission_test};
+use super::{all, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]

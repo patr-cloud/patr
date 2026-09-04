@@ -31,7 +31,7 @@ pub async fn update_role(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		user_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateRoleRequest>,
 ) -> Result<AppResponse<UpdateRoleRequest>, ErrorType> {
