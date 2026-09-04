@@ -41,7 +41,7 @@ async fn probe_modify_roles(
 						name: random_name(8),
 						description: "cascade probe".to_string(),
 					},
-					permissions: vec![view_perm],
+					permissions: BTreeSet::from([view_perm]),
 				})
 				.build(),
 		)

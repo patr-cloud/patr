@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use axum::http::StatusCode;
 use models::api::workspace::rbac::role::*;
 use time::OffsetDateTime;
@@ -111,12 +109,7 @@ pub async fn create_new_role(
 
 	trace!("Role created. Inserting permissions.");
 
-	let permission_ids = permissions
-		.into_iter()
-		.collect::<BTreeSet<_>>()
-		.into_iter()
-		.map(Into::into)
-		.collect::<Vec<_>>();
+	let permission_ids = permissions.into_iter().map(Into::into).collect::<Vec<_>>();
 
 	query!(
 		r#"
