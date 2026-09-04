@@ -44,7 +44,7 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 			return false;
 		}
 		const body: UpdateUserRolesInWorkspaceRequest = {
-			roles: roleIds.map((roleId) => ({ roleId, scope: { scopeType: "workspace" as const } })),
+			roles: roleIds.map((roleId) => ({ roleId, resourceId: wsId })),
 		};
 		const response = await httpRequest(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/user/${userId}`,

@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use axum::http::StatusCode;
-use models::{api::workspace::rbac::user::*, rbac::PermissionScope};
+use models::api::workspace::rbac::user::*;
 
 use crate::prelude::*;
 
@@ -38,8 +38,6 @@ pub async fn list_workspace_invites(
 			workspace_user_invite.created,
 			workspace_user_invite.token_expiry,
 			workspace_user_invite_role.role_id AS "role_id?: Uuid",
-			(workspace_user_invite_role.scope_id = workspace_user_invite_role.workspace_id)
-				AS "is_workspace_scope?",
 			workspace_user_invite_role.scope_id AS "scope_id?: Uuid"
 		FROM
 			workspace_user_invite
@@ -79,28 +77,14 @@ pub async fn list_workspace_invites(
 					)
 				});
 
-				let (Some(role_id), Some(is_workspace_scope), Some(scope_id)) =
-					(row.role_id, row.is_workspace_scope, row.scope_id)
-				else {
+				let (Some(role_id), Some(scope_id)) = (row.role_id, row.scope_id) else {
 					return invites;
 				};
 
-				let scope = if is_workspace_scope {
-					PermissionScope::Workspace
-				} else {
-					PermissionScope::Resources(BTreeSet::from([scope_id]))
-				};
-
-				if let Some(grant) = invite
-					.data
-					.roles
-					.iter_mut()
-					.find(|grant| grant.role_id == role_id)
-				{
-					grant.scope.union_with(&scope);
-				} else {
-					invite.data.roles.push(RoleGrant { role_id, scope });
-				}
+				invite.data.roles.push(RoleGrant {
+					role_id,
+					resource_id: scope_id,
+				});
 
 				invites
 			},

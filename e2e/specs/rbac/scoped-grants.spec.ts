@@ -6,7 +6,6 @@ import {
 	createUserWithWorkspace,
 	createSecondMemberWithRole,
 	getPermissionId,
-	resourcesScope,
 } from '@/prelude';
 import type { ApiClient, UserHandle } from '@/prelude';
 import { createRunnerAPI } from '@/helpers/runner-api';
@@ -30,12 +29,7 @@ test.describe('rbac > resource-scoped grants', () => {
 		const allowed = await createRunnerAPI(api, owner, owner.workspaceId);
 		const denied = await createRunnerAPI(api, owner, owner.workspaceId);
 		const viewId = await permId(api, owner, 'runner::view');
-		await using member = await createSecondMemberWithRole(
-			api,
-			owner,
-			[viewId],
-			resourcesScope([allowed.id]),
-		);
+		await using member = await createSecondMemberWithRole(api, owner, [viewId], [allowed.id]);
 
 		const fetchRunner = (id: string) =>
 			api.request('GET', `/workspace/${owner.workspaceId}/runner/${id}`, {
@@ -51,12 +45,7 @@ test.describe('rbac > resource-scoped grants', () => {
 		const allowed = await createRunnerAPI(api, owner, owner.workspaceId);
 		const denied = await createRunnerAPI(api, owner, owner.workspaceId);
 		const viewId = await permId(api, owner, 'runner::view');
-		await using member = await createSecondMemberWithRole(
-			api,
-			owner,
-			[viewId],
-			resourcesScope([allowed.id]),
-		);
+		await using member = await createSecondMemberWithRole(api, owner, [viewId], [allowed.id]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();

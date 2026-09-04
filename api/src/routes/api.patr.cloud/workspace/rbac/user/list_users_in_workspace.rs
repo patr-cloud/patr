@@ -6,7 +6,6 @@ use models::{
 		WithId,
 		workspace::rbac::user::{WorkspaceUserInfo, WorkspaceUserInfoSearchParams, *},
 	},
-	rbac::PermissionScope,
 	utils::TotalCountHeader,
 };
 
@@ -70,13 +69,14 @@ pub async fn list_users_in_workspace(
 			WHERE
 				workspace.id = $1
 		),
-		matched_users AS (
+		users_page AS (
 			SELECT
 				members.user_id,
 				"user".first_name,
 				"user".last_name,
 				"user".email,
-				(workspace.id IS NOT NULL) AS is_owner
+				(workspace.id IS NOT NULL) AS is_owner,
+				COUNT(*) OVER() AS total_count
 			FROM
 				members
 			INNER JOIN
@@ -92,14 +92,8 @@ pub async fn list_users_in_workspace(
 				($2::TEXT IS NULL OR "user".email ILIKE '%' || $2::TEXT || '%') AND
 				($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
 				($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
-		),
-		users_page AS (
-			SELECT
-				*
-			FROM
-				matched_users
 			ORDER BY
-				user_id
+				members.user_id
 			LIMIT $5
 			OFFSET $6
 		)
@@ -110,9 +104,8 @@ pub async fn list_users_in_workspace(
 			users_page.email AS "email!",
 			users_page.is_owner AS "is_owner!",
 			role_binding.role_id AS "role_id?",
-			(role_binding.scope_id = role_binding.workspace_id) AS "is_workspace_scope?",
 			role_binding.scope_id AS "scope_id?",
-			(SELECT COUNT(*) FROM matched_users) AS "total_count!"
+			users_page.total_count AS "total_count!"
 		FROM
 			users_page
 		LEFT JOIN
@@ -161,30 +154,15 @@ pub async fn list_users_in_workspace(
 		}
 		let member = users.last_mut().expect("pushed above if it was missing");
 
-		// A zero-binding member still gets an entry, with no grants; per-
-		// resource bindings of one role accumulate into a single grant.
-		let (Some(role_id), Some(is_workspace_scope), Some(scope_id)) =
-			(row.role_id, row.is_workspace_scope, row.scope_id)
-		else {
+		// A zero-binding member still gets an entry, with no grants.
+		let (Some(role_id), Some(scope_id)) = (row.role_id, row.scope_id) else {
 			return users;
 		};
-		let role_id = role_id.into();
 
-		let scope = if is_workspace_scope {
-			PermissionScope::Workspace
-		} else {
-			PermissionScope::Resources(BTreeSet::from([scope_id.into()]))
-		};
-
-		if let Some(grant) = member
-			.roles
-			.iter_mut()
-			.find(|grant| grant.role_id == role_id)
-		{
-			grant.scope.union_with(&scope);
-		} else {
-			member.roles.push(RoleGrant { role_id, scope });
-		}
+		member.roles.push(RoleGrant {
+			role_id: role_id.into(),
+			resource_id: scope_id.into(),
+		});
 
 		users
 	});

@@ -8,7 +8,6 @@ use models::{
 		ContainerRegistryRepositoryPermission,
 		DeploymentPermission,
 		Permission,
-		PermissionScope,
 		ResourcePermissionType,
 		WorkspacePermission,
 	},
@@ -363,7 +362,7 @@ async fn initiate_upload_as_member_without_push_returns_forbidden() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(perm_id, PermissionScope::Workspace)]),
+					permissions: BTreeMap::from([(perm_id, BTreeSet::from([workspace.id]))]),
 				},
 			)]),
 		)
@@ -430,7 +429,7 @@ async fn head_blob_with_push_only_token_is_allowed() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(push_perm, PermissionScope::Workspace)]),
+					permissions: BTreeMap::from([(push_perm, BTreeSet::from([workspace.id]))]),
 				},
 			)]),
 		)

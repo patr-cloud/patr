@@ -6,7 +6,7 @@ use models::{
 	rbac::{DomainPermission, Permission},
 };
 
-use super::{all, grant, include, resources_scope, setup_permission_test};
+use super::{all, grants, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -55,10 +55,10 @@ async fn domain_delete_permission_grants_access() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[domain.id])),
+			grants(role.id, &[domain.id]),
 		)
 		.await;
 
@@ -100,10 +100,10 @@ async fn domain_verify_permission_grants_access() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[domain.id])),
+			grants(role.id, &[domain.id]),
 		)
 		.await;
 
@@ -190,10 +190,10 @@ async fn domain_include_grants_only_listed_resource() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[domain1.id])),
+			grants(role.id, &[domain1.id]),
 		)
 		.await;
 
@@ -256,10 +256,10 @@ async fn domain_grant_omitting_a_resource_denies_it() {
 		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_grant(
+		.add_user_to_workspace_with_grants(
 			&admin.access_token,
 			workspace.id,
-			grant(role.id, resources_scope(&[domain1.id])),
+			grants(role.id, &[domain1.id]),
 		)
 		.await;
 

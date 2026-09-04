@@ -1,24 +1,20 @@
 import type { ApiClient } from '@/helpers/api';
 
-// Where a role grant applies: the whole workspace, or an explicit resource
-// set. Mirrors models/src/rbac/permission_scope.rs (tagged, camelCase).
-export type PermissionScope =
-	{ scopeType: 'workspace' } | { scopeType: 'resources'; resources: string[] };
+// One role grant, mirroring a role_binding row. Granting a role at several
+// resources means several grants; the workspace's own id is the root of the
+// resource tree, so a grant there covers the whole workspace.
+export type RoleGrant = { roleId: string; resourceId: string };
 
-// One role grant — the only place a permission target appears on the wire.
-export type RoleGrant = { roleId: string; scope: PermissionScope };
-
-export const workspaceScope: PermissionScope = { scopeType: 'workspace' };
-
-export function resourcesScope(resources: string[]): PermissionScope {
-	return { scopeType: 'resources', resources };
+// Grants of one role across a set of resources.
+export function scopedTo(roleId: string, resourceIds: string[]): RoleGrant[] {
+	return resourceIds.map((resourceId) => ({ roleId, resourceId }));
 }
 
-// Accepts bare role ids (granted workspace-wide) or full grants, so call
-// sites that don't care about scoping stay terse.
-export function toGrants(roles: (string | RoleGrant)[]): RoleGrant[] {
+// Accepts bare role ids (granted at the workspace root) or full grants, so
+// call sites that don't care about scoping stay terse.
+export function toGrants(wsId: string, roles: (string | RoleGrant)[]): RoleGrant[] {
 	return roles.map((role) =>
-		typeof role === 'string' ? { roleId: role, scope: workspaceScope } : role,
+		typeof role === 'string' ? { roleId: role, resourceId: wsId } : role,
 	);
 }
 
@@ -157,7 +153,7 @@ export async function setUserRolesAPI(
 	await api.request('POST', `/workspace/${wsId}/rbac/user/${userId}`, {
 		token: user.accessToken,
 		clientIp: user.clientIp,
-		body: { roles: toGrants(roles) },
+		body: { roles: toGrants(wsId, roles) },
 	});
 }
 

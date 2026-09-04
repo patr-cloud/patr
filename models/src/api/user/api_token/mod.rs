@@ -103,10 +103,7 @@ mod test {
 	use time::OffsetDateTime;
 
 	use super::UserApiToken;
-	use crate::{
-		prelude::*,
-		rbac::{PermissionScope, WorkspacePermission},
-	};
+	use crate::{prelude::*, rbac::WorkspacePermission};
 
 	#[test]
 	fn assert_empty_user_api_token_types() {
@@ -147,10 +144,7 @@ mod test {
 						WorkspacePermission::Member {
 							permissions: {
 								let mut map = BTreeMap::new();
-								map.insert(
-									Uuid::nil(),
-									PermissionScope::Resources(BTreeSet::from([Uuid::nil()])),
-								);
+								map.insert(Uuid::nil(), BTreeSet::from([Uuid::nil()]));
 								map
 							},
 						},
@@ -188,20 +182,9 @@ mod test {
 				Token::Str("type"),
 				Token::Str("member"),
 				Token::Str("00000000000000000000000000000000"),
-				Token::Struct {
-					name: "PermissionScope",
-					len: 2,
-				},
-				Token::Str("scopeType"),
-				Token::UnitVariant {
-					name: "PermissionScope",
-					variant: "resources",
-				},
-				Token::Str("resources"),
 				Token::Seq { len: Some(1) },
 				Token::Str("00000000000000000000000000000000"),
 				Token::SeqEnd,
-				Token::StructEnd,
 				Token::MapEnd,
 				Token::MapEnd,
 				Token::Str("tokenNbf"),

@@ -6,7 +6,7 @@ use std::{
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
 use models::{
 	RequestUserData,
-	rbac::{PermissionScope, WorkspacePermission, intersect_workspace_permissions},
+	rbac::{WorkspacePermission, intersect_workspace_permissions},
 };
 use rustis::{client::Client as RedisClient, commands::StringCommands as _};
 use time::OffsetDateTime;
@@ -216,7 +216,6 @@ pub async fn get_permissions_for_api_token(
 		SELECT
 			role_binding.workspace_id AS "workspace_id!",
 			role_permission.permission_id AS "permission_id!",
-			(role_binding.scope_id = role_binding.workspace_id) AS "is_workspace_scope!",
 			role_binding.scope_id AS "scope_id!"
 		FROM
 			workspace_user
@@ -248,18 +247,12 @@ pub async fn get_permissions_for_api_token(
 			return;
 		};
 
-		let entry = permissions.entry(row.permission_id.into());
-		if row.is_workspace_scope {
-			entry
-				.and_modify(|scope| *scope = PermissionScope::Workspace)
-				.or_insert(PermissionScope::Workspace);
-		} else {
-			entry
-				.or_insert_with(|| PermissionScope::Resources(BTreeSet::new()))
-				.union_with(&PermissionScope::Resources(BTreeSet::from([row
-					.scope_id
-					.into()])));
-		}
+		// A scope is just a resource id; the workspace's own id is the root
+		// and covers everything under it.
+		permissions
+			.entry(row.permission_id.into())
+			.or_default()
+			.insert(row.scope_id.into());
 	});
 
 	// Token's declared permissions (the snapshot at mint/patch time).
@@ -286,16 +279,15 @@ pub async fn get_permissions_for_api_token(
 
 	// The token's declared grants, from the legacy snapshot tables (interim
 	// until the token DTOs move to ceiling rows), expanded to additive
-	// scopes in SQL: an exclude-type entry with no exclusions is
-	// workspace-wide; a non-empty exclude list expands to the live workspace
+	// scopes in SQL: an exclude-type entry with no exclusions scopes to the
+	// workspace root; a non-empty exclude list expands to the live workspace
 	// resources not on it; include lists name resources directly.
 	query!(
 		r#"
 		SELECT
 			t.workspace_id AS "workspace_id!",
 			t.permission_id AS "permission_id!",
-			TRUE AS "is_workspace_scope!",
-			NULL::UUID AS "scope_id?"
+			t.workspace_id AS "scope_id!"
 		FROM
 			user_api_token_resource_permissions_type t
 		WHERE
@@ -315,7 +307,6 @@ pub async fn get_permissions_for_api_token(
 		SELECT
 			inc.workspace_id,
 			inc.permission_id,
-			FALSE,
 			inc.resource_id
 		FROM
 			user_api_token_resource_permissions_include inc
@@ -325,7 +316,6 @@ pub async fn get_permissions_for_api_token(
 		SELECT
 			t.workspace_id,
 			t.permission_id,
-			FALSE,
 			r.id
 		FROM
 			user_api_token_resource_permissions_type t
@@ -377,18 +367,12 @@ pub async fn get_permissions_for_api_token(
 			return;
 		};
 
-		let entry = permissions.entry(row.permission_id.into());
-		if row.is_workspace_scope {
-			entry
-				.and_modify(|scope| *scope = PermissionScope::Workspace)
-				.or_insert(PermissionScope::Workspace);
-		} else if let Some(scope_id) = row.scope_id {
-			entry
-				.or_insert_with(|| PermissionScope::Resources(BTreeSet::new()))
-				.union_with(&PermissionScope::Resources(BTreeSet::from([
-					scope_id.into()
-				])));
-		}
+		// A scope is just a resource id; the workspace's own id is the root
+		// and covers everything under it.
+		permissions
+			.entry(row.permission_id.into())
+			.or_default()
+			.insert(row.scope_id.into());
 	});
 
 	let effective_permissions =

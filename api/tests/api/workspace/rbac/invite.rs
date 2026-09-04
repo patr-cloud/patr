@@ -15,7 +15,7 @@ use models::{
 		},
 		workspace::rbac::user::*,
 	},
-	rbac::{Permission, PermissionScope, ResourcePermissionType},
+	rbac::{Permission, ResourcePermissionType},
 };
 
 use crate::prelude::*;
@@ -54,7 +54,7 @@ async fn invite(
 						.into_iter()
 						.map(|role_id| RoleGrant {
 							role_id,
-							scope: PermissionScope::Workspace,
+							resource_id: workspace_id,
 						})
 						.collect(),
 				})
@@ -520,7 +520,7 @@ async fn update_invite_roles_works() {
 				.body(UpdateWorkspaceInviteRolesRequest {
 					roles: vec![RoleGrant {
 						role_id: role_b.id,
-						scope: PermissionScope::Workspace,
+						resource_id: workspace.id,
 					}],
 				})
 				.build(),

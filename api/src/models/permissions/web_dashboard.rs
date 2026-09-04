@@ -5,10 +5,7 @@ use std::{
 };
 
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
-use models::{
-	RequestUserData,
-	rbac::{PermissionScope, WorkspacePermission},
-};
+use models::{RequestUserData, rbac::WorkspacePermission};
 use rustis::{client::Client as RedisClient, commands::StringCommands as _};
 use time::OffsetDateTime;
 
@@ -223,7 +220,6 @@ pub async fn get_permissions_for_web_login(
 		SELECT
 			role_binding.workspace_id AS "workspace_id!",
 			role_permission.permission_id AS "permission_id!",
-			(role_binding.scope_id = role_binding.workspace_id) AS "is_workspace_scope!",
 			role_binding.scope_id AS "scope_id!"
 		FROM
 			workspace_user
@@ -255,18 +251,12 @@ pub async fn get_permissions_for_web_login(
 			return;
 		};
 
-		let entry = permissions.entry(row.permission_id.into());
-		if row.is_workspace_scope {
-			entry
-				.and_modify(|scope| *scope = PermissionScope::Workspace)
-				.or_insert(PermissionScope::Workspace);
-		} else {
-			entry
-				.or_insert_with(|| PermissionScope::Resources(BTreeSet::new()))
-				.union_with(&PermissionScope::Resources(BTreeSet::from([row
-					.scope_id
-					.into()])));
-		}
+		// A scope is just a resource id; the workspace's own id is the root
+		// and covers everything under it.
+		permissions
+			.entry(row.permission_id.into())
+			.or_default()
+			.insert(row.scope_id.into());
 	});
 
 	redis_connection

@@ -5,7 +5,7 @@ use models::{
 	rbac::{DeploymentPermission, Permission, ResourcePermissionType, VolumePermission},
 };
 
-use super::{all, grant, include, resources_scope, setup_permission_test};
+use super::{all, grants, include, resources_scope, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
