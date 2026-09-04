@@ -55,18 +55,9 @@ async fn setup_permission_test(
 	(admin, workspace.id, user_b)
 }
 
-fn include(ids: &[Uuid]) -> Vec<Uuid> {
-	ids.to_vec()
-}
-
 /// The whole workspace — an empty list, resolved to the workspace root.
 fn all() -> Vec<Uuid> {
 	Vec::new()
-}
-
-/// A grant scope covering exactly these resources.
-fn resources_scope(ids: &[Uuid]) -> Vec<Uuid> {
-	ids.to_vec()
 }
 
 /// One grant of `role_id` per resource it applies at.

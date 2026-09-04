@@ -1,11 +1,9 @@
-use std::collections::BTreeMap;
-
 use models::{
 	api::workspace::volume::*,
 	rbac::{Permission, VolumePermission},
 };
 
-use super::{all, grants, include, resources_scope, setup_permission_test};
+use super::{all, grants, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]

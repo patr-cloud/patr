@@ -1,12 +1,10 @@
-use std::collections::BTreeMap;
-
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::runner::*,
 	rbac::{Permission, RunnerPermission},
 };
 
-use super::{all, grants, include, resources_scope, setup_permission_test};
+use super::{all, grants, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]

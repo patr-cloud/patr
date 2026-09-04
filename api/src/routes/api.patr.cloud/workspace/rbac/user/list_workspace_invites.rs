@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use axum::http::StatusCode;
 use models::api::workspace::rbac::user::*;

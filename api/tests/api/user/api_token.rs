@@ -14,7 +14,7 @@ use models::{
 			rbac::{role::*, user::*},
 		},
 	},
-	rbac::{DeploymentPermission, Permission, ResourcePermissionType, WorkspacePermission},
+	rbac::{DeploymentPermission, Permission, WorkspacePermission},
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -92,11 +92,6 @@ async fn mint_token_raw(
 				.build(),
 		)
 		.await
-}
-
-/// A role permission grant over all resources (Exclude of the empty set).
-fn all_resources() -> ResourcePermissionType {
-	ResourcePermissionType::Exclude(BTreeSet::new())
 }
 
 /// A token permission scope covering the whole workspace — the grant sits at

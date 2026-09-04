@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use models::rbac::WorkspacePermission;
 use serde::{Deserialize, Serialize};

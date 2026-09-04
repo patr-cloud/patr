@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use apalis::prelude::Data;
 use apalis_cron::Tick;
@@ -15,7 +15,7 @@ use models::{
 		},
 		workspace::rbac::user::*,
 	},
-	rbac::{Permission, ResourcePermissionType},
+	rbac::Permission,
 };
 
 use crate::prelude::*;

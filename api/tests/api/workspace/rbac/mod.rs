@@ -1,9 +1,7 @@
-use std::collections::BTreeMap;
-
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::rbac::{role::*, user::*, *},
-	rbac::{Permission, ResourcePermissionType},
+	rbac::Permission,
 };
 
 use crate::prelude::*;

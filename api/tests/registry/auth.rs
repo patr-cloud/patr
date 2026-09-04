@@ -8,7 +8,6 @@ use models::{
 		ContainerRegistryRepositoryPermission,
 		DeploymentPermission,
 		Permission,
-		ResourcePermissionType,
 		WorkspacePermission,
 	},
 };

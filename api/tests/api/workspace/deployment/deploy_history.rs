@@ -1,9 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
-
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::deployment::{deploy_history::*, *},
-	rbac::{DeploymentPermission, Permission, ResourcePermissionType},
+	rbac::{DeploymentPermission, Permission},
 	utils::{ListResourceQuery, Uuid},
 };
 
