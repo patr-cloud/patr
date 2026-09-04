@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use axum::http::StatusCode;
 use models::api::workspace::rbac::role::*;
 use rustis::commands::StringCommands;
@@ -106,12 +104,7 @@ pub async fn update_role(
 	.execute(&mut **database)
 	.await?;
 
-	let permission_ids = permissions
-		.into_iter()
-		.collect::<BTreeSet<_>>()
-		.into_iter()
-		.map(Into::into)
-		.collect::<Vec<_>>();
+	let permission_ids = permissions.into_iter().map(Into::into).collect::<Vec<_>>();
 
 	// Bindings are untouched: a role edit changes what the role grants, not
 	// where anyone holds it.

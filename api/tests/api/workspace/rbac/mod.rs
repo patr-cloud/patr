@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::rbac::{role::*, user::*, *},
@@ -183,7 +185,7 @@ async fn update_role_works() {
 						name: new_name.clone(),
 						description: "test role".to_string(),
 					},
-					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
+					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
 				.build(),
 		)
@@ -508,7 +510,7 @@ async fn create_role_duplicate_name() {
 						name: role.name.clone(),
 						description: "duplicate".to_string(),
 					},
-					permissions: vec![],
+					permissions: BTreeSet::new(),
 				})
 				.build(),
 		)
@@ -611,7 +613,7 @@ async fn update_role_nonexistent() {
 						name: random_name(8),
 						description: "test role".to_string(),
 					},
-					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
+					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
 				.build(),
 		)
@@ -651,7 +653,7 @@ async fn update_role_add_permissions() {
 						name: random_name(8),
 						description: "test role".to_string(),
 					},
-					permissions: perms,
+					permissions: perms.into_iter().collect(),
 				})
 				.build(),
 		)
@@ -715,7 +717,7 @@ async fn update_role_remove_permissions() {
 						name: random_name(8),
 						description: "test role".to_string(),
 					},
-					permissions: next,
+					permissions: next.into_iter().collect(),
 				})
 				.build(),
 		)
@@ -840,7 +842,7 @@ async fn create_role_invalid_name() {
 						name: "!!!".to_string(),
 						description: "test".to_string(),
 					},
-					permissions: perms,
+					permissions: perms.into_iter().collect(),
 				})
 				.build(),
 		)
@@ -1035,7 +1037,7 @@ async fn create_role_with_description(
 						name: random_name(8),
 						description: description.to_string(),
 					},
-					permissions,
+					permissions: permissions.into_iter().collect(),
 				})
 				.build(),
 		)
@@ -1138,7 +1140,7 @@ async fn update_role_rejects_xss_in_description() {
 						name: random_name(8),
 						description: "<script>alert(1)</script>".to_string(),
 					},
-					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
+					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
 				.build(),
 		)
@@ -1208,7 +1210,7 @@ async fn role_cross_workspace_update_denied() {
 						name: random_name(8),
 						description: "test role".to_string(),
 					},
-					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
+					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
 				.build(),
 		)
@@ -1345,7 +1347,7 @@ async fn default_roles_are_immutable() {
 						name: random_name(8),
 						description: "nope".to_string(),
 					},
-					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
+					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
 				.build(),
 		)
@@ -1402,7 +1404,7 @@ async fn create_role_name_too_short() {
 						name: "ab".to_string(),
 						description: "too short".to_string(),
 					},
-					permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
+					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
 				.build(),
 		)
@@ -1436,7 +1438,9 @@ async fn create_role_same_name_across_workspaces() {
 							name: name.clone(),
 							description: "shared name".to_string(),
 						},
-						permissions: vec![setup.get_permission_id(Permission::ViewRoles)],
+						permissions: BTreeSet::from([
+							setup.get_permission_id(Permission::ViewRoles)
+						]),
 					})
 					.build(),
 			)
@@ -1474,7 +1478,7 @@ async fn update_role_empty_permissions_400() {
 						name: random_name(8),
 						description: "test role".to_string(),
 					},
-					permissions: vec![],
+					permissions: BTreeSet::new(),
 				})
 				.build(),
 		)

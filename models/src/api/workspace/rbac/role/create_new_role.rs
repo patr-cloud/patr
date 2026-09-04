@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use super::Role;
 use crate::prelude::*;
 
@@ -29,7 +31,7 @@ macros::declare_api_endpoint!(
 		/// The permission IDs this role grants; targeting lives on the
 		/// binding, not the role.
 		#[preprocess(none)]
-		pub permissions: Vec<Uuid>,
+		pub permissions: BTreeSet<Uuid>,
 	},
 	response = {
 		/// The ID of the created role

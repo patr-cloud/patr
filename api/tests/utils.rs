@@ -475,7 +475,7 @@ impl TestSetup {
 							name: name.clone(),
 							description: "test role with permissions".to_string(),
 						},
-						permissions,
+						permissions: permissions.into_iter().collect(),
 					})
 					.build(),
 			)

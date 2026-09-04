@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use models::{
 	api::workspace::rbac::role::*,
 	rbac::{DeploymentPermission, Permission},
@@ -54,7 +56,7 @@ async fn rbac_modify_roles_grants_access() {
 						name: random_name(8),
 						description: "test".to_string(),
 					},
-					permissions,
+					permissions: permissions.into_iter().collect(),
 				})
 				.build(),
 		)
@@ -132,7 +134,7 @@ async fn rbac_modify_roles_denied_without_permission() {
 						name: random_name(8),
 						description: "test".to_string(),
 					},
-					permissions: vec![],
+					permissions: BTreeSet::new(),
 				})
 				.build(),
 		)
@@ -193,7 +195,7 @@ async fn rbac_view_does_not_grant_modify() {
 						name: random_name(8),
 						description: "test".to_string(),
 					},
-					permissions: vec![],
+					permissions: BTreeSet::new(),
 				})
 				.build(),
 		)
