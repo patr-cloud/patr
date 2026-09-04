@@ -125,8 +125,10 @@ pub async fn create_new_role(
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {
+		// The only FK that can fire here is permission_id: the role was just
+		// written in this transaction. An unknown permission id is a bad request.
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-			ErrorType::ResourceDoesNotExist
+			ErrorType::WrongParameters
 		}
 		other => ErrorType::server_error(other),
 	})?;
