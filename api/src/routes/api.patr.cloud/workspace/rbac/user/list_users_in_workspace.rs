@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use axum::http::StatusCode;
 use models::{
 	api::{
@@ -50,7 +52,7 @@ pub async fn list_users_in_workspace(
 	// here — they're a member as far as anyone reading this list is
 	// concerned, and folding them in keeps pagination and total_count honest.
 	let mut total_count = 0;
-	let users = query!(
+	let mut users = query!(
 		r#"
 		WITH members AS (
 			SELECT DISTINCT
@@ -66,58 +68,33 @@ pub async fn list_users_in_workspace(
 				workspace
 			WHERE
 				workspace.id = $1
-		),
-		users_page AS (
-			SELECT
-				members.user_id,
-				"user".first_name,
-				"user".last_name,
-				"user".email,
-				(workspace.id IS NOT NULL) AS is_owner,
-				COUNT(*) OVER() AS total_count
-			FROM
-				members
-			INNER JOIN
-				"user"
-			ON
-				members.user_id = "user".id
-			LEFT JOIN
-				workspace
-			ON
-				workspace.id = $1 AND
-				workspace.super_admin_id = members.user_id
-			WHERE
-				($2::TEXT IS NULL OR "user".email ILIKE '%' || $2::TEXT || '%') AND
-				($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
-				($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
-			ORDER BY
-				members.user_id
-			LIMIT $5
-			OFFSET $6
 		)
 		SELECT
-			users_page.user_id AS "user_id!",
-			users_page.first_name AS "first_name!",
-			users_page.last_name AS "last_name!",
-			users_page.email AS "email!",
-			users_page.is_owner AS "is_owner!",
-			role_binding.role_id AS "role_id?",
-			role_binding.scope_id AS "scope_id?",
-			users_page.total_count AS "total_count!"
+			members.user_id AS "user_id!",
+			"user".first_name AS "first_name!",
+			"user".last_name AS "last_name!",
+			"user".email AS "email!",
+			(workspace.id IS NOT NULL) AS "is_owner!",
+			COUNT(*) OVER() AS "total_count!"
 		FROM
-			users_page
-		LEFT JOIN
-			workspace_user
+			members
+		INNER JOIN
+			"user"
 		ON
-			workspace_user.user_id = users_page.user_id AND
-			workspace_user.workspace_id = $1
+			members.user_id = "user".id
 		LEFT JOIN
-			role_binding
+			workspace
 		ON
-			role_binding.actor_id = workspace_user.actor_id
+			workspace.id = $1 AND
+			workspace.super_admin_id = members.user_id
+		WHERE
+			($2::TEXT IS NULL OR "user".email ILIKE '%' || $2::TEXT || '%') AND
+			($3::TEXT IS NULL OR "user".first_name ILIKE '%' || $3::TEXT || '%') AND
+			($4::TEXT IS NULL OR "user".last_name ILIKE '%' || $4::TEXT || '%')
 		ORDER BY
-			users_page.user_id,
-			role_binding.role_id;
+			members.user_id
+		LIMIT $5
+		OFFSET $6;
 		"#,
 		workspace_id as _,
 		email_filter,
@@ -129,41 +106,70 @@ pub async fn list_users_in_workspace(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.fold(Vec::<WorkspaceMember>::new(), |mut users, row| {
+	.map(|row| {
 		total_count = row.total_count;
-		// Rows arrive ordered by user, so a member's bindings are contiguous
-		// and the member being filled is always the last one pushed.
-		if users
-			.last()
-			.is_none_or(|member| member.user.id != row.user_id.into())
-		{
-			users.push(WorkspaceMember {
-				user: WithId::new(
-					row.user_id,
-					WorkspaceUserInfo {
-						first_name: row.first_name,
-						last_name: row.last_name,
-						email: row.email,
-					},
-				),
-				roles: Vec::new(),
-				is_owner: row.is_owner,
-			});
+		WorkspaceMember {
+			user: WithId::new(
+				row.user_id,
+				WorkspaceUserInfo {
+					first_name: row.first_name,
+					last_name: row.last_name,
+					email: row.email,
+				},
+			),
+			roles: Vec::new(),
+			is_owner: row.is_owner,
 		}
-		let member = users.last_mut().expect("pushed above if it was missing");
+	})
+	.collect::<Vec<_>>();
 
-		// A zero-binding member still gets an entry, with no grants.
-		let (Some(role_id), Some(scope_id)) = (row.role_id, row.scope_id) else {
-			return users;
-		};
+	// One flat query for the whole page's grants, then attach. Keeping this
+	// out of the query above means the page is paginated over users, not over
+	// the user-by-binding fan-out.
+	let user_ids = users
+		.iter()
+		.map(|member| member.user.id)
+		.collect::<Vec<_>>();
 
-		member.roles.push(RoleGrant {
-			role_id: role_id.into(),
-			resource_id: scope_id.into(),
-		});
+	let mut grants = query!(
+		r#"
+		SELECT
+			workspace_user.user_id,
+			role_binding.role_id,
+			role_binding.scope_id
+		FROM
+			role_binding
+		INNER JOIN
+			workspace_user
+		ON
+			role_binding.actor_id = workspace_user.actor_id
+		WHERE
+			workspace_user.workspace_id = $1 AND
+			workspace_user.user_id = ANY($2::UUID[]);
+		"#,
+		workspace_id as _,
+		&user_ids as _,
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.fold(
+		BTreeMap::<Uuid, Vec<RoleGrant>>::new(),
+		|mut grants, row| {
+			grants
+				.entry(row.user_id.into())
+				.or_default()
+				.push(RoleGrant {
+					role_id: row.role_id.into(),
+					resource_id: row.scope_id.into(),
+				});
+			grants
+		},
+	);
 
-		users
-	});
+	for member in &mut users {
+		member.roles = grants.remove(&member.user.id).unwrap_or_default();
+	}
 
 	AppResponse::builder()
 		.body(ListUsersInWorkspaceResponse { users })
