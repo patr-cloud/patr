@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_api_token_permission_binding ADD CONSTRAINT user_api_token_permission_binding_pk PRIMARY KEY(token_id, permission_id, scope_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9033f2ae189f837e0da6d6ffa37883310a2e17055e3ac1344229ff062c47121d"
+}

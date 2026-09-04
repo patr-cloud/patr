@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX role_binding_idx_actor_id ON role_binding (actor_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "17a25f93a0262e8dcc76b8eeeebb0bc7f01e067e617a5651af0d5c802cc40c02"
+}
