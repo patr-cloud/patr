@@ -109,63 +109,33 @@ pub async fn accept_workspace_invite(
 
 	let workspace_id = invite.workspace_id;
 
-	// Membership is unconditional — an invite whose roles were deleted in
-	// the meantime still makes the accepter a (zero-binding) member instead
-	// of silently making nobody anything. Re-accepting keeps the actor the
-	// member already has, so their existing bindings stay attached.
-	let existing_actor = query!(
+	let actor_id = query!(
 		r#"
-		SELECT
-			actor_id AS "id: Uuid"
-		FROM
-			workspace_user
-		WHERE
-			user_id = $1 AND
-			workspace_id = $2;
+		INSERT INTO
+			workspace_actor(id, workspace_id, actor_type)
+		VALUES
+			(gen_random_uuid(), $1, 'user')
+		RETURNING id AS "id: Uuid";
+		"#,
+		workspace_id as _,
+	)
+	.fetch_one(&mut **database)
+	.await?
+	.id;
+
+	query!(
+		r#"
+		INSERT INTO
+			workspace_user(user_id, workspace_id, actor_id)
+		VALUES
+			($1, $2, $3);
 		"#,
 		user_data.id as _,
 		workspace_id as _,
+		&actor_id as _,
 	)
-	.fetch_optional(&mut **database)
-	.await?
-	.map(|row| row.id);
-
-	let actor_id = match existing_actor {
-		Some(actor_id) => actor_id,
-		None => {
-			// The actor is the identity bindings hang off, so it is minted
-			// first and the membership row points at it.
-			let actor_id = query!(
-				r#"
-				INSERT INTO
-					workspace_actor(id, workspace_id, actor_type)
-				VALUES
-					(gen_random_uuid(), $1, 'user')
-				RETURNING id AS "id: Uuid";
-				"#,
-				workspace_id as _,
-			)
-			.fetch_one(&mut **database)
-			.await?
-			.id;
-
-			query!(
-				r#"
-				INSERT INTO
-					workspace_user(user_id, workspace_id, actor_id)
-				VALUES
-					($1, $2, $3);
-				"#,
-				user_data.id as _,
-				workspace_id as _,
-				&actor_id as _,
-			)
-			.execute(&mut **database)
-			.await?;
-
-			actor_id
-		}
-	};
+	.execute(&mut **database)
+	.await?;
 
 	// The invite rows already carry concrete scopes; mint bindings directly,
 	// attributing the grant to the inviter.

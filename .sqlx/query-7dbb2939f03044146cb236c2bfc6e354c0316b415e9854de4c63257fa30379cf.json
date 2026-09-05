@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH members AS (SELECT workspace_user.user_id FROM workspace_user WHERE workspace_user.workspace_id = $1 UNION SELECT workspace.super_admin_id AS user_id FROM workspace WHERE workspace.id = $1) SELECT members.user_id AS \"user_id!: Uuid\", \"user\".first_name AS \"first_name!\", \"user\".last_name AS \"last_name!\", \"user\".email AS \"email!\", (workspace.id IS NOT NULL) AS \"is_owner!\", COUNT(*) OVER() AS \"total_count!\" FROM members INNER JOIN \"user\" ON members.user_id = \"user\".id LEFT JOIN workspace ON workspace.id = $1 AND workspace.super_admin_id = members.user_id WHERE ($2::TEXT IS NULL OR \"user\".email ILIKE '%' || $2::TEXT || '%') AND ($3::TEXT IS NULL OR \"user\".first_name ILIKE '%' || $3::TEXT || '%') AND ($4::TEXT IS NULL OR \"user\".last_name ILIKE '%' || $4::TEXT || '%') ORDER BY members.user_id LIMIT $5 OFFSET $6;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "first_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_name!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "email!",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "is_owner!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      false,
+      false,
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "7dbb2939f03044146cb236c2bfc6e354c0316b415e9854de4c63257fa30379cf"
+}

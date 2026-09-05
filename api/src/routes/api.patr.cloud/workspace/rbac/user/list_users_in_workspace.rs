@@ -52,7 +52,7 @@ pub async fn list_users_in_workspace(
 	// here — they're a member as far as anyone reading this list is
 	// concerned, and folding them in keeps pagination and total_count honest.
 	let mut total_count = 0;
-	let mut users = query!(
+	let rows = query!(
 		r#"
 		WITH members AS (
 			SELECT
@@ -70,7 +70,7 @@ pub async fn list_users_in_workspace(
 				workspace.id = $1
 		)
 		SELECT
-			members.user_id AS "user_id!",
+			members.user_id AS "user_id!: Uuid",
 			"user".first_name AS "first_name!",
 			"user".last_name AS "last_name!",
 			"user".email AS "email!",
@@ -104,36 +104,17 @@ pub async fn list_users_in_workspace(
 		(count * page) as i64,
 	)
 	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| {
-		total_count = row.total_count;
-		WorkspaceMember {
-			user: WithId::new(
-				row.user_id,
-				WorkspaceUserInfo {
-					first_name: row.first_name,
-					last_name: row.last_name,
-					email: row.email,
-				},
-			),
-			role_bindings: Vec::new(),
-			is_owner: row.is_owner,
-		}
-	})
-	.collect::<Vec<_>>();
-
-	let mut grants = BTreeMap::<Uuid, Vec<RoleBindingGrant>>::new();
+	.await?;
 
 	// One flat query for the whole page's grants, then attach. Keeping this
 	// out of the query above means the page is paginated over users, not over
 	// the user-by-binding fan-out.
-	query!(
+	let mut grants = query!(
 		r#"
 		SELECT
-			workspace_user.user_id,
-			role_binding.role_id,
-			role_binding.scope_id
+			workspace_user.user_id AS "user_id: Uuid",
+			role_binding.role_id AS "role_id: Uuid",
+			role_binding.scope_id AS "scope_id: Uuid"
 		FROM
 			role_binding
 		INNER JOIN
@@ -145,29 +126,43 @@ pub async fn list_users_in_workspace(
 			workspace_user.user_id = ANY($2::UUID[]);
 		"#,
 		workspace_id as _,
-		&users
-			.iter()
-			.map(|member| member.user.id)
-			.collect::<Vec<_>>() as _,
+		&rows.iter().map(|member| member.user_id).collect::<Vec<_>>() as _,
 	)
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.for_each(|row| {
-		grants
-			.entry(row.user_id.into())
-			.or_default()
-			.push(RoleBindingGrant {
-				role_id: row.role_id.into(),
-				resource_id: row.scope_id.into(),
-			});
-	});
+	.fold(
+		BTreeMap::<Uuid, Vec<RoleBindingGrant>>::new(),
+		|mut grants, row| {
+			grants
+				.entry(row.user_id.into())
+				.or_default()
+				.push(RoleBindingGrant {
+					role_id: row.role_id.into(),
+					resource_id: row.scope_id.into(),
+				});
+			grants
+		},
+	);
 
-	// For every user that we just got on the list, extract their grant from the grant list and set
-	// that as their bindings
-	for member in &mut users {
-		member.role_bindings = grants.remove(&member.user.id).unwrap_or_default();
-	}
+	let users = rows
+		.into_iter()
+		.map(|row| {
+			total_count = row.total_count;
+			WorkspaceMember {
+				user: WithId::new(
+					row.user_id,
+					WorkspaceUserInfo {
+						first_name: row.first_name,
+						last_name: row.last_name,
+						email: row.email,
+					},
+				),
+				role_bindings: grants.remove(&row.user_id).unwrap_or_default(),
+				is_owner: row.is_owner,
+			}
+		})
+		.collect::<Vec<_>>();
 
 	AppResponse::builder()
 		.body(ListUsersInWorkspaceResponse { users })
