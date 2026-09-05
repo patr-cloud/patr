@@ -75,10 +75,9 @@ const useUserPermissionsQuery = () => {
 				const validActions = new Set<string>(userActionTypes);
 
 				// @ts-expect-error just this once
-				let detailedPermissions: Record<
-					ResourceTypes,
-					Record<ActionTypes, { permissionType: "include" | "exclude"; resources: Array<string> }>
-				> & { type: "member" } = { type: "member" };
+				let detailedPermissions: Record<ResourceTypes, Record<ActionTypes, Array<string>>> & {
+					type: "member";
+				} = { type: "member" };
 
 				for (const [resourceType, actionPermissions] of Object.entries(permissionsMap)) {
 					if (resourceType === "type" || !validResourceTypes.has(resourceType)) continue;
@@ -91,14 +90,8 @@ const useUserPermissionsQuery = () => {
 								// @ts-expect-error TypeScript can't narrow string to resourceTypes after validation
 								detailedPermissions[resourceType as ResourceTypes] = {};
 							}
-							// The wire now carries a list of scope ids; the hook's local
-							// shape still speaks include/exclude until the role-editor rework.
-							detailedPermissions[resourceType as ResourceTypes][action as ActionTypes] = userPermission[
-								permId
-							] as unknown as {
-								permissionType: "include" | "exclude";
-								resources: Array<string>;
-							};
+							detailedPermissions[resourceType as ResourceTypes][action as ActionTypes] =
+								userPermission[permId];
 						}
 					});
 				}
