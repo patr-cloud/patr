@@ -29,7 +29,7 @@ pub async fn update_user_roles_in_workspace(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		user_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateUserRolesInWorkspaceRequest>,
 ) -> Result<AppResponse<UpdateUserRolesInWorkspaceRequest>, ErrorType> {
@@ -37,45 +37,66 @@ pub async fn update_user_roles_in_workspace(
 
 	let roles = roles.into_iter().collect::<BTreeSet<_>>();
 
-	// When the caller passes an empty roles list, the intent is "remove this
-	// user from the workspace". The DELETE below silently no-ops on a
-	// non-member; surface UserNotFound explicitly so callers don't think a
-	// removal happened when it didn't.
-	if roles.is_empty() {
-		let is_member = query!(
-			r#"
-			SELECT EXISTS(
-				SELECT
-					1
-				FROM
-					workspace_user
-				WHERE
-					workspace_id = $1 AND
-					user_id = $2
-			) AS "exists!: bool";
-			"#,
-			workspace_id as _,
-			user_id as _,
-		)
-		.fetch_one(&mut **database)
-		.await?
-		.exists;
+	// Only an existing member's roles can be updated; adding someone to the
+	// workspace is InviteUserToWorkspace's job.
+	query!(
+		r#"
+		SELECT
+			1 AS "present"
+		FROM
+			workspace_user
+		WHERE
+			user_id = $1 AND
+			workspace_id = $2;
+		"#,
+		user_id as _,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::UserNotFound)?;
 
-		if !is_member {
-			return Err(ErrorType::UserNotFound);
-		}
-	}
+	let actor_id = query!(
+		r#"
+		SELECT
+			actor_id AS "id: Uuid"
+		FROM
+			workspace_user
+		WHERE
+			user_id = $1 AND
+			workspace_id = $2;
+		"#,
+		&user_id as _,
+		workspace_id as _,
+	)
+	.fetch_one(&mut **database)
+	.await?
+	.id;
+
+	// The exact set of bindings this actor should end up with. Rows that
+	// survive the diff keep their original id and attribution.
+	let (role_ids, scope_ids) = roles
+		.iter()
+		.map(|grant| (grant.role_id, grant.resource_id))
+		.collect::<(Vec<_>, Vec<_>)>();
 
 	query!(
 		r#"
 		DELETE FROM
-			workspace_user
+			role_binding
 		WHERE
-			workspace_id = $1 AND
-			user_id = $2;
+			actor_id = $1 AND
+			(role_id, scope_id) NOT IN (
+				SELECT
+					role_id,
+					scope_id
+				FROM
+					UNNEST($2::UUID[], $3::UUID[]) AS requested(role_id, scope_id)
+			);
 		"#,
-		workspace_id as _,
-		user_id as _
+		&actor_id as _,
+		&role_ids as _,
+		&scope_ids as _,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -83,29 +104,42 @@ pub async fn update_user_roles_in_workspace(
 	query!(
 		r#"
 		INSERT INTO
-			workspace_user(
+			role_binding(
+				id,
 				workspace_id,
-				user_id,
-				role_id
+				actor_id,
+				role_id,
+				scope_id,
+				created,
+				created_by
 			)
 		SELECT
-			$1, $2, *
+			gen_random_uuid(),
+			$1,
+			$2,
+			requested.role_id,
+			requested.scope_id,
+			NOW(),
+			$5
 		FROM
-			UNNEST($3::UUID[]);
+			UNNEST($3::UUID[], $4::UUID[]) AS requested(role_id, scope_id)
+		ON CONFLICT
+			(actor_id, role_id, scope_id)
+		DO NOTHING;
 		"#,
 		workspace_id as _,
-		user_id as _,
-		&roles.into_iter().collect::<Vec<_>>() as _,
+		&actor_id as _,
+		&role_ids as _,
+		&scope_ids as _,
+		&user_data.id as _,
 	)
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
 			match db_err.constraint() {
-				Some(c) if c == "workspace_user_fk_role_id_workspace_id" => {
-					ErrorType::RoleDoesNotExist
-				}
-				Some(c) if c == "workspace_user_fk_user_id" => ErrorType::UserNotFound,
+				Some("role_binding_fk_role_id_workspace_id") => ErrorType::RoleDoesNotExist,
+				Some("role_binding_fk_scope_id_workspace_id") => ErrorType::ResourceDoesNotExist,
 				_ => ErrorType::server_error(sqlx::Error::Database(db_err)),
 			}
 		}

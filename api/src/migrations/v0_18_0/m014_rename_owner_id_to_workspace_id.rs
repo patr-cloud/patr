@@ -1,0 +1,308 @@
+//! Renames `resource.owner_id` and `role.owner_id` to `workspace_id`.
+//!
+//! Both columns have always held a workspace id — `resource.owner_id` FKs
+//! `workspace(id)` and `role.owner_id` does the same — but the name predates
+//! the workspace concept and reads misleadingly in composite FKs like
+//! `(scope_id, workspace_id) REFERENCES resource(id, owner_id)`, which the
+//! upcoming role-binding tables lean on heavily. Rename the columns and every
+//! constraint/index whose name embeds `owner_id`, and recreate
+//! `RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID` since its return-table column
+//! names change (a return-type change, so `CREATE OR REPLACE` won't do).
+//!
+//! Constraints on *other* tables that merely reference the renamed columns
+//! track the rename automatically and keep their names (none of them embed
+//! `owner_id`).
+
+use crate::prelude::*;
+
+#[macros::migration]
+async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+	sqlx::query(
+		r#"
+		ALTER TABLE resource RENAME COLUMN owner_id TO workspace_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE role RENAME COLUMN owner_id TO workspace_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE resource
+		RENAME CONSTRAINT resource_uq_id_owner_id TO resource_uq_id_workspace_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE resource
+		RENAME CONSTRAINT resource_uq_id_owner_id_deleted TO resource_uq_id_workspace_id_deleted;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE resource
+		RENAME CONSTRAINT resource_fk_owner_id TO resource_fk_workspace_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER INDEX resource_idx_owner_id RENAME TO resource_idx_workspace_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE role
+		RENAME CONSTRAINT role_fk_id_owner_id TO role_fk_id_workspace_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE role
+		RENAME CONSTRAINT role_uq_name_owner_id TO role_uq_name_workspace_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE role
+		RENAME CONSTRAINT role_uq_id_owner_id TO role_uq_id_workspace_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE role
+		RENAME CONSTRAINT role_fk_owner_id TO role_fk_workspace_id;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// The function's RETURNS TABLE names an `owner_id` column; renaming an
+	// output column is a return-type change, so drop and recreate.
+	sqlx::query(
+		r#"
+		DROP FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(UUID, TEXT);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		CREATE FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(
+			login_id UUID,
+			permission_name TEXT
+		) RETURNS TABLE(
+			id UUID,
+			resource_type_id UUID,
+			workspace_id UUID,
+			created TIMESTAMPTZ,
+			deleted TIMESTAMPTZ
+		) AS $$
+		DECLARE
+			local_permission_id UUID;
+		BEGIN
+			/* Resolve permission name to ID */
+			SELECT
+				permission.id
+			INTO
+				local_permission_id
+			FROM
+				permission
+			WHERE
+				name = permission_name;
+
+			IF local_permission_id IS NULL THEN
+				RAISE EXCEPTION 'Permission `%` not found', permission_name;
+			END IF;
+
+			RETURN QUERY
+			/* Workspaces where this login has super admin access */
+			WITH super_admin_workspaces AS (
+				SELECT
+					workspace.id AS workspace_id
+				FROM
+					web_login
+				INNER JOIN
+					workspace
+				ON
+					workspace.super_admin_id = web_login.user_id
+				WHERE
+					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				SELECT
+					user_api_token_workspace_super_admin.workspace_id
+				FROM
+					user_api_token_workspace_super_admin
+				WHERE
+					user_api_token_workspace_super_admin.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+			),
+			/* Resources explicitly granted via include lists,
+			scoped to the workspace the role belongs to */
+			included_resources AS (
+				SELECT
+					role_resource_permissions_include.resource_id,
+					workspace_user.workspace_id
+				FROM
+					web_login
+				INNER JOIN
+					workspace_user
+				ON
+					workspace_user.user_id = web_login.user_id
+				INNER JOIN
+					role_resource_permissions_include
+				ON
+					role_resource_permissions_include.role_id = workspace_user.role_id AND
+					role_resource_permissions_include.permission_id = local_permission_id
+				WHERE
+					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				SELECT
+					user_api_token_resource_permissions_include.resource_id,
+					user_api_token_resource_permissions_include.workspace_id
+				FROM
+					user_api_token_resource_permissions_include
+				WHERE
+					user_api_token_resource_permissions_include.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_include.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+			),
+			/* Resources explicitly denied via exclude lists */
+			excluded_resources AS (
+				SELECT
+					role_resource_permissions_exclude.resource_id
+				FROM
+					web_login
+				INNER JOIN
+					workspace_user
+				ON
+					workspace_user.user_id = web_login.user_id
+				INNER JOIN
+					role_resource_permissions_exclude
+				ON
+					role_resource_permissions_exclude.role_id = workspace_user.role_id AND
+					role_resource_permissions_exclude.permission_id = local_permission_id
+				WHERE
+					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				SELECT
+					user_api_token_resource_permissions_exclude.resource_id
+				FROM
+					user_api_token_resource_permissions_exclude
+				WHERE
+					user_api_token_resource_permissions_exclude.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_exclude.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+			),
+			/* Workspaces where this login has any exclude-type permission */
+			exclude_workspaces AS (
+				SELECT
+					workspace_user.workspace_id
+				FROM
+					web_login
+				INNER JOIN
+					workspace_user
+				ON
+					workspace_user.user_id = web_login.user_id
+				INNER JOIN
+					role_resource_permissions_type
+				ON
+					role_resource_permissions_type.role_id = workspace_user.role_id AND
+					role_resource_permissions_type.permission_id = local_permission_id AND
+					role_resource_permissions_type.permission_type = 'exclude'
+				WHERE
+					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				SELECT
+					user_api_token_resource_permissions_type.workspace_id
+				FROM
+					user_api_token_resource_permissions_type
+				WHERE
+					user_api_token_resource_permissions_type.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_type.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+					user_api_token_resource_permissions_type.resource_permission_type = 'exclude'
+			)
+			/*
+			We are basically doing:
+				if super_admin OR
+				in(include_list) OR
+				(has exclude on permissionId AND not in(exclude_list))
+			*/
+			SELECT
+				resource.*
+			FROM
+				resource
+			WHERE
+				/* Super admin: all resources in owned workspaces */
+				EXISTS (
+					SELECT
+						1
+					FROM
+						super_admin_workspaces
+					WHERE
+						super_admin_workspaces.workspace_id = resource.workspace_id
+				)
+				/* Include: any role or API token explicitly grants this resource
+				(also overrides exclude — include always wins) */
+				OR EXISTS (
+					SELECT
+						1
+					FROM
+						included_resources
+					WHERE
+						included_resources.resource_id = resource.id AND
+						included_resources.workspace_id = resource.workspace_id
+				)
+				/* Exclude: resource is in a workspace with an exclude-type
+				permission and is not on any deny list */
+				OR (
+					EXISTS (
+						SELECT
+							1
+						FROM
+							exclude_workspaces
+						WHERE
+							exclude_workspaces.workspace_id = resource.workspace_id
+					) AND NOT EXISTS (
+						SELECT
+							1
+						FROM
+							excluded_resources
+						WHERE
+							excluded_resources.resource_id = resource.id
+					)
+				);
+		END;
+		$$ LANGUAGE plpgsql;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}

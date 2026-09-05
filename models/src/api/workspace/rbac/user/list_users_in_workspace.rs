@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use super::WorkspaceUserInfo;
+use super::{RoleBindingGrant, WorkspaceUserInfo};
 use crate::prelude::*;
 
 /// A user in a workspace, along with the roles they hold there.
@@ -11,9 +11,10 @@ pub struct WorkspaceMember {
 	/// The member's ID, name, and email.
 	#[serde(flatten)]
 	pub user: WithId<WorkspaceUserInfo>,
-	/// The roles this member holds in the workspace. Empty for the owner,
-	/// whose super-admin access doesn't come from a role.
-	pub role_ids: Vec<Uuid>,
+	/// The role grants this member holds in the workspace — each a role and
+	/// the scope it applies at. Empty for the owner, whose super-admin access
+	/// doesn't come from a role.
+	pub role_bindings: Vec<RoleBindingGrant>,
 	/// Whether this member is the workspace's super-admin. The owner has
 	/// implicit access to everything, so the UI hides the edit/remove
 	/// controls for them.
@@ -47,7 +48,7 @@ macros::declare_api_endpoint!(
 	},
 	response = {
 		/// All members of the workspace — including the owner — with their
-		/// details and the roles they hold.
+		/// details and the role grants they hold.
 		pub users: Vec<WorkspaceMember>,
 	},
 	audit_log = NoAuditLogger,

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH client AS (INSERT INTO actor_client(id, actor_client_type) VALUES (GENERATE_LOGIN_ID(), 'user_login') RETURNING id) INSERT INTO user_login(login_id, user_id, login_type, created) SELECT client.id, $1, 'web_login', $2 FROM client RETURNING user_login.login_id AS \"login_id: Uuid\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "login_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "51a06918c224a917d8af28f2836baf6474121eaa45769fdbf1369a3dcb8771c3"
+}

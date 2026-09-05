@@ -2,6 +2,8 @@ use sqlx::{Pool, pool::PoolOptions};
 
 use crate::{prelude::*, utils::config::DatabaseConfig};
 
+/// The registry of credentials that can act and leave an audit trail
+pub(super) mod actor_client;
 /// The initializer for the database. This will create the database pool and
 /// initialize the database with the necessary tables and data.
 pub(super) mod initializer;
@@ -19,7 +21,7 @@ pub(super) mod user;
 pub(super) mod workspace;
 
 pub use self::initializer::initialize;
-pub(super) use self::{meta_data::*, rbac::*, user::*, workspace::*};
+pub(super) use self::{actor_client::*, meta_data::*, rbac::*, user::*, workspace::*};
 
 /// Connects to the database based on a config. Not much to say here.
 #[instrument(skip(config))]

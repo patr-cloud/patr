@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE role ADD CONSTRAINT role_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8d1d3d351f64f3c832ba50dafb4354b17e50eb5098358deab7e44e7f0e978c1d"
+}

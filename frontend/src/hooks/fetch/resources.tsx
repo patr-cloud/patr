@@ -1,4 +1,4 @@
-import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
+import { createInfiniteQuery, createQuery, keepPreviousData } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetResourcesInfoRequest } from "~/bindings/GetResourcesInfoRequest";
 import { GetResourcesInfoResponse } from "~/bindings/GetResourcesInfoResponse";
@@ -70,6 +70,9 @@ export const useWorkspaceResourcesQuery = (
 		const endpoint = type ? getResourceEndpoint(type) : undefined;
 		return {
 			queryKey: resourceKeys.list(wsId ?? "", type ?? ""),
+			// Picking a different resource type re-keys this. Keep the old page
+			// visible rather than suspending the picker away under the caller.
+			placeholderData: keepPreviousData,
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!type && !!endpoint,
 			meta: { errorMessage: `Failed to fetch ${type}` },
 			initialPageParam: 0,
@@ -110,17 +113,25 @@ export const useWorkspaceResourcesQuery = (
  * resource, or one belonging to another workspace), so they're absent from the
  * map. Callers should fall back to showing the raw ID in that case.
  */
-const useResourcesInfoQuery = (resourceIds: Accessor<string[]>) => {
+const useResourcesInfoQuery = (resourceIds: Accessor<string[]>, workspaceId?: Accessor<string | undefined>) => {
 	const [authState] = useAuthState();
-	const [workspaceId] = useLastWorkspaceId();
+	const [lastWorkspaceId] = useLastWorkspaceId();
 
 	return createQuery(() => {
 		const auth = authState();
-		const wsId = workspaceId();
+		const wsId = workspaceId ? workspaceId() : lastWorkspaceId();
 		const ids = [...resourceIds()].sort();
 		return {
 			queryKey: resourceKeys.info(wsId ?? "", ids),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && ids.length > 0,
+			// Re-keys on every resource toggle, so it must never suspend: a
+			// boundary swap mid-edit tears down the open resource dropdown.
+			// `keepPreviousData` covers the second selection onwards, but the
+			// first one has no previous data — the query goes from disabled
+			// straight to pending — so fall back to an empty map and let the
+			// chips carry ids for the one fetch it takes to resolve them.
+			placeholderData: (previous: Map<string, ResourceInfo> | undefined) =>
+				previous ?? new Map<string, ResourceInfo>(),
 			meta: { errorMessage: "Failed to fetch resource details" },
 			queryFn: async () => {
 				const body: GetResourcesInfoRequest = { resourceIds: ids };

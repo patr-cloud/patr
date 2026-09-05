@@ -58,7 +58,7 @@ pub async fn list_volumes(
 		ON
 			deployment_volume.id = resource.id
 		WHERE
-			resource.owner_id = $1 AND
+			resource.workspace_id = $1 AND
 			deployment_volume.deleted IS NULL AND
 			($2::TEXT IS NULL OR deployment_volume.name ILIKE '%' || $2 || '%') AND
 			($3::INT IS NULL OR deployment_volume.volume_size >= $3) AND

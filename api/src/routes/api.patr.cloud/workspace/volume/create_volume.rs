@@ -33,7 +33,7 @@ pub async fn create_volume(
 			resource(
 				id,
 				resource_type_id,
-				owner_id,
+				workspace_id,
 				created,
 				deleted
 			)

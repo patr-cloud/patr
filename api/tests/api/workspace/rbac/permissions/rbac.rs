@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 use models::{
 	api::workspace::rbac::role::*,
-	rbac::{DeploymentPermission, Permission, ResourcePermissionType},
+	rbac::{DeploymentPermission, Permission},
 };
 
 use super::{all, setup_permission_test};
@@ -39,11 +39,7 @@ async fn rbac_modify_roles_grants_access() {
 
 	// Role creation rejects empty permissions with `WrongParameters`, so seed
 	// one harmless permission.
-	let mut permissions = BTreeMap::new();
-	permissions.insert(
-		setup.get_permission_id(Permission::ViewRoles),
-		ResourcePermissionType::Include(Default::default()),
-	);
+	let permissions = vec![setup.get_permission_id(Permission::ViewRoles)];
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -59,8 +55,9 @@ async fn rbac_modify_roles_grants_access() {
 					role: Role {
 						name: random_name(8),
 						description: "test".to_string(),
+						is_immutable: false,
 					},
-					permissions,
+					permissions: permissions.into_iter().collect(),
 				})
 				.build(),
 		)
@@ -75,13 +72,12 @@ async fn rbac_view_roles_denied_without_permission() {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Deployment(DeploymentPermission::View)),
-		all(),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -113,10 +109,12 @@ async fn rbac_modify_roles_denied_without_permission() {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -136,8 +134,9 @@ async fn rbac_modify_roles_denied_without_permission() {
 					role: Role {
 						name: random_name(8),
 						description: "test".to_string(),
+						is_immutable: false,
 					},
-					permissions: BTreeMap::new(),
+					permissions: BTreeSet::new(),
 				})
 				.build(),
 		)
@@ -155,10 +154,12 @@ async fn rbac_view_does_not_grant_modify() {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -195,8 +196,9 @@ async fn rbac_view_does_not_grant_modify() {
 					role: Role {
 						name: random_name(8),
 						description: "test".to_string(),
+						is_immutable: false,
 					},
-					permissions: BTreeMap::new(),
+					permissions: BTreeSet::new(),
 				})
 				.build(),
 		)

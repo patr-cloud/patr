@@ -54,9 +54,7 @@ test.describe('deployment > RBAC [UI]', () => {
 	}) => {
 		const { owner, dep } = await ownerWithDeployment(api);
 		const viewId = await permId(api, owner, 'deployment::view');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -77,9 +75,7 @@ test.describe('deployment > RBAC [UI]', () => {
 		const runner = await createRunnerAPI(api, owner, owner.workspaceId);
 		const repo = await createContainerRepo(api, owner, owner.workspaceId);
 		const createId = await permId(api, owner, 'deployment::create');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[createId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [createId]);
 		// The member creates a deployment (allowed) but cannot view it.
 		const created = await api.request<{ id: string }>(
 			'POST',
@@ -101,15 +97,49 @@ test.describe('deployment > RBAC [UI]', () => {
 		}
 	});
 
+	test('a member with the create permission sees the Create Deployment CTA', async ({
+		browser,
+		api,
+	}) => {
+		const owner = await createUserWithWorkspace(api);
+		const createId = await permId(api, owner, 'deployment::create');
+		await using member = await createSecondMemberWithRole(api, owner, [createId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDeploymentList(page);
+			await expect(createDeploymentLink(page)).toBeVisible({ timeout: 15_000 });
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('a view member reaches a deployment detail instead of NoPermissionsPage', async ({
+		browser,
+		api,
+	}) => {
+		const { owner, dep } = await ownerWithDeployment(api);
+		const viewId = await permId(api, owner, 'deployment::view');
+		await using member = await createSecondMemberWithRole(api, owner, [viewId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDeploymentDetail(page, dep.id);
+			await expect(noPermissionsHeading(page)).toHaveCount(0);
+		} finally {
+			await context.close();
+		}
+	});
+
 	test('a member with no deployment permission sees the empty state', async ({
 		browser,
 		api,
 	}) => {
 		const { owner } = await ownerWithDeployment(api);
 		const viewRoles = await permId(api, owner, 'viewRoles');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewRoles]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewRoles]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();

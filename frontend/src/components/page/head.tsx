@@ -86,7 +86,11 @@ const PageContainerHead = (rawProps: PageContainerHeadProps) => {
 
 	return (
 		<>
-			<header class={`h-full bg-secondary-light rounded-t-xs p-md py-md md:p-xl md:py-lg ${props.class}`}>
+			{/* `shrink-0`, not `h-full`: the head is a flex item and `height: 100%`
+			  made it claim the whole container, leaving the body a few pixels once
+			  a page stopped growing with its content. It only ever wanted its
+			  natural height. */}
+			<header class={`shrink-0 bg-secondary-light rounded-t-xs p-md py-md md:p-xl md:py-lg ${props.class}`}>
 				<div class="mx-auto w-full max-w-300 flex flex-col items-start gap-3 md:flex-row md:justify-between md:items-center md:gap-2">
 					<div class="flex flex-col gap-2 justify-start min-w-0 w-full md:w-auto">
 						<div class="flex gap-4 items-center select-none flex-wrap">

@@ -71,7 +71,7 @@ pub async fn initialize_runner_constraints(
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
 			ADD CONSTRAINT runner_fk_id_workspace_id
 				FOREIGN KEY(id, workspace_id, deleted) 
-					REFERENCES resource(id, owner_id, deleted)
+					REFERENCES resource(id, workspace_id, deleted)
 					DEFERRABLE INITIALLY IMMEDIATE;
 		"#
 	)

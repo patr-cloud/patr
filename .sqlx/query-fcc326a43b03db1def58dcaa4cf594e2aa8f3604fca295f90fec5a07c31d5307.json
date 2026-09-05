@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO role_binding(id, workspace_id, actor_id, role_id, scope_id, created, created_by) SELECT gen_random_uuid(), $1, $2, requested.role_id, requested.scope_id, NOW(), $5 FROM UNNEST($3::UUID[], $4::UUID[]) AS requested(role_id, scope_id) ON CONFLICT (actor_id, role_id, scope_id) DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "UuidArray",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fcc326a43b03db1def58dcaa4cf594e2aa8f3604fca295f90fec5a07c31d5307"
+}

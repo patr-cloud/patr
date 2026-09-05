@@ -140,7 +140,7 @@ async fn one_entry_per_requested_id() {
 
 #[tokio::test]
 async fn other_workspace_resource_is_null() {
-	// The query is scoped by `resource.owner_id`. Without that, this endpoint
+	// The query is scoped by `resource.workspace_id`. Without that, this endpoint
 	// would leak resource names across workspace boundaries to any member.
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

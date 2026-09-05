@@ -220,7 +220,7 @@ where
 						city,
 						timezone,
 
-						login_id,
+						actor_client_id,
 						action,
 						workspace_id,
 						resource_id
@@ -240,7 +240,7 @@ where
 
 						$9,
 						$10,
-						(SELECT owner_id FROM resource WHERE id = $11),
+						(SELECT workspace_id FROM resource WHERE id = $11),
 						$11
 					);
 				"#,

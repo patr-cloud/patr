@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO role_permission(role_id, permission_id) SELECT $1, UNNEST($2::UUID[]);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c700c0662b753867c09445b21ceb2213b9d112ed28c94834d37d89ec2469b3d2"
+}

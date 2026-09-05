@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO role_binding(id, workspace_id, actor_id, role_id, scope_id, created, created_by) SELECT gen_random_uuid(), ir.workspace_id, $1, ir.role_id, ir.scope_id, NOW(), $3 FROM workspace_user_invite_role ir WHERE ir.invite_id = $2 ON CONFLICT (actor_id, role_id, scope_id) DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1050a8babe086bce27427cb18dc51bb8cee0a861b3851d88ee91301ee5081e42"
+}

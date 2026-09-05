@@ -65,7 +65,7 @@ pub async fn list_deployment(
 		ON
 			deployment.id = resource.id
 		WHERE
-			workspace_id = $1 AND
+			deployment.workspace_id = $1 AND
 			deployment.deleted IS NULL AND
 			($4::TEXT IS NULL OR deployment.name ILIKE '%' || $4 || '%') AND
 			($5::TEXT IS NULL OR deployment.image_tag = $5) AND

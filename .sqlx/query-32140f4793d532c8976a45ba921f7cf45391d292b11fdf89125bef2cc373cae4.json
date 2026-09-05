@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_user_invite_role.invite_id AS \"invite_id: Uuid\", workspace_user_invite_role.role_id AS \"role_id: Uuid\", workspace_user_invite_role.scope_id AS \"scope_id: Uuid\" FROM workspace_user_invite_role WHERE workspace_user_invite_role.invite_id = ANY($1::UUID[]);",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "invite_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "role_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "scope_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "32140f4793d532c8976a45ba921f7cf45391d292b11fdf89125bef2cc373cae4"
+}

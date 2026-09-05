@@ -1,0 +1,51 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_user_invite.id AS \"id: Uuid\", workspace_user_invite.email, workspace_user_invite.invited_by AS \"invited_by: Uuid\", workspace_user_invite.created, workspace_user_invite.token_expiry FROM workspace_user_invite WHERE workspace_user_invite.workspace_id = $1 ORDER BY workspace_user_invite.created DESC, workspace_user_invite.id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "invited_by: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "token_expiry",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5f570e88cf13402ebed71c0c12e6a9d25f73113346e0416c3d8efeabf5d063f4"
+}

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO role(id, workspace_id, name, description, is_immutable) VALUES ($1, $2, $3, $4, TRUE);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "911d270c33234517d34967481f29e93dc4e1950443ce32b9e9a6f794d0d0a3a1"
+}

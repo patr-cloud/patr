@@ -39,4 +39,8 @@ pub struct Role {
 	#[preprocess(trim, regex = ROLE_DESCRIPTION_REGEX)]
 	#[serde(default, skip_serializing_if = "str::is_empty")]
 	pub description: String,
+	/// Whether the role is a seeded default that cannot be edited or deleted
+	#[search(skip)]
+	#[serde(default)]
+	pub is_immutable: bool,
 }

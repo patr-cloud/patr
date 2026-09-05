@@ -78,7 +78,7 @@ pub async fn get_resources_info(
 			runner
 			ON runner.id = resource.id
 		WHERE
-			resource.owner_id = $1 AND
+			resource.workspace_id = $1 AND
 			resource.id = ANY($2::UUID[]) AND
 			resource.deleted IS NULL;
 		"#,

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE role(id UUID NOT NULL, name VARCHAR(100) NOT NULL, description VARCHAR(500) NOT NULL, workspace_id UUID NOT NULL, is_immutable BOOLEAN NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "859b39b4c05fd4d86ef6f153dc5a845925400e5047c5b6090cbc96581296e7e3"
+}

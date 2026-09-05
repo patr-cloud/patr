@@ -29,7 +29,9 @@ pub async fn initialize_user_login_tables(
 			login_id UUID NOT NULL,
 			user_id UUID NOT NULL,
 			login_type USER_LOGIN_TYPE NOT NULL,
-			created TIMESTAMPTZ NOT NULL
+			created TIMESTAMPTZ NOT NULL,
+			actor_client_type ACTOR_CLIENT_TYPE NOT NULL
+				GENERATED ALWAYS AS ('user_login') STORED
 		);
 		"#
 	)
@@ -76,8 +78,11 @@ pub async fn initialize_user_login_constraints(
 	query!(
 		r#"
 		ALTER TABLE user_login
-		ADD CONSTRAINT user_login_fk_user_id
-		FOREIGN KEY(user_id) REFERENCES "user"(id);
+			ADD CONSTRAINT user_login_fk_user_id
+				FOREIGN KEY(user_id) REFERENCES "user"(id),
+			ADD CONSTRAINT user_login_fk_login_id_actor_client_type
+				FOREIGN KEY(login_id, actor_client_type)
+					REFERENCES actor_client(id, actor_client_type);
 		"#
 	)
 	.execute(&mut *connection)

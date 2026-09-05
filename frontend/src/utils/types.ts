@@ -81,7 +81,4 @@ export type UserPermissionsT =
 	  }
 	| ({
 			type: "member";
-	  } & Record<
-			ResourceTypes,
-			Record<ActionTypes, { permissionType: "include" | "exclude"; resources: Array<string> }>
-	  >);
+	  } & Record<ResourceTypes, Record<ActionTypes, Array<string>>>);
