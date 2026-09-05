@@ -1,9 +1,11 @@
 import { MaybeAccessor } from "~/utils/types";
 import { InputDropdownOption } from "./input-dropdown";
-import { createEffect, createSignal, For, JSX, mergeProps, Show } from "solid-js";
+import { createSignal, For, JSX, mergeProps, Show } from "solid-js";
+import { Portal } from "solid-js/web";
 import { get, variantBgClass } from "~/utils/func";
 import { FiChevronDown } from "solid-icons/fi";
 import { useClickOutside } from "~/hooks";
+import { createDropdownPosition } from "~/hooks/dropdown-position";
 import Checkbox from "./checkbox";
 
 interface InputDropdownCheckboxProps {
@@ -54,26 +56,20 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 	);
 
 	const [showDropdown, setShowDropdown] = createSignal(false);
+	const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
 	const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
 	const [inputRef, setInputRef] = createSignal<HTMLInputElement>();
 	const [inputValue, setInputValue] = createSignal("");
 	const [highlightedIndex, setHighlightedIndex] = createSignal(-1);
-	const [dropDirection, setDropDirection] = createSignal<"down" | "up">("down");
 
-	const DROPDOWN_MAX_HEIGHT_PX = 240;
+	const dropdownRect = createDropdownPosition(containerRef, showDropdown);
 
-	useClickOutside(dropdownRef, () => {
+	// The list is portalled out of the container, so a click on an option counts
+	// as "outside" unless it is explicitly excluded here.
+	useClickOutside(containerRef, (event) => {
+		const dd = dropdownRef();
+		if (dd && dd.contains(event.target as Node)) return;
 		setShowDropdown(false);
-	});
-
-	createEffect(() => {
-		if (!showDropdown()) return;
-		const el = dropdownRef();
-		if (!el || typeof window === "undefined") return;
-		const rect = el.getBoundingClientRect();
-		const spaceBelow = window.innerHeight - rect.bottom;
-		const spaceAbove = rect.top;
-		setDropDirection(spaceBelow < DROPDOWN_MAX_HEIGHT_PX && spaceAbove > spaceBelow ? "up" : "down");
 	});
 
 	const containerClass = () => `rounded-xs flex justify-start
@@ -82,7 +78,7 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
     ${showDropdown() ? "border-primary shadow-md bg-secondary-light" : ""}
 		focus-within:border-primary focus-within:shadow-md focus-within:bg-secondary-light
 		${variantBgClass(get(props.styleVariant))} ${get(props.class)} ${
-			showDropdown() ? (dropDirection() === "up" ? "rounded-t-none" : "rounded-b-none") : ""
+			showDropdown() ? (dropdownRect().direction === "up" ? "rounded-t-none" : "rounded-b-none") : ""
 		}`;
 
 	const onSelectItem = (e: MouseEvent, value: string) => {
@@ -158,7 +154,7 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 	};
 
 	return (
-		<div ref={setDropdownRef} onClick={() => setShowDropdown((prev) => !prev)} class={containerClass()}>
+		<div ref={setContainerRef} onClick={() => setShowDropdown((prev) => !prev)} class={containerClass()}>
 			<input
 				ref={setInputRef}
 				required={props.required}
@@ -176,44 +172,58 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 			<FiChevronDown class="mr-sm" />
 
 			{showDropdown() && (
-				<div
-					class={`${variantBgClass(
-						get(props.styleVariant)
-					)} border border-border-color absolute z-10 -left-px w-[calc(100%+2px)] rounded-xs shadow-lg overflow-y-scroll max-h-60 ${
-						dropDirection() === "up" ? "bottom-[2.22rem] rounded-b-none" : "top-[2.22rem] rounded-t-none"
-					}`}
-					onScroll={(e) => {
-						if (!props.onLoadMore) return;
-						const el = e.currentTarget;
-						if (el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
-							props.onLoadMore();
-						}
-					}}
-				>
-					<For each={filteredOptions()}>
-						{(option, index) => (
-							<div
-								onClick={(e) => onSelectItem(e, option.value)}
-								class={`border-b last-of-type:border-0 border-border-color px-xl py-sm cursor-pointer flex items-center gap-3 ${
-									highlightedIndex() === index() ? "bg-secondary-dark" : ""
-								}`}
-							>
-								<div class="pointer-events-none">
-									<Checkbox
-										checked={get(props.checked).includes(option.value)}
-										label={option.label}
-									/>
+				<Portal>
+					<div
+						ref={setDropdownRef}
+						style={{
+							position: "fixed",
+							...(dropdownRect().direction === "up"
+								? { bottom: `${dropdownRect().bottomOffset}px` }
+								: { top: `${dropdownRect().top}px` }),
+							left: `${dropdownRect().left}px`,
+							width: `${dropdownRect().width}px`,
+							"max-height": `${dropdownRect().maxHeight}px`,
+						}}
+						class={`${variantBgClass(
+							get(props.styleVariant)
+						)} border border-border-color z-50 rounded-xs shadow-lg overflow-y-auto ${
+							dropdownRect().direction === "up" ? "rounded-b-none" : "rounded-t-none"
+						}`}
+						onScroll={(e) => {
+							if (!props.onLoadMore) return;
+							const el = e.currentTarget;
+							if (el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
+								props.onLoadMore();
+							}
+						}}
+					>
+						<For each={filteredOptions()}>
+							{(option, index) => (
+								<div
+									onClick={(e) => onSelectItem(e, option.value)}
+									class={`border-b last-of-type:border-0 border-border-color px-xl py-sm cursor-pointer flex items-center gap-3 ${
+										highlightedIndex() === index() ? "bg-secondary-dark" : ""
+									}`}
+								>
+									<div class="pointer-events-none">
+										<Checkbox
+											checked={get(props.checked).includes(option.value)}
+											label={option.label}
+										/>
+									</div>
 								</div>
-							</div>
+							)}
+						</For>
+						{filteredOptions().length === 0 && (
+							<div class="px-xl py-sm text-grey">No options available.</div>
 						)}
-					</For>
-					{filteredOptions().length === 0 && <div class="px-xl py-sm text-grey">No options available.</div>}
-					<Show when={get(props.isLoadingMore)}>
-						<div class="flex items-center justify-center py-sm">
-							<div class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-						</div>
-					</Show>
-				</div>
+						<Show when={get(props.isLoadingMore)}>
+							<div class="flex items-center justify-center py-sm">
+								<div class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+							</div>
+						</Show>
+					</div>
+				</Portal>
 			)}
 		</div>
 	);
