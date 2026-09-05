@@ -278,13 +278,13 @@ pub async fn get_permissions_for_api_token(
 	query!(
 		r#"
 		SELECT
-			pb.workspace_id AS "workspace_id!",
-			pb.permission_id AS "permission_id!",
-			pb.scope_id AS "scope_id!"
+			user_api_token_permission_binding.workspace_id AS "workspace_id",
+			user_api_token_permission_binding.permission_id AS "permission_id",
+			user_api_token_permission_binding.scope_id AS "scope_id"
 		FROM
-			user_api_token_permission_binding pb
+			user_api_token_permission_binding
 		WHERE
-			pb.token_id = $1;
+			user_api_token_permission_binding.token_id = $1;
 		"#,
 		login_id as _,
 	)

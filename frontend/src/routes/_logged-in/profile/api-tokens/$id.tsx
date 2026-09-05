@@ -72,22 +72,11 @@ const ApiTokenInfo = () => {
 		const info = apiTokenInfo();
 		if (!info || initialized()) return;
 
-		const enabled = new Set<string>();
-		const perms: { [key: string]: WorkspacePermission } = {};
+		// The wire carries one entry per workspace, already in the shape this
+		// screen edits.
+		const perms: { [key: string]: WorkspacePermission } = { ...(info.permissions ?? {}) };
 
-		// The wire shape is superAdminOf + role grants now; this screen still
-		// edits the old per-permission shape until the token-screen rework, so
-		// member workspaces surface only as "member" with no detail.
-		for (const wsId of info.superAdminOf ?? []) {
-			enabled.add(wsId);
-			perms[wsId] = { type: "superAdmin" };
-		}
-		for (const wsId of Object.keys(info.grants ?? {})) {
-			enabled.add(wsId);
-			perms[wsId] = { type: "member" } as WorkspacePermission;
-		}
-
-		setEnabledWorkspaces(enabled);
+		setEnabledWorkspaces(new Set(Object.keys(perms)));
 		setWorkspacePermissions(perms);
 		setInitialized(true);
 	});
@@ -188,15 +177,11 @@ const ApiTokenInfo = () => {
 		if (isSaving()) return;
 		setIsSaving(true);
 		try {
-			// Super-admin selections round-trip. Role-grant ceilings aren't
-			// editable here until the token-screen rework, so carry the saved
-			// ones through untouched rather than dropping them.
 			const body: UpdateApiTokenRequest = {
 				name,
-				superAdminOf: Object.entries(perms)
-					.filter(([, permission]) => permission.type === "superAdmin")
-					.map(([workspaceId]) => workspaceId),
-				grants: info?.grants ?? {},
+				// The screens still author the pre-cutover member shape; the
+				// token-screen rework replaces this editor wholesale.
+				permissions: perms as UpdateApiTokenRequest["permissions"],
 				tokenNbf: info?.tokenNbf,
 				tokenExp: info?.tokenExp,
 				allowedIps: info?.allowedIps,
@@ -218,7 +203,7 @@ const ApiTokenInfo = () => {
 			}
 
 			queryClient.setQueryData<GetApiTokenInfoResponse>(apiTokenKeys.detail(params().id), (prev) =>
-				prev ? { ...prev, name, superAdminOf: body.superAdminOf, grants: body.grants } : prev
+				prev ? { ...prev, name, permissions: body.permissions } : prev
 			);
 			toast("API Token updated successfully", "success");
 		} finally {

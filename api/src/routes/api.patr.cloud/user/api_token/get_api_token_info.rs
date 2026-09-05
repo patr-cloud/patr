@@ -1,4 +1,6 @@
-use models::api::user::*;
+use std::collections::BTreeMap;
+
+use models::{api::user::*, rbac::WorkspacePermission};
 use reqwest::StatusCode;
 
 use crate::prelude::*;
@@ -52,8 +54,7 @@ pub async fn get_api_token_info(
 			row.token_id,
 			UserApiToken {
 				name: row.name,
-				super_admin_of: Default::default(),
-				grants: Default::default(),
+				permissions: Default::default(),
 				token_nbf: row.token_nbf,
 				token_exp: row.token_exp,
 				allowed_ips: row.allowed_ips,
@@ -67,7 +68,7 @@ pub async fn get_api_token_info(
 	// The declared ceiling. Effective permissions are the ceiling
 	// intersected with the owner's current permissions, computed at auth —
 	// the declaration is what the owner can inspect and edit.
-	token.data.super_admin_of = query!(
+	query!(
 		r#"
 		SELECT
 			workspace_id AS "workspace_id!: Uuid"
@@ -81,8 +82,12 @@ pub async fn get_api_token_info(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|row| row.workspace_id)
-	.collect();
+	.for_each(|row| {
+		token
+			.data
+			.permissions
+			.insert(row.workspace_id, WorkspacePermission::SuperAdmin);
+	});
 
 	query!(
 		r#"
@@ -104,16 +109,22 @@ pub async fn get_api_token_info(
 	.await?
 	.into_iter()
 	.for_each(|row| {
-		// One grant per ceiling row; the workspace's own id is the root.
-		token
+		// A super-admin workspace needs no ceiling rows, so never downgrade one.
+		let WorkspacePermission::Member { permissions } = token
 			.data
-			.grants
+			.permissions
 			.entry(row.workspace_id)
+			.or_insert_with(|| WorkspacePermission::Member {
+				permissions: BTreeMap::new(),
+			})
+		else {
+			return;
+		};
+
+		permissions
+			.entry(row.permission_id)
 			.or_default()
-			.push(PermissionGrant {
-				permission_id: row.permission_id,
-				resource_id: row.scope_id,
-			});
+			.insert(row.scope_id);
 	});
 
 	AppResponse::builder()
