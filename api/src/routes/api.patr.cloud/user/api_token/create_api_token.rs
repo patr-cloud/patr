@@ -1,6 +1,6 @@
 use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
-use models::api::user::*;
+use models::{api::user::*, rbac::WorkspacePermission};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -21,8 +21,7 @@ pub async fn create_api_token(
 						token:
 							UserApiTokenProcessed {
 								name,
-								super_admin_of,
-								grants,
+								permissions,
 								token_nbf,
 								token_exp,
 								allowed_ips,
@@ -39,7 +38,7 @@ pub async fn create_api_token(
 ) -> Result<AppResponse<CreateApiTokenRequest>, ErrorType> {
 	info!("Creating API token");
 
-	if super_admin_of.is_empty() && grants.is_empty() {
+	if permissions.is_empty() {
 		return Err(ErrorType::WrongParameters);
 	}
 
@@ -165,101 +164,129 @@ pub async fn create_api_token(
 
 	trace!("API token inserted");
 
-	// Super-admin entries: the DB itself enforces that only the workspace's
-	// owner can mint these, via the FK to workspace(id, super_admin_id).
-	for workspace_id in super_admin_of {
-		trace!("Inserting super-admin entry for workspace ID: `{workspace_id}`");
+	// One entry per workspace: super-admin, or the ceiling rows. Validation is
+	// structural only — the composite FKs pin every scope to the named
+	// workspace, and a ceiling above the owner's current permissions is
+	// allowed because the intersection at auth time clamps it.
+	for (workspace_id, permission) in permissions {
+		match permission {
+			// The DB itself enforces that only the workspace's owner can mint
+			// these, via the FK to workspace(id, super_admin_id).
+			WorkspacePermission::SuperAdmin => {
+				trace!("Inserting super-admin entry for workspace ID: `{workspace_id}`");
 
-		query!(
-			r#"
-			INSERT INTO
-				user_api_token_workspace_permission_type(
-					token_id,
-					workspace_id,
-					token_permission_type
+				query!(
+					r#"
+					INSERT INTO
+						user_api_token_workspace_permission_type(
+							token_id,
+							workspace_id,
+							token_permission_type
+						)
+					VALUES
+						(
+							$1,
+							$2,
+							'super_admin'
+						);
+					"#,
+					token_id as _,
+					workspace_id as _,
 				)
-			VALUES
-				(
-					$1,
-					$2,
-					'super_admin'
-				);
-			"#,
-			token_id as _,
-			workspace_id as _,
-		)
-		.execute(&mut **database)
-		.await?;
+				.execute(&mut **database)
+				.await?;
 
-		query!(
-			r#"
-			INSERT INTO
-				user_api_token_workspace_super_admin(
-					token_id,
-					user_id,
-					workspace_id,
-					token_permission_type
+				query!(
+					r#"
+					INSERT INTO
+						user_api_token_workspace_super_admin(
+							token_id,
+							user_id,
+							workspace_id,
+							token_permission_type
+						)
+					VALUES
+						(
+							$1,
+							$2,
+							$3,
+							DEFAULT
+						);
+					"#,
+					token_id as _,
+					user_data.id as _,
+					workspace_id as _,
 				)
-			VALUES
-				(
-					$1,
-					$2,
-					$3,
-					DEFAULT
-				);
-			"#,
-			token_id as _,
-			user_data.id as _,
-			workspace_id as _,
-		)
-		.execute(&mut **database)
-		.await
-		.map_err(|err| match err {
-			sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-				ErrorType::Unauthorized
-			}
-			other => ErrorType::server_error(other),
-		})?;
-	}
-
-	// The ceiling rows. Validation is structural only — the composite FKs
-	// pin the role and every scope to the named workspace. A ceiling above
-	// the owner's current permissions is allowed: the intersection at auth
-	// time clamps it, and a later promotion needs no re-mint.
-	for (workspace_id, workspace_grants) in grants {
-		trace!("Inserting ceiling rows for workspace ID: `{workspace_id}`");
-
-		for grant in workspace_grants {
-			query!(
-				r#"
-				INSERT INTO
-					user_api_token_permission_binding(
-						token_id, workspace_id, permission_id, scope_id
-					)
-				VALUES
-					($1, $2, $3, $4)
-				ON CONFLICT
-					(token_id, permission_id, scope_id)
-				DO NOTHING;
-				"#,
-				token_id as _,
-				workspace_id as _,
-				grant.permission_id as _,
-				grant.resource_id as _,
-			)
-			.execute(&mut **database)
-			.await
-			.map_err(|err| match err {
-				sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-					match db_err.constraint() {
-						Some("user_api_token_permission_binding_fk_permission_id") => {
-							ErrorType::WrongParameters
-						}
-						_ => ErrorType::ResourceDoesNotExist,
+				.execute(&mut **database)
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						ErrorType::Unauthorized
 					}
-				}
-				other => ErrorType::server_error(other),
-			})?;
+					other => ErrorType::server_error(other),
+				})?;
+			}
+			WorkspacePermission::Member { permissions } => {
+				trace!("Inserting permission as member");
+				query!(
+					r#"
+					INSERT INTO
+						user_api_token_workspace_permission_type(
+							token_id,
+							workspace_id,
+							token_permission_type
+						)
+					VALUES
+						(
+							$1,
+							$2,
+							'member'
+						);
+					"#,
+					token_id as _,
+					workspace_id as _,
+				)
+				.execute(&mut **database)
+				.await?;
+
+				query!(
+					r#"
+					INSERT INTO
+						user_api_token_permission_binding(
+							token_id, workspace_id, permission_id, scope_id
+						)
+					SELECT
+						$1,
+						$2,
+						UNNEST($3::UUID[]),
+						UNNEST($4::UUID[])
+					ON CONFLICT
+						(token_id, permission_id, scope_id)
+					DO NOTHING;
+					"#,
+					token_id as _,
+					workspace_id as _,
+					&permissions.keys().copied().collect::<Vec<_>>() as _,
+					&permissions
+						.values()
+						.flat_map(|scopes| scopes.iter())
+						.copied()
+						.collect::<Vec<_>>() as _,
+				)
+				.execute(&mut **database)
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						match db_err.constraint() {
+							Some("user_api_token_permission_binding_fk_permission_id") => {
+								ErrorType::WrongParameters
+							}
+							_ => ErrorType::ResourceDoesNotExist,
+						}
+					}
+					other => ErrorType::server_error(other),
+				})?;
+			}
 		}
 	}
 

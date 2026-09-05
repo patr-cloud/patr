@@ -1,9 +1,10 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use headers::authorization::Authorization;
 use models::{
 	ApiSuccessResponseBody,
 	api::{auth::*, user::*},
+	rbac::WorkspacePermission,
 };
 
 use crate::prelude::*;
@@ -542,8 +543,7 @@ async fn docker_login_works() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeSet::from([workspace.id]),
-			BTreeMap::new(),
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
 		)
 		.await;
 

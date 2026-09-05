@@ -1,6 +1,6 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
-use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+use crate::{prelude::*, rbac::WorkspacePermission, utils::constants::RESOURCE_NAME_REGEX};
 
 /// The endpoint to create an API token
 mod create_api_token;
@@ -28,21 +28,6 @@ pub use self::{
 	update_api_token::*,
 };
 
-/// One permission grant on a token: the permission plus the scope it applies
-/// at. Permissions rather than roles, because a role belongs to a workspace
-/// while a token belongs to a user — and reading a workspace's roles is
-/// itself permission-gated, so a member without that permission could not
-/// otherwise scope their own token.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, ts_rs::TS)]
-#[serde(rename_all = "camelCase")]
-pub struct PermissionGrant {
-	/// The permission being granted.
-	pub permission_id: Uuid,
-	/// The resource the permission applies at, or the workspace id for the
-	/// whole workspace.
-	pub resource_id: Uuid,
-}
-
 #[::preprocess::sync]
 /// An API token created by the user.
 ///
@@ -62,18 +47,13 @@ pub struct UserApiToken {
 	/// when the user is looking at the list of tokens.
 	#[preprocess(trim, length(min = 4), regex = RESOURCE_NAME_REGEX)]
 	pub name: String,
-	/// The workspaces this token has super-admin access to. Only the
-	/// workspace's owner can mint these.
-	#[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
-	#[search(skip)]
-	pub super_admin_of: BTreeSet<Uuid>,
-	/// The token's permission grants per workspace. These are a ceiling, not
-	/// a grant: the token's effective permissions are this intersected with
-	/// its owner's current permissions, computed at auth time. A ceiling
-	/// above the owner's reach is allowed and clamps harmlessly.
+	/// A ceiling, not a grant: intersected with the owner's current
+	/// permissions at auth time, so declaring more than they hold is harmless.
+	/// Permissions rather than roles, since a role belongs to a workspace and
+	/// a token to a user.
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	#[search(skip)]
-	pub grants: BTreeMap<Uuid, Vec<PermissionGrant>>,
+	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
 	/// Any token that is used before the nbf (not before) should be rejected.
 	/// Tokens are only valid after this time.
 	#[serde(
@@ -121,16 +101,15 @@ mod test {
 	use serde_test::{Configure, Token, assert_tokens};
 	use time::OffsetDateTime;
 
-	use super::{PermissionGrant, UserApiToken};
-	use crate::prelude::*;
+	use super::UserApiToken;
+	use crate::{prelude::*, rbac::WorkspacePermission};
 
 	#[test]
 	fn assert_empty_user_api_token_types() {
 		assert_tokens(
 			&UserApiToken {
 				name: "Token 1".to_string(),
-				super_admin_of: Default::default(),
-				grants: Default::default(),
+				permissions: Default::default(),
 				token_nbf: None,
 				token_exp: None,
 				allowed_ips: None,
@@ -156,14 +135,21 @@ mod test {
 		assert_tokens(
 			&UserApiToken {
 				name: "Token 2".to_string(),
-				super_admin_of: BTreeSet::from([Uuid::nil()]),
-				grants: BTreeMap::from([(
-					Uuid::parse_str("00000000000000000000000000000001").unwrap(),
-					vec![PermissionGrant {
-						permission_id: Uuid::nil(),
-						resource_id: Uuid::nil(),
-					}],
-				)]),
+				permissions: {
+					let mut map = BTreeMap::new();
+					map.insert(Uuid::nil(), WorkspacePermission::SuperAdmin);
+					map.insert(
+						Uuid::parse_str("00000000000000000000000000000001").unwrap(),
+						WorkspacePermission::Member {
+							permissions: {
+								let mut map = BTreeMap::new();
+								map.insert(Uuid::nil(), BTreeSet::from([Uuid::nil()]));
+								map
+							},
+						},
+					);
+					map
+				},
 				token_nbf: Some(OffsetDateTime::UNIX_EPOCH),
 				token_exp: Some(OffsetDateTime::UNIX_EPOCH),
 				allowed_ips: Some(vec![
@@ -176,28 +162,29 @@ mod test {
 			&[
 				Token::Struct {
 					name: "UserApiToken",
-					len: 7,
+					len: 6,
 				},
 				Token::Str("name"),
 				Token::Str("Token 2"),
-				Token::Str("superAdminOf"),
-				Token::Seq { len: Some(1) },
+				Token::Str("permissions"),
+				Token::Map { len: Some(2) },
 				Token::Str("00000000000000000000000000000000"),
-				Token::SeqEnd,
-				Token::Str("grants"),
-				Token::Map { len: Some(1) },
-				Token::Str("00000000000000000000000000000001"),
-				Token::Seq { len: Some(1) },
 				Token::Struct {
-					name: "PermissionGrant",
-					len: 2,
+					name: "WorkspacePermission",
+					len: 1,
 				},
-				Token::Str("permissionId"),
-				Token::Str("00000000000000000000000000000000"),
-				Token::Str("resourceId"),
-				Token::Str("00000000000000000000000000000000"),
+				Token::Str("type"),
+				Token::Str("superAdmin"),
 				Token::StructEnd,
+				Token::Str("00000000000000000000000000000001"),
+				Token::Map { len: None },
+				Token::Str("type"),
+				Token::Str("member"),
+				Token::Str("00000000000000000000000000000000"),
+				Token::Seq { len: Some(1) },
+				Token::Str("00000000000000000000000000000000"),
 				Token::SeqEnd,
+				Token::MapEnd,
 				Token::MapEnd,
 				Token::Str("tokenNbf"),
 				Token::Some,

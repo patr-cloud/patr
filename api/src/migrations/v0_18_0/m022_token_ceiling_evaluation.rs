@@ -17,9 +17,21 @@ use crate::prelude::*;
 
 #[macros::migration]
 async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+	// Dropped, not replaced: the function is created by m014 and rewritten by
+	// m021, so it must already exist. If it doesn't, something upstream is
+	// broken and the migration should fail here rather than quietly conjure
+	// one.
 	sqlx::query(
 		r#"
-		CREATE OR REPLACE FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(
+		DROP FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(UUID, TEXT);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		CREATE FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(
 			login_id UUID,
 			permission_name TEXT
 		) RETURNS TABLE(
@@ -61,20 +73,11 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 				UNION ALL
 				SELECT
-					workspace.id AS workspace_id
+					user_api_token_workspace_super_admin.workspace_id
 				FROM
-					user_api_token_workspace_super_admin sa
-				INNER JOIN
-					user_api_token
-				ON
-					user_api_token.token_id = sa.token_id
-				INNER JOIN
-					workspace
-				ON
-					workspace.id = sa.workspace_id AND
-					workspace.super_admin_id = user_api_token.user_id
+					user_api_token_workspace_super_admin
 				WHERE
-					sa.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+					user_api_token_workspace_super_admin.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
 			/* Bindings carrying this permission: the user's own for web
 			logins; the token's ceiling intersected with the owner's grants
@@ -106,13 +109,13 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 			/* An API token's declared ceiling: its own (permission, scope) rows */
 			token_ceiling AS (
 				SELECT
-					pb.workspace_id,
-					pb.scope_id
+					user_api_token_permission_binding.workspace_id,
+					user_api_token_permission_binding.scope_id
 				FROM
-					user_api_token_permission_binding pb
+					user_api_token_permission_binding
 				WHERE
-					pb.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-					pb.permission_id = local_permission_id
+					user_api_token_permission_binding.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+					user_api_token_permission_binding.permission_id = local_permission_id
 			),
 			/* The token owner's own grants; effective = ceiling ∩ owner,
 			intersected per resource below */
@@ -150,8 +153,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 				/* Tombstoned resources are nobody's, whatever the bindings say. The
 				parenthesised disjunction matters: AND binds tighter than OR, so
 				without it this would only narrow the super-admin arm. */
-				resource.deleted IS NULL AND
-				(
+				resource.deleted IS NULL AND (
 					EXISTS (
 						SELECT
 							1
@@ -159,8 +161,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 							super_admin_workspaces
 						WHERE
 							super_admin_workspaces.workspace_id = resource.workspace_id
-					)
-					OR EXISTS (
+					) OR EXISTS (
 						SELECT
 							1
 						FROM
@@ -171,8 +172,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 								user_bindings.scope_id = resource.id OR
 								user_bindings.scope_id = user_bindings.workspace_id
 							)
-					)
-					OR (
+					) OR (
 						EXISTS (
 							SELECT
 								1

@@ -1,8 +1,9 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::{container_registry::*, deployment::*},
+	rbac::WorkspacePermission,
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -416,8 +417,7 @@ async fn get_manifest_details_works() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeSet::from([workspace.id]),
-			BTreeMap::new(),
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
 		)
 		.await;
 	let image = setup
@@ -499,8 +499,7 @@ async fn delete_manifest_works() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeSet::from([workspace.id]),
-			BTreeMap::new(),
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
 		)
 		.await;
 	let image = setup
@@ -592,8 +591,7 @@ async fn get_exposed_ports_no_ports() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeSet::from([workspace.id]),
-			BTreeMap::new(),
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
 		)
 		.await;
 	setup
@@ -634,8 +632,7 @@ async fn get_exposed_ports_works() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeSet::from([workspace.id]),
-			BTreeMap::new(),
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
 		)
 		.await;
 
@@ -708,8 +705,7 @@ async fn delete_manifest_in_use_by_deployment() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeSet::from([workspace.id]),
-			BTreeMap::new(),
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
 		)
 		.await;
 	let image = setup

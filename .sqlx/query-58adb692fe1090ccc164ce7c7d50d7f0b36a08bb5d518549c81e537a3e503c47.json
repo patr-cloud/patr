@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_api_token_permission_binding(token_id, workspace_id, permission_id, scope_id) SELECT $1, $2, UNNEST($3::UUID[]), UNNEST($4::UUID[]) ON CONFLICT (token_id, permission_id, scope_id) DO NOTHING;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "58adb692fe1090ccc164ce7c7d50d7f0b36a08bb5d518549c81e537a3e503c47"
+}

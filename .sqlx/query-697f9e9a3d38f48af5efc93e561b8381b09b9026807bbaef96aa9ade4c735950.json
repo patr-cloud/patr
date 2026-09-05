@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO user_api_token_workspace_permission_type(token_id, workspace_id, token_permission_type) VALUES ($1, $2, 'member');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "697f9e9a3d38f48af5efc93e561b8381b09b9026807bbaef96aa9ade4c735950"
+}
