@@ -7,6 +7,7 @@ import {
 	getPermissionId,
 	loginAs,
 } from '@/prelude';
+import { openMembersPage, openMemberDetail } from '@/helpers/ui/member';
 
 // Role-endpoint permission gating at the API layer (viewRoles can list but not
 // create/edit/delete; modifyRoles can; neither → 401) lives in the Rust API
@@ -80,7 +81,7 @@ test.describe('rbac > permission gating [UI]', () => {
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
 		try {
-			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
+			await openMembersPage(page);
 			await expect(
 				page.getByRole('button', { name: /^(Send Invite|Sending\.\.\.)$/ }),
 			).toBeHidden({
@@ -108,7 +109,7 @@ test.describe('rbac > permission gating [UI]', () => {
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
 		try {
-			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
+			await openMembersPage(page);
 			await expect(page.getByRole('button', { name: /^Edit roles$/ })).toBeHidden({
 				timeout: 10_000,
 			});
@@ -126,12 +127,21 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'modifyRoles',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, [modifyId]);
+		// The members page lists members, which needs viewRoles — the seeded
+		// admin roles pair the two for the same reason.
+		const viewId = await getPermissionId(
+			api,
+			owner.accessToken,
+			owner.workspaceId,
+			owner.clientIp,
+			'viewRoles',
+		);
+		await using b = await createSecondMemberWithRole(api, owner, [modifyId, viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
 		try {
-			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
+			await openMembersPage(page);
 			await expect(
 				page.getByRole('button', { name: /^(Send Invite|Sending\.\.\.)$/ }),
 			).toBeVisible({
@@ -151,12 +161,24 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'modifyRoles',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, [modifyId]);
+		// The members page lists members, which needs viewRoles — the seeded
+		// admin roles pair the two for the same reason.
+		const viewId = await getPermissionId(
+			api,
+			owner.accessToken,
+			owner.workspaceId,
+			owner.clientIp,
+			'viewRoles',
+		);
+		await using b = await createSecondMemberWithRole(api, owner, [modifyId, viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
 		try {
-			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
+			await openMembersPage(page);
+			// Edit roles lives on a member's detail view, and only for non-owner
+			// members — so open their own row rather than the owner's.
+			await openMemberDetail(page, `${b.firstName} ${b.lastName}`.trim());
 			await expect(page.getByRole('button', { name: /^Edit roles$/ }).first()).toBeVisible({
 				timeout: 10_000,
 			});

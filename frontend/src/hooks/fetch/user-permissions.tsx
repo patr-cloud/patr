@@ -3,7 +3,7 @@ import { GetCurrentPermissionsResponse, ListAllPermissionsResponse } from "~/bin
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { userPermissionKeys } from "~/hooks/query-keys";
-import { parsePermissionName, resourceTypes, userActionTypes } from "~/utils/func";
+import { parsePermissionName, resourceTypes, userActionTypes, workspaceLevelResourceTypes } from "~/utils/func";
 import { httpRequest } from "~/utils/http-request";
 import { ActionTypes, ResourceTypes, UserPermissionsT } from "~/utils/types";
 
@@ -83,7 +83,12 @@ const useUserPermissionsQuery = () => {
 					if (resourceType === "type" || !validResourceTypes.has(resourceType)) continue;
 
 					Object.entries(actionPermissions).forEach(([action, permId]) => {
-						if (!validActions.has(action)) return;
+						// Workspace-level permissions (modifyRoles, viewRoles,
+						// editWorkspace) have no "::action" half, so they land under
+						// the "" key that is-allowed remaps to. Let them through.
+						if (!validActions.has(action) && !workspaceLevelResourceTypes.has(resourceType)) {
+							return;
+						}
 
 						if (userPermission[permId]) {
 							if (!detailedPermissions[resourceType as ResourceTypes]) {
