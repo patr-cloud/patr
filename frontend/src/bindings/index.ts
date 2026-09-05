@@ -522,7 +522,7 @@ export type * from "./RevokeWorkspaceInviteRequestHeaders";
 export type * from "./RevokeWorkspaceInviteRequestProcessed";
 export type * from "./RevokeWorkspaceInviteResponse";
 export type * from "./Role";
-export type * from "./RoleGrant";
+export type * from "./RoleBindingGrant";
 export type * from "./Runner";
 export type * from "./RunnerLog";
 export type * from "./RunnerMetricName";
