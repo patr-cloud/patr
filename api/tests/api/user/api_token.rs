@@ -18,7 +18,7 @@ use models::{
 			rbac::{role::*, user::*},
 		},
 	},
-	rbac::{DeploymentPermission, Permission, WorkspacePermission},
+	rbac::{DeploymentPermission, Permission},
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -72,7 +72,8 @@ async fn call_with_token(setup: &TestSetup, token: &str) -> axum_test::TestRespo
 async fn mint_token_raw(
 	setup: &TestSetup,
 	token: &BearerToken,
-	permissions: BTreeMap<Uuid, WorkspacePermission>,
+	super_admin_of: BTreeSet<Uuid>,
+	grants: BTreeMap<Uuid, Vec<PermissionGrant>>,
 	token_nbf: Option<time::OffsetDateTime>,
 	token_exp: Option<time::OffsetDateTime>,
 	allowed_ips: Option<Vec<ipnetwork::IpNetwork>>,
@@ -87,7 +88,8 @@ async fn mint_token_raw(
 				.body(CreateApiTokenRequest {
 					token: UserApiToken {
 						name: random_name(8),
-						permissions,
+						super_admin_of,
+						grants,
 						token_nbf,
 						token_exp,
 						allowed_ips,
@@ -99,10 +101,23 @@ async fn mint_token_raw(
 		.await
 }
 
-/// A token permission scope covering the whole workspace — the grant sits at
-/// the workspace root.
-fn workspace_scope(workspace_id: Uuid) -> BTreeSet<Uuid> {
-	BTreeSet::from([workspace_id])
+/// A one-permission token grant map for a workspace, one grant per scope. The
+/// workspace's own id is the root and covers everything in it.
+fn permission_grants(
+	workspace_id: Uuid,
+	permission_id: Uuid,
+	resource_ids: &[Uuid],
+) -> BTreeMap<Uuid, Vec<PermissionGrant>> {
+	BTreeMap::from([(
+		workspace_id,
+		resource_ids
+			.iter()
+			.map(|resource_id| PermissionGrant {
+				permission_id,
+				resource_id: *resource_id,
+			})
+			.collect::<Vec<_>>(),
+	)])
 }
 
 /// A token used after its `token_exp` is rejected at auth time (401).
@@ -115,7 +130,8 @@ async fn api_token_expired_is_rejected() {
 	let token = mint_token_raw(
 		&setup,
 		&user.access_token,
-		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		BTreeSet::from([workspace.id]),
+		BTreeMap::new(),
 		None,
 		Some(time::OffsetDateTime::now_utc() - time::Duration::minutes(1)),
 		None,
@@ -142,7 +158,8 @@ async fn api_token_before_nbf_is_rejected() {
 	let token = mint_token_raw(
 		&setup,
 		&user.access_token,
-		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		BTreeSet::from([workspace.id]),
+		BTreeMap::new(),
 		Some(time::OffsetDateTime::now_utc() + time::Duration::hours(1)),
 		None,
 		None,
@@ -169,7 +186,8 @@ async fn api_token_valid_nbf_exp_accepted() {
 	let token = mint_token_raw(
 		&setup,
 		&user.access_token,
-		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		BTreeSet::from([workspace.id]),
+		BTreeMap::new(),
 		Some(time::OffsetDateTime::now_utc() - time::Duration::minutes(1)),
 		Some(time::OffsetDateTime::now_utc() + time::Duration::days(7)),
 		None,
@@ -198,7 +216,8 @@ async fn api_token_nbf_after_exp_rejected_on_create() {
 	let resp = mint_token_raw(
 		&setup,
 		&user.access_token,
-		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		BTreeSet::from([workspace.id]),
+		BTreeMap::new(),
 		Some(time::OffsetDateTime::now_utc() + time::Duration::days(7)),
 		Some(time::OffsetDateTime::now_utc() + time::Duration::days(1)),
 		None,
@@ -221,7 +240,8 @@ async fn api_token_nbf_after_exp_rejected_on_patch() {
 	let id = mint_token_raw(
 		&setup,
 		&user.access_token,
-		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		BTreeSet::from([workspace.id]),
+		BTreeMap::new(),
 		None,
 		Some(time::OffsetDateTime::now_utc() + time::Duration::days(1)),
 		None,
@@ -242,10 +262,8 @@ async fn api_token_nbf_after_exp_rejected_on_patch() {
 				.body(UpdateApiTokenRequest {
 					token: UserApiToken {
 						name: "patchtoken".to_string(),
-						permissions: BTreeMap::from([(
-							workspace.id,
-							WorkspacePermission::SuperAdmin,
-						)]),
+						super_admin_of: BTreeSet::from([workspace.id]),
+						grants: BTreeMap::new(),
 						// nbf 7 days out, exp 1 day out (resent) → nbf > exp → 400.
 						token_nbf: Some(time::OffsetDateTime::now_utc() + time::Duration::days(7)),
 						token_exp: Some(time::OffsetDateTime::now_utc() + time::Duration::days(1)),
@@ -274,7 +292,8 @@ async fn api_token_empty_allowed_ips_callable() {
 	let token = mint_token_raw(
 		&setup,
 		&user.access_token,
-		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		BTreeSet::from([workspace.id]),
+		BTreeMap::new(),
 		None,
 		None,
 		Some(vec![]),
@@ -337,7 +356,8 @@ async fn api_token_non_superadmin_cannot_mint_superadmin() {
 	let resp = mint_token_raw(
 		&setup,
 		&member.access_token,
-		BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		BTreeSet::from([workspace.id]),
+		BTreeMap::new(),
 		None,
 		None,
 		None,
@@ -350,7 +370,9 @@ async fn api_token_non_superadmin_cannot_mint_superadmin() {
 	);
 }
 
-/// A member cannot mint a token granting a permission they don't hold.
+/// A token ceiling above its owner's permissions is allowed at mint time,
+/// but the intersection at auth time clamps it: the token never acts beyond
+/// its owner.
 #[tokio::test]
 async fn api_token_member_cannot_exceed_creator() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -358,38 +380,53 @@ async fn api_token_member_cannot_exceed_creator() {
 	let workspace = setup.create_test_workspace(&owner.access_token).await;
 
 	// Member has only deployment::view.
-	let perms = vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))];
-	let role = setup
-		.create_role_with_permissions(&owner.access_token, workspace.id, perms)
+	let view_role = setup
+		.create_role_with_permissions(
+			&owner.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
 		.await;
 	let member = setup
-		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, view_role.id)
 		.await;
 
-	// Member tries to mint a token granting deployment::delete (they lack it).
-	let delete_id = setup.get_permission_id(Permission::Deployment(DeploymentPermission::Delete));
+	// The member declares a ceiling carrying modifyRoles — allowed, since a
+	// ceiling grants nothing by itself.
 	let resp = mint_token_raw(
 		&setup,
 		&member.access_token,
-		BTreeMap::from([(
+		BTreeSet::new(),
+		permission_grants(
 			workspace.id,
-			WorkspacePermission::Member {
-				permissions: BTreeMap::from([(delete_id, workspace_scope(workspace.id))]),
-			},
-		)]),
+			setup.get_permission_id(Permission::ModifyRoles),
+			&[workspace.id],
+		),
 		None,
 		None,
 		None,
 	)
 	.await;
 	assert!(
-		resp.status_code().is_client_error(),
-		"a member token must not exceed the creator's own permissions, got {}",
+		resp.status_code().is_success(),
+		"minting a ceiling above the owner's permissions must succeed, got {}",
 		resp.status_code()
+	);
+	let token = resp
+		.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
+		.response
+		.token;
+
+	// But acting on it is clamped by the owner's own permissions.
+	let view_perm = setup.get_permission_id(Permission::ViewRoles);
+	let probe = probe_modify_roles(&setup, &token, workspace.id, view_perm).await;
+	assert!(
+		probe.status_code().is_client_error(),
+		"the token must not act beyond its owner's permissions, got {}",
+		probe.status_code()
 	);
 }
 
-/// A PATCH with an empty permissions object is rejected (400).
 #[tokio::test]
 async fn api_token_patch_empty_permissions_400() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -398,7 +435,8 @@ async fn api_token_patch_empty_permissions_400() {
 	let token = setup
 		.create_test_api_token(
 			&owner.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -413,7 +451,8 @@ async fn api_token_patch_empty_permissions_400() {
 				.body(UpdateApiTokenRequest {
 					token: UserApiToken {
 						name: "emptyperm".to_string(),
-						permissions: BTreeMap::new(),
+						super_admin_of: BTreeSet::new(),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -441,7 +480,8 @@ async fn api_token_cross_user_delete_404() {
 	let token_a = setup
 		.create_test_api_token(
 			&user_a.access_token,
-			BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([ws_a.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -483,7 +523,8 @@ async fn api_token_cross_user_regenerate_404() {
 	let token_a = setup
 		.create_test_api_token(
 			&user_a.access_token,
-			BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([ws_a.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -518,7 +559,8 @@ async fn api_token_cross_user_patch_idor_404() {
 	let token_a = setup
 		.create_test_api_token(
 			&user_a.access_token,
-			BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([ws_a.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -535,7 +577,8 @@ async fn api_token_cross_user_patch_idor_404() {
 				.body(UpdateApiTokenRequest {
 					token: UserApiToken {
 						name: "idortoken".to_string(),
-						permissions: BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+						super_admin_of: BTreeSet::from([ws_a.id]),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -571,7 +614,8 @@ async fn api_token_cannot_access_other_workspace() {
 	let token_a = setup
 		.create_test_api_token(
 			&user_a.access_token,
-			BTreeMap::from([(ws_a.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([ws_a.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -614,12 +658,8 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 	let token = setup
 		.create_test_api_token(
 			&member.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
-				},
-			)]),
+			BTreeSet::new(),
+			permission_grants(workspace.id, modify, &[workspace.id]),
 		)
 		.await;
 
@@ -679,12 +719,8 @@ async fn api_token_perm_trimmed_on_role_delete() {
 	let token = setup
 		.create_test_api_token(
 			&member.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
-				},
-			)]),
+			BTreeSet::new(),
+			permission_grants(workspace.id, modify, &[workspace.id]),
 		)
 		.await;
 
@@ -722,7 +758,10 @@ async fn api_token_perm_trimmed_on_role_delete() {
 	);
 }
 
-/// Monotonic shrink: promoting a member does NOT widen an existing token.
+/// A token never outgrows its ceiling: promoting the member widens their own
+/// permissions, but a token whose ceiling only carries the old role stays put.
+/// (A ceiling that already carried the new permission WOULD widen — that is
+/// `api_token_widens_up_to_ceiling_on_promotion`.)
 #[tokio::test]
 async fn api_token_does_not_widen_on_promotion() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -740,12 +779,8 @@ async fn api_token_does_not_widen_on_promotion() {
 	let token = setup
 		.create_test_api_token(
 			&member.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(view, workspace_scope(workspace.id))]),
-				},
-			)]),
+			BTreeSet::new(),
+			permission_grants(workspace.id, view, &[workspace.id]),
 		)
 		.await;
 
@@ -782,7 +817,7 @@ async fn api_token_does_not_widen_on_promotion() {
 			.await
 			.status_code()
 			.as_u16(),
-		"promoting the member must not widen the existing token"
+		"promotion must not widen a token whose ceiling lacks the permission"
 	);
 }
 
@@ -798,12 +833,8 @@ async fn api_token_patch_revokes_access() {
 	let token = setup
 		.create_test_api_token(
 			&owner.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
-				},
-			)]),
+			BTreeSet::new(),
+			permission_grants(workspace.id, modify, &[workspace.id]),
 		)
 		.await;
 
@@ -825,15 +856,8 @@ async fn api_token_patch_revokes_access() {
 				.body(UpdateApiTokenRequest {
 					token: UserApiToken {
 						name: "revoketoken".to_string(),
-						permissions: BTreeMap::from([(
-							workspace.id,
-							WorkspacePermission::Member {
-								permissions: BTreeMap::from([(
-									view,
-									workspace_scope(workspace.id),
-								)]),
-							},
-						)]),
+						super_admin_of: BTreeSet::new(),
+						grants: permission_grants(workspace.id, view, &[workspace.id]),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -880,18 +904,21 @@ async fn token_loses_workspace_when_owner_is_removed() {
 	let token = setup
 		.create_test_api_token(
 			&member.access_token,
+			BTreeSet::new(),
 			BTreeMap::from([
 				(
 					workspace.id,
-					WorkspacePermission::Member {
-						permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
-					},
+					vec![PermissionGrant {
+						permission_id: modify,
+						resource_id: workspace.id,
+					}],
 				),
 				(
 					own_workspace.id,
-					WorkspacePermission::Member {
-						permissions: BTreeMap::from([(modify, workspace_scope(own_workspace.id))]),
-					},
+					vec![PermissionGrant {
+						permission_id: modify,
+						resource_id: own_workspace.id,
+					}],
 				),
 			]),
 		)
@@ -962,12 +989,8 @@ async fn token_loses_workspace_when_owner_leaves() {
 	let token = setup
 		.create_test_api_token(
 			&member.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
-				},
-			)]),
+			BTreeSet::new(),
+			permission_grants(workspace.id, modify, &[workspace.id]),
 		)
 		.await;
 
@@ -1011,7 +1034,7 @@ async fn api_token_name_reusable_after_revoke() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let name = random_name(8);
-	let perms = BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]);
+	let super_admins = BTreeSet::from([workspace.id]);
 
 	let first = setup
 		.make_web_dashboard_call(
@@ -1023,7 +1046,8 @@ async fn api_token_name_reusable_after_revoke() {
 				.body(CreateApiTokenRequest {
 					token: UserApiToken {
 						name: name.clone(),
-						permissions: perms.clone(),
+						super_admin_of: super_admins.clone(),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -1059,7 +1083,8 @@ async fn api_token_name_reusable_after_revoke() {
 				.body(CreateApiTokenRequest {
 					token: UserApiToken {
 						name,
-						permissions: perms,
+						super_admin_of: super_admins.clone(),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -1083,13 +1108,11 @@ async fn create_api_token_works() {
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
 	let api_token = setup
-		.create_test_api_token(&user.access_token, {
-			let mut map = BTreeMap::new();
-
-			map.insert(workspace.id, WorkspacePermission::SuperAdmin);
-
-			map
-		})
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
+		)
 		.await;
 	assert!(!api_token.token.is_empty(), "token should not be empty");
 }
@@ -1099,12 +1122,14 @@ async fn list_api_tokens_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let perms = BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]);
+	let super_admins = BTreeSet::from([workspace.id]);
 
 	let _t1 = setup
-		.create_test_api_token(&user.access_token, perms.clone())
+		.create_test_api_token(&user.access_token, super_admins.clone(), BTreeMap::new())
 		.await;
-	let _t2 = setup.create_test_api_token(&user.access_token, perms).await;
+	let _t2 = setup
+		.create_test_api_token(&user.access_token, super_admins, BTreeMap::new())
+		.await;
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -1132,7 +1157,8 @@ async fn get_api_token_info_works() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -1162,7 +1188,8 @@ async fn update_api_token_works() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 	let new_name = random_name(8);
@@ -1180,10 +1207,8 @@ async fn update_api_token_works() {
 				.body(UpdateApiTokenRequest {
 					token: UserApiToken {
 						name: new_name.clone(),
-						permissions: BTreeMap::from([(
-							workspace.id,
-							WorkspacePermission::SuperAdmin,
-						)]),
+						super_admin_of: BTreeSet::from([workspace.id]),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -1222,7 +1247,8 @@ async fn revoke_api_token_works() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -1270,7 +1296,8 @@ async fn regenerate_api_token_works() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -1335,7 +1362,8 @@ async fn create_api_token_with_empty_permissions_fails() {
 				.body(CreateApiTokenRequest {
 					token: UserApiToken {
 						name: random_name(8),
-						permissions: BTreeMap::new(),
+						super_admin_of: BTreeSet::new(),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -1379,10 +1407,10 @@ async fn create_api_token_duplicate_name() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let perms = BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]);
+	let super_admins = BTreeSet::from([workspace.id]);
 
 	let first = setup
-		.create_test_api_token(&user.access_token, perms.clone())
+		.create_test_api_token(&user.access_token, super_admins.clone(), BTreeMap::new())
 		.await;
 
 	let response = setup
@@ -1395,7 +1423,8 @@ async fn create_api_token_duplicate_name() {
 				.body(CreateApiTokenRequest {
 					token: UserApiToken {
 						name: first.name.clone(),
-						permissions: perms,
+						super_admin_of: super_admins.clone(),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -1418,12 +1447,14 @@ async fn update_api_token_name_conflict() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let perms = BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]);
+	let super_admins = BTreeSet::from([workspace.id]);
 
 	let first = setup
-		.create_test_api_token(&user.access_token, perms.clone())
+		.create_test_api_token(&user.access_token, super_admins.clone(), BTreeMap::new())
 		.await;
-	let second = setup.create_test_api_token(&user.access_token, perms).await;
+	let second = setup
+		.create_test_api_token(&user.access_token, super_admins, BTreeMap::new())
+		.await;
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -1438,10 +1469,8 @@ async fn update_api_token_name_conflict() {
 				.body(UpdateApiTokenRequest {
 					token: UserApiToken {
 						name: first.name.clone(),
-						permissions: BTreeMap::from([(
-							workspace.id,
-							WorkspacePermission::SuperAdmin,
-						)]),
+						super_admin_of: BTreeSet::from([workspace.id]),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: None,
@@ -1467,7 +1496,8 @@ async fn use_api_token_for_auth() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -1505,7 +1535,8 @@ async fn use_revoked_api_token() {
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+			BTreeSet::from([workspace.id]),
+			BTreeMap::new(),
 		)
 		.await;
 
@@ -1548,11 +1579,11 @@ async fn list_api_tokens_pagination() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let perms = BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]);
+	let super_admins = BTreeSet::from([workspace.id]);
 
 	for _ in 0..3 {
 		setup
-			.create_test_api_token(&user.access_token, perms.clone())
+			.create_test_api_token(&user.access_token, super_admins.clone(), BTreeMap::new())
 			.await;
 	}
 
@@ -1629,10 +1660,8 @@ async fn api_token_with_ip_restriction_allows_listed_ip() {
 				.body(CreateApiTokenRequest {
 					token: UserApiToken {
 						name: random_name(8),
-						permissions: BTreeMap::from([(
-							workspace.id,
-							WorkspacePermission::SuperAdmin,
-						)]),
+						super_admin_of: BTreeSet::from([workspace.id]),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: Some(vec![IpNetwork::from(allowed)]),
@@ -1683,10 +1712,8 @@ async fn api_token_with_ip_restriction_blocks_unlisted_ip() {
 				.body(CreateApiTokenRequest {
 					token: UserApiToken {
 						name: random_name(8),
-						permissions: BTreeMap::from([(
-							workspace.id,
-							WorkspacePermission::SuperAdmin,
-						)]),
+						super_admin_of: BTreeSet::from([workspace.id]),
+						grants: BTreeMap::new(),
 						token_nbf: None,
 						token_exp: None,
 						allowed_ips: Some(vec![IpNetwork::from(allowed)]),
@@ -1735,14 +1762,12 @@ async fn api_token_with_scoped_permissions_allows_resource() {
 		.await;
 
 	let view_perm = setup.get_permission_id(Permission::Deployment(DeploymentPermission::View));
-	let token_perms = BTreeMap::from([(
-		workspace.id,
-		WorkspacePermission::Member {
-			permissions: BTreeMap::from([(view_perm, BTreeSet::from([deployment1.id]))]),
-		},
-	)]);
 	let api_token = setup
-		.create_test_api_token(&user.access_token, token_perms)
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::new(),
+			permission_grants(workspace.id, view_perm, &[deployment1.id]),
+		)
 		.await;
 	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
 
@@ -1784,14 +1809,12 @@ async fn api_token_with_scoped_permissions_denies_other_resource() {
 		.await;
 
 	let view_perm = setup.get_permission_id(Permission::Deployment(DeploymentPermission::View));
-	let token_perms = BTreeMap::from([(
-		workspace.id,
-		WorkspacePermission::Member {
-			permissions: BTreeMap::from([(view_perm, BTreeSet::from([deployment1.id]))]),
-		},
-	)]);
 	let api_token = setup
-		.create_test_api_token(&user.access_token, token_perms)
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::new(),
+			permission_grants(workspace.id, view_perm, &[deployment1.id]),
+		)
 		.await;
 	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
 
@@ -1827,17 +1850,13 @@ async fn api_token_view_permission_denies_create() {
 		.await;
 
 	let view_perm = setup.get_permission_id(Permission::Deployment(DeploymentPermission::View));
-	let token_perms = BTreeMap::from([(
-		workspace.id,
-		WorkspacePermission::Member {
-			permissions: BTreeMap::from([(
-				view_perm,
-				BTreeSet::from([workspace.id]), // the root: grants View on all
-			)]),
-		},
-	)]);
 	let api_token = setup
-		.create_test_api_token(&user.access_token, token_perms)
+		.create_test_api_token(
+			&user.access_token,
+			BTreeSet::new(),
+			// grants View on all
+			permission_grants(workspace.id, view_perm, &[workspace.id]),
+		)
 		.await;
 	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
 

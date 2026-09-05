@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
-import { GetApiTokenInfoResponse, UpdateApiTokenRequest, WorkspacePermission } from "~/bindings";
+import { GetApiTokenInfoResponse, UpdateApiTokenRequest } from "~/bindings";
+import { WorkspacePermission } from "~/utils/types";
 import {
 	Button,
 	ButtonVariant,
@@ -74,12 +75,17 @@ const ApiTokenInfo = () => {
 		const enabled = new Set<string>();
 		const perms: { [key: string]: WorkspacePermission } = {};
 
-		Object.entries(info.permissions ?? {}).forEach(([wsId, perm]) => {
-			if (perm) {
-				enabled.add(wsId);
-				perms[wsId] = perm;
-			}
-		});
+		// The wire shape is superAdminOf + role grants now; this screen still
+		// edits the old per-permission shape until the token-screen rework, so
+		// member workspaces surface only as "member" with no detail.
+		for (const wsId of info.superAdminOf ?? []) {
+			enabled.add(wsId);
+			perms[wsId] = { type: "superAdmin" };
+		}
+		for (const wsId of Object.keys(info.grants ?? {})) {
+			enabled.add(wsId);
+			perms[wsId] = { type: "member" } as WorkspacePermission;
+		}
 
 		setEnabledWorkspaces(enabled);
 		setWorkspacePermissions(perms);
@@ -182,13 +188,20 @@ const ApiTokenInfo = () => {
 		if (isSaving()) return;
 		setIsSaving(true);
 		try {
-			const body = {
+			// Super-admin selections round-trip. Role-grant ceilings aren't
+			// editable here until the token-screen rework, so carry the saved
+			// ones through untouched rather than dropping them.
+			const body: UpdateApiTokenRequest = {
 				name,
-				permissions: perms,
+				superAdminOf: Object.entries(perms)
+					.filter(([, permission]) => permission.type === "superAdmin")
+					.map(([workspaceId]) => workspaceId),
+				grants: info?.grants ?? {},
 				tokenNbf: info?.tokenNbf,
 				tokenExp: info?.tokenExp,
 				allowedIps: info?.allowedIps,
-			} as UpdateApiTokenRequest;
+				created: info?.created ?? new Date(),
+			};
 
 			const response = await httpRequest<null>(
 				`${import.meta.env.VITE_BASE_URL}/api/user/api-token/${params().id}`,
@@ -205,7 +218,7 @@ const ApiTokenInfo = () => {
 			}
 
 			queryClient.setQueryData<GetApiTokenInfoResponse>(apiTokenKeys.detail(params().id), (prev) =>
-				prev ? { ...prev, name, permissions: perms } : prev
+				prev ? { ...prev, name, superAdminOf: body.superAdminOf, grants: body.grants } : prev
 			);
 			toast("API Token updated successfully", "success");
 		} finally {
@@ -321,7 +334,7 @@ const ApiTokenInfo = () => {
 												workspace={ws}
 												isSuperAdmin={userInfo()?.id === ws.superAdminId}
 												enabled={enabledWorkspaces().has(ws.id)}
-												initialPermission={apiTokenInfo()?.permissions?.[ws.id]}
+												initialPermission={workspacePermissions()[ws.id]}
 												onToggle={handleWorkspaceToggle}
 												onPermissionChange={handlePermissionChange}
 											/>

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM user_api_token_permission_binding WHERE token_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "83b657118298f821152af9dfa0f37ca63bf7b9c1c929bd2e949ce920340afaff"
+}

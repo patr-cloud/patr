@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_id AS \"workspace_id!: Uuid\", permission_id AS \"permission_id!: Uuid\", scope_id AS \"scope_id!: Uuid\" FROM user_api_token_permission_binding WHERE token_id = $1 ORDER BY workspace_id, permission_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "permission_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "scope_id!: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8bcacd7d7832e21c2dc00b2bd2cfff22b233092d1179bf76b273fa7f3c449c5e"
+}

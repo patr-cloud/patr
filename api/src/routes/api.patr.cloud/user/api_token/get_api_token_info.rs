@@ -1,7 +1,7 @@
 use models::api::user::*;
 use reqwest::StatusCode;
 
-use crate::{models::permissions::get_permissions_for_api_token, prelude::*};
+use crate::prelude::*;
 
 pub async fn get_api_token_info(
 	AuthenticatedAppRequest {
@@ -17,7 +17,7 @@ pub async fn get_api_token_info(
 				body: GetApiTokenInfoRequestProcessed,
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		user_data,
 		state: _,
@@ -52,7 +52,8 @@ pub async fn get_api_token_info(
 			row.token_id,
 			UserApiToken {
 				name: row.name,
-				permissions: Default::default(),
+				super_admin_of: Default::default(),
+				grants: Default::default(),
 				token_nbf: row.token_nbf,
 				token_exp: row.token_exp,
 				allowed_ips: row.allowed_ips,
@@ -63,12 +64,57 @@ pub async fn get_api_token_info(
 
 	trace!("Basic token info fetched");
 
-	// Route the read through the same cache/intersect path the auth layer
-	// uses so the UI shows the token's effective permissions — narrowed by
-	// any user-side role revocations since the token was minted.
-	token.data.permissions =
-		get_permissions_for_api_token(&mut **database, redis, &token_id, &user_data.id.into())
-			.await?;
+	// The declared ceiling. Effective permissions are the ceiling
+	// intersected with the owner's current permissions, computed at auth —
+	// the declaration is what the owner can inspect and edit.
+	token.data.super_admin_of = query!(
+		r#"
+		SELECT
+			workspace_id AS "workspace_id!: Uuid"
+		FROM
+			user_api_token_workspace_super_admin
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.map(|row| row.workspace_id)
+	.collect();
+
+	query!(
+		r#"
+		SELECT
+			workspace_id AS "workspace_id!: Uuid",
+			permission_id AS "permission_id!: Uuid",
+			scope_id AS "scope_id!: Uuid"
+		FROM
+			user_api_token_permission_binding
+		WHERE
+			token_id = $1
+		ORDER BY
+			workspace_id,
+			permission_id;
+		"#,
+		token_id as _,
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.for_each(|row| {
+		// One grant per ceiling row; the workspace's own id is the root.
+		token
+			.data
+			.grants
+			.entry(row.workspace_id)
+			.or_default()
+			.push(PermissionGrant {
+				permission_id: row.permission_id,
+				resource_id: row.scope_id,
+			});
+	});
 
 	AppResponse::builder()
 		.body(GetApiTokenInfoResponse { token })

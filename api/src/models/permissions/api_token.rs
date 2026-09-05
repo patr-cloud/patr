@@ -274,78 +274,17 @@ pub async fn get_permissions_for_api_token(
 		token_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
 	});
 
-	// The token's declared grants, from the legacy snapshot tables (interim
-	// until the token DTOs move to ceiling rows), expanded to additive
-	// scopes in SQL: an exclude-type entry with no exclusions scopes to the
-	// workspace root; a non-empty exclude list expands to the live workspace
-	// resources not on it; include lists name resources directly.
+	// The token's declared ceiling: its own (permission, scope) rows.
 	query!(
 		r#"
 		SELECT
-			t.workspace_id AS "workspace_id!",
-			t.permission_id AS "permission_id!",
-			t.workspace_id AS "scope_id!"
+			pb.workspace_id AS "workspace_id!",
+			pb.permission_id AS "permission_id!",
+			pb.scope_id AS "scope_id!"
 		FROM
-			user_api_token_resource_permissions_type t
+			user_api_token_permission_binding pb
 		WHERE
-			t.token_id = $1 AND
-			t.resource_permission_type = 'exclude' AND
-			NOT EXISTS (
-				SELECT
-					1
-				FROM
-					user_api_token_resource_permissions_exclude e
-				WHERE
-					e.token_id = t.token_id AND
-					e.workspace_id = t.workspace_id AND
-					e.permission_id = t.permission_id
-			)
-		UNION ALL
-		SELECT
-			inc.workspace_id,
-			inc.permission_id,
-			inc.resource_id
-		FROM
-			user_api_token_resource_permissions_include inc
-		WHERE
-			inc.token_id = $1
-		UNION ALL
-		SELECT
-			t.workspace_id,
-			t.permission_id,
-			r.id
-		FROM
-			user_api_token_resource_permissions_type t
-		INNER JOIN
-			resource r
-		ON
-			r.workspace_id = t.workspace_id AND
-			r.deleted IS NULL AND
-			r.id <> r.workspace_id
-		WHERE
-			t.token_id = $1 AND
-			t.resource_permission_type = 'exclude' AND
-			EXISTS (
-				SELECT
-					1
-				FROM
-					user_api_token_resource_permissions_exclude e
-				WHERE
-					e.token_id = t.token_id AND
-					e.workspace_id = t.workspace_id AND
-					e.permission_id = t.permission_id
-			) AND
-			NOT EXISTS (
-				SELECT
-					1
-				FROM
-					user_api_token_resource_permissions_exclude e
-				WHERE
-					e.token_id = t.token_id AND
-					e.workspace_id = t.workspace_id AND
-					e.permission_id = t.permission_id AND
-					e.resource_id = r.id
-			);
+			pb.token_id = $1;
 		"#,
 		login_id as _,
 	)
