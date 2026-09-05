@@ -29,7 +29,10 @@ export {
 	setUserRolesAPI,
 	removeMemberAPI,
 	currentPermissionsAPI,
+	scopedTo,
+	toGrants,
 } from '@/helpers/api/rbac';
+export type { RoleGrant } from '@/helpers/api/rbac';
 
 export { loginAs } from '@/helpers/ui/session';
 export { expectUrl, expectUrlNot } from '@/helpers/ui/workspace';

@@ -10,11 +10,15 @@ use models::{
 	api::{
 		user::*,
 		workspace::{
+			LeaveWorkspacePath,
+			LeaveWorkspaceRequest,
+			LeaveWorkspaceRequestHeaders,
+			LeaveWorkspaceResponse,
 			deployment::*,
 			rbac::{role::*, user::*},
 		},
 	},
-	rbac::{DeploymentPermission, Permission, ResourcePermissionType, WorkspacePermission},
+	rbac::{DeploymentPermission, Permission, WorkspacePermission},
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -40,11 +44,9 @@ async fn probe_modify_roles(
 					role: Role {
 						name: random_name(8),
 						description: "cascade probe".to_string(),
+						is_immutable: false,
 					},
-					permissions: BTreeMap::from([(
-						view_perm,
-						ResourcePermissionType::Exclude(BTreeSet::new()),
-					)]),
+					permissions: BTreeSet::from([view_perm]),
 				})
 				.build(),
 		)
@@ -97,9 +99,10 @@ async fn mint_token_raw(
 		.await
 }
 
-/// A permission grant over all resources (Exclude of the empty set).
-fn all_resources() -> ResourcePermissionType {
-	ResourcePermissionType::Exclude(BTreeSet::new())
+/// A token permission scope covering the whole workspace — the grant sits at
+/// the workspace root.
+fn workspace_scope(workspace_id: Uuid) -> BTreeSet<Uuid> {
+	BTreeSet::from([workspace_id])
 }
 
 /// A token used after its `token_exp` is rejected at auth time (401).
@@ -323,10 +326,7 @@ async fn api_token_non_superadmin_cannot_mint_superadmin() {
 	let owner = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&owner.access_token).await;
 
-	let perms = BTreeMap::from([(
-		setup.get_permission_id(Permission::ViewRoles),
-		all_resources(),
-	)]);
+	let perms = vec![setup.get_permission_id(Permission::ViewRoles)];
 	let role = setup
 		.create_role_with_permissions(&owner.access_token, workspace.id, perms)
 		.await;
@@ -358,10 +358,7 @@ async fn api_token_member_cannot_exceed_creator() {
 	let workspace = setup.create_test_workspace(&owner.access_token).await;
 
 	// Member has only deployment::view.
-	let perms = BTreeMap::from([(
-		setup.get_permission_id(Permission::Deployment(DeploymentPermission::View)),
-		all_resources(),
-	)]);
+	let perms = vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))];
 	let role = setup
 		.create_role_with_permissions(&owner.access_token, workspace.id, perms)
 		.await;
@@ -377,7 +374,7 @@ async fn api_token_member_cannot_exceed_creator() {
 		BTreeMap::from([(
 			workspace.id,
 			WorkspacePermission::Member {
-				permissions: BTreeMap::from([(delete_id, all_resources())]),
+				permissions: BTreeMap::from([(delete_id, workspace_scope(workspace.id))]),
 			},
 		)]),
 		None,
@@ -609,11 +606,7 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			BTreeMap::from([(modify, all_resources())]),
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify])
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
@@ -624,7 +617,7 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, all_resources())]),
+					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
 				},
 			)]),
 		)
@@ -678,11 +671,7 @@ async fn api_token_perm_trimmed_on_role_delete() {
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			BTreeMap::from([(modify, all_resources())]),
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify])
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
@@ -693,7 +682,7 @@ async fn api_token_perm_trimmed_on_role_delete() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, all_resources())]),
+					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
 				},
 			)]),
 		)
@@ -743,11 +732,7 @@ async fn api_token_does_not_widen_on_promotion() {
 	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let read_only = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			BTreeMap::from([(view, all_resources())]),
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![view])
 		.await;
 	let member = setup
 		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, read_only.id)
@@ -758,18 +743,14 @@ async fn api_token_does_not_widen_on_promotion() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(view, all_resources())]),
+					permissions: BTreeMap::from([(view, workspace_scope(workspace.id))]),
 				},
 			)]),
 		)
 		.await;
 
 	let write_role = setup
-		.create_role_with_permissions(
-			&owner.access_token,
-			workspace.id,
-			BTreeMap::from([(view, all_resources()), (modify, all_resources())]),
-		)
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![view, modify])
 		.await;
 	setup
 		.make_web_dashboard_call(
@@ -783,7 +764,10 @@ async fn api_token_does_not_widen_on_promotion() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![write_role.id],
+					roles: vec![RoleBindingGrant {
+						role_id: write_role.id,
+						resource_id: workspace.id,
+					}],
 				})
 				.build(),
 		)
@@ -817,7 +801,7 @@ async fn api_token_patch_revokes_access() {
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(modify, all_resources())]),
+					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
 				},
 			)]),
 		)
@@ -844,7 +828,10 @@ async fn api_token_patch_revokes_access() {
 						permissions: BTreeMap::from([(
 							workspace.id,
 							WorkspacePermission::Member {
-								permissions: BTreeMap::from([(view, all_resources())]),
+								permissions: BTreeMap::from([(
+									view,
+									workspace_scope(workspace.id),
+								)]),
 							},
 						)]),
 						token_nbf: None,
@@ -865,6 +852,155 @@ async fn api_token_patch_revokes_access() {
 			.status_code()
 			.as_u16(),
 		"after the PATCH narrows perms the token should lose ModifyRoles"
+	);
+}
+
+/// The auth-time intersection is per workspace, not just per permission: a
+/// token keeps naming a workspace its owner has since been removed from, and
+/// that workspace has to drop out of the token's effective permissions.
+#[tokio::test]
+async fn token_loses_workspace_when_owner_is_removed() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let modify = setup.get_permission_id(Permission::ModifyRoles);
+	let view = setup.get_permission_id(Permission::ViewRoles);
+
+	let role = setup
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify, view])
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
+		.await;
+
+	// The member's own workspace, where they are the super admin. It must be
+	// untouched when they lose the other one.
+	let own_workspace = setup.create_test_workspace(&member.access_token).await;
+
+	let token = setup
+		.create_test_api_token(
+			&member.access_token,
+			BTreeMap::from([
+				(
+					workspace.id,
+					WorkspacePermission::Member {
+						permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
+					},
+				),
+				(
+					own_workspace.id,
+					WorkspacePermission::Member {
+						permissions: BTreeMap::from([(modify, workspace_scope(own_workspace.id))]),
+					},
+				),
+			]),
+		)
+		.await;
+
+	assert!(
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.is_success(),
+		"the member's token should work while they are still a member"
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<RemoveUserFromWorkspaceRequest>::builder()
+				.path(RemoveUserFromWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: member.user_id,
+				})
+				.headers(RemoveUserFromWorkspaceRequestHeaders {
+					authorization: owner.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(RemoveUserFromWorkspaceRequest)
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(
+			RemoveUserFromWorkspaceResponse,
+		));
+
+	assert_eq!(
+		401,
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.as_u16(),
+		"the token still names the workspace, but the owner is no longer a member"
+	);
+
+	assert!(
+		probe_modify_roles(&setup, &token.token, own_workspace.id, view)
+			.await
+			.status_code()
+			.is_success(),
+		"losing one workspace must not touch the token's other workspaces"
+	);
+}
+
+/// Same drop, member-initiated: leaving a workspace has to take the token's
+/// access to it with them.
+#[tokio::test]
+async fn token_loses_workspace_when_owner_leaves() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let modify = setup.get_permission_id(Permission::ModifyRoles);
+	let view = setup.get_permission_id(Permission::ViewRoles);
+
+	let role = setup
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify, view])
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
+		.await;
+
+	let token = setup
+		.create_test_api_token(
+			&member.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
+				},
+			)]),
+		)
+		.await;
+
+	assert!(
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.is_success()
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<LeaveWorkspaceRequest>::builder()
+				.path(LeaveWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(LeaveWorkspaceRequestHeaders {
+					authorization: member.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(LeaveWorkspaceRequest)
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(LeaveWorkspaceResponse));
+
+	assert_eq!(
+		401,
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.as_u16(),
+		"leaving the workspace must drop it from the token's effective permissions"
 	);
 }
 
@@ -1602,10 +1738,7 @@ async fn api_token_with_scoped_permissions_allows_resource() {
 	let token_perms = BTreeMap::from([(
 		workspace.id,
 		WorkspacePermission::Member {
-			permissions: BTreeMap::from([(
-				view_perm,
-				ResourcePermissionType::Include(BTreeSet::from([deployment1.id])),
-			)]),
+			permissions: BTreeMap::from([(view_perm, BTreeSet::from([deployment1.id]))]),
 		},
 	)]);
 	let api_token = setup
@@ -1654,10 +1787,7 @@ async fn api_token_with_scoped_permissions_denies_other_resource() {
 	let token_perms = BTreeMap::from([(
 		workspace.id,
 		WorkspacePermission::Member {
-			permissions: BTreeMap::from([(
-				view_perm,
-				ResourcePermissionType::Include(BTreeSet::from([deployment1.id])),
-			)]),
+			permissions: BTreeMap::from([(view_perm, BTreeSet::from([deployment1.id]))]),
 		},
 	)]);
 	let api_token = setup
@@ -1702,7 +1832,7 @@ async fn api_token_view_permission_denies_create() {
 		WorkspacePermission::Member {
 			permissions: BTreeMap::from([(
 				view_perm,
-				ResourcePermissionType::Exclude(BTreeSet::new()), // grants View on all
+				BTreeSet::from([workspace.id]), // the root: grants View on all
 			)]),
 		},
 	)]);

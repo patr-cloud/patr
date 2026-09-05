@@ -1,6 +1,6 @@
 use models::{
 	api::user::*,
-	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant, WorkspacePermission},
+	rbac::{ResourcePermissionTypeDiscriminant, WorkspacePermission},
 };
 use reqwest::StatusCode;
 use rustis::commands::GenericCommands;
@@ -165,7 +165,7 @@ pub async fn update_api_token(
 			return Err(ErrorType::Unauthorized);
 		};
 
-		if !user_permission.is_superset_of(&permission) {
+		if !user_permission.is_superset_of(&permission, workspace_id) {
 			debug!("The user does not have adequate permissions on workspace ID: `{workspace_id}`");
 			return Err(ErrorType::Unauthorized);
 		}
@@ -243,7 +243,15 @@ pub async fn update_api_token(
 				.execute(&mut **database)
 				.await?;
 
-				for (permission_id, resource_permission) in permissions {
+				for (permission_id, scopes) in permissions {
+					// A grant at the workspace root is the legacy exclude-type
+					// row with no exclusions; anything else is an include list.
+					let scoped_to_root = scopes.contains(&workspace_id);
+					let legacy_type = if scoped_to_root {
+						ResourcePermissionTypeDiscriminant::Exclude
+					} else {
+						ResourcePermissionTypeDiscriminant::Include
+					};
 					query!(
 						r#"
 						INSERT INTO
@@ -266,78 +274,40 @@ pub async fn update_api_token(
 						token_id as _,
 						workspace_id as _,
 						permission_id as _,
-						ResourcePermissionTypeDiscriminant::from(&resource_permission) as _,
+						legacy_type as _,
 					)
 					.execute(&mut **database)
 					.await?;
 
-					match resource_permission {
-						ResourcePermissionType::Include(resource_ids) => {
-							query!(
-								r#"
-								INSERT INTO
-									user_api_token_resource_permissions_include(
-										token_id,
-										workspace_id,
-										permission_id,
-										resource_id,
-										resource_deleted,
-										permission_type
-									)
-								VALUES
-									(
-										$1,
-										$2,
-										$3,
-										UNNEST($4::UUID[]),
-										DEFAULT,
-										DEFAULT
-									);
-								"#,
-								token_id as _,
-								workspace_id as _,
-								permission_id as _,
-								&resource_ids
-									.into_iter()
-									.map(|id| id.into())
-									.collect::<Vec<_>>(),
-							)
-							.execute(&mut **database)
-							.await?;
-						}
-						ResourcePermissionType::Exclude(resource_ids) => {
-							query!(
-								r#"
-								INSERT INTO
-									user_api_token_resource_permissions_exclude(
-										token_id,
-										workspace_id,
-										permission_id,
-										resource_id,
-										resource_deleted,
-										permission_type
-									)
-								VALUES
-									(
-										$1,
-										$2,
-										$3,
-										UNNEST($4::UUID[]),
-										DEFAULT,
-										DEFAULT
-									);
-								"#,
-								token_id as _,
-								workspace_id as _,
-								permission_id as _,
-								&resource_ids
-									.into_iter()
-									.map(|id| id.into())
-									.collect::<Vec<_>>(),
-							)
-							.execute(&mut **database)
-							.await?;
-						}
+					if !scoped_to_root {
+						query!(
+							r#"
+							INSERT INTO
+								user_api_token_resource_permissions_include(
+									token_id,
+									workspace_id,
+									permission_id,
+									resource_id,
+									resource_deleted,
+									permission_type
+								)
+							VALUES
+								(
+									$1,
+									$2,
+									$3,
+									UNNEST($4::UUID[]),
+									DEFAULT,
+									DEFAULT
+								);
+							"#,
+							token_id as _,
+							workspace_id as _,
+							permission_id as _,
+							&scopes.into_iter().map(Into::into).collect::<Vec<_>>(),
+						)
+						.execute(&mut **database)
+						.await?;
 					}
 				}
 			}

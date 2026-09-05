@@ -1,11 +1,9 @@
-use std::collections::BTreeMap;
-
 use models::{
 	api::workspace::volume::*,
 	rbac::{Permission, VolumePermission},
 };
 
-use super::{all, exclude, include, setup_permission_test};
+use super::{all, grants, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -47,10 +45,12 @@ async fn volume_denied_without_permission() {
 		.create_test_volume(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -89,16 +89,19 @@ async fn volume_include_grants_only_listed_resource() {
 		.create_test_volume(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Volume(VolumePermission::View)),
-		include(&[volume1.id]),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Volume(VolumePermission::View))],
+		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grants(
+			&admin.access_token,
+			workspace.id,
+			grants(role.id, &[volume1.id]),
+		)
 		.await;
 
 	let r1 = setup
@@ -141,7 +144,7 @@ async fn volume_include_grants_only_listed_resource() {
 }
 
 #[tokio::test]
-async fn volume_exclude_denies_only_listed_resource() {
+async fn volume_grant_omitting_a_resource_denies_it() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
@@ -152,16 +155,19 @@ async fn volume_exclude_denies_only_listed_resource() {
 		.create_test_volume(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Volume(VolumePermission::View)),
-		exclude(&[volume2.id]),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Volume(VolumePermission::View))],
+		)
 		.await;
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grants(
+			&admin.access_token,
+			workspace.id,
+			grants(role.id, &[volume1.id]),
+		)
 		.await;
 
 	let r1 = setup
@@ -212,13 +218,12 @@ async fn volume_view_does_not_grant_edit() {
 		.create_test_volume(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Volume(VolumePermission::View)),
-		all(),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Volume(VolumePermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
@@ -275,13 +280,12 @@ async fn volume_view_does_not_grant_delete() {
 		.create_test_volume(&admin.access_token, workspace.id)
 		.await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(
-		setup.get_permission_id(Permission::Volume(VolumePermission::View)),
-		all(),
-	);
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Volume(VolumePermission::View))],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)

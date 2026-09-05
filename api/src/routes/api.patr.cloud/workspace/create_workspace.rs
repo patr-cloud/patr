@@ -9,7 +9,6 @@ use models::{
 		DomainPermission,
 		ManagedURLPermission,
 		Permission,
-		ResourcePermissionTypeDiscriminant,
 		RunnerPermission,
 		SecretPermission,
 		VolumePermission,
@@ -571,37 +570,34 @@ async fn create_default_roles_for_workspace(
 
 		trace!("Role created. Inserting permissions.");
 
-		for permission in role.permissions {
-			let permission_name = permission.to_string();
-			let permission_id = permission_ids.get(&permission_name).ok_or_else(|| {
-				ErrorType::server_error(format!(
-					"permission `{permission_name}` missing from permission table"
-				))
-			})?;
-			let exclude_type = ResourcePermissionTypeDiscriminant::Exclude;
+		let role_permission_ids = role
+			.permissions
+			.iter()
+			.map(|permission| {
+				permission_ids
+					.get(&permission.to_string())
+					.copied()
+					.ok_or_else(|| {
+						ErrorType::server_error(format!(
+							"permission `{permission}` missing from permission table"
+						))
+					})
+			})
+			.collect::<Result<Vec<_>, _>>()?;
 
-			query!(
-				r#"
-				INSERT INTO
-					role_resource_permissions_type(
-						role_id,
-						permission_id,
-						permission_type
-					)
-				VALUES
-					(
-						$1,
-						$2,
-						$3
-					);
-				"#,
-				role_id as _,
-				*permission_id as _,
-				exclude_type as _,
-			)
-			.execute(&mut *connection)
-			.await?;
-		}
+		query!(
+			r#"
+			INSERT INTO
+				role_permission(role_id, permission_id)
+			SELECT
+				$1,
+				UNNEST($2::UUID[]);
+			"#,
+			role_id as _,
+			&role_permission_ids as _,
+		)
+		.execute(&mut *connection)
+		.await?;
 	}
 
 	Ok(())

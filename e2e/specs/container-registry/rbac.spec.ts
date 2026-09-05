@@ -14,6 +14,8 @@ import {
 	createRepoLink,
 	repoRow,
 	emptyStateHeading,
+	openRegistryDetail,
+	deleteTrigger,
 } from '@/helpers/ui/container-registry';
 
 // Registry RBAC at the API layer (view/create/delete gating, Create≠View,
@@ -35,9 +37,7 @@ test.describe('container registry > RBAC [UI]', () => {
 		await using owner = await createUserWithWorkspace(api);
 		const repo = await createContainerRepo(api, owner, owner.workspaceId);
 		const viewId = await permId(api, owner, 'containerRegistryRepository::view');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -50,13 +50,49 @@ test.describe('container registry > RBAC [UI]', () => {
 		}
 	});
 
+	test('a member with the create permission sees the Create Repository CTA', async ({
+		browser,
+		api,
+	}) => {
+		await using owner = await createUserWithWorkspace(api);
+		const createId = await permId(api, owner, 'containerRegistryRepository::create');
+		await using member = await createSecondMemberWithRole(api, owner, [createId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openRegistryList(page);
+			await expect(createRepoLink(page)).toBeVisible({ timeout: 15_000 });
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('a member with the delete permission sees Delete on a repo detail', async ({
+		browser,
+		api,
+	}) => {
+		await using owner = await createUserWithWorkspace(api);
+		const repo = await createContainerRepo(api, owner, owner.workspaceId);
+		const viewId = await permId(api, owner, 'containerRegistryRepository::view');
+		const deleteId = await permId(api, owner, 'containerRegistryRepository::delete');
+		await using member = await createSecondMemberWithRole(api, owner, [viewId, deleteId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openRegistryDetail(page, repo.id);
+			await expect(deleteTrigger(page)).toBeVisible({ timeout: 15_000 });
+		} finally {
+			await context.close();
+		}
+	});
+
 	test('a member with no registry permission sees the empty state', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		await createContainerRepo(api, owner, owner.workspaceId);
 		const viewRoles = await permId(api, owner, 'viewRoles');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewRoles]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewRoles]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();

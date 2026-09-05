@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE workspace_user ADD CONSTRAINT workspace_user_uq_actor_id UNIQUE(actor_id), ADD CONSTRAINT workspace_user_fk_actor_id_actor_type FOREIGN KEY(actor_id, actor_type) REFERENCES workspace_actor(id, actor_type), ADD CONSTRAINT workspace_user_fk_actor_id_workspace_id FOREIGN KEY(actor_id, workspace_id) REFERENCES workspace_actor(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5c274bbd57521d0728fa0d2b18cfbd0c88b85d2d18b338d266e7118e2250ba08"
+}

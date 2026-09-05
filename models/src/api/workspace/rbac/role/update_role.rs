@@ -1,7 +1,7 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 use super::Role;
-use crate::{prelude::*, rbac::ResourcePermissionType};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to create a new role
@@ -30,9 +30,10 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		#[preprocess]
 		pub role: Role,
-		/// The updated list of permission this role has
+		/// The permission IDs this role grants; targeting lives on the
+		/// binding, not the role.
 		#[preprocess(none)]
-		pub permissions: BTreeMap<Uuid, ResourcePermissionType>,
+		pub permissions: BTreeSet<Uuid>,
 	},
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,

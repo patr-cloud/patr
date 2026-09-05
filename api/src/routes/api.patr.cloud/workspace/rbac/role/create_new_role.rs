@@ -1,8 +1,5 @@
 use axum::http::StatusCode;
-use models::{
-	api::workspace::rbac::role::*,
-	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant},
-};
+use models::api::workspace::rbac::role::*;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -23,7 +20,12 @@ pub async fn create_new_role(
 					},
 				body:
 					CreateNewRoleRequestProcessed {
-						role: RoleProcessed { name, description },
+						role:
+							RoleProcessed {
+								name,
+								description,
+								is_immutable: _,
+							},
 						permissions,
 					},
 			},
@@ -112,94 +114,26 @@ pub async fn create_new_role(
 
 	trace!("Role created. Inserting permissions.");
 
-	for (permission_id, permission) in permissions {
-		let permission_type = ResourcePermissionTypeDiscriminant::from(&permission);
-		query!(
-			r#"
-			INSERT INTO
-				role_resource_permissions_type(
-					role_id,
-					permission_id,
-					permission_type
-				)
-			VALUES
-				(
-					$1,
-					$2,
-					$3
-				);
-			"#,
-			role_id as _,
-			permission_id as _,
-			permission_type as _,
-		)
-		.execute(&mut **database)
-		.await?;
-		match permission {
-			ResourcePermissionType::Include(resources) => {
-				query!(
-					r#"
-					INSERT INTO
-						role_resource_permissions_include(
-							role_id,
-							permission_id,
-							resource_id,
-							permission_type
-						)
-					VALUES
-						(
-							$1,
-							$2,
-							UNNEST($3::UUID[]),
-							DEFAULT
-						);
-					"#,
-					role_id as _,
-					permission_id as _,
-					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
-				)
-				.execute(&mut **database)
-				.await
-				.map_err(|err| match err {
-					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-						ErrorType::ResourceDoesNotExist
-					}
-					other => ErrorType::server_error(other),
-				})?;
-			}
-			ResourcePermissionType::Exclude(resources) => {
-				query!(
-					r#"
-					INSERT INTO
-						role_resource_permissions_exclude(
-							role_id,
-							permission_id,
-							resource_id,
-							permission_type
-						)
-					VALUES
-						(
-							$1,
-							$2,
-							UNNEST($3::UUID[]),
-							DEFAULT
-						);
-					"#,
-					role_id as _,
-					permission_id as _,
-					&resources.into_iter().map(|r| r.into()).collect::<Vec<_>>(),
-				)
-				.execute(&mut **database)
-				.await
-				.map_err(|err| match err {
-					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-						ErrorType::ResourceDoesNotExist
-					}
-					other => ErrorType::server_error(other),
-				})?;
-			}
-		};
-	}
+	query!(
+		r#"
+		INSERT INTO
+			role_permission(role_id, permission_id)
+		SELECT
+			$1,
+			UNNEST($2::UUID[]);
+		"#,
+		role_id as _,
+		&permissions.into_iter().collect::<Vec<_>>() as _,
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			// Wrong permission ID
+			ErrorType::WrongParameters
+		}
+		other => ErrorType::server_error(other),
+	})?;
 
 	AppResponse::builder()
 		.body(CreateNewRoleResponse {

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO workspace_user_invite_role(invite_id, workspace_id, role_id, scope_id) SELECT $1, $2, UNNEST($3::UUID[]), UNNEST($4::UUID[]);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "45c13e0e98d9327f25d008928614e7a0c75dff8d7da8f6720f7184925836ea48"
+}

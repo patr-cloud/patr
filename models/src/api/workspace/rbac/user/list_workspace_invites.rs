@@ -1,10 +1,8 @@
-use std::collections::BTreeSet;
-
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use ts_rs::TS;
 
-use crate::prelude::*;
+use crate::{api::workspace::rbac::user::RoleBindingGrant, prelude::*};
 
 /// A pending invite to join a workspace, as shown to admins on the members
 /// page. The invite exists until the invitee accepts it or an admin revokes it.
@@ -14,8 +12,8 @@ use crate::prelude::*;
 pub struct WorkspaceInvite {
 	/// The email address the invite was sent to
 	pub email: String,
-	/// The roles the invitee will be granted once they accept
-	pub roles: BTreeSet<Uuid>,
+	/// The role grants the invitee receives once they accept
+	pub roles: Vec<RoleBindingGrant>,
 	/// The user who sent the invite
 	pub invited_by: Uuid,
 	/// When the invite was created

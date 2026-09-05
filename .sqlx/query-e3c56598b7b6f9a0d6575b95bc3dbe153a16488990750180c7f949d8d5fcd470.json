@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM role_binding WHERE actor_id = $1 AND (role_id, scope_id) NOT IN (SELECT role_id, scope_id FROM UNNEST($2::UUID[], $3::UUID[]) AS requested(role_id, scope_id));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e3c56598b7b6f9a0d6575b95bc3dbe153a16488990750180c7f949d8d5fcd470"
+}

@@ -1,14 +1,7 @@
-use std::{
-	collections::{BTreeMap, BTreeSet},
-	net::IpAddr,
-	ops::Sub,
-};
+use std::{collections::BTreeMap, net::IpAddr, ops::Sub};
 
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
-use models::{
-	RequestUserData,
-	rbac::{ResourcePermissionType, WorkspacePermission},
-};
+use models::{RequestUserData, rbac::WorkspacePermission};
 use rustis::{client::Client as RedisClient, commands::StringCommands as _};
 use time::OffsetDateTime;
 
@@ -190,86 +183,50 @@ pub async fn get_permissions_for_web_login(
 		user_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
 	});
 
+	// Membership is first-class: a member holding no roles still belongs to
+	// the workspace, and gets an entry with an empty permission map.
 	query!(
 		r#"
 		SELECT
-			workspace_user.workspace_id AS "workspace_id!",
-			role_resource_permissions_type.permission_id AS "permission_id!",
-			role_resource_permissions_exclude.resource_id AS "resource_id?"
+			workspace_id AS "workspace_id!: Uuid"
 		FROM
 			workspace_user
-		INNER JOIN
-			role_resource_permissions_type
-		ON
-			role_resource_permissions_type.role_id = workspace_user.role_id AND
-			role_resource_permissions_type.permission_type = 'exclude'
-		LEFT JOIN
-			role_resource_permissions_exclude
-		ON
-			role_resource_permissions_exclude.role_id = role_resource_permissions_type.role_id AND
-			role_resource_permissions_exclude.permission_id =
-				role_resource_permissions_type.permission_id
 		WHERE
-			workspace_user.user_id = $1;
+			user_id = $1;
 		"#,
 		user_id as _,
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
-	.for_each(|(workspace_id, permission_id, resource_id)| {
-		let permissions = user_permissions
-			.entry(workspace_id.into())
+	.map(|row| row.workspace_id)
+	.for_each(|workspace_id| {
+		user_permissions
+			.entry(workspace_id)
 			.or_insert_with(|| WorkspacePermission::Member {
 				permissions: BTreeMap::new(),
 			});
-
-		match permissions {
-			WorkspacePermission::SuperAdmin => {
-				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
-			}
-			WorkspacePermission::Member { permissions } => {
-				let permission_type = permissions
-					.entry(permission_id.into())
-					.or_insert_with(|| ResourcePermissionType::Exclude(BTreeSet::new()));
-				match permission_type {
-					ResourcePermissionType::Include(_) => {
-						error!(
-							"Found include permissions before include is even called. This should be possible!"
-						);
-					}
-					ResourcePermissionType::Exclude(resources) => {
-						let Some(resource_id) = resource_id else {
-							return;
-						};
-
-						resources.insert(resource_id.into());
-					}
-				}
-			}
-		}
 	});
 
+	// One query over bindings: a workspace-scope row (scope_id =
+	// workspace_id) grants a permission everywhere in the workspace;
+	// resource-scope rows accumulate into a resource set.
 	query!(
 		r#"
 		SELECT
-			workspace_user.workspace_id AS "workspace_id!",
-			role_resource_permissions_type.permission_id AS "permission_id!",
-			role_resource_permissions_include.resource_id AS "resource_id?"
+			role_binding.workspace_id AS "workspace_id!",
+			role_permission.permission_id AS "permission_id!",
+			role_binding.scope_id AS "scope_id!"
 		FROM
 			workspace_user
 		INNER JOIN
-			role_resource_permissions_type
+			role_binding
 		ON
-			role_resource_permissions_type.role_id = workspace_user.role_id AND
-			role_resource_permissions_type.permission_type = 'include'
-		LEFT JOIN
-			role_resource_permissions_include
+			role_binding.actor_id = workspace_user.actor_id
+		INNER JOIN
+			role_permission
 		ON
-			role_resource_permissions_include.role_id = role_resource_permissions_type.role_id AND
-			role_resource_permissions_include.permission_id =
-				role_resource_permissions_type.permission_id
+			role_permission.role_id = role_binding.role_id
 		WHERE
 			workspace_user.user_id = $1;
 		"#,
@@ -278,36 +235,24 @@ pub async fn get_permissions_for_web_login(
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
-	.map(|row| (row.workspace_id, row.permission_id, row.resource_id))
-	.for_each(|(workspace_id, permission_id, resource_id)| {
+	.for_each(|row| {
 		let permissions = user_permissions
-			.entry(workspace_id.into())
+			.entry(row.workspace_id.into())
 			.or_insert_with(|| WorkspacePermission::Member {
 				permissions: BTreeMap::new(),
 			});
 
-		let Some(resource_id) = resource_id else {
+		let WorkspacePermission::Member { permissions } = permissions else {
+			// Super admin of this workspace — bindings are redundant.
 			return;
 		};
 
-		match permissions {
-			WorkspacePermission::SuperAdmin => {
-				error!("SuperAdmin found when Member expected. This shouldn't be possible!");
-			}
-			WorkspacePermission::Member { permissions } => {
-				let permission_type = permissions
-					.entry(permission_id.into())
-					.or_insert_with(|| ResourcePermissionType::Include(BTreeSet::new()));
-				match permission_type {
-					ResourcePermissionType::Include(resources) => {
-						resources.insert(resource_id.into());
-					}
-					ResourcePermissionType::Exclude(resources) => {
-						resources.remove(&resource_id.into());
-					}
-				}
-			}
-		}
+		// A scope is just a resource id; the workspace's own id is the root
+		// and covers everything under it.
+		permissions
+			.entry(row.permission_id.into())
+			.or_default()
+			.insert(row.scope_id.into());
 	});
 
 	redis_connection

@@ -33,6 +33,29 @@ pub async fn delete_role(
 ) -> Result<AppResponse<DeleteRoleRequest>, ErrorType> {
 	info!("Deleting role: {} in workspace: {}", role_id, workspace_id);
 
+	// Seeded default roles are read-only.
+	let is_immutable = query!(
+		r#"
+		SELECT
+			is_immutable
+		FROM
+			role
+		WHERE
+			id = $1 AND
+			workspace_id = $2;
+		"#,
+		role_id as _,
+		workspace_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::RoleDoesNotExist)?
+	.is_immutable;
+
+	if is_immutable {
+		return Err(ErrorType::RoleIsImmutable);
+	}
+
 	// Only count when the caller might want to abort. With `remove_users=true`
 	// we'd delete regardless, so paying for a COUNT round-trip is wasted work.
 	// The handler runs in a transaction, so we *could* rely on the DELETE
@@ -45,7 +68,7 @@ pub async fn delete_role(
 			SELECT
 				COUNT(*) AS "count!: i64"
 			FROM
-				workspace_user
+				role_binding
 			WHERE
 				workspace_id = $1 AND
 				role_id = $2;
@@ -62,22 +85,20 @@ pub async fn delete_role(
 		}
 	}
 
-	let users_removed = query!(
+	let grants_removed = query!(
 		r#"
 		DELETE FROM
-			workspace_user
+			role_binding
 		WHERE
-			workspace_id = $1 AND
-			role_id = $2;
+			role_id = $1;
 		"#,
-		workspace_id as _,
 		role_id as _,
 	)
 	.execute(&mut **database)
 	.await?
 	.rows_affected();
 
-	info!("Removed role from {} users", users_removed);
+	info!("Removed {} binding(s) of the role", grants_removed);
 
 	// Pending invites reference the role too, and the FK won't let it go first.
 	query!(
@@ -136,6 +157,18 @@ pub async fn delete_role(
 
 	trace!("Deleted all the permission types");
 
+	query!(
+		r#"
+		DELETE FROM
+			role_permission
+		WHERE
+			role_id = $1;
+		"#,
+		role_id as _
+	)
+	.execute(&mut **database)
+	.await?;
+
 	let role_rows_deleted = query!(
 		r#"
 		DELETE FROM
@@ -154,6 +187,23 @@ pub async fn delete_role(
 	if role_rows_deleted == 0 {
 		return Err(ErrorType::RoleDoesNotExist);
 	}
+
+	// The role is itself a registered resource; tombstone it like every
+	// other deleted resource (a hard DELETE would trip audit-log FKs).
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			deleted = NOW()
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		role_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
 
 	trace!("Deleted the role");
 

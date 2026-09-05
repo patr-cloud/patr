@@ -74,6 +74,7 @@ pub async fn list_all_roles(
 			Role {
 				name: row.name,
 				description: row.description,
+				is_immutable: row.is_immutable,
 			},
 		)
 	})

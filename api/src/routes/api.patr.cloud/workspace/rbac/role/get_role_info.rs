@@ -1,10 +1,7 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 use axum::http::StatusCode;
-use models::{
-	api::workspace::rbac::role::*,
-	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant},
-};
+use models::api::workspace::rbac::role::*;
 
 use crate::prelude::*;
 
@@ -60,43 +57,21 @@ pub async fn get_role_info(
 	let permissions = query!(
 		r#"
 		SELECT
-			type.permission_id AS "permission_id!",
-			type.permission_type AS "permission_type!: ResourcePermissionTypeDiscriminant",
-			COALESCE(
-				include.resource_id,
-				exclude.resource_id
-			) AS "resource_id: Uuid"
+			permission_id AS "permission_id!: Uuid"
 		FROM
-			role_resource_permissions_type type
-		LEFT JOIN
-			role_resource_permissions_include include
-		ON
-			type.permission_id = include.permission_id
-		LEFT JOIN
-			role_resource_permissions_exclude exclude
-		ON
-			type.permission_id = exclude.permission_id
+			role_permission
 		WHERE
-			type.role_id = $1;
+			role_id = $1
+		ORDER BY
+			permission_id;
 		"#,
 		role_id as _
 	)
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.fold(BTreeMap::new(), |mut map, row| {
-		map.entry(row.permission_id.into())
-			.or_insert(match row.permission_type {
-				ResourcePermissionTypeDiscriminant::Include => {
-					ResourcePermissionType::Include(Default::default())
-				}
-				ResourcePermissionTypeDiscriminant::Exclude => {
-					ResourcePermissionType::Exclude(Default::default())
-				}
-			})
-			.insert_if_some(row.resource_id);
-		map
-	});
+	.map(|row| row.permission_id)
+	.collect::<BTreeSet<_>>();
 
 	AppResponse::builder()
 		.body(GetRoleInfoResponse {
@@ -105,6 +80,7 @@ pub async fn get_role_info(
 				Role {
 					name: role.name,
 					description: role.description,
+					is_immutable: role.is_immutable,
 				},
 			),
 			permissions,

@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace_user.user_id AS \"user_id: Uuid\", role_binding.role_id AS \"role_id: Uuid\", role_binding.scope_id AS \"scope_id: Uuid\" FROM role_binding INNER JOIN workspace_user ON role_binding.actor_id = workspace_user.actor_id WHERE workspace_user.workspace_id = $1 AND workspace_user.user_id = ANY($2::UUID[]);",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "role_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "scope_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "355f174219c191ea32ea0cf13dc779ba9a2b186d5fd04daa1fee084ef03ed30a"
+}

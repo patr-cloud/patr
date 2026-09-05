@@ -16,7 +16,7 @@ use models::{
 			*,
 		},
 	},
-	rbac::{Permission, ResourcePermissionType, WorkspacePermission},
+	rbac::{Permission, WorkspacePermission},
 	utils::{BearerToken, Uuid},
 };
 use rand::RngExt as _;
@@ -445,13 +445,12 @@ impl TestSetup {
 		// The `create_new_role` handler rejects empty permissions with
 		// `WrongParameters`, so seed one harmless permission. Tests that care
 		// about specific permissions should use `create_role_with_permissions`.
-		let mut permissions = BTreeMap::new();
-		permissions.insert(
-			self.get_permission_id(Permission::ViewRoles),
-			ResourcePermissionType::Include(Default::default()),
-		);
-		self.create_role_with_permissions(token, workspace_id, permissions)
-			.await
+		self.create_role_with_permissions(
+			token,
+			workspace_id,
+			vec![self.get_permission_id(Permission::ViewRoles)],
+		)
+		.await
 	}
 
 	/// Create a role with specific permissions.
@@ -459,7 +458,7 @@ impl TestSetup {
 		&self,
 		token: &BearerToken,
 		workspace_id: Uuid,
-		permissions: BTreeMap<Uuid, ResourcePermissionType>,
+		permissions: Vec<Uuid>,
 	) -> TestRole {
 		let name = random_name(8);
 
@@ -475,8 +474,9 @@ impl TestSetup {
 						role: Role {
 							name: name.clone(),
 							description: "test role with permissions".to_string(),
+							is_immutable: false,
 						},
-						permissions,
+						permissions: permissions.into_iter().collect(),
 					})
 					.build(),
 			)
@@ -537,27 +537,69 @@ impl TestSetup {
 		workspace_id: Uuid,
 		role_id: Uuid,
 	) -> TestUser {
+		self.add_user_to_workspace_with_grants(
+			admin_token,
+			workspace_id,
+			vec![RoleBindingGrant {
+				role_id,
+				resource_id: workspace_id,
+			}],
+		)
+		.await
+	}
+
+	/// Add a new user to a workspace with a role at the given scopes.
+	///
+	/// Membership comes from accepting an invite — UpdateUserRoles only edits
+	/// the grants of someone who is already a member, so the invite carries
+	/// the grants and acceptance mints the bindings.
+	pub async fn add_user_to_workspace_with_grants(
+		&self,
+		admin_token: &BearerToken,
+		workspace_id: Uuid,
+		grants: Vec<RoleBindingGrant>,
+	) -> TestUser {
 		let user_b = self.create_test_user().await;
 
+		let invite = self
+			.make_web_dashboard_call(
+				ApiRequest::<InviteUserToWorkspaceRequest>::builder()
+					.path(InviteUserToWorkspacePath { workspace_id })
+					.headers(InviteUserToWorkspaceRequestHeaders {
+						authorization: admin_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(InviteUserToWorkspaceRequest {
+						email: user_b.email.clone(),
+						roles: grants,
+					})
+					.build(),
+			)
+			.await
+			.json::<ApiSuccessResponseBody<InviteUserToWorkspaceResponse>>()
+			.response;
+
+		let invite_token = invite
+			.accept_url
+			.split_once("token=")
+			.expect("accept_url should carry the invite token")
+			.1
+			.to_string();
+
 		self.make_web_dashboard_call(
-			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
-				.path(UpdateUserRolesInWorkspacePath {
-					workspace_id,
-					user_id: user_b.user_id,
-				})
-				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
-					authorization: admin_token.clone(),
+			ApiRequest::<AcceptWorkspaceInviteRequest>::builder()
+				.headers(AcceptWorkspaceInviteRequestHeaders {
+					authorization: user_b.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![role_id],
+				.body(AcceptWorkspaceInviteRequest {
+					invite_id: invite.id.id,
+					token: invite_token,
 				})
 				.build(),
 		)
 		.await
-		.assert_json(&ApiSuccessResponseBody::new(
-			UpdateUserRolesInWorkspaceResponse,
-		));
+		.assert_status(StatusCode::ACCEPTED);
 
 		user_b
 	}

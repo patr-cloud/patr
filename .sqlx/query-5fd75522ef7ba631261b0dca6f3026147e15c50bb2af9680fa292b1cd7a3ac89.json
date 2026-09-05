@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE workspace_user_invite_role ADD CONSTRAINT workspace_user_invite_role_fk_invite_id_workspace_id FOREIGN KEY(invite_id, workspace_id) REFERENCES workspace_user_invite(id, workspace_id), ADD CONSTRAINT workspace_user_invite_role_fk_role_id_workspace_id FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, workspace_id), ADD CONSTRAINT workspace_user_invite_role_fk_scope_id_workspace_id FOREIGN KEY(scope_id, workspace_id) REFERENCES resource(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5fd75522ef7ba631261b0dca6f3026147e15c50bb2af9680fa292b1cd7a3ac89"
+}

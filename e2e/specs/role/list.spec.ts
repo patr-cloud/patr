@@ -34,15 +34,15 @@ test.describe('role > list [UI]', () => {
 		await createRoleAPI(api, user, user.workspaceId, {
 			name,
 			description: 'my desc',
-			permissions: {
-				[await getPermissionId(
+			permissions: [
+				await getPermissionId(
 					api,
 					user.accessToken,
 					user.workspaceId,
 					user.clientIp,
 					'viewRoles',
-				)]: { permissionType: 'exclude', resources: [] },
-			},
+				),
+			],
 		});
 		await withUI(browser, user, async (page) => {
 			await openRolesList(page);

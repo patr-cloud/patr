@@ -1,9 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
-
-use models::{
-	rbac::{Permission, ResourcePermissionType},
-	utils::Uuid,
-};
+use models::{api::workspace::rbac::user::RoleBindingGrant, rbac::Permission, utils::Uuid};
 
 use crate::prelude::*;
 
@@ -21,36 +16,57 @@ pub mod workspace;
 /// permissions. Returns (admin, workspace_id, user_b).
 async fn setup_permission_test(
 	setup: &TestSetup,
-	perm_entries: Vec<(Permission, ResourcePermissionType)>,
+	perm_entries: Vec<(Permission, Vec<Uuid>)>,
 ) -> (TestUser, Uuid, TestUser) {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
-	let mut permissions = BTreeMap::new();
-	for (perm, perm_type) in perm_entries {
-		let perm_id = setup.get_permission_id(perm);
-		permissions.insert(perm_id, perm_type);
+	let mut permissions = Vec::new();
+	let mut scope = None;
+	for (perm, perm_scope) in perm_entries {
+		permissions.push(setup.get_permission_id(perm));
+		// A binding applies the whole role at one scope; entries share it.
+		assert!(
+			scope.is_none() || scope.as_ref() == Some(&perm_scope),
+			"all entries must share one scope"
+		);
+		scope = Some(perm_scope);
 	}
+	let scope = scope.expect("at least one permission");
+	// An empty scope list means the whole workspace: the grant sits at the root.
+	let resource_ids = if scope.is_empty() {
+		vec![workspace.id]
+	} else {
+		scope
+	};
 
 	let role = setup
 		.create_role_with_permissions(&admin.access_token, workspace.id, permissions)
 		.await;
 
 	let user_b = setup
-		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.add_user_to_workspace_with_grants(
+			&admin.access_token,
+			workspace.id,
+			grants(role.id, &resource_ids),
+		)
 		.await;
 
 	(admin, workspace.id, user_b)
 }
 
-fn include(ids: &[Uuid]) -> ResourcePermissionType {
-	ResourcePermissionType::Include(ids.iter().copied().collect())
+/// The whole workspace — an empty list, resolved to the workspace root.
+fn all() -> Vec<Uuid> {
+	Vec::new()
 }
 
-fn exclude(ids: &[Uuid]) -> ResourcePermissionType {
-	ResourcePermissionType::Exclude(ids.iter().copied().collect())
-}
-
-fn all() -> ResourcePermissionType {
-	ResourcePermissionType::Exclude(BTreeSet::new())
+/// One grant of `role_id` per resource it applies at.
+fn grants(role_id: Uuid, resource_ids: &[Uuid]) -> Vec<RoleBindingGrant> {
+	resource_ids
+		.iter()
+		.map(|resource_id| RoleBindingGrant {
+			role_id,
+			resource_id: *resource_id,
+		})
+		.collect::<Vec<_>>()
 }

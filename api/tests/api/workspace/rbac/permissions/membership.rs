@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use models::{
 	api::workspace::{
 		container_registry::*,
@@ -12,7 +10,6 @@ use models::{
 	rbac::Permission,
 };
 
-use super::all;
 use crate::prelude::*;
 
 #[tokio::test]
@@ -168,10 +165,12 @@ async fn list_endpoints_allowed_for_any_member() {
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 
-	let mut perms = BTreeMap::new();
-	perms.insert(setup.get_permission_id(Permission::ViewRoles), all());
 	let role = setup
-		.create_role_with_permissions(&admin.access_token, workspace.id, perms)
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
 		.await;
 	let user_b = setup
 		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)

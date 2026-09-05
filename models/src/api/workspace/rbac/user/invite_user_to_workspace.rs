@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{api::workspace::rbac::user::RoleBindingGrant, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Route to invite a user, by email address, to a workspace with a given set
@@ -28,9 +28,9 @@ macros::declare_api_endpoint!(
 		/// The email address to invite to the workspace
 		#[preprocess(trim, lowercase, email)]
 		pub email: String,
-		/// The roles the invitee will be granted once they accept
+		/// The role grants the invitee receives once they accept
 		#[preprocess(none)]
-		pub roles: Vec<Uuid>,
+		pub roles: Vec<RoleBindingGrant>,
 	},
 	response = {
 		/// The ID of the created invite
