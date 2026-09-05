@@ -1,4 +1,6 @@
-use super::RoleInfo;
+use std::collections::BTreeSet;
+
+use super::Role;
 use crate::prelude::*;
 
 macros::declare_api_endpoint!(
@@ -29,9 +31,9 @@ macros::declare_api_endpoint!(
 		///     description - The role description
 		///     isImmutable - Whether the role is a seeded default
 		#[serde(flatten)]
-		pub role: WithId<RoleInfo>,
+		pub role: WithId<Role>,
 		/// The permission IDs this role grants.
-		pub permissions: Vec<Uuid>,
+		pub permissions: BTreeSet<Uuid>,
 	},
 	audit_log = NoAuditLogger,
 );

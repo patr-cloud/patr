@@ -657,22 +657,22 @@ pub async fn initialize_rbac_constraints(
 			exclude-type entry whose list doesn't */
 			token_included AS (
 				SELECT
-					inc.workspace_id,
-					inc.resource_id
+					user_api_token_resource_permissions_include.resource_id,
+					user_api_token_resource_permissions_include.workspace_id
 				FROM
-					user_api_token_resource_permissions_include inc
+					user_api_token_resource_permissions_include
 				WHERE
-					inc.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-					inc.permission_id = local_permission_id
+					user_api_token_resource_permissions_include.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_include.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
 			token_excluded AS (
 				SELECT
-					exc.resource_id
+					user_api_token_resource_permissions_exclude.resource_id
 				FROM
-					user_api_token_resource_permissions_exclude exc
+					user_api_token_resource_permissions_exclude
 				WHERE
-					exc.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-					exc.permission_id = local_permission_id
+					user_api_token_resource_permissions_exclude.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_exclude.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
 			token_exclude_workspaces AS (
 				SELECT
@@ -723,8 +723,7 @@ pub async fn initialize_rbac_constraints(
 						super_admin_workspaces
 					WHERE
 						super_admin_workspaces.workspace_id = resource.workspace_id
-				)
-				OR EXISTS (
+				) OR EXISTS (
 					SELECT
 						1
 					FROM
@@ -735,8 +734,7 @@ pub async fn initialize_rbac_constraints(
 							user_bindings.scope_id = resource.id OR
 							user_bindings.scope_id = user_bindings.workspace_id
 						)
-				)
-				OR (
+				) OR (
 					(
 						EXISTS (
 							SELECT
@@ -746,8 +744,7 @@ pub async fn initialize_rbac_constraints(
 							WHERE
 								token_included.workspace_id = resource.workspace_id AND
 								token_included.resource_id = resource.id
-						)
-						OR (
+						) OR (
 							EXISTS (
 								SELECT
 									1

@@ -40,6 +40,7 @@ async fn probe_modify_roles(
 					role: Role {
 						name: random_name(8),
 						description: "cascade probe".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::from([view_perm]),
 				})
@@ -759,7 +760,7 @@ async fn api_token_does_not_widen_on_promotion() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![RoleGrant {
+					roles: vec![RoleBindingGrant {
 						role_id: write_role.id,
 						resource_id: workspace.id,
 					}],

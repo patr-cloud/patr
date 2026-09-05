@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{api::workspace::rbac::user::RoleBindingGrant, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Route to update the roles a pending invite will grant once accepted. This
@@ -28,7 +28,7 @@ macros::declare_api_endpoint!(
 	request = {
 		/// The new role grants the invitee receives on acceptance
 		#[preprocess(none)]
-		pub roles: Vec<super::RoleGrant>,
+		pub roles: Vec<RoleBindingGrant>,
 	},
 	audit_log = NoAuditLogger,
 );

@@ -22,7 +22,12 @@ pub async fn update_role(
 				},
 				body:
 					UpdateRoleRequestProcessed {
-						role: RoleProcessed { name, description },
+						role:
+							RoleProcessed {
+								name,
+								description,
+								is_immutable: _,
+							},
 						permissions,
 					},
 			},
@@ -104,8 +109,6 @@ pub async fn update_role(
 	.execute(&mut **database)
 	.await?;
 
-	let permission_ids = permissions.into_iter().map(Into::into).collect::<Vec<_>>();
-
 	// Bindings are untouched: a role edit changes what the role grants, not
 	// where anyone holds it.
 	query!(
@@ -117,14 +120,13 @@ pub async fn update_role(
 			UNNEST($2::UUID[]);
 		"#,
 		role_id as _,
-		&permission_ids,
+		&permissions.into_iter().collect::<Vec<_>>() as _,
 	)
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {
-		// The only FK that can fire here is permission_id: the role's existence
-		// was checked above. An unknown permission id is a bad request.
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			// Wrong permission ID
 			ErrorType::WrongParameters
 		}
 		other => ErrorType::server_error(other),

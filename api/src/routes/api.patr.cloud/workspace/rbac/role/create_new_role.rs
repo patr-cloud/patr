@@ -20,7 +20,12 @@ pub async fn create_new_role(
 					},
 				body:
 					CreateNewRoleRequestProcessed {
-						role: RoleProcessed { name, description },
+						role:
+							RoleProcessed {
+								name,
+								description,
+								is_immutable: _,
+							},
 						permissions,
 					},
 			},
@@ -109,8 +114,6 @@ pub async fn create_new_role(
 
 	trace!("Role created. Inserting permissions.");
 
-	let permission_ids = permissions.into_iter().map(Into::into).collect::<Vec<_>>();
-
 	query!(
 		r#"
 		INSERT INTO
@@ -120,14 +123,13 @@ pub async fn create_new_role(
 			UNNEST($2::UUID[]);
 		"#,
 		role_id as _,
-		&permission_ids,
+		&permissions.into_iter().collect::<Vec<_>>() as _,
 	)
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {
-		// The only FK that can fire here is permission_id: the role was just
-		// written in this transaction. An unknown permission id is a bad request.
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			// Wrong permission ID
 			ErrorType::WrongParameters
 		}
 		other => ErrorType::server_error(other),

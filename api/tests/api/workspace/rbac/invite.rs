@@ -52,7 +52,7 @@ async fn invite(
 					email: email.to_string(),
 					roles: roles
 						.into_iter()
-						.map(|role_id| RoleGrant {
+						.map(|role_id| RoleBindingGrant {
 							role_id,
 							resource_id: workspace_id,
 						})
@@ -136,7 +136,7 @@ async fn members(
 	setup: &TestSetup,
 	token: &BearerToken,
 	workspace_id: Uuid,
-) -> BTreeMap<Uuid, Vec<RoleGrant>> {
+) -> BTreeMap<Uuid, Vec<RoleBindingGrant>> {
 	setup
 		.make_web_dashboard_call(
 			ApiRequest::<ListUsersInWorkspaceRequest>::builder()
@@ -152,7 +152,7 @@ async fn members(
 		.response
 		.users
 		.into_iter()
-		.map(|member| (member.user.id, member.roles))
+		.map(|member| (member.user.id, member.role_bindings))
 		.collect()
 }
 
@@ -518,7 +518,7 @@ async fn update_invite_roles_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateWorkspaceInviteRolesRequest {
-					roles: vec![RoleGrant {
+					roles: vec![RoleBindingGrant {
 						role_id: role_b.id,
 						resource_id: workspace.id,
 					}],

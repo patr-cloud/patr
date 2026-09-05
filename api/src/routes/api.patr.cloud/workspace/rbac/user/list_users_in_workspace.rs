@@ -55,7 +55,7 @@ pub async fn list_users_in_workspace(
 	let mut users = query!(
 		r#"
 		WITH members AS (
-			SELECT DISTINCT
+			SELECT
 				workspace_user.user_id
 			FROM
 				workspace_user
@@ -117,21 +117,18 @@ pub async fn list_users_in_workspace(
 					email: row.email,
 				},
 			),
-			roles: Vec::new(),
+			role_bindings: Vec::new(),
 			is_owner: row.is_owner,
 		}
 	})
 	.collect::<Vec<_>>();
 
+	let mut grants = BTreeMap::<Uuid, Vec<RoleBindingGrant>>::new();
+
 	// One flat query for the whole page's grants, then attach. Keeping this
 	// out of the query above means the page is paginated over users, not over
 	// the user-by-binding fan-out.
-	let user_ids = users
-		.iter()
-		.map(|member| member.user.id)
-		.collect::<Vec<_>>();
-
-	let mut grants = query!(
+	query!(
 		r#"
 		SELECT
 			workspace_user.user_id,
@@ -148,27 +145,28 @@ pub async fn list_users_in_workspace(
 			workspace_user.user_id = ANY($2::UUID[]);
 		"#,
 		workspace_id as _,
-		&user_ids as _,
+		&users
+			.iter()
+			.map(|member| member.user.id)
+			.collect::<Vec<_>>() as _,
 	)
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.fold(
-		BTreeMap::<Uuid, Vec<RoleGrant>>::new(),
-		|mut grants, row| {
-			grants
-				.entry(row.user_id.into())
-				.or_default()
-				.push(RoleGrant {
-					role_id: row.role_id.into(),
-					resource_id: row.scope_id.into(),
-				});
-			grants
-		},
-	);
+	.for_each(|row| {
+		grants
+			.entry(row.user_id.into())
+			.or_default()
+			.push(RoleBindingGrant {
+				role_id: row.role_id.into(),
+				resource_id: row.scope_id.into(),
+			});
+	});
 
+	// For every user that we just got on the list, extract their grant from the grant list and set
+	// that as their bindings
 	for member in &mut users {
-		member.roles = grants.remove(&member.user.id).unwrap_or_default();
+		member.role_bindings = grants.remove(&member.user.id).unwrap_or_default();
 	}
 
 	AppResponse::builder()

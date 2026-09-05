@@ -52,7 +52,7 @@ const EditPermissions = () => {
 			return;
 		}
 
-		const requestBody: UpdateRoleRequest = {
+		const requestBody: Omit<UpdateRoleRequest, "isImmutable"> = {
 			name: roleName().trim(),
 			description: roleDescription().trim(),
 			// The map keys are the permission ids — the flat list the DTO wants.

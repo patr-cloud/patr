@@ -30,9 +30,20 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 	user_invite_add_scope(&mut *connection).await?;
 	fill_user_invite_scope(&mut *connection).await?;
 
+	// Dropped, not replaced: the function is created by m014 and must already
+	// exist. If it doesn't, something upstream is broken and the migration
+	// should fail here rather than quietly conjure one.
 	sqlx::query(
 		r#"
-		CREATE OR REPLACE FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(
+		DROP FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(UUID, TEXT);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		CREATE FUNCTION RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(
 			login_id UUID,
 			permission_name TEXT
 		) RETURNS TABLE(
@@ -80,6 +91,9 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 				WHERE
 					user_api_token_workspace_super_admin.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
+			/* Bindings carrying this permission: the user's own for web
+			logins; the token's ceiling intersected with the owner's grants
+			for API tokens */
 			/* The login's own bindings (empty for API tokens) */
 			user_bindings AS (
 				SELECT
@@ -109,22 +123,22 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 			exclude-type entry whose list doesn't */
 			token_included AS (
 				SELECT
-					inc.workspace_id,
-					inc.resource_id
+					user_api_token_resource_permissions_include.resource_id,
+					user_api_token_resource_permissions_include.workspace_id
 				FROM
-					user_api_token_resource_permissions_include inc
+					user_api_token_resource_permissions_include
 				WHERE
-					inc.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-					inc.permission_id = local_permission_id
+					user_api_token_resource_permissions_include.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_include.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
 			token_excluded AS (
 				SELECT
-					exc.resource_id
+					user_api_token_resource_permissions_exclude.resource_id
 				FROM
-					user_api_token_resource_permissions_exclude exc
+					user_api_token_resource_permissions_exclude
 				WHERE
-					exc.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
-					exc.permission_id = local_permission_id
+					user_api_token_resource_permissions_exclude.permission_id = local_permission_id AND
+					user_api_token_resource_permissions_exclude.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
 			token_exclude_workspaces AS (
 				SELECT
@@ -175,8 +189,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 						super_admin_workspaces
 					WHERE
 						super_admin_workspaces.workspace_id = resource.workspace_id
-				)
-				OR EXISTS (
+				) OR EXISTS (
 					SELECT
 						1
 					FROM
@@ -187,8 +200,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 							user_bindings.scope_id = resource.id OR
 							user_bindings.scope_id = user_bindings.workspace_id
 						)
-				)
-				OR (
+				) OR (
 					(
 						EXISTS (
 							SELECT
@@ -198,8 +210,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 							WHERE
 								token_included.workspace_id = resource.workspace_id AND
 								token_included.resource_id = resource.id
-						)
-						OR (
+						) OR (
 							EXISTS (
 								SELECT
 									1
