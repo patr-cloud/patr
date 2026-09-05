@@ -1,19 +1,16 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createMemo, createSignal, Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
-import { Alert, Button, ButtonVariant, Input, PageContainer, PageContainerBody, Table, useToast } from "~/components";
+import { Alert, Button, ButtonVariant, Input, PageContainer, PageContainerBody, useToast } from "~/components";
 import { createAuthenticatedAction } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { CreateNewRoleRequest } from "~/bindings/CreateNewRoleRequest";
 import { CreateNewRoleResponse } from "~/bindings/CreateNewRoleResponse";
-import { ResourcePermissionType } from "~/utils/types";
 import { httpRequest } from "~/utils/http-request";
 import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-components/workspace-header";
-import PermissionSelector from "./-components/permission-selector";
-import PermissionRow, { removeResourceFromPermissions } from "./-components/permission-row";
-import { usePermissionsQuery, useResourcesInfoQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
-import { parsePermissionName } from "~/utils/func";
+import PermissionPicker from "./-components/permission-picker";
+import { useWorkspaceInfoQuery } from "~/hooks/fetch";
 import { validateNameField, validateRoleDescription } from "~/utils/validation";
 
 const CreateRoles = () => {
@@ -25,38 +22,7 @@ const CreateRoles = () => {
 	const [roleDescription, setRoleDescription] = createSignal("");
 	const [roleNameError, setRoleNameError] = createSignal<string | undefined>(undefined);
 	const [roleDescriptionError, setRoleDescriptionError] = createSignal<string | undefined>(undefined);
-	const [permissionsData, setPermissionsData] = createSignal<{ [key: string]: ResourcePermissionType }>({});
-
-	const allPermissionsQuery = usePermissionsQuery(() => workspaceId()!);
-
-	const permissionIdToName = createMemo(() => {
-		const perms = allPermissionsQuery.data?.permissions;
-		if (!perms) return new Map<string, string>();
-		return new Map(perms.map((perm) => [perm.id, perm.name]));
-	});
-
-	const permissionEntries = createMemo(() => {
-		const permissions = permissionsData();
-		if (!permissions) return [];
-		const nameMap = permissionIdToName();
-
-		return Object.entries(permissions).map(([permissionId, permissionData]) => {
-			const permissionName = nameMap.get(permissionId) || permissionId;
-			const parsed = parsePermissionName(permissionName);
-			return {
-				permissionId,
-				resourceType: parsed.resourceType,
-				action: parsed.permission,
-				permissionType: permissionData?.permissionType || "exclude",
-				resources: permissionData?.resources || [],
-			};
-		});
-	});
-
-	// Every resource referenced by the table, resolved in a single request so the
-	// rows can show what the selected IDs actually refer to.
-	const allResourceIds = createMemo(() => [...new Set(permissionEntries().flatMap((perm) => perm.resources))]);
-	const resourcesInfoQuery = useResourcesInfoQuery(() => allResourceIds());
+	const [permissions, setPermissions] = createSignal<Set<string>>(new Set());
 
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
 
@@ -68,7 +34,7 @@ const CreateRoles = () => {
 		setRoleDescriptionError(descriptionError);
 		if (nameError || descriptionError) return;
 
-		if (Object.keys(permissionsData()).length === 0) {
+		if (permissions().size === 0) {
 			toast("Please select at least one permission", "error");
 			return;
 		}
@@ -76,8 +42,7 @@ const CreateRoles = () => {
 		const requestBody: Omit<CreateNewRoleRequest, "isImmutable"> = {
 			name: roleName().trim(),
 			description: roleDescription().trim() || `Role: ${roleName().trim()}`,
-			// The map keys are the permission ids — the flat list the DTO wants.
-			permissions: Object.keys(permissionsData()),
+			permissions: [...permissions()],
 		};
 
 		const response = await httpRequest<CreateNewRoleResponse>(
@@ -139,43 +104,18 @@ const CreateRoles = () => {
 							</Show>
 						</div>
 
-						<div class="flex flex-col gap-4">
+						<div class="flex flex-col gap-2">
 							<div class="text-white text-sm font-medium">Permissions</div>
-							<PermissionSelector
+							{/*
+							  A role is just a list of permissions — which resources they
+							  apply to is chosen when the role is assigned to someone.
+							*/}
+							<PermissionPicker
 								workspaceId={workspaceId()!}
-								permissionsData={permissionsData()}
-								onPermissionsDataChange={(data) => setPermissionsData((prev) => ({ ...prev, ...data }))}
+								selected={permissions()}
+								onChange={(next) => setPermissions(next)}
+								sortToken={0}
 							/>
-
-							<Show when={permissionEntries().length > 0}>
-								<Table
-									column_grids={["flex-4", "flex-3", "flex-4", "flex-1"]}
-									headings={["Resource Type", "Action", "Resources", ""]}
-									heading_align="left"
-									rows={permissionEntries().sort(
-										(a, b) =>
-											a.resourceType.localeCompare(b.resourceType) ||
-											a.action.localeCompare(b.action)
-									)}
-									renderRow={(perm) => (
-										<PermissionRow
-											perm={perm}
-											resourceInfo={resourcesInfoQuery.data}
-											isLoadingResources={resourcesInfoQuery.isPending}
-											onRemove={() => {
-												const newPermissionsData = { ...permissionsData() };
-												delete newPermissionsData[perm.permissionId];
-												setPermissionsData(newPermissionsData);
-											}}
-											onRemoveResource={(resourceId) =>
-												setPermissionsData((prev) =>
-													removeResourceFromPermissions(prev, perm.permissionId, resourceId)
-												)
-											}
-										/>
-									)}
-								/>
-							</Show>
 						</div>
 					</div>
 

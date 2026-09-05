@@ -43,6 +43,7 @@ const RoleUsersChips = (props: RoleUsersChipsProps) => {
 			toast("Workspace ID is missing", "error");
 			return false;
 		}
+		// Workspace-wide grants only until the scope picker lands on the members page.
 		const body: UpdateUserRolesInWorkspaceRequest = {
 			roles: roleIds.map((roleId) => ({ roleId, resourceId: wsId })),
 		};

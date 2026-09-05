@@ -103,13 +103,13 @@ const CreateApiTokens = () => {
 			return;
 		}
 
+		// Member selections send no grants — role-based ceilings are authored
+		// in the token-screen rework. Super-admin selections round-trip.
 		const requestBody: Omit<CreateApiTokenRequest, "created"> = {
 			name: name(),
 			tokenNbf: fromDate() || undefined,
 			tokenExp: toDate() || undefined,
 			allowedIps: allowedIps().length > 0 ? allowedIps() : undefined,
-			// Super-admin selections round-trip; member detail is authored as
-			// role-grant ceilings only after the token-screen rework.
 			superAdminOf: Object.entries(perms)
 				.filter(([, permission]) => permission.type === "superAdmin")
 				.map(([workspaceId]) => workspaceId),
