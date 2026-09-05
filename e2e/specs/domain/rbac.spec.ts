@@ -42,6 +42,21 @@ test.describe('domain > RBAC [UI]', () => {
 		}
 	});
 
+	test('a member with the add permission sees the Add Domain CTA', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const addId = await permId(api, owner, 'domain::add');
+		await using member = await createSecondMemberWithRole(api, owner, [addId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDomainList(page);
+			await expect(addDomainLink(page)).toBeVisible({ timeout: 15_000 });
+		} finally {
+			await context.close();
+		}
+	});
+
 	test('a member with no domain permission sees the empty state', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		await addDomainAPI(api, owner, owner.workspaceId);
