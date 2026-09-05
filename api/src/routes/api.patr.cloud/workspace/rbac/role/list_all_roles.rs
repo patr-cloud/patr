@@ -17,7 +17,7 @@ pub async fn list_all_roles(
 					ListResourceQueryProcessed {
 						sort: sort_order,
 						search:
-							RoleInfoSearchParams {
+							RoleSearchParams {
 								name: name_filter,
 								description: description_filter,
 							},
@@ -71,7 +71,7 @@ pub async fn list_all_roles(
 		total_count = row.total_count;
 		WithId::new(
 			row.id,
-			RoleInfo {
+			Role {
 				name: row.name,
 				description: row.description,
 				is_immutable: row.is_immutable,

@@ -19,8 +19,7 @@ pub(super) async fn fill_user_invite_scope(
 		SET
 			scope_id = ir.workspace_id
 		WHERE
-			ir.scope_id IS NULL AND
-			EXISTS (
+			ir.scope_id IS NULL AND EXISTS (
 				SELECT
 					1
 				FROM
@@ -28,8 +27,7 @@ pub(super) async fn fill_user_invite_scope(
 				WHERE
 					t.role_id = ir.role_id AND
 					t.permission_type = 'exclude'
-			) AND
-			NOT EXISTS (
+			) AND NOT EXISTS (
 				SELECT
 					1
 				FROM

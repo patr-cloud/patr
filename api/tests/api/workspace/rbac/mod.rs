@@ -184,6 +184,7 @@ async fn update_role_works() {
 					role: Role {
 						name: new_name.clone(),
 						description: "test role".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
@@ -329,7 +330,7 @@ async fn list_users_in_workspace_works() {
 	assert_eq!(owner.user.email, user.email);
 	assert!(owner.is_owner, "the creator must be flagged as the owner");
 	assert!(
-		owner.roles.is_empty(),
+		owner.role_bindings.is_empty(),
 		"the owner's access doesn't come from a role"
 	);
 }
@@ -509,6 +510,7 @@ async fn create_role_duplicate_name() {
 					role: Role {
 						name: role.name.clone(),
 						description: "duplicate".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::new(),
 				})
@@ -612,6 +614,7 @@ async fn update_role_nonexistent() {
 					role: Role {
 						name: random_name(8),
 						description: "test role".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
@@ -652,6 +655,7 @@ async fn update_role_add_permissions() {
 					role: Role {
 						name: random_name(8),
 						description: "test role".to_string(),
+						is_immutable: false,
 					},
 					permissions: perms.into_iter().collect(),
 				})
@@ -716,6 +720,7 @@ async fn update_role_remove_permissions() {
 					role: Role {
 						name: random_name(8),
 						description: "test role".to_string(),
+						is_immutable: false,
 					},
 					permissions: next.into_iter().collect(),
 				})
@@ -768,7 +773,7 @@ async fn update_user_roles_nonexistent_user() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![RoleGrant {
+					roles: vec![RoleBindingGrant {
 						role_id: role.id,
 						resource_id: workspace.id,
 					}],
@@ -803,7 +808,7 @@ async fn update_user_roles_nonexistent_role() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![RoleGrant {
+					roles: vec![RoleBindingGrant {
 						role_id: Uuid::nil(),
 						resource_id: workspace.id,
 					}],
@@ -841,6 +846,7 @@ async fn create_role_invalid_name() {
 					role: Role {
 						name: "!!!".to_string(),
 						description: "test".to_string(),
+						is_immutable: false,
 					},
 					permissions: perms.into_iter().collect(),
 				})
@@ -880,7 +886,7 @@ async fn update_user_roles_idempotent() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![RoleGrant {
+					roles: vec![RoleBindingGrant {
 						role_id: role.id,
 						resource_id: workspace.id,
 					}],
@@ -1036,6 +1042,7 @@ async fn create_role_with_description(
 					role: Role {
 						name: random_name(8),
 						description: description.to_string(),
+						is_immutable: false,
 					},
 					permissions: permissions.into_iter().collect(),
 				})
@@ -1139,6 +1146,7 @@ async fn update_role_rejects_xss_in_description() {
 					role: Role {
 						name: random_name(8),
 						description: "<script>alert(1)</script>".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
@@ -1209,6 +1217,7 @@ async fn role_cross_workspace_update_denied() {
 					role: Role {
 						name: random_name(8),
 						description: "test role".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
@@ -1346,6 +1355,7 @@ async fn default_roles_are_immutable() {
 					role: Role {
 						name: random_name(8),
 						description: "nope".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
@@ -1403,6 +1413,7 @@ async fn create_role_name_too_short() {
 					role: Role {
 						name: "ab".to_string(),
 						description: "too short".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::from([setup.get_permission_id(Permission::ViewRoles)]),
 				})
@@ -1437,6 +1448,7 @@ async fn create_role_same_name_across_workspaces() {
 						role: Role {
 							name: name.clone(),
 							description: "shared name".to_string(),
+							is_immutable: false,
 						},
 						permissions: BTreeSet::from([
 							setup.get_permission_id(Permission::ViewRoles)
@@ -1477,6 +1489,7 @@ async fn update_role_empty_permissions_400() {
 					role: Role {
 						name: random_name(8),
 						description: "test role".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::new(),
 				})
@@ -1515,7 +1528,7 @@ async fn update_user_roles_cross_workspace_role() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateUserRolesInWorkspaceRequest {
-					roles: vec![RoleGrant {
+					roles: vec![RoleBindingGrant {
 						role_id: role_b.id,
 						resource_id: workspace_a.id,
 					}],

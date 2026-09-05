@@ -73,7 +73,7 @@ const CreateRoles = () => {
 			return;
 		}
 
-		const requestBody: CreateNewRoleRequest = {
+		const requestBody: Omit<CreateNewRoleRequest, "isImmutable"> = {
 			name: roleName().trim(),
 			description: roleDescription().trim() || `Role: ${roleName().trim()}`,
 			// The map keys are the permission ids — the flat list the DTO wants.

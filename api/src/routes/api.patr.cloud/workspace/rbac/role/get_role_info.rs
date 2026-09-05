@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use axum::http::StatusCode;
 use models::api::workspace::rbac::role::*;
 
@@ -69,13 +71,13 @@ pub async fn get_role_info(
 	.await?
 	.into_iter()
 	.map(|row| row.permission_id)
-	.collect::<Vec<_>>();
+	.collect::<BTreeSet<_>>();
 
 	AppResponse::builder()
 		.body(GetRoleInfoResponse {
 			role: WithId::new(
 				role.id,
-				RoleInfo {
+				Role {
 					name: role.name,
 					description: role.description,
 					is_immutable: role.is_immutable,

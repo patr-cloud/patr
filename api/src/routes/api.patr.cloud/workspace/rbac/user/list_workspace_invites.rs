@@ -81,7 +81,7 @@ pub async fn list_workspace_invites(
 					return invites;
 				};
 
-				invite.data.roles.push(RoleGrant {
+				invite.data.roles.push(RoleBindingGrant {
 					role_id,
 					resource_id: scope_id,
 				});

@@ -1,4 +1,4 @@
-use models::{api::workspace::rbac::user::RoleGrant, rbac::Permission, utils::Uuid};
+use models::{api::workspace::rbac::user::RoleBindingGrant, rbac::Permission, utils::Uuid};
 
 use crate::prelude::*;
 
@@ -61,10 +61,10 @@ fn all() -> Vec<Uuid> {
 }
 
 /// One grant of `role_id` per resource it applies at.
-fn grants(role_id: Uuid, resource_ids: &[Uuid]) -> Vec<RoleGrant> {
+fn grants(role_id: Uuid, resource_ids: &[Uuid]) -> Vec<RoleBindingGrant> {
 	resource_ids
 		.iter()
-		.map(|resource_id| RoleGrant {
+		.map(|resource_id| RoleBindingGrant {
 			role_id,
 			resource_id: *resource_id,
 		})
