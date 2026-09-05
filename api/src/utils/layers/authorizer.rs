@@ -110,8 +110,6 @@ where
 					extract_workspace_id,
 				} => {
 					let workspace_id = extract_workspace_id(&req.request);
-					// Membership is first-class: a zero-binding member belongs
-					// to the workspace without any permission map entry.
 					req.user_data.permissions.contains_key(&workspace_id)
 				}
 				AppAuthentication::WorkspaceSuperAdminAuthenticator {

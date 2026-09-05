@@ -474,6 +474,7 @@ impl TestSetup {
 						role: Role {
 							name: name.clone(),
 							description: "test role with permissions".to_string(),
+							is_immutable: false,
 						},
 						permissions: permissions.into_iter().collect(),
 					})
@@ -539,7 +540,7 @@ impl TestSetup {
 		self.add_user_to_workspace_with_grants(
 			admin_token,
 			workspace_id,
-			vec![RoleGrant {
+			vec![RoleBindingGrant {
 				role_id,
 				resource_id: workspace_id,
 			}],
@@ -556,7 +557,7 @@ impl TestSetup {
 		&self,
 		admin_token: &BearerToken,
 		workspace_id: Uuid,
-		grants: Vec<RoleGrant>,
+		grants: Vec<RoleBindingGrant>,
 	) -> TestUser {
 		let user_b = self.create_test_user().await;
 

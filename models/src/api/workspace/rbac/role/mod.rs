@@ -39,20 +39,8 @@ pub struct Role {
 	#[preprocess(trim, regex = ROLE_DESCRIPTION_REGEX)]
 	#[serde(default, skip_serializing_if = "str::is_empty")]
 	pub description: String,
-}
-
-/// A role as the API returns it: the request shape [`Role`] plus the
-/// server-controlled immutability flag. Immutable roles are the seeded
-/// defaults — not editable, not deletable.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
-#[serde(rename_all = "camelCase")]
-pub struct RoleInfo {
-	/// The name of the role
-	pub name: String,
-	/// The description of the role
-	#[serde(default, skip_serializing_if = "str::is_empty")]
-	pub description: String,
 	/// Whether the role is a seeded default that cannot be edited or deleted
 	#[search(skip)]
+	#[serde(default)]
 	pub is_immutable: bool,
 }

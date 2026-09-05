@@ -54,39 +54,37 @@ pub async fn list_users_for_role(
 	let mut total_count = 0;
 	let users = query!(
 		r#"
-		WITH holders AS (
+		WITH role_holder AS (
 			SELECT DISTINCT
-				workspace_user.user_id,
-				"user".first_name,
-				"user".last_name,
-				"user".email
+				workspace_user.user_id
 			FROM
 				role_binding
 			INNER JOIN
 				workspace_user
 			ON
 				workspace_user.actor_id = role_binding.actor_id
-			INNER JOIN
-				"user"
-			ON
-				workspace_user.user_id = "user".id
 			WHERE
 				role_binding.workspace_id = $1 AND
-				role_binding.role_id = $2 AND
-				($3::TEXT IS NULL OR "user".email ILIKE '%' || $3::TEXT || '%') AND
-				($4::TEXT IS NULL OR "user".first_name ILIKE '%' || $4::TEXT || '%') AND
-				($5::TEXT IS NULL OR "user".last_name ILIKE '%' || $5::TEXT || '%')
+				role_binding.role_id = $2
 		)
 		SELECT
-			holders.user_id AS "user_id!: Uuid",
-			holders.first_name AS "first_name!",
-			holders.last_name AS "last_name!",
-			holders.email AS "email!",
+			role_holder.user_id AS "user_id!: Uuid",
+			"user".first_name,
+			"user".last_name,
+			"user".email,
 			COUNT(*) OVER() AS "total_count!"
 		FROM
-			holders
+			role_holder
+		INNER JOIN
+			"user"
+		ON
+			role_holder.user_id = "user".id
+		WHERE
+			($3::TEXT IS NULL OR "user".email ILIKE '%' || $3::TEXT || '%') AND
+			($4::TEXT IS NULL OR "user".first_name ILIKE '%' || $4::TEXT || '%') AND
+			($5::TEXT IS NULL OR "user".last_name ILIKE '%' || $5::TEXT || '%')
 		ORDER BY
-			holders.user_id
+			role_holder.user_id
 		LIMIT $6
 		OFFSET $7;
 		"#,

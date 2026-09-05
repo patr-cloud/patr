@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{api::workspace::rbac::user::RoleBindingGrant, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Route to update the roles of a user in a workspace
@@ -26,7 +26,7 @@ macros::declare_api_endpoint!(
 		/// The role grants the user holds after this call. Empty drops every
 		/// grant but keeps the user a member of the workspace.
 		#[preprocess(none)]
-		pub roles: Vec<super::RoleGrant>,
+		pub roles: Vec<RoleBindingGrant>,
 	},
 	audit_logger = NoAuditLogger,
 );

@@ -55,6 +55,7 @@ async fn rbac_modify_roles_grants_access() {
 					role: Role {
 						name: random_name(8),
 						description: "test".to_string(),
+						is_immutable: false,
 					},
 					permissions: permissions.into_iter().collect(),
 				})
@@ -133,6 +134,7 @@ async fn rbac_modify_roles_denied_without_permission() {
 					role: Role {
 						name: random_name(8),
 						description: "test".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::new(),
 				})
@@ -194,6 +196,7 @@ async fn rbac_view_does_not_grant_modify() {
 					role: Role {
 						name: random_name(8),
 						description: "test".to_string(),
+						is_immutable: false,
 					},
 					permissions: BTreeSet::new(),
 				})
