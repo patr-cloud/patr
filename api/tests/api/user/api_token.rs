@@ -10,6 +10,10 @@ use models::{
 	api::{
 		user::*,
 		workspace::{
+			LeaveWorkspacePath,
+			LeaveWorkspaceRequest,
+			LeaveWorkspaceRequestHeaders,
+			LeaveWorkspaceResponse,
 			deployment::*,
 			rbac::{role::*, user::*},
 		},
@@ -848,6 +852,155 @@ async fn api_token_patch_revokes_access() {
 			.status_code()
 			.as_u16(),
 		"after the PATCH narrows perms the token should lose ModifyRoles"
+	);
+}
+
+/// The auth-time intersection is per workspace, not just per permission: a
+/// token keeps naming a workspace its owner has since been removed from, and
+/// that workspace has to drop out of the token's effective permissions.
+#[tokio::test]
+async fn token_loses_workspace_when_owner_is_removed() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let modify = setup.get_permission_id(Permission::ModifyRoles);
+	let view = setup.get_permission_id(Permission::ViewRoles);
+
+	let role = setup
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify, view])
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
+		.await;
+
+	// The member's own workspace, where they are the super admin. It must be
+	// untouched when they lose the other one.
+	let own_workspace = setup.create_test_workspace(&member.access_token).await;
+
+	let token = setup
+		.create_test_api_token(
+			&member.access_token,
+			BTreeMap::from([
+				(
+					workspace.id,
+					WorkspacePermission::Member {
+						permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
+					},
+				),
+				(
+					own_workspace.id,
+					WorkspacePermission::Member {
+						permissions: BTreeMap::from([(modify, workspace_scope(own_workspace.id))]),
+					},
+				),
+			]),
+		)
+		.await;
+
+	assert!(
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.is_success(),
+		"the member's token should work while they are still a member"
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<RemoveUserFromWorkspaceRequest>::builder()
+				.path(RemoveUserFromWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: member.user_id,
+				})
+				.headers(RemoveUserFromWorkspaceRequestHeaders {
+					authorization: owner.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(RemoveUserFromWorkspaceRequest)
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(
+			RemoveUserFromWorkspaceResponse,
+		));
+
+	assert_eq!(
+		401,
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.as_u16(),
+		"the token still names the workspace, but the owner is no longer a member"
+	);
+
+	assert!(
+		probe_modify_roles(&setup, &token.token, own_workspace.id, view)
+			.await
+			.status_code()
+			.is_success(),
+		"losing one workspace must not touch the token's other workspaces"
+	);
+}
+
+/// Same drop, member-initiated: leaving a workspace has to take the token's
+/// access to it with them.
+#[tokio::test]
+async fn token_loses_workspace_when_owner_leaves() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let modify = setup.get_permission_id(Permission::ModifyRoles);
+	let view = setup.get_permission_id(Permission::ViewRoles);
+
+	let role = setup
+		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify, view])
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace.id, role.id)
+		.await;
+
+	let token = setup
+		.create_test_api_token(
+			&member.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(modify, workspace_scope(workspace.id))]),
+				},
+			)]),
+		)
+		.await;
+
+	assert!(
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.is_success()
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<LeaveWorkspaceRequest>::builder()
+				.path(LeaveWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(LeaveWorkspaceRequestHeaders {
+					authorization: member.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(LeaveWorkspaceRequest)
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(LeaveWorkspaceResponse));
+
+	assert_eq!(
+		401,
+		probe_modify_roles(&setup, &token.token, workspace.id, view)
+			.await
+			.status_code()
+			.as_u16(),
+		"leaving the workspace must drop it from the token's effective permissions"
 	);
 }
 

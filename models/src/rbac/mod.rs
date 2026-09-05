@@ -1,4 +1,3 @@
-/// Where a granted permission applies (workspace-wide or a resource set).
 /// The list of all permissions that can be granted on a Resource.
 mod permissions;
 /// Represents the type of permission that is granted on a set of Resource IDs.

@@ -108,16 +108,14 @@ pub(super) async fn fill_user_invite_scope(
 			r.deleted IS NULL AND
 			r.id <> r.workspace_id
 		WHERE
-			ir.scope_id IS NULL AND
-			EXISTS (
+			ir.scope_id IS NULL AND EXISTS (
 				SELECT
 					1
 				FROM
 					role_resource_permissions_exclude e
 				WHERE
 					e.role_id = ir.role_id
-			) AND
-			NOT EXISTS (
+			) AND NOT EXISTS (
 				SELECT
 					1
 				FROM
@@ -143,8 +141,7 @@ pub(super) async fn fill_user_invite_scope(
 		DELETE FROM
 			workspace_user_invite_role ir
 		WHERE
-			ir.scope_id IS NULL AND
-			EXISTS (
+			ir.scope_id IS NULL AND EXISTS (
 				SELECT
 					1
 				FROM
@@ -157,16 +154,22 @@ pub(super) async fn fill_user_invite_scope(
 	.execute(&mut *connection)
 	.await?;
 
-	// 5. Zero-permission roles: membership-only grant, workspace scope. Also
-	// the catch-all that guarantees nothing is left NULL below.
+	// 5. Zero-permission roles have no scope to migrate, and a root one would
+	// grant everything the moment the role gains a permission. Drop the row,
+	// as m020 does. Also the catch-all that leaves nothing NULL below.
 	sqlx::query(
 		r#"
-		UPDATE
-			workspace_user_invite_role
-		SET
-			scope_id = workspace_id
+		DELETE FROM
+			workspace_user_invite_role ir
 		WHERE
-			scope_id IS NULL;
+			scope_id IS NULL AND NOT EXISTS (
+				SELECT
+					1
+				FROM
+					role_resource_permissions_type
+				WHERE
+					role_resource_permissions_type.role_id = ir.role_id
+			);
 		"#,
 	)
 	.execute(&mut *connection)
