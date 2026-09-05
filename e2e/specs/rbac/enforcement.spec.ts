@@ -63,8 +63,9 @@ test.describe('rbac > permission gating [UI]', () => {
 		}
 	});
 
-	// members.tsx is not yet gated by useIsAllowed; these assert the end behavior
-	// (controls hidden for a viewRoles-only member) which passes today.
+	// members.tsx gates its controls on useIsAllowed('modifyRoles', 'edit'). Each
+	// pair below asserts both directions: hidden without the permission, visible
+	// with it. The positive half is what catches a hook that denies everything.
 	test('hides the invite form from a member without modifyRoles', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		const viewId = await getPermissionId(
@@ -109,6 +110,54 @@ test.describe('rbac > permission gating [UI]', () => {
 		try {
 			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
 			await expect(page.getByRole('button', { name: /^Edit roles$/ })).toBeHidden({
+				timeout: 10_000,
+			});
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('shows the invite form to a member with modifyRoles', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const modifyId = await getPermissionId(
+			api,
+			owner.accessToken,
+			owner.workspaceId,
+			owner.clientIp,
+			'modifyRoles',
+		);
+		await using b = await createSecondMemberWithRole(api, owner, [modifyId]);
+		const context = await newContext(browser, b.clientIp);
+		await loginAs(context, b, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
+			await expect(
+				page.getByRole('button', { name: /^(Send Invite|Sending\.\.\.)$/ }),
+			).toBeVisible({
+				timeout: 10_000,
+			});
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('shows the Edit roles button to a member with modifyRoles', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const modifyId = await getPermissionId(
+			api,
+			owner.accessToken,
+			owner.workspaceId,
+			owner.clientIp,
+			'modifyRoles',
+		);
+		await using b = await createSecondMemberWithRole(api, owner, [modifyId]);
+		const context = await newContext(browser, b.clientIp);
+		await loginAs(context, b, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
+			await expect(page.getByRole('button', { name: /^Edit roles$/ }).first()).toBeVisible({
 				timeout: 10_000,
 			});
 		} finally {

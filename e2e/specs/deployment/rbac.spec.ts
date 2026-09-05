@@ -97,6 +97,42 @@ test.describe('deployment > RBAC [UI]', () => {
 		}
 	});
 
+	test('a member with the create permission sees the Create Deployment CTA', async ({
+		browser,
+		api,
+	}) => {
+		const owner = await createUserWithWorkspace(api);
+		const createId = await permId(api, owner, 'deployment::create');
+		await using member = await createSecondMemberWithRole(api, owner, [createId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDeploymentList(page);
+			await expect(createDeploymentLink(page)).toBeVisible({ timeout: 15_000 });
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('a view member reaches a deployment detail instead of NoPermissionsPage', async ({
+		browser,
+		api,
+	}) => {
+		const { owner, dep } = await ownerWithDeployment(api);
+		const viewId = await permId(api, owner, 'deployment::view');
+		await using member = await createSecondMemberWithRole(api, owner, [viewId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDeploymentDetail(page, dep.id);
+			await expect(noPermissionsHeading(page)).toHaveCount(0);
+		} finally {
+			await context.close();
+		}
+	});
+
 	test('a member with no deployment permission sees the empty state', async ({
 		browser,
 		api,
