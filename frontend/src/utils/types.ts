@@ -81,10 +81,7 @@ export type UserPermissionsT =
 	  }
 	| ({
 			type: "member";
-	  } & Record<
-			ResourceTypes,
-			Record<ActionTypes, { permissionType: "include" | "exclude"; resources: Array<string> }>
-	  >);
+	  } & Record<ResourceTypes, Record<ActionTypes, Array<string>>>);
 
 // Local copies of wire shapes whose generated bindings went away with the
 // flattened role DTOs. The remaining consumers (the include/exclude role
