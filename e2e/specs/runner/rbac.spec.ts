@@ -50,7 +50,10 @@ test.describe('runner > RBAC [UI]', () => {
 		}
 	});
 
-	test('a member with the create permission sees the Add Runner CTA', async ({ browser, api }) => {
+	test('a member with the create permission sees the Add Runner CTA', async ({
+		browser,
+		api,
+	}) => {
 		await using owner = await createUserWithWorkspace(api);
 		const createId = await permId(api, owner, 'runner::create');
 		await using member = await createSecondMemberWithRole(api, owner, [createId]);
