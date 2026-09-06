@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE\n    apalis.workers\nSET\n    last_seen = NOW()\nWHERE\n    id = $1 AND worker_type = $2;\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "23e8905ae8a0b00ab7f157dd83dd15952577dd54443b3445275e66d5fa7419f8"
+}

@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH queue_stats AS (\n    SELECT\n        job_type,\n        jsonb_agg(\n            jsonb_build_object(\n                'title', statistic,\n                'stat_type', type,\n                'value', value,\n                'priority', priority\n            ) ORDER BY priority, statistic\n        ) as stats\n    FROM (\n        -- Priority 1: Current Status\n        SELECT\n            job_type,\n            1 AS priority,\n            'Number' AS type,\n            'RUNNING_JOBS' AS statistic,\n            SUM(CASE WHEN status = 'Running' THEN 1 ELSE 0 END)::TEXT AS value\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 1, 'Number', 'PENDING_JOBS',\n            SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 1, 'Number', 'FAILED_JOBS',\n            SUM(CASE WHEN status = 'Failed' THEN 1 ELSE 0 END)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        -- Priority 2: Health Metrics\n        SELECT\n            job_type, 2, 'Number', 'ACTIVE_JOBS',\n            SUM(CASE WHEN status IN ('Pending', 'Queued', 'Running') THEN 1 ELSE 0 END)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 2, 'Number', 'STALE_RUNNING_JOBS',\n            COUNT(*)::TEXT\n        FROM apalis.jobs\n        WHERE status = 'Running' AND run_at < now() - INTERVAL '1 hour'\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 2, 'Percentage', 'KILL_RATE',\n            ROUND(100.0 * SUM(CASE WHEN status = 'Killed' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 2)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        -- Priority 3: Recent Activity\n        SELECT\n            job_type, 3, 'Number', 'JOBS_PAST_HOUR',\n            COUNT(*)::TEXT\n        FROM apalis.jobs\n        WHERE run_at >= now() - INTERVAL '1 hour'\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 3, 'Number', 'JOBS_TODAY',\n            COUNT(*)::TEXT\n        FROM apalis.jobs\n        WHERE run_at::date = CURRENT_DATE\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 3, 'Number', 'KILLED_JOBS_TODAY',\n            SUM(CASE WHEN status = 'Killed' THEN 1 ELSE 0 END)::TEXT\n        FROM apalis.jobs\n        WHERE run_at::date = CURRENT_DATE\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 3, 'Decimal', 'AVG_JOBS_PER_MINUTE_PAST_HOUR',\n            ROUND(COUNT(*) / 60.0, 2)::TEXT\n        FROM apalis.jobs\n        WHERE run_at >= now() - INTERVAL '1 hour'\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        -- Priority 4: Overall Stats\n        SELECT\n            job_type, 4, 'Number', 'TOTAL_JOBS',\n            COUNT(*)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 4, 'Number', 'DONE_JOBS',\n            SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 4, 'Number', 'KILLED_JOBS',\n            SUM(CASE WHEN status = 'Killed' THEN 1 ELSE 0 END)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 4, 'Percentage', 'SUCCESS_RATE',\n            ROUND(100.0 * SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 2)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        -- Priority 5: Performance\n        SELECT\n            job_type, 5, 'Decimal', 'AVG_JOB_DURATION_MINS',\n            ROUND(AVG(EXTRACT(EPOCH FROM (done_at - run_at)) / 60.0), 2)::TEXT\n        FROM apalis.jobs\n        WHERE status IN ('Done', 'Failed', 'Killed') AND done_at IS NOT NULL\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        SELECT\n            job_type, 5, 'Decimal', 'LONGEST_RUNNING_JOB_MINS',\n            ROUND(MAX(CASE WHEN status = 'Running' THEN EXTRACT(EPOCH FROM now() - run_at) / 60.0 ELSE 0 END), 2)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        -- Priority 6: Historical\n        SELECT\n            job_type, 6, 'Number', 'JOBS_PAST_7_DAYS',\n            COUNT(*)::TEXT\n        FROM apalis.jobs\n        WHERE run_at >= now() - INTERVAL '7 days'\n        GROUP BY job_type\n        \n        UNION ALL\n        \n        -- Priority 8: Timestamps\n        SELECT\n            job_type, 8, 'Timestamp', 'MOST_RECENT_JOB',\n            MAX(run_at)::TEXT\n        FROM apalis.jobs\n        GROUP BY job_type\n    ) subquery\n    GROUP BY job_type\n),\nall_job_types AS (\n    SELECT worker_type AS job_type\n    FROM apalis.workers\n    UNION\n    SELECT DISTINCT job_type\n    FROM apalis.jobs\n)\nSELECT\n    jt.job_type as name,\n    COALESCE(qs.stats, '[]'::jsonb) as stats,\n    COALESCE(\n        (\n            SELECT jsonb_agg(DISTINCT lock_by)\n            FROM apalis.jobs\n            WHERE job_type = jt.job_type AND lock_by IS NOT NULL\n        ),\n        '[]'::jsonb\n    ) as workers,\n    COALESCE(\n        (\n            SELECT jsonb_agg(daily_count ORDER BY run_date)\n            FROM (\n                SELECT\n                    COUNT(*) as daily_count,\n                    run_at::date AS run_date\n                FROM apalis.jobs\n                WHERE job_type = jt.job_type\n                    AND run_at >= now() - INTERVAL '7 days'\n                GROUP BY run_at::date\n                ORDER BY run_date\n            ) t\n        ),\n        '[]'::jsonb\n    ) as activity\nFROM all_job_types jt\nLEFT JOIN queue_stats qs ON jt.job_type = qs.job_type\nORDER BY name;\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "stats",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 2,
+        "name": "workers",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "activity",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "fb557b3bd6802a07dd75fab3c7f321f8e515bf2b0d1ae1c1d8ca8067bd3bfbe3"
+}

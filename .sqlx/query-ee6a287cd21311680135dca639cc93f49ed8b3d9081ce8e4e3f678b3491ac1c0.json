@@ -35,13 +35,13 @@
       },
       {
         "ordinal": 6,
-        "name": "version",
-        "type_info": "Text"
+        "name": "deleted",
+        "type_info": "Timestamptz"
       },
       {
         "ordinal": 7,
-        "name": "deleted",
-        "type_info": "Timestamptz"
+        "name": "version",
+        "type_info": "Text"
       },
       {
         "ordinal": 8,
@@ -62,8 +62,8 @@
       true,
       false,
       false,
-      false,
       true,
+      false,
       false
     ]
   },

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE service_account(id UUID NOT NULL, workspace_id UUID NOT NULL, name VARCHAR(100) NOT NULL, description TEXT, token_hash TEXT NOT NULL, created TIMESTAMPTZ NOT NULL, deleted TIMESTAMPTZ, actor_type WORKSPACE_ACTOR_TYPE NOT NULL GENERATED ALWAYS AS ('service_account') STORED, actor_client_type ACTOR_CLIENT_TYPE NOT NULL GENERATED ALWAYS AS ('service_account') STORED);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "634d5bd871aea76aadb2213d5c0ff01ae821f1591e76da8fc79f21bedc3470ab"
+}
