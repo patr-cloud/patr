@@ -97,29 +97,39 @@ impl AppState {
 	/// Load the state from the config file. If the config file does not exist,
 	/// return the default state.
 	///
-	/// The config file is loaded from the following locations in order:
-	/// - The environment variable `CONFIG_PATH` if it is set
-	/// - The user specific config location independent of the current platform
+	/// The config file is loaded from the following locations, each overriding
+	/// the ones before it:
 	/// - The system wide config location independent of the current platform
+	/// - The user specific config location independent of the current platform
+	/// - The environment variable `CONFIG_PATH` if it is set, else (in debug builds) the repo's
+	///   `config/cli.json`
+	///
+	/// `CONFIG_PATH` is added **last** on purpose. `config` resolves later
+	/// sources over earlier ones, so adding it first would make an explicit
+	/// override the *lowest* priority — and since [`Self::save`] writes to
+	/// `CONFIG_PATH`, the CLI would write to one file and read back from
+	/// another, silently using the ambient login instead of the requested one.
 	pub fn load() -> Result<Self, AppError> {
+		let builder = config::Config::builder()
+			.add_source(
+				config::File::with_name(&crate::utils::config_dir().to_string_lossy())
+					.required(false),
+			)
+			.add_source(
+				config::File::with_name(&crate::utils::config_local_dir().to_string_lossy())
+					.required(false),
+			);
+
 		if let Ok(config_path) = std::env::var("CONFIG_PATH") {
-			config::Config::builder()
-				.add_source(config::File::with_name(&config_path).required(false))
+			builder.add_source(config::File::with_name(&config_path).required(false))
 		} else if cfg!(debug_assertions) {
-			config::Config::builder().add_source(
+			builder.add_source(
 				config::File::with_name(concat!(env!("CARGO_MANIFEST_DIR"), "/../config/cli.json"))
 					.required(false),
 			)
 		} else {
-			config::Config::builder()
+			builder
 		}
-		.add_source(
-			config::File::with_name(&crate::utils::config_dir().to_string_lossy()).required(false),
-		)
-		.add_source(
-			config::File::with_name(&crate::utils::config_local_dir().to_string_lossy())
-				.required(false),
-		)
 		.build()
 		.map_err(AppError::ConfigReadError)?
 		.try_deserialize()
