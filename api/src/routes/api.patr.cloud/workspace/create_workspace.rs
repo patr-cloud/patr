@@ -219,7 +219,6 @@ fn default_roles() -> Vec<DefaultRole> {
 	let edit_deployment = {
 		let mut p = view_deployment.clone();
 		p.extend([
-			Deployment(DeploymentPermission::Create),
 			Deployment(DeploymentPermission::Edit),
 			Deployment(DeploymentPermission::Start),
 			Deployment(DeploymentPermission::Stop),
@@ -228,7 +227,10 @@ fn default_roles() -> Vec<DefaultRole> {
 	};
 	let admin_deployment = {
 		let mut p = edit_deployment.clone();
-		p.push(Deployment(DeploymentPermission::Delete));
+		p.extend([
+			Deployment(DeploymentPermission::Create),
+			Deployment(DeploymentPermission::Delete),
+		]);
 		p
 	};
 	roles.push(DefaultRole {
@@ -238,12 +240,12 @@ fn default_roles() -> Vec<DefaultRole> {
 	});
 	roles.push(DefaultRole {
 		name: "Deployment: Editor",
-		description: "Default role: create, edit, start, and stop deployments.",
+		description: "Default role: edit, start, and stop deployments.",
 		permissions: edit_deployment,
 	});
 	roles.push(DefaultRole {
 		name: "Deployment: Admin",
-		description: "Default role: full control over deployments, including delete.",
+		description: "Default role: full control over deployments, including create and delete.",
 		permissions: admin_deployment,
 	});
 
@@ -307,15 +309,13 @@ fn default_roles() -> Vec<DefaultRole> {
 		permissions: admin_secret,
 	});
 
-	let view_managed_url = vec![
-		ManagedURL(ManagedURLPermission::View),
-		ManagedURL(ManagedURLPermission::Verify),
-	];
+	let view_managed_url = vec![ManagedURL(ManagedURLPermission::View)];
 	let edit_managed_url = {
 		let mut p = view_managed_url.clone();
 		p.extend([
 			ManagedURL(ManagedURLPermission::Add),
 			ManagedURL(ManagedURLPermission::Edit),
+			ManagedURL(ManagedURLPermission::Verify),
 		]);
 		p
 	};
@@ -340,13 +340,13 @@ fn default_roles() -> Vec<DefaultRole> {
 		permissions: admin_managed_url,
 	});
 
-	let view_domain = vec![
-		Domain(DomainPermission::View),
-		Domain(DomainPermission::Verify),
-	];
+	let view_domain = vec![Domain(DomainPermission::View)];
 	let edit_domain = {
 		let mut p = view_domain.clone();
-		p.push(Domain(DomainPermission::Add));
+		p.extend([
+			Domain(DomainPermission::Add),
+			Domain(DomainPermission::Verify),
+		]);
 		p
 	};
 	let admin_domain = {
@@ -402,14 +402,19 @@ fn default_roles() -> Vec<DefaultRole> {
 		permissions: admin_runner,
 	});
 
-	let view_registry = vec![
-		ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View),
-		ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull),
-	];
-	let edit_registry = {
+	let view_registry = vec![ContainerRegistryRepository(
+		ContainerRegistryRepositoryPermission::View,
+	)];
+	let pull_registry = {
 		let mut p = view_registry.clone();
+		p.push(ContainerRegistryRepository(
+			ContainerRegistryRepositoryPermission::Pull,
+		));
+		p
+	};
+	let edit_registry = {
+		let mut p = pull_registry.clone();
 		p.extend([
-			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Create),
 			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Edit),
 			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Push),
 		]);
@@ -418,6 +423,7 @@ fn default_roles() -> Vec<DefaultRole> {
 	let admin_registry = {
 		let mut p = edit_registry.clone();
 		p.extend([
+			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Create),
 			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Delete),
 			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::DeleteManifest),
 		]);
@@ -429,13 +435,18 @@ fn default_roles() -> Vec<DefaultRole> {
 		permissions: view_registry,
 	});
 	roles.push(DefaultRole {
+		name: "Container Registry: Pull",
+		description: "Default role: read and pull container registry repositories.",
+		permissions: pull_registry,
+	});
+	roles.push(DefaultRole {
 		name: "Container Registry: Editor",
-		description: "Default role: create, edit, and push to container registry repositories.",
+		description: "Default role: pull, push to, and edit container registry repositories.",
 		permissions: edit_registry,
 	});
 	roles.push(DefaultRole {
 		name: "Container Registry: Admin",
-		description: "Default role: full control over container registry repositories, including delete.",
+		description: "Default role: full control over container registry repositories, including create and delete.",
 		permissions: admin_registry,
 	});
 

@@ -1310,7 +1310,7 @@ async fn default_roles_seeded_on_workspace_create() {
 	.fetch_one(setup.database())
 	.await
 	.expect("count query");
-	assert_eq!(27, count, "a new workspace should seed 27 default roles");
+	assert_eq!(28, count, "a new workspace should seed 28 default roles");
 }
 
 #[tokio::test]
