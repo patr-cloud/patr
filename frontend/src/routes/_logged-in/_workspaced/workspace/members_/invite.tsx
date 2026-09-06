@@ -62,6 +62,14 @@ const InviteMember = () => {
 			)
 	);
 
+	// A resource-scoped grant with nothing selected reaches nothing.
+	const hasEmptyResourceScope = createMemo(() =>
+		bindings().some(
+			(binding) =>
+				binding.subjectId && binding.scope.scopeType === "resources" && binding.scope.resources.length === 0
+		)
+	);
+
 	const backToMembers = () => navigate({ to: "/workspace/members" });
 
 	const { onSubmit, isLoading } = createFormAction(
@@ -112,13 +120,8 @@ const InviteMember = () => {
 				toast("Give the invitee at least one role", "error");
 				return false;
 			}
-			// A resource-scoped grant with nothing selected reaches nothing; the
-			// backend rejects it too, but saying so here beats a 400.
-			if (
-				bindings().some(
-					(b) => b.subjectId && b.scope.scopeType === "resources" && b.scope.resources.length === 0
-				)
-			) {
+			// The backend rejects this too, but saying so here beats a 400.
+			if (hasEmptyResourceScope()) {
 				toast("A role scoped to specific resources needs at least one resource", "error");
 				return false;
 			}
@@ -192,7 +195,7 @@ const InviteMember = () => {
 									variant={ButtonVariant.Contained}
 									class="flex items-center gap-2"
 									disabled={isLoading()}
-									loading={isLoading()}
+									loading={isLoading}
 									loadingContent={() => <span>Sending...</span>}
 								>
 									<FiSend size={14} />

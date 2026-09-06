@@ -1,7 +1,7 @@
 import { createMemo, Index, JSX, Show } from "solid-js";
 import { FiPlus, FiX } from "solid-icons/fi";
-import InputDropdown, { InputDropdownOption } from "./input-dropdown";
-import ScopePicker from "./scope-picker";
+import InputDropdown, { InputDropdownOption } from "~/components/input-dropdown";
+import ScopePicker from "~/components/scope-picker";
 import { Scope } from "~/utils/scope";
 
 /**
@@ -75,11 +75,8 @@ const BindingRows = (props: BindingRowsProps) => {
 				when={props.bindings.length > 0}
 				fallback={<p class="text-grey text-sm italic">{props.emptyText ?? "Nothing assigned."}</p>}
 			>
-				{/* `Index`, not `For`: rows are positional and their contents change on
-				  every edit. `For` keys by object identity, so handing it a fresh
-				  binding object per keystroke tore each row down and rebuilt it —
-				  which slammed the resource dropdown shut after a single tick and
-				  made multi-select impossible. */}
+				{/* `Index`, not `For`: `For` keys by object identity, so a fresh binding
+				  object per keystroke rebuilt the row and closed the resource dropdown. */}
 				<ul class="flex flex-col gap-2">
 					<Index each={props.bindings}>
 						{(binding, index) => (
