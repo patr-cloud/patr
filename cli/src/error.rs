@@ -38,6 +38,15 @@ pub enum AppError {
 	/// An error that occurred while running a runner.
 	#[error("runner error: {0}")]
 	RunnerError(String),
+	/// A deployment shell session could not be opened. Carries the reason
+	/// verbatim, because it is already written for the user — "the deployment
+	/// is not running", "the runner is not connected", "timed out waiting for
+	/// the runner". Those distinct messages are the whole point of the shell
+	/// endpoint's status frames; routing them through
+	/// [`ErrorType::server_error`] would collapse every one of them into
+	/// `internalServerError` and leave the user with nothing to act on.
+	#[error("{0}")]
+	ShellError(String),
 }
 
 impl From<ApiErrorResponse> for AppError {

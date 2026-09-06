@@ -170,19 +170,19 @@ pub async fn execute(
 			}
 			Some(Ok(StreamDeploymentShellServerMsg::Connected)) => break,
 			Some(Ok(StreamDeploymentShellServerMsg::Error { message })) => {
-				return Err(AppError::ApiError(ErrorType::server_error(message)));
+				return Err(AppError::ShellError(message));
 			}
 			Some(Ok(StreamDeploymentShellServerMsg::Exit { .. })) => {
-				return Err(AppError::ApiError(ErrorType::server_error(
-					"the shell session ended before it started",
-				)));
+				return Err(AppError::ShellError(
+					"the shell session ended before it started".to_owned(),
+				));
 			}
 			Some(Ok(StreamDeploymentShellServerMsg::Output { .. })) => {}
 			Some(Err(err)) => return Err(AppError::ApiError(err)),
 			None => {
-				return Err(AppError::ApiError(ErrorType::server_error(
-					"the connection closed before the shell was ready",
-				)));
+				return Err(AppError::ShellError(
+					"the connection closed before the shell was ready".to_owned(),
+				));
 			}
 		}
 	}
