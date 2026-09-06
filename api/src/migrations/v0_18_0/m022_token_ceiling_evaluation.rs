@@ -90,14 +90,13 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 				FROM
 					web_login
 				INNER JOIN
-					workspace_actor
+					workspace_user
 				ON
-					workspace_actor.actor_type = 'user' AND
-					workspace_actor.user_id = web_login.user_id
+					workspace_user.user_id = web_login.user_id
 				INNER JOIN
 					role_binding
 				ON
-					role_binding.actor_id = workspace_actor.id
+					role_binding.actor_id = workspace_user.actor_id
 				INNER JOIN
 					role_permission
 				ON
@@ -126,19 +125,34 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 				FROM
 					user_api_token
 				INNER JOIN
-					workspace_actor
+					workspace_user
 				ON
-					workspace_actor.actor_type = 'user' AND
-					workspace_actor.user_id = user_api_token.user_id
+					workspace_user.user_id = user_api_token.user_id
 				INNER JOIN
 					role_binding
 				ON
-					role_binding.actor_id = workspace_actor.id
+					role_binding.actor_id = workspace_user.actor_id
 				INNER JOIN
 					role_permission
 				ON
 					role_permission.role_id = role_binding.role_id AND
 					role_permission.permission_id = local_permission_id
+				WHERE
+					user_api_token.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				/* A super admin holds every permission in their workspace without
+				holding any role binding, so a token they own is capped only by its
+				own ceiling. Projecting the workspace id into scope_id reuses the
+				"scope is the whole workspace" convention the filter below applies. */
+				SELECT
+					workspace.id AS workspace_id,
+					workspace.id AS scope_id
+				FROM
+					user_api_token
+				INNER JOIN
+					workspace
+				ON
+					workspace.super_admin_id = user_api_token.user_id
 				WHERE
 					user_api_token.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			)

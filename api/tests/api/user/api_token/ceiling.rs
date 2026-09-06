@@ -18,9 +18,10 @@ use models::{
 			LeaveWorkspaceResponse,
 			deployment::*,
 			rbac::{role::*, user::*},
+			runner::*,
 		},
 	},
-	rbac::{DeploymentPermission, Permission, WorkspacePermission},
+	rbac::{DeploymentPermission, Permission, RunnerPermission, WorkspacePermission},
 };
 
 use super::{mint_token_raw, probe_modify_roles};
@@ -876,5 +877,72 @@ async fn api_token_view_permission_denies_create() {
 		response.status_code().is_client_error(),
 		"View-only token should be denied Create, got {}",
 		response.status_code()
+	);
+}
+
+/// A member-scoped token owned by the workspace's super admin must still see
+/// the resources its ceiling covers. The owner holds no role bindings —
+/// super-admin power comes from `workspace.super_admin_id` — so the resource
+/// filter, which intersects the ceiling against the owner's bindings, sees an
+/// empty owner set and returns nothing. Authorization is unaffected (that path
+/// reads super_admin_id directly), so only the list endpoints go blank.
+#[tokio::test]
+async fn api_token_member_ceiling_lists_resources_for_super_admin_owner() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let runner = setup
+		.create_test_runner(&owner.access_token, workspace.id)
+		.await;
+
+	let view = setup.get_permission_id(Permission::Runner(RunnerPermission::View));
+	let resp = mint_token_raw(
+		&setup,
+		&owner.access_token,
+		BTreeMap::from([(
+			workspace.id,
+			WorkspacePermission::Member {
+				permissions: BTreeMap::from([(view, BTreeSet::from([workspace.id]))]),
+			},
+		)]),
+		None,
+		None,
+		None,
+	)
+	.await;
+	assert!(
+		resp.status_code().is_success(),
+		"the super admin must be able to mint a member-scoped token, got {}",
+		resp.status_code()
+	);
+	let token = resp
+		.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
+		.response
+		.token;
+
+	let listed = setup
+		.make_api_call(
+			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+				.path(ListRunnersForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListRunnersForWorkspaceRequestHeaders {
+					authorization: BearerToken::from_str(&token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>();
+
+	assert_eq!(
+		vec![runner.id],
+		listed
+			.response
+			.runners
+			.iter()
+			.map(|r| r.id)
+			.collect::<Vec<_>>(),
+		"a ceiling owned by the super admin must still list its resources"
 	);
 }

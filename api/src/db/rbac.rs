@@ -685,6 +685,22 @@ pub async fn initialize_rbac_constraints(
 					role_permission.permission_id = local_permission_id
 				WHERE
 					user_api_token.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				/* A super admin holds every permission in their workspace without
+				holding any role binding, so a token they own is capped only by its
+				own ceiling. Projecting the workspace id into scope_id reuses the
+				"scope is the whole workspace" convention the filter below applies. */
+				SELECT
+					workspace.id AS workspace_id,
+					workspace.id AS scope_id
+				FROM
+					user_api_token
+				INNER JOIN
+					workspace
+				ON
+					workspace.super_admin_id = user_api_token.user_id
+				WHERE
+					user_api_token.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			)
 			/* Scope covers a resource when it is the resource itself or its
 			whole workspace — two OR terms, never IN (NULL semantics); a
