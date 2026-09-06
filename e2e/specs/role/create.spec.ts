@@ -54,7 +54,7 @@ test.describe('role > create', () => {
 		const r = roles.find((r) => r.name === roleName);
 		expect(r).toBeTruthy();
 		const detail = await getRoleAPI(api, user, user.workspaceId, r!.id);
-		expect(Object.keys(detail.permissions).length).toBeGreaterThanOrEqual(1);
+		expect(detail.permissions.length).toBeGreaterThanOrEqual(1);
 	});
 
 	test('creates a workspace-level modifyRoles role via UI', async ({ browser, api }) => {

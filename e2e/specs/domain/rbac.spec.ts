@@ -29,9 +29,7 @@ test.describe('domain > RBAC [UI]', () => {
 		await using owner = await createUserWithWorkspace(api);
 		const added = await addDomainAPI(api, owner, owner.workspaceId);
 		const viewId = await permId(api, owner, 'domain::view');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -44,13 +42,26 @@ test.describe('domain > RBAC [UI]', () => {
 		}
 	});
 
+	test('a member with the add permission sees the Add Domain CTA', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const addId = await permId(api, owner, 'domain::add');
+		await using member = await createSecondMemberWithRole(api, owner, [addId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDomainList(page);
+			await expect(addDomainLink(page)).toBeVisible({ timeout: 15_000 });
+		} finally {
+			await context.close();
+		}
+	});
+
 	test('a member with no domain permission sees the empty state', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		await addDomainAPI(api, owner, owner.workspaceId);
 		const viewRoles = await permId(api, owner, 'viewRoles');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[viewRoles]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [viewRoles]);
 		const context = await newContext(browser, member.clientIp);
 		await loginAs(context, member, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();

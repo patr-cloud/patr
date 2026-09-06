@@ -1,5 +1,6 @@
 import { createQuery } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
+import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
 import { ListUsersInWorkspaceResponse } from "~/bindings/ListUsersInWorkspaceResponse";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -12,7 +13,7 @@ export type WorkspaceMember = {
 	lastName: string;
 	fullName: string;
 	email: string;
-	roleIds: string[];
+	grants: RoleBindingGrant[];
 	/**
 	 * True for the workspace's super-admin. They hold access directly on the
 	 * workspace rather than through a role, so the UI hides the Edit/Remove
@@ -57,7 +58,7 @@ export const useMembersQuery = (page: Accessor<string | undefined>, count: Acces
 					lastName: user.lastName,
 					fullName: `${user.firstName} ${user.lastName}`.trim(),
 					email: user.email,
-					roleIds: user.roleIds,
+					grants: user.roleBindings,
 					isOwner: user.isOwner,
 				}));
 

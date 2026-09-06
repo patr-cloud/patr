@@ -1,9 +1,6 @@
 use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
-use models::{
-	api::user::*,
-	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant, WorkspacePermission},
-};
+use models::{api::user::*, rbac::WorkspacePermission};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -79,6 +76,13 @@ pub async fn create_api_token(
 
 	let token_id = query!(
 		r#"
+		WITH client AS (
+			INSERT INTO
+				actor_client(id, actor_client_type)
+			VALUES
+				(GENERATE_LOGIN_ID(), 'user_login')
+			RETURNING id
+		)
 		INSERT INTO
 			user_login(
 				login_id,
@@ -86,14 +90,14 @@ pub async fn create_api_token(
 				login_type,
 				created
 			)
-		VALUES
-			(
-				GENERATE_LOGIN_ID(),
-				$1,
-				'api_token',
-				$2
-			)
-		RETURNING login_id;
+		SELECT
+			client.id,
+			$1,
+			'api_token',
+			$2
+		FROM
+			client
+		RETURNING user_login.login_id;
 		"#,
 		user_data.id as _,
 		now,
@@ -160,22 +164,17 @@ pub async fn create_api_token(
 
 	trace!("API token inserted");
 
+	// One entry per workspace: super-admin, or the ceiling rows. Validation is
+	// structural only — the composite FKs pin every scope to the named
+	// workspace, and a ceiling above the owner's current permissions is
+	// allowed because the intersection at auth time clamps it.
 	for (workspace_id, permission) in permissions {
-		trace!("Inserting permission for workspace ID: `{workspace_id}`");
-
-		let Some(user_permission) = user_data.permissions.get(&workspace_id) else {
-			debug!("The user does not have any permissions on workspace ID: `{workspace_id}`");
-			return Err(ErrorType::Unauthorized);
-		};
-
-		if !user_permission.is_superset_of(&permission) {
-			debug!("The user does not have adequate permissions on workspace ID: `{workspace_id}`");
-			return Err(ErrorType::Unauthorized);
-		}
-
 		match permission {
+			// The DB itself enforces that only the workspace's owner can mint
+			// these, via the FK to workspace(id, super_admin_id).
 			WorkspacePermission::SuperAdmin => {
-				trace!("Inserting permission as super admin");
+				trace!("Inserting super-admin entry for workspace ID: `{workspace_id}`");
+
 				query!(
 					r#"
 					INSERT INTO
@@ -219,7 +218,13 @@ pub async fn create_api_token(
 					workspace_id as _,
 				)
 				.execute(&mut **database)
-				.await?;
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						ErrorType::Unauthorized
+					}
+					other => ErrorType::server_error(other),
+				})?;
 			}
 			WorkspacePermission::Member { permissions } => {
 				trace!("Inserting permission as member");
@@ -244,103 +249,43 @@ pub async fn create_api_token(
 				.execute(&mut **database)
 				.await?;
 
-				for (permission_id, resource_permission) in permissions {
-					query!(
-						r#"
-						INSERT INTO
-							user_api_token_resource_permissions_type(
-								token_id,
-								workspace_id,
-								permission_id,
-								resource_permission_type,
-								token_permission_type
-							)
-						VALUES
-							(
-								$1,
-								$2,
-								$3,
-								$4,
-								DEFAULT
-							);
-						"#,
-						token_id as _,
-						workspace_id as _,
-						permission_id as _,
-						ResourcePermissionTypeDiscriminant::from(&resource_permission) as _,
-					)
-					.execute(&mut **database)
-					.await?;
-
-					match resource_permission {
-						ResourcePermissionType::Include(resource_ids) => {
-							query!(
-								r#"
-								INSERT INTO
-									user_api_token_resource_permissions_include(
-										token_id,
-										workspace_id,
-										permission_id,
-										resource_id,
-										resource_deleted,
-										permission_type
-									)
-								VALUES
-									(
-										$1,
-										$2,
-										$3,
-										UNNEST($4::UUID[]),
-										DEFAULT,
-										DEFAULT
-									);
-								"#,
-								token_id as _,
-								workspace_id as _,
-								permission_id as _,
-								&resource_ids
-									.into_iter()
-									.map(|id| id.into())
-									.collect::<Vec<_>>(),
-							)
-							.execute(&mut **database)
-							.await?;
-						}
-						ResourcePermissionType::Exclude(resource_ids) => {
-							query!(
-								r#"
-								INSERT INTO
-									user_api_token_resource_permissions_exclude(
-										token_id,
-										workspace_id,
-										permission_id,
-										resource_id,
-										resource_deleted,
-										permission_type
-									)
-								VALUES
-									(
-										$1,
-										$2,
-										$3,
-										UNNEST($4::UUID[]),
-										DEFAULT,
-										DEFAULT
-									);
-								"#,
-								token_id as _,
-								workspace_id as _,
-								permission_id as _,
-								&resource_ids
-									.into_iter()
-									.map(|id| id.into())
-									.collect::<Vec<_>>(),
-							)
-							.execute(&mut **database)
-							.await?;
+				query!(
+					r#"
+					INSERT INTO
+						user_api_token_permission_binding(
+							token_id, workspace_id, permission_id, scope_id
+						)
+					SELECT
+						$1,
+						$2,
+						UNNEST($3::UUID[]),
+						UNNEST($4::UUID[])
+					ON CONFLICT
+						(token_id, permission_id, scope_id)
+					DO NOTHING;
+					"#,
+					token_id as _,
+					workspace_id as _,
+					&permissions.keys().copied().collect::<Vec<_>>() as _,
+					&permissions
+						.values()
+						.flat_map(|scopes| scopes.iter())
+						.copied()
+						.collect::<Vec<_>>() as _,
+				)
+				.execute(&mut **database)
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						match db_err.constraint() {
+							Some("user_api_token_permission_binding_fk_permission_id") => {
+								ErrorType::WrongParameters
+							}
+							_ => ErrorType::ResourceDoesNotExist,
 						}
 					}
-				}
+					other => ErrorType::server_error(other),
+				})?;
 			}
 		}
 	}

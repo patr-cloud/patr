@@ -150,7 +150,7 @@ async function provisionRunner(opts: RunnerOpts): Promise<{ runnerId: string; ap
 	// both without per-permission bookkeeping. RBAC-scoped tokens are minted
 	// explicitly by the tests that exercise permissions.
 	const token = await createApiTokenAPI(opts.api, opts.user, {
-		permissions: { [opts.workspaceId]: { type: 'superAdmin' } },
+		superAdminOf: [opts.workspaceId],
 	});
 	return { runnerId: runner.id, apiToken: token.token };
 }

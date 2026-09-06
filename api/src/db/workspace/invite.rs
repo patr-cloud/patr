@@ -31,7 +31,8 @@ pub async fn initialize_workspace_user_invite_tables(
 		CREATE TABLE workspace_user_invite_role(
 			invite_id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
-			role_id UUID NOT NULL
+			role_id UUID NOT NULL,
+			scope_id UUID NOT NULL
 		);
 		"#
 	)
@@ -87,7 +88,7 @@ pub async fn initialize_workspace_user_invite_indices(
 		r#"
 		ALTER TABLE workspace_user_invite_role
 		ADD CONSTRAINT workspace_user_invite_role_pk
-		PRIMARY KEY(invite_id, role_id);
+		PRIMARY KEY(invite_id, role_id, scope_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -125,7 +126,9 @@ pub async fn initialize_workspace_user_invite_constraints(
 				FOREIGN KEY(invite_id, workspace_id)
 					REFERENCES workspace_user_invite(id, workspace_id),
 			ADD CONSTRAINT workspace_user_invite_role_fk_role_id_workspace_id
-				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, owner_id);
+				FOREIGN KEY(role_id, workspace_id) REFERENCES role(id, workspace_id),
+			ADD CONSTRAINT workspace_user_invite_role_fk_scope_id_workspace_id
+				FOREIGN KEY(scope_id, workspace_id) REFERENCES resource(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)

@@ -1,6 +1,6 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
-use models::rbac::WorkspacePermission;
+use models::rbac::{Permission, WorkspacePermission};
 
 use super::helpers::*;
 use crate::prelude::*;
@@ -67,16 +67,18 @@ async fn loki_push_no_execute_permission_returns_403() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	// Create an API token for the admin but with only Member permissions
-	// (no Runner::Execute). The admin can create such a token because they
-	// own the workspace.
+	// Create an API token for the admin whose ceiling carries only a
+	// harmless permission (no Runner::Execute).
 	let api_token = setup
 		.create_test_api_token(
 			&admin.access_token,
 			BTreeMap::from([(
 				workspace.id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::new(),
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::ViewRoles),
+						BTreeSet::from([workspace.id]),
+					)]),
 				},
 			)]),
 		)

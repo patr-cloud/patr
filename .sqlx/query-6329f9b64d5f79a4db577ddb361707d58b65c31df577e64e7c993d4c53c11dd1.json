@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM workspace_user WHERE workspace_id = $1 AND user_id = $2 RETURNING actor_id AS \"actor_id: Uuid\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "actor_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6329f9b64d5f79a4db577ddb361707d58b65c31df577e64e7c993d4c53c11dd1"
+}

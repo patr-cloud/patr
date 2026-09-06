@@ -13,6 +13,15 @@ pub async fn cleanup_expired_invites(_: Tick, data: Data<AppState>) -> Result<()
 
 	let cutoff = OffsetDateTime::now_utc() - constants::WORKSPACE_INVITE_RETENTION;
 
+	// Both deletes run in one transaction: a concurrent resend can bump an
+	// invite's `token_expiry` between the two statements, which would leave
+	// a live invite stripped of its role rows.
+	let mut transaction = data
+		.database
+		.begin()
+		.await
+		.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
+
 	// The role rows go first — the FK to `workspace_user_invite` is not
 	// `ON DELETE CASCADE`.
 	query!(
@@ -31,7 +40,7 @@ pub async fn cleanup_expired_invites(_: Tick, data: Data<AppState>) -> Result<()
 		"#,
 		cutoff,
 	)
-	.execute(&data.database)
+	.execute(&mut *transaction)
 	.await
 	.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
 
@@ -44,10 +53,15 @@ pub async fn cleanup_expired_invites(_: Tick, data: Data<AppState>) -> Result<()
 		"#,
 		cutoff,
 	)
-	.execute(&data.database)
+	.execute(&mut *transaction)
 	.await
 	.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?
 	.rows_affected();
+
+	transaction
+		.commit()
+		.await
+		.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
 
 	info!("Deleted {deleted} long-expired invite(s)");
 

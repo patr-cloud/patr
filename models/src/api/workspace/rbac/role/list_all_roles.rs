@@ -30,6 +30,7 @@ macros::declare_api_endpoint!(
 		/// The list of all roles that contains:
 		///     name - The role name
 		///     description - The role description
+		///     isImmutable - Whether the role is a seeded default
 		pub roles: Vec<WithId<Role>>,
 	},
 	audit_log = NoAuditLogger,

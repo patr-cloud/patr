@@ -12,9 +12,10 @@ import { DEBUG_OTP } from '@/helpers/config';
 import { sql } from '@/helpers/db';
 import {
 	openMembersPage,
-	openRolesDropdown,
-	toggleRoleOption,
+	personRow,
+	openInvitePage,
 	fillInviteEmail,
+	selectBindingRole,
 	submitInvite,
 	inviteRow,
 	copyInviteLink,
@@ -65,9 +66,9 @@ async function inviteViaUI(
 	email: string,
 	roleName: string,
 ): Promise<Invite> {
+	await openInvitePage(page);
 	await fillInviteEmail(page, email);
-	await openRolesDropdown(page);
-	await toggleRoleOption(page, roleName);
+	await selectBindingRole(page, roleName);
 
 	const [response] = await Promise.all([
 		page.waitForResponse(
@@ -96,7 +97,7 @@ test.describe('member > invite [UI]', () => {
 
 		await withUI(browser, owner, async (page) => {
 			await inviteViaUI(page, invitee.email, viewerRole.name);
-			await expect(page.getByText('Pending invitations')).toBeVisible();
+			await expect(personRow(page, invitee.email).getByText(/^Pending$/)).toBeVisible();
 			await expect(inviteRow(page, invitee.email)).toBeVisible();
 		});
 	});
@@ -150,9 +151,9 @@ test.describe('member > invite [UI]', () => {
 		await withUI(browser, owner, async (page) => {
 			await inviteViaUI(page, invitee.email, viewerRole.name);
 
+			await openInvitePage(page);
 			await fillInviteEmail(page, invitee.email);
-			await openRolesDropdown(page);
-			await toggleRoleOption(page, viewerRole.name);
+			await selectBindingRole(page, viewerRole.name);
 			await submitInvite(page);
 			await expectToast(page, /already been invited/i);
 
@@ -167,9 +168,9 @@ test.describe('member > invite [UI]', () => {
 
 		await withUI(browser, owner, async (page) => {
 			// The owner is already in the workspace.
+			await openInvitePage(page);
 			await fillInviteEmail(page, owner.email);
-			await openRolesDropdown(page);
-			await toggleRoleOption(page, viewerRole.name);
+			await selectBindingRole(page, viewerRole.name);
 			await submitInvite(page);
 			await expectToast(page, /already belongs to a member/i);
 

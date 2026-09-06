@@ -1,7 +1,4 @@
-use models::{
-	api::user::*,
-	rbac::{ResourcePermissionType, ResourcePermissionTypeDiscriminant, WorkspacePermission},
-};
+use models::{api::user::*, rbac::WorkspacePermission};
 use reqwest::StatusCode;
 use rustis::commands::GenericCommands;
 
@@ -98,43 +95,19 @@ pub async fn update_api_token(
 	query!(
 		r#"
 		DELETE FROM
+			user_api_token_permission_binding
+		WHERE
+			token_id = $1;
+		"#,
+		token_id as _,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		DELETE FROM
 			user_api_token_workspace_super_admin
-		WHERE
-			token_id = $1;
-		"#,
-		token_id as _,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	query!(
-		r#"
-		DELETE FROM
-			user_api_token_resource_permissions_include
-		WHERE
-			token_id = $1;
-		"#,
-		token_id as _,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	query!(
-		r#"
-		DELETE FROM
-			user_api_token_resource_permissions_exclude
-		WHERE
-			token_id = $1;
-		"#,
-		token_id as _,
-	)
-	.execute(&mut **database)
-	.await?;
-
-	query!(
-		r#"
-		DELETE FROM
-			user_api_token_resource_permissions_type
 		WHERE
 			token_id = $1;
 		"#,
@@ -158,21 +131,10 @@ pub async fn update_api_token(
 	trace!("Existing permissions deleted");
 
 	for (workspace_id, permission) in permissions {
-		trace!("Inserting permission for workspace ID: `{workspace_id}`");
-
-		let Some(user_permission) = user_data.permissions.get(&workspace_id) else {
-			debug!("The user does not have any permissions on workspace ID: `{workspace_id}`");
-			return Err(ErrorType::Unauthorized);
-		};
-
-		if !user_permission.is_superset_of(&permission) {
-			debug!("The user does not have adequate permissions on workspace ID: `{workspace_id}`");
-			return Err(ErrorType::Unauthorized);
-		}
-
 		match permission {
 			WorkspacePermission::SuperAdmin => {
-				trace!("Inserting permission as super admin");
+				trace!("Inserting super-admin entry for workspace ID: `{workspace_id}`");
+
 				query!(
 					r#"
 					INSERT INTO
@@ -216,12 +178,20 @@ pub async fn update_api_token(
 					workspace_id as _,
 				)
 				.execute(&mut **database)
-				.await?;
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						ErrorType::Unauthorized
+					}
+					other => ErrorType::server_error(other),
+				})?;
 			}
 			WorkspacePermission::Member { permissions } => {
-				trace!("Inserting permission as member");
-				// The per-permission rows below FK onto this parent row, so it
-				// has to land first. create_api_token does the same.
+				trace!("Inserting ceiling rows for workspace ID: `{workspace_id}`");
+
+				// The discriminator row for this workspace. Unlike the super-admin
+				// subtype, the ceiling rows below don't FK onto it — so nothing
+				// enforces this, and dropping it fails silently.
 				query!(
 					r#"
 					INSERT INTO
@@ -243,103 +213,43 @@ pub async fn update_api_token(
 				.execute(&mut **database)
 				.await?;
 
-				for (permission_id, resource_permission) in permissions {
-					query!(
-						r#"
-						INSERT INTO
-							user_api_token_resource_permissions_type(
-								token_id,
-								workspace_id,
-								permission_id,
-								resource_permission_type,
-								token_permission_type
-							)
-						VALUES
-							(
-								$1,
-								$2,
-								$3,
-								$4,
-								DEFAULT
-							);
-						"#,
-						token_id as _,
-						workspace_id as _,
-						permission_id as _,
-						ResourcePermissionTypeDiscriminant::from(&resource_permission) as _,
-					)
-					.execute(&mut **database)
-					.await?;
-
-					match resource_permission {
-						ResourcePermissionType::Include(resource_ids) => {
-							query!(
-								r#"
-								INSERT INTO
-									user_api_token_resource_permissions_include(
-										token_id,
-										workspace_id,
-										permission_id,
-										resource_id,
-										resource_deleted,
-										permission_type
-									)
-								VALUES
-									(
-										$1,
-										$2,
-										$3,
-										UNNEST($4::UUID[]),
-										DEFAULT,
-										DEFAULT
-									);
-								"#,
-								token_id as _,
-								workspace_id as _,
-								permission_id as _,
-								&resource_ids
-									.into_iter()
-									.map(|id| id.into())
-									.collect::<Vec<_>>(),
-							)
-							.execute(&mut **database)
-							.await?;
-						}
-						ResourcePermissionType::Exclude(resource_ids) => {
-							query!(
-								r#"
-								INSERT INTO
-									user_api_token_resource_permissions_exclude(
-										token_id,
-										workspace_id,
-										permission_id,
-										resource_id,
-										resource_deleted,
-										permission_type
-									)
-								VALUES
-									(
-										$1,
-										$2,
-										$3,
-										UNNEST($4::UUID[]),
-										DEFAULT,
-										DEFAULT
-									);
-								"#,
-								token_id as _,
-								workspace_id as _,
-								permission_id as _,
-								&resource_ids
-									.into_iter()
-									.map(|id| id.into())
-									.collect::<Vec<_>>(),
-							)
-							.execute(&mut **database)
-							.await?;
+				query!(
+					r#"
+					INSERT INTO
+						user_api_token_permission_binding(
+							token_id, workspace_id, permission_id, scope_id
+						)
+					SELECT
+						$1,
+						$2,
+						UNNEST($3::UUID[]),
+						UNNEST($4::UUID[])
+					ON CONFLICT
+						(token_id, permission_id, scope_id)
+					DO NOTHING;
+					"#,
+					token_id as _,
+					workspace_id as _,
+					&permissions.keys().copied().collect::<Vec<_>>() as _,
+					&permissions
+						.values()
+						.flat_map(|scopes| scopes.iter())
+						.copied()
+						.collect::<Vec<_>>() as _,
+				)
+				.execute(&mut **database)
+				.await
+				.map_err(|err| match err {
+					sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+						match db_err.constraint() {
+							Some("user_api_token_permission_binding_fk_permission_id") => {
+								ErrorType::WrongParameters
+							}
+							_ => ErrorType::ResourceDoesNotExist,
 						}
 					}
-				}
+					other => ErrorType::server_error(other),
+				})?;
 			}
 		}
 	}

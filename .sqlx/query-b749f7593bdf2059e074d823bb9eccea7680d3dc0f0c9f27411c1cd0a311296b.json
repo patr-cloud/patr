@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE role_permission ADD CONSTRAINT role_permission_pk PRIMARY KEY(role_id, permission_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b749f7593bdf2059e074d823bb9eccea7680d3dc0f0c9f27411c1cd0a311296b"
+}

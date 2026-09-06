@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO resource(id, resource_type_id, workspace_id, created) VALUES (GENERATE_RESOURCE_ID(), (SELECT id FROM resource_type WHERE name = 'containerRegistryRepository'), $1, NOW()) RETURNING id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "82e26779c4394d3f6948d460132a4cb25d3e3858562ceb5487d536f8b96f429d"
+}

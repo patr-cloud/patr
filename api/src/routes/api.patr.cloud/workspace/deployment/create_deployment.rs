@@ -73,7 +73,7 @@ pub async fn create_deployment(
 			resource(
 				id,
 				resource_type_id,
-				owner_id,
+				workspace_id,
 				created,
 				deleted
 			)

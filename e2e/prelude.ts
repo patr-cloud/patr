@@ -29,17 +29,16 @@ export {
 	setUserRolesAPI,
 	removeMemberAPI,
 	currentPermissionsAPI,
+	scopedTo,
+	toGrants,
 } from '@/helpers/api/rbac';
+export type { RoleGrant } from '@/helpers/api/rbac';
 
 export { loginAs } from '@/helpers/ui/session';
 export { expectUrl, expectUrlNot } from '@/helpers/ui/workspace';
 
 export { createApiTokenAPI, patchApiTokenAPI, callWithApiToken } from '@/helpers/api-token';
-export type {
-	ApiTokenHandle,
-	CreateApiTokenOpts,
-	WorkspacePermissionInput,
-} from '@/helpers/api-token';
+export type { ApiTokenHandle, CreateApiTokenOpts } from '@/helpers/api-token';
 
 export { RunnerHandle } from '@/helpers/runner';
 export type { RunnerOpts } from '@/helpers/runner';

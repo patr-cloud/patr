@@ -42,7 +42,7 @@ pub async fn add_runner_to_workspace(
 			resource(
 				id,
 				resource_type_id,
-				owner_id,
+				workspace_id,
 				created
 			)
 		VALUES

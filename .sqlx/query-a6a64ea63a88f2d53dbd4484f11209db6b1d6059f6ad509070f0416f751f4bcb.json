@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE actor_client(id UUID NOT NULL, actor_client_type ACTOR_CLIENT_TYPE NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a6a64ea63a88f2d53dbd4484f11209db6b1d6059f6ad509070f0416f751f4bcb"
+}

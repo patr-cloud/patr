@@ -28,17 +28,20 @@ async function withUI(
 }
 
 test.describe('member > list', () => {
-	test('renders a role-count badge on each member row', async ({ browser, api }) => {
+	test("shows a member's role count on their detail panel", async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		await using invitee = await createUserAccount(api);
 		const roles = await listRolesAPI(api, owner, owner.workspaceId);
 		const r1 = roles.find((r) => /Workspace: Viewer/i.test(r.name))!;
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
 		await withUI(browser, owner, async (page) => {
-			// JSX renders `${n}&nbsp; role(s)` (non-breaking space + newline).
-			await expect(page.getByText(/^1\s+role$/).first()).toBeVisible({
-				timeout: 10_000,
-			});
+			// The count moved off the row and onto the panel when the rail
+			// narrowed: the row now carries only the name, the subtitle and an
+			// Owner/Pending badge. Selecting the member shows "Access" with the
+			// number of bindings beside it, and the role itself listed below.
+			await page.getByText(invitee.email).click();
+			await expect(page.getByText(/^Access$/).first()).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByText(r1.name).first()).toBeVisible();
 		});
 	});
 
@@ -56,8 +59,9 @@ test.describe('member > list', () => {
 			// Username appears in the user-dropdown header too; scope to the
 			// member row (use .first()).
 			await expect(page.getByText(owner.email).first()).toBeVisible();
-			// No "1 role" / "2 roles" badges should appear — owner has no roles.
-			await expect(page.getByText(/^\d+\s+roles?$/)).toHaveCount(0);
+			// The owner holds no bindings — the super-admin bypasses roles
+			// entirely — so no role name is listed on their panel.
+			await expect(page.getByText(/^No roles assigned\.$/).first()).toBeVisible();
 		});
 	});
 

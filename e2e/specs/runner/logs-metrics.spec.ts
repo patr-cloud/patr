@@ -186,9 +186,7 @@ test.describe('runner > logs/metrics RBAC [API]', () => {
 		const runner = await createRunnerAPI(api, owner, owner.workspaceId);
 		// Member with create (not view) — should be denied logs/metrics.
 		const createId = await permId(api, owner, 'runner::create');
-		await using member = await createSecondMemberWithRole(api, owner, {
-			[createId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using member = await createSecondMemberWithRole(api, owner, [createId]);
 		await expect(
 			api.request('GET', `${base(owner.workspaceId)}/${runner.id}/logs`, {
 				token: member.accessToken,

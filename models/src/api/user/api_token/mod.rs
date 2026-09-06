@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+use crate::{prelude::*, rbac::WorkspacePermission, utils::constants::RESOURCE_NAME_REGEX};
 
 /// The endpoint to create an API token
 mod create_api_token;
@@ -27,7 +27,6 @@ pub use self::{
 	revoke_api_token::*,
 	update_api_token::*,
 };
-use crate::rbac::WorkspacePermission;
 
 #[::preprocess::sync]
 /// An API token created by the user.
@@ -48,10 +47,10 @@ pub struct UserApiToken {
 	/// when the user is looking at the list of tokens.
 	#[preprocess(trim, length(min = 4), regex = RESOURCE_NAME_REGEX)]
 	pub name: String,
-	/// The list of permissions for this token for a given workspace. A token
-	/// can have multiple permissions across different workspaces. But all the
-	/// actions performed by the token will be logged as the user who created
-	/// the token.
+	/// A ceiling, not a grant: intersected with the owner's current
+	/// permissions at auth time, so declaring more than they hold is harmless.
+	/// Permissions rather than roles, since a role belongs to a workspace and
+	/// a token to a user.
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	#[search(skip)]
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
@@ -103,10 +102,7 @@ mod test {
 	use time::OffsetDateTime;
 
 	use super::UserApiToken;
-	use crate::{
-		prelude::*,
-		rbac::{ResourcePermissionType, WorkspacePermission},
-	};
+	use crate::{prelude::*, rbac::WorkspacePermission};
 
 	#[test]
 	fn assert_empty_user_api_token_types() {
@@ -147,10 +143,7 @@ mod test {
 						WorkspacePermission::Member {
 							permissions: {
 								let mut map = BTreeMap::new();
-								map.insert(
-									Uuid::nil(),
-									ResourcePermissionType::Include(BTreeSet::from([Uuid::nil()])),
-								);
+								map.insert(Uuid::nil(), BTreeSet::from([Uuid::nil()]));
 								map
 							},
 						},
@@ -188,20 +181,9 @@ mod test {
 				Token::Str("type"),
 				Token::Str("member"),
 				Token::Str("00000000000000000000000000000000"),
-				Token::Struct {
-					name: "ResourcePermissionType",
-					len: 2,
-				},
-				Token::Str("permissionType"),
-				Token::UnitVariant {
-					name: "ResourcePermissionType",
-					variant: "include",
-				},
-				Token::Str("resources"),
 				Token::Seq { len: Some(1) },
 				Token::Str("00000000000000000000000000000000"),
 				Token::SeqEnd,
-				Token::StructEnd,
 				Token::MapEnd,
 				Token::MapEnd,
 				Token::Str("tokenNbf"),

@@ -1,4 +1,6 @@
 import type { ApiClient } from '@/helpers/api';
+import { toGrants } from '@/helpers/api/rbac';
+import { scopedTo, type RoleGrant } from '@/helpers/api/rbac';
 import { randomIPv4 } from '@/helpers/ip';
 import { DEBUG_OTP, TURNSTILE_TOKEN } from '@/helpers/config';
 
@@ -117,31 +119,46 @@ export async function getOwnUserId(
 	return me.id;
 }
 
-// Adds an existing user to `workspaceId` with the given roleIds. roleIds must
-// come from the owner's seeded defaults (e.g. one of the 36 default roles
-// looked up via GET /rbac/role). Looks up the invitee's user_id on the fly.
+// Adds an existing user to `workspaceId` with the given role grants. Bare
+// role ids are granted at the workspace root; pass full RoleGrants to scope
+// one to specific resources.
+//
+// Membership comes from accepting an invite — updating a user's roles only
+// works on someone who is already a member — so the invite carries the grants
+// and acceptance mints the bindings.
 export async function addMemberToWorkspace(
 	api: ApiClient,
 	owner: { accessToken: string; clientIp: string },
 	workspaceId: string,
-	invitee: { accessToken: string; clientIp: string },
-	roleIds: string[],
+	invitee: { accessToken: string; clientIp: string; email: string },
+	roles: (string | RoleGrant)[],
 ): Promise<void> {
-	const inviteeId = await getOwnUserId(api, invitee);
-	await api.request('POST', `/workspace/${workspaceId}/rbac/user/${inviteeId}`, {
-		token: owner.accessToken,
-		clientIp: owner.clientIp,
-		body: { roles: roleIds },
+	const invite = await api.request<{ id: string; acceptUrl: string }>(
+		'POST',
+		`/workspace/${workspaceId}/rbac/user/invite`,
+		{
+			token: owner.accessToken,
+			clientIp: owner.clientIp,
+			body: { email: invitee.email, roles: toGrants(workspaceId, roles) },
+		},
+	);
+	const token = new URL(invite.acceptUrl).searchParams.get('token');
+	await api.request('POST', '/user/workspace-invite/accept', {
+		token: invitee.accessToken,
+		clientIp: invitee.clientIp,
+		body: { inviteId: invite.id, token },
 	});
 }
 
 // Creates a second user, creates a role in owner's workspace with the given
-// permissions, adds the user as a member with that role. Returns the new
-// user + role id. This is the cornerstone of all RBAC enforcement tests.
+// permissions, adds the user as a member with that role — granted at
+// `resourceIds` (the workspace root by default). This is the cornerstone of
+// all RBAC enforcement tests.
 export async function createSecondMemberWithRole(
 	api: ApiClient,
 	owner: UserHandle & { workspaceId: string },
-	permissions: Record<string, { permissionType: 'include' | 'exclude'; resources: string[] }>,
+	permissions: string[],
+	resourceIds?: string[],
 ): Promise<UserHandle & { roleId: string }> {
 	const invitee = await createUserAccount(api);
 	const roleName = `e2e-role-${crypto.randomUUID().slice(0, 8)}`;
@@ -158,7 +175,13 @@ export async function createSecondMemberWithRole(
 			},
 		},
 	);
-	await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [role.id]);
+	await addMemberToWorkspace(
+		api,
+		owner,
+		owner.workspaceId,
+		invitee,
+		scopedTo(role.id, resourceIds ?? [owner.workspaceId]),
+	);
 	return Object.assign(invitee, { roleId: role.id });
 }
 

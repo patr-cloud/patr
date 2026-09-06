@@ -7,6 +7,7 @@ import {
 	getPermissionId,
 	loginAs,
 } from '@/prelude';
+import { openMembersPage, openMemberDetail } from '@/helpers/ui/member';
 
 // Role-endpoint permission gating at the API layer (viewRoles can list but not
 // create/edit/delete; modifyRoles can; neither → 401) lives in the Rust API
@@ -27,9 +28,7 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'viewRoles',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -53,9 +52,7 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'deployment::view',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[deployView]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [deployView]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
@@ -67,8 +64,9 @@ test.describe('rbac > permission gating [UI]', () => {
 		}
 	});
 
-	// members.tsx is not yet gated by useIsAllowed; these assert the end behavior
-	// (controls hidden for a viewRoles-only member) which passes today.
+	// members.tsx gates its controls on useIsAllowed('modifyRoles', 'edit'). Each
+	// pair below asserts both directions: hidden without the permission, visible
+	// with it. The positive half is what catches a hook that denies everything.
 	test('hides the invite form from a member without modifyRoles', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		const viewId = await getPermissionId(
@@ -78,25 +76,23 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'viewRoles',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
 		try {
-			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
-			await expect(
-				page.getByRole('button', { name: /^(Send Invite|Sending\.\.\.)$/ }),
-			).toBeHidden({
-				timeout: 10_000,
-			});
+			await openMembersPage(page);
+			await expect(page.getByRole('link', { name: 'Invite Member', exact: true })).toBeHidden(
+				{
+					timeout: 10_000,
+				},
+			);
 		} finally {
 			await context.close();
 		}
 	});
 
-	test('hides the Edit roles button on member detail from a member without modifyRoles', async ({
+	test('hides the Edit access button on member detail from a member without modifyRoles', async ({
 		browser,
 		api,
 	}) => {
@@ -108,15 +104,82 @@ test.describe('rbac > permission gating [UI]', () => {
 			owner.clientIp,
 			'viewRoles',
 		);
-		await using b = await createSecondMemberWithRole(api, owner, {
-			[viewId]: { permissionType: 'exclude', resources: [] },
-		});
+		await using b = await createSecondMemberWithRole(api, owner, [viewId]);
 		const context = await newContext(browser, b.clientIp);
 		await loginAs(context, b, { workspaceId: owner.workspaceId });
 		const page = await context.newPage();
 		try {
-			await page.goto('/workspace/members', { waitUntil: 'domcontentloaded' });
-			await expect(page.getByRole('button', { name: /^Edit roles$/ })).toBeHidden({
+			await openMembersPage(page);
+			await expect(page.getByRole('button', { name: /^Edit access$/ })).toBeHidden({
+				timeout: 10_000,
+			});
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('shows the invite form to a member with modifyRoles', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const modifyId = await getPermissionId(
+			api,
+			owner.accessToken,
+			owner.workspaceId,
+			owner.clientIp,
+			'modifyRoles',
+		);
+		// The members page lists members, which needs viewRoles — the seeded
+		// admin roles pair the two for the same reason.
+		const viewId = await getPermissionId(
+			api,
+			owner.accessToken,
+			owner.workspaceId,
+			owner.clientIp,
+			'viewRoles',
+		);
+		await using b = await createSecondMemberWithRole(api, owner, [modifyId, viewId]);
+		const context = await newContext(browser, b.clientIp);
+		await loginAs(context, b, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openMembersPage(page);
+			await expect(
+				page.getByRole('link', { name: 'Invite Member', exact: true }),
+			).toBeVisible({
+				timeout: 10_000,
+			});
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('shows the Edit access button to a member with modifyRoles', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const modifyId = await getPermissionId(
+			api,
+			owner.accessToken,
+			owner.workspaceId,
+			owner.clientIp,
+			'modifyRoles',
+		);
+		// The members page lists members, which needs viewRoles — the seeded
+		// admin roles pair the two for the same reason.
+		const viewId = await getPermissionId(
+			api,
+			owner.accessToken,
+			owner.workspaceId,
+			owner.clientIp,
+			'viewRoles',
+		);
+		await using b = await createSecondMemberWithRole(api, owner, [modifyId, viewId]);
+		const context = await newContext(browser, b.clientIp);
+		await loginAs(context, b, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openMembersPage(page);
+			// Edit access lives on a member's detail view, and only for non-owner
+			// members — so open their own row rather than the owner's.
+			await openMemberDetail(page, `${b.firstName} ${b.lastName}`.trim());
+			await expect(page.getByRole('button', { name: /^Edit access$/ }).first()).toBeVisible({
 				timeout: 10_000,
 			});
 		} finally {

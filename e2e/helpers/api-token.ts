@@ -2,17 +2,15 @@ import type { ApiClient } from '@/helpers/api';
 import { API_DIRECT_URL } from '@/helpers/urls';
 import { USER_AGENT } from '@/helpers/config';
 
-// Mirrors models/src/rbac/workspace_permission.rs — tagged enum, camelCase.
-export type WorkspacePermissionInput =
-	| { type: 'superAdmin' }
-	| ({ type: 'member' } & Record<
-			string,
-			{ permissionType: 'include' | 'exclude'; resources: string[] }
-	  >);
+import type { PermissionGrant } from '@/helpers/api/rbac';
 
+// A token's ceiling: the workspaces it has super-admin on, plus per-workspace
+// permission grants. Effective permissions are this intersected with the owner's
+// current permissions at auth time.
 export type CreateApiTokenOpts = {
 	name?: string;
-	permissions: Record<string, WorkspacePermissionInput>;
+	superAdminOf?: string[];
+	grants?: Record<string, PermissionGrant[]>;
 	tokenNbf?: Date | null;
 	tokenExp?: Date | null;
 	allowedIps?: string[];
@@ -23,6 +21,27 @@ export type ApiTokenHandle = {
 	token: string; // patrv1.<refresh>.<loginId>
 	name: string;
 };
+
+// The wire carries one entry per workspace: super-admin, or a member map of
+// permission id to the scopes it is held at. Callers still author the two
+// halves separately because that reads better in a spec.
+function toPermissionsMap(
+	superAdminOf: string[] = [],
+	grants: Record<string, PermissionGrant[]> = {},
+): Record<string, unknown> {
+	const permissions: Record<string, unknown> = {};
+	for (const workspaceId of superAdminOf) {
+		permissions[workspaceId] = { type: 'superAdmin' };
+	}
+	for (const [workspaceId, workspaceGrants] of Object.entries(grants)) {
+		const scopesByPermission: Record<string, string[]> = {};
+		for (const grant of workspaceGrants) {
+			(scopesByPermission[grant.permissionId] ??= []).push(grant.resourceId);
+		}
+		permissions[workspaceId] = { type: 'member', ...scopesByPermission };
+	}
+	return permissions;
+}
 
 export async function createApiTokenAPI(
 	api: ApiClient,
@@ -35,7 +54,7 @@ export async function createApiTokenAPI(
 	// (preprocess validates the body shape strictly). Omit it.
 	const body: Record<string, unknown> = {
 		name,
-		permissions: opts.permissions,
+		permissions: toPermissionsMap(opts.superAdminOf, opts.grants),
 	};
 	if (opts.tokenNbf !== undefined && opts.tokenNbf !== null) body.tokenNbf = opts.tokenNbf;
 	if (opts.tokenExp !== undefined && opts.tokenExp !== null) body.tokenExp = opts.tokenExp;
@@ -49,22 +68,26 @@ export async function createApiTokenAPI(
 	return { id: resp.id, token: resp.token, name };
 }
 
+// The endpoint takes a whole token, not a patch: anything left out is reset to
+// its serde default, so an omitted ceiling wipes the token's permissions.
 export async function patchApiTokenAPI(
 	api: ApiClient,
 	user: { accessToken: string; clientIp: string },
 	id: string,
-	patch: Partial<{
+	token: {
 		name: string;
-		permissions: Record<string, WorkspacePermissionInput>;
-		tokenNbf: Date | null;
-		tokenExp: Date | null;
-		allowedIps: string[];
-	}>,
+		superAdminOf?: string[];
+		grants?: Record<string, PermissionGrant[]>;
+		tokenNbf?: Date | null;
+		tokenExp?: Date | null;
+		allowedIps?: string[];
+	},
 ): Promise<void> {
+	const { superAdminOf, grants, ...rest } = token;
 	await api.request('PATCH', `/user/api-token/${id}`, {
 		token: user.accessToken,
 		clientIp: user.clientIp,
-		body: patch,
+		body: { ...rest, permissions: toPermissionsMap(superAdminOf, grants) },
 	});
 }
 

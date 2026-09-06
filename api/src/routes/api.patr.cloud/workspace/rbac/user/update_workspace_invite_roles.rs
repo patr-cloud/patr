@@ -75,28 +75,43 @@ pub async fn update_workspace_invite_roles(
 	.execute(&mut **database)
 	.await?;
 
+	// One row per grant, straight from the request.
+	let role_ids = roles.iter().map(|grant| grant.role_id).collect::<Vec<_>>();
+	let scope_ids = roles
+		.iter()
+		.map(|grant| grant.resource_id)
+		.collect::<Vec<_>>();
+
 	query!(
 		r#"
 		INSERT INTO
 			workspace_user_invite_role(
 				invite_id,
 				workspace_id,
-				role_id
+				role_id,
+				scope_id
 			)
 		SELECT
-			$1, $2, *
-		FROM
-			UNNEST($3::UUID[]);
+			$1,
+			$2,
+			UNNEST($3::UUID[]),
+			UNNEST($4::UUID[]);
 		"#,
 		invite_id as _,
 		workspace_id as _,
-		&roles.into_iter().collect::<Vec<_>>() as _,
+		&role_ids as _,
+		&scope_ids as _,
 	)
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
-			ErrorType::RoleDoesNotExist
+			match db_err.constraint() {
+				Some("workspace_user_invite_role_fk_scope_id_workspace_id") => {
+					ErrorType::ResourceDoesNotExist
+				}
+				_ => ErrorType::RoleDoesNotExist,
+			}
 		}
 		other => ErrorType::server_error(other),
 	})?;

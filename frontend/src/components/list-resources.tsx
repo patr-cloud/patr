@@ -15,7 +15,11 @@ const ListResources = (props: {
 		() => get(props.resourceType)
 	);
 
-	const allResources = () => resourcesQuery.data?.pages.flatMap((page) => page.items) ?? [];
+	// Guarded on status rather than reading `data` straight: a cold fetch would
+	// otherwise suspend and take the surrounding editor row down with it, which
+	// closes this very dropdown the moment a type is picked.
+	const allResources = () =>
+		resourcesQuery.isSuccess ? (resourcesQuery.data?.pages.flatMap((page) => page.items) ?? []) : [];
 
 	const getResourceTypeLabel = () => {
 		if (!props.resourceType) return "Resources";
