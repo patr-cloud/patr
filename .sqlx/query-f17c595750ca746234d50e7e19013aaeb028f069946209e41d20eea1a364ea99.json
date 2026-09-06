@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO role_binding(id, workspace_id, actor_id, role_id, scope_id, created, created_by) VALUES (GEN_RANDOM_UUID(), $1, $2, (SELECT id FROM role WHERE workspace_id = $1 AND name = $3), $4, NOW(), $5);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f17c595750ca746234d50e7e19013aaeb028f069946209e41d20eea1a364ea99"
+}
