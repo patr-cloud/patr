@@ -63,5 +63,6 @@ macros::declare_api_endpoint!(
 		/// The scopes that the access token has access to
 		pub scope: String
 	},
+	client_type = [WebDashboard],
 	audit_log = NoAuditLogger,
 );

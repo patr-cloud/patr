@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE ACTOR_CLIENT_TYPE AS ENUM('user_login', 'service_account');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "8a4888869a747e018ebda7242dd99920eea8886af6a5e05d19985855471fe623"
+}

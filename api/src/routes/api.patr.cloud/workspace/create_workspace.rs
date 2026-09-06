@@ -402,6 +402,31 @@ fn default_roles() -> Vec<DefaultRole> {
 		permissions: admin_runner,
 	});
 
+	// The two roles a runner's own service account is granted. Split because a
+	// binding carries one scope: a runner reads across the whole workspace,
+	// but may only execute on itself.
+	roles.push(DefaultRole {
+		name: "Runner: All Resource Reader",
+		description: "Default role: read-only access to every resource a runner needs to run \
+			a deployment. Granted to a runner's service account across the workspace. \
+			Deliberately excludes billing, roles, service accounts and other runners.",
+		permissions: vec![
+			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View),
+			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull),
+			Deployment(DeploymentPermission::View),
+			Domain(DomainPermission::View),
+			ManagedURL(ManagedURLPermission::View),
+			Secret(SecretPermission::View),
+			Volume(VolumePermission::View),
+		],
+	});
+	roles.push(DefaultRole {
+		name: "Runner: Execute",
+		description: "Default role: lets a runner act on deployments assigned to it. \
+			Granted to a runner's service account, scoped to that one runner.",
+		permissions: vec![Runner(RunnerPermission::Execute)],
+	});
+
 	let view_registry = vec![
 		ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View),
 		ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull),

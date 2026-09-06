@@ -30,5 +30,6 @@ macros::declare_api_endpoint!(
 		/// A boolean response corresponding to the validity of the domain
 		pub valid: bool,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

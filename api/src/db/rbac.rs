@@ -82,7 +82,8 @@ pub async fn initialize_rbac_tables(
 	query!(
 		r#"
 		CREATE TYPE WORKSPACE_ACTOR_TYPE AS ENUM(
-			'user'
+			'user',
+			'service_account'
 		);
 		"#
 	)
@@ -500,11 +501,11 @@ pub async fn initialize_rbac_constraints(
 				WHERE
 					user_api_token_workspace_super_admin.token_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 			),
-			/* Bindings carrying this permission: the user's own for web
-			logins; the token's ceiling intersected with the owner's grants
-			for API tokens */
-			/* The login's own bindings (empty for API tokens) */
-			user_bindings AS (
+			/* Bindings carrying this permission for a client that acts as
+			itself: a web login resolves through its user's membership, a
+			service account is its own actor. An API token holds none of
+			these — its arm is the ceiling further down. */
+			actor_bindings AS (
 				SELECT
 					role_binding.workspace_id,
 					role_binding.scope_id
@@ -525,6 +526,27 @@ pub async fn initialize_rbac_constraints(
 					role_permission.permission_id = local_permission_id
 				WHERE
 					web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+				UNION ALL
+				/* A service account authenticates as itself, so one id is its
+				login, its actor_client registration and its actor: there is no
+				membership row to go through. */
+				SELECT
+					role_binding.workspace_id,
+					role_binding.scope_id
+				FROM
+					service_account
+				INNER JOIN
+					role_binding
+				ON
+					role_binding.actor_id = service_account.id
+				INNER JOIN
+					role_permission
+				ON
+					role_permission.role_id = role_binding.role_id AND
+					role_permission.permission_id = local_permission_id
+				WHERE
+					service_account.id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id AND
+					service_account.deleted IS NULL
 			),
 			/* An API token's declared ceiling: its own (permission, scope) rows */
 			token_ceiling AS (
@@ -600,12 +622,12 @@ pub async fn initialize_rbac_constraints(
 						SELECT
 							1
 						FROM
-							user_bindings
+							actor_bindings
 						WHERE
-							user_bindings.workspace_id = resource.workspace_id AND
+							actor_bindings.workspace_id = resource.workspace_id AND
 							(
-								user_bindings.scope_id = resource.id OR
-								user_bindings.scope_id = user_bindings.workspace_id
+								actor_bindings.scope_id = resource.id OR
+								actor_bindings.scope_id = actor_bindings.workspace_id
 							)
 					) OR (
 						EXISTS (

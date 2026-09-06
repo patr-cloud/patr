@@ -1,7 +1,3 @@
-use std::collections::BTreeMap;
-
-use models::rbac::WorkspacePermission;
-
 use super::helpers::*;
 use crate::prelude::*;
 
@@ -38,13 +34,6 @@ async fn otlp_push_json_valid_succeeds() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	let body = make_otlp_json_body(&[
 		("runner_id", &runner.id.to_string()),
 		("workspace_id", &workspace.id.to_string()),
@@ -59,7 +48,7 @@ async fn otlp_push_json_valid_succeeds() {
 				(http::header::CONTENT_TYPE, "application/json"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			body,
@@ -85,13 +74,6 @@ async fn otlp_push_protobuf_valid_succeeds() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	let body = make_otlp_proto_body(&[
 		("runner_id", &runner.id.to_string()),
 		("workspace_id", &workspace.id.to_string()),
@@ -106,7 +88,7 @@ async fn otlp_push_protobuf_valid_succeeds() {
 				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			body,
@@ -129,13 +111,6 @@ async fn otlp_push_unsupported_content_type_returns_415() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	let response = setup
 		.make_loki_call(
 			http::Method::POST,
@@ -144,7 +119,7 @@ async fn otlp_push_unsupported_content_type_returns_415() {
 				(http::header::CONTENT_TYPE, "text/plain"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			b"some text".to_vec(),
@@ -174,13 +149,6 @@ async fn otlp_push_wrong_deployment_returns_403() {
 		.create_test_deployment(&user.access_token, workspace.id, runner_b.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	// Runner A tries to push logs with runner B's deployment_id
 	let body = make_otlp_json_body(&[
 		("runner_id", &runner_a.id.to_string()),
@@ -196,7 +164,7 @@ async fn otlp_push_wrong_deployment_returns_403() {
 				(http::header::CONTENT_TYPE, "application/json"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner_a.id, &api_token.token),
+					&basic_auth(&runner_a.id, &runner_a.token),
 				),
 			],
 			body,
@@ -222,13 +190,6 @@ async fn otlp_push_attribute_rewriting() {
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	// Push with spoofed runner_id and workspace_id
 	let spoofed_runner = Uuid::new_v4();
 	let spoofed_workspace = Uuid::new_v4();
@@ -247,7 +208,7 @@ async fn otlp_push_attribute_rewriting() {
 				(http::header::CONTENT_TYPE, "application/json"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			body,
@@ -292,13 +253,6 @@ async fn otlp_push_invalid_json_returns_400() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	let response = setup
 		.make_loki_call(
 			http::Method::POST,
@@ -307,7 +261,7 @@ async fn otlp_push_invalid_json_returns_400() {
 				(http::header::CONTENT_TYPE, "application/json"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			b"not valid json{{{".to_vec(),
@@ -330,13 +284,6 @@ async fn otlp_push_invalid_protobuf_returns_400() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
-	let api_token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
-		)
-		.await;
-
 	let response = setup
 		.make_loki_call(
 			http::Method::POST,
@@ -345,7 +292,7 @@ async fn otlp_push_invalid_protobuf_returns_400() {
 				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner.id, &api_token.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			vec![0xFF, 0xFE, 0xFD, 0xFC, 0xFB],

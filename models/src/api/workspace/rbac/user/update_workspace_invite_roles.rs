@@ -24,7 +24,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::ModifyRoles,
 		}
 	},
-	api = false,
+	client_type = [WebDashboard],
 	request = {
 		/// The new role grants the invitee receives on acceptance
 		#[preprocess(none)]

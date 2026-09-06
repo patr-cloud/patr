@@ -6,7 +6,7 @@ macros::declare_api_endpoint!(
 	/// and access token associated with it.
 	Logout,
 	POST "/auth/sign-out",
-	api = false,
+	client_type = [WebDashboard],
 	request_headers = {
 		/// The refresh token which was provided to the user when they logged in
 		pub refresh_token: BearerToken,

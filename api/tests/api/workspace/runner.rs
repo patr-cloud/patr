@@ -1,10 +1,52 @@
+use std::collections::BTreeMap;
+
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::runner::*,
+	rbac::WorkspacePermission,
 	utils::{ListResourceQuery, Uuid},
 };
 
 use crate::prelude::*;
+
+/// Open a fresh consent link as the CLI would (via an API token), returning the
+/// link details and the API bearer needed to later verify it.
+async fn open_runner_link(
+	setup: &TestSetup,
+	admin: &BearerToken,
+	workspace_id: Uuid,
+) -> (CreateRunnerLinkResponse, BearerToken) {
+	let api_token = setup
+		.create_test_api_token(
+			admin,
+			BTreeMap::from([(workspace_id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	let api_bearer = BearerToken::from_str(&api_token.token).unwrap();
+
+	let link = setup
+		.make_api_call(
+			ApiRequest::<CreateRunnerLinkRequest>::builder()
+				.path(CreateRunnerLinkPath { workspace_id })
+				.headers(CreateRunnerLinkRequestHeaders {
+					authorization: api_bearer.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateRunnerLinkRequest {
+					version: "0.1.0".parse().unwrap(),
+					os: "linux".to_string(),
+					arch: "x86_64".to_string(),
+					hostname: random_name(8),
+					private_ip: "127.0.0.1".parse().unwrap(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateRunnerLinkResponse>>()
+		.response;
+
+	(link, api_bearer)
+}
 
 #[tokio::test]
 async fn add_runner_works() {
@@ -238,18 +280,22 @@ async fn add_runner_duplicate_name() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
+	// The name uniqueness check now lives in the approve step of the link flow.
+	let (link, _) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
 	let response = setup
 		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
 					workspace_id: workspace.id,
+					user_code: link.user_code,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: runner.name.clone(),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: runner.name.clone(),
 				})
 				.build(),
 		)
@@ -257,7 +303,7 @@ async fn add_runner_duplicate_name() {
 
 	assert!(
 		response.status_code().is_client_error(),
-		"adding a runner with a taken name should fail"
+		"approving a link with a taken runner name should fail"
 	);
 }
 
@@ -267,18 +313,21 @@ async fn add_runner_invalid_name() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
+	let (link, _) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
 	let response = setup
 		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
 					workspace_id: workspace.id,
+					user_code: link.user_code,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: "!!!".to_string(),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: "!!!".to_string(),
 				})
 				.build(),
 		)
@@ -433,18 +482,20 @@ async fn add_runner_reusable_after_delete() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
+	let (dup_link, _) = open_runner_link(&setup, &user.access_token, workspace.id).await;
 	let dup = setup
 		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
 					workspace_id: workspace.id,
+					user_code: dup_link.user_code,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: runner.name.clone(),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: runner.name.clone(),
 				})
 				.build(),
 		)
@@ -471,18 +522,20 @@ async fn add_runner_reusable_after_delete() {
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(DeleteRunnerResponse));
 
+	let (reuse_link, _) = open_runner_link(&setup, &user.access_token, workspace.id).await;
 	let recreate = setup
 		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
 					workspace_id: workspace.id,
+					user_code: reuse_link.user_code,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: runner.name.clone(),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: runner.name.clone(),
 				})
 				.build(),
 		)
@@ -504,15 +557,21 @@ async fn add_runner_same_name_across_workspaces() {
 	let name = random_name(8);
 
 	for ws in [workspace_a.id, workspace_b.id] {
+		let (link, _) = open_runner_link(&setup, &user.access_token, ws).await;
 		let response = setup
 			.make_web_dashboard_call(
-				ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-					.path(AddRunnerToWorkspacePath { workspace_id: ws })
-					.headers(AddRunnerToWorkspaceRequestHeaders {
+				ApiRequest::<ApproveRunnerLinkRequest>::builder()
+					.path(ApproveRunnerLinkPath {
+						workspace_id: ws,
+						user_code: link.user_code,
+					})
+					.headers(ApproveRunnerLinkRequestHeaders {
 						authorization: user.access_token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
-					.body(AddRunnerToWorkspaceRequest { name: name.clone() })
+					.body(ApproveRunnerLinkRequest {
+						runner_name: name.clone(),
+					})
 					.build(),
 			)
 			.await;
@@ -693,5 +752,147 @@ async fn runner_unauthorized() {
 	assert!(
 		response.status_code().is_client_error(),
 		"expected client error without auth token"
+	);
+}
+
+#[tokio::test]
+async fn reconnect_runner_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	// Open a fresh link and reconnect the existing runner onto it.
+	let (link, api_bearer) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ReconnectRunnerLinkRequest>::builder()
+				.path(ReconnectRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code.clone(),
+					runner_id: runner.id,
+				})
+				.headers(ReconnectRunnerLinkRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ReconnectRunnerLinkResponse));
+
+	// The CLI claims the rotated credentials — same runner, a different token.
+	let verify = setup
+		.make_api_call(
+			ApiRequest::<VerifyRunnerLinkRequest>::builder()
+				.path(VerifyRunnerLinkPath {
+					workspace_id: workspace.id,
+				})
+				.headers(VerifyRunnerLinkRequestHeaders {
+					authorization: api_bearer,
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(VerifyRunnerLinkRequest {
+					user_code: link.user_code,
+					device_code: link.device_code,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<VerifyRunnerLinkResponse>>()
+		.response;
+
+	match verify.result {
+		VerifyRunnerLinkResult::Approved {
+			runner_id, token, ..
+		} => {
+			assert_eq!(
+				runner_id, runner.id,
+				"reconnect must target the same runner"
+			);
+			assert_ne!(token, runner.token, "reconnect must rotate the token");
+		}
+		VerifyRunnerLinkResult::Pending => panic!("link should be approved after reconnect"),
+	}
+}
+
+#[tokio::test]
+async fn reconnect_nonexistent_runner() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let (link, _api_bearer) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ReconnectRunnerLinkRequest>::builder()
+				.path(ReconnectRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code,
+					runner_id: Uuid::nil(),
+				})
+				.headers(ReconnectRunnerLinkRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"reconnecting a nonexistent runner should be rejected"
+	);
+}
+
+#[tokio::test]
+async fn reconnect_twice_is_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let (link, _api_bearer) = open_runner_link(&setup, &user.access_token, workspace.id).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ReconnectRunnerLinkRequest>::builder()
+				.path(ReconnectRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code.clone(),
+					runner_id: runner.id,
+				})
+				.headers(ReconnectRunnerLinkRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(ReconnectRunnerLinkResponse));
+
+	// The link is single-use — a second reconnect on the same code is rejected.
+	let second = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ReconnectRunnerLinkRequest>::builder()
+				.path(ReconnectRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code,
+					runner_id: runner.id,
+				})
+				.headers(ReconnectRunnerLinkRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		second.status_code().is_client_error(),
+		"a link that's already been claimed should not reconnect again"
 	);
 }

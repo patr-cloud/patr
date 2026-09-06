@@ -27,5 +27,6 @@ macros::declare_api_endpoint!(
 		/// The information of the container repository.
 		pub repository: ContainerRepository,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

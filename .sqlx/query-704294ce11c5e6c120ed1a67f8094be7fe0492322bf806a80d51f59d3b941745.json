@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO\n    apalis.workers (id, worker_type, storage_name, layers, last_seen)\nVALUES\n    ($1, $2, $3, $4, $5) ON CONFLICT (id) DO\nUPDATE\nSET\n    worker_type = EXCLUDED.worker_type,\n    storage_name = EXCLUDED.storage_name,\n    layers = EXCLUDED.layers,\n    last_seen = NOW()\nWHERE\n    pg_try_advisory_lock(hashtext(workers.id));\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "704294ce11c5e6c120ed1a67f8094be7fe0492322bf806a80d51f59d3b941745"
+}

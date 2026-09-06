@@ -1,5 +1,6 @@
 use std::net::IpAddr;
 
+use semver::Version;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -93,9 +94,10 @@ macros::declare_stream_endpoint!(
 			permission: Permission::Runner(RunnerPermission::Execute),
 		}
 	},
+	client_type = [ServiceAccount],
 	server_msg = {
-		/// The runner needs to set the exposure type before proceeding
-		ExposureTypeRequired,
+		/// The runner needs to send its handshake before proceeding
+		HandshakeRequired,
 		/// The user has created a new deployment on their account
 		DeploymentCreated {
 			/// The deployment that was created
@@ -149,9 +151,14 @@ macros::declare_stream_endpoint!(
 		},
 	},
 	client_msg = {
-		/// Set the exposure type for the runner
-		SetRunnerExposureType {
-			/// The new exposure type for the runner
+		/// Initial handshake sent by the runner immediately after the WebSocket
+		/// upgrade. The runner reports metadata about itself that the API needs
+		/// before it can stream state (version for outdated detection, exposure
+		/// type for ingress planning).
+		Handshake {
+			/// The semver version of the runner binary
+			version: Version,
+			/// The exposure type for the runner
 			exposure_type: RunnerExposureType,
 		},
 		/// A deployment has updated with the following new status

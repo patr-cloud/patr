@@ -45,13 +45,15 @@ test.describe('runner > detail [UI]', () => {
 		});
 	});
 
-	test('no delete control is rendered on the runner detail', async ({ browser, api }) => {
+	test('a disconnected runner exposes a delete control', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		const runner = await createRunnerAPI(api, user, user.workspaceId);
 		await withDetail(browser, user, runner.id, undefined, async (page) => {
-			// Runner deletion is API-only; the UI exposes no delete affordance.
+			// Deleting a runner is only offered while it is disconnected — a live
+			// runner has to be shut down first, so the control is gated on that
+			// plus the delete permission.
 			await expect(deploymentsTab(page)).toBeVisible();
-			await expect(page.getByRole('button', { name: /^Delete$/ })).toHaveCount(0);
+			await expect(page.getByRole('button', { name: /Delete/i }).first()).toBeVisible();
 		});
 	});
 

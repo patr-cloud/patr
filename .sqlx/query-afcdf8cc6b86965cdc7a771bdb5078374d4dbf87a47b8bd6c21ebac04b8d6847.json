@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT service_account_id AS \"service_account_id: Uuid\" FROM runner WHERE id = $1 AND workspace_id = $2;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "service_account_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "afcdf8cc6b86965cdc7a771bdb5078374d4dbf87a47b8bd6c21ebac04b8d6847"
+}
