@@ -22,15 +22,17 @@ pub(crate) async fn get_permissions(
 
 	let TokenData {
 		header: _,
-		claims: AccessTokenData {
-			iss,
-			sub,
-			aud,
-			exp,
-			nbf,
-			iat: _,
-			jti,
-		},
+		claims:
+			AccessTokenData {
+				iss,
+				sub,
+				sid,
+				aud,
+				exp,
+				nbf,
+				iat: _,
+				jti,
+			},
 	} = jsonwebtoken::decode(
 		token,
 		&DecodingKey::from_secret(config.jwt_secret.as_ref()),
@@ -97,7 +99,7 @@ pub(crate) async fn get_permissions(
 			user_login.login_id = $1 AND
 			user_login.login_type = 'web_login';
 		"#,
-		sub as _
+		sid as _
 	}
 	.fetch_optional(&mut *database)
 	.await?
@@ -108,6 +110,17 @@ pub(crate) async fn get_permissions(
 		return Err(ErrorType::AuthorizationTokenInvalid);
 	};
 	trace!("Web login exists in the database");
+
+	// `sub` names the user and `sid` names the session, so a token whose two
+	// halves disagree is malformed regardless of how it got that way. The
+	// lookup above already pinned the session, so this only ever fires on a
+	// hand-assembled token — but it is the check that keeps the two claims
+	// from silently drifting apart.
+	if sub != user.id.into() {
+		warn!("JWT `sub` does not match the user owning `sid`");
+		return Err(ErrorType::MalformedAccessToken);
+	}
+	trace!("JWT sub matches the session's user");
 
 	// Note: `web_login.token_expiry` is the refresh token's lifetime, not the
 	// access token's. Access token validity is gated by the JWT's own `exp`
@@ -132,7 +145,7 @@ pub(crate) async fn get_permissions(
 	}
 
 	let permissions =
-		get_permissions_for_web_login(&mut *database, redis, &sub, &user.id.into()).await?;
+		get_permissions_for_web_login(&mut *database, redis, &sid, &user.id.into()).await?;
 
 	Ok(RequestUserData::builder()
 		.id(user.id)
@@ -140,7 +153,7 @@ pub(crate) async fn get_permissions(
 		.first_name(user.first_name)
 		.last_name(user.last_name)
 		.created(user.created)
-		.login_id(sub)
+		.login_id(sid)
 		.permissions(permissions)
 		.build())
 }

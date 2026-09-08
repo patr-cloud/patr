@@ -58,7 +58,8 @@ pub async fn renew_access_token(
 		r#"
 		SELECT
 			token_expiry,
-			refresh_token
+			refresh_token,
+			user_id AS "user_id: Uuid"
 		FROM
 			web_login
 		WHERE
@@ -142,7 +143,8 @@ pub async fn renew_access_token(
 
 	let access_token = AccessTokenData {
 		iss: constants::JWT_ISSUER.to_string(),
-		sub: login_id,
+		sub: row.user_id,
+		sid: login_id,
 		aud: OneOrMore::One(constants::PATR_JWT_AUDIENCE.to_string()),
 		exp: now.add(constants::ACCESS_TOKEN_VALIDITY),
 		nbf: now,
