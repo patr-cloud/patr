@@ -17,6 +17,8 @@ use api::{
 		EmailConfig,
 		LogsConfig,
 		MetricsConfig,
+		OAuthClientConfig,
+		OAuthConfig,
 		OpenTelemetryConfig,
 		RedisConfig,
 		RegistryConfig,
@@ -528,6 +530,42 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		registry: RegistryConfig {
 			service: "registry.patr.cloud".to_string(),
 			realm: "http://localhost:3000/auth/docker-login".to_string(),
+		},
+		// One confidential and one public client, so tests can exercise both
+		// forms of client authentication. The loopback redirect is the CLI's
+		// shape, whose port is deliberately ignored when matching.
+		oauth: OAuthConfig {
+			clients: [
+				(
+					"test-client".to_string(),
+					OAuthClientConfig {
+						name: "Test Client".to_string(),
+						logo_url: "https://example.com/logo.svg".to_string(),
+						client_uri: "https://example.com".to_string(),
+						client_secret: Some("test-client-secret".to_string()),
+						redirect_uris: vec!["http://localhost:19999/cb".to_string()],
+						allowed_scopes: vec![
+							"openid".to_string(),
+							"profile".to_string(),
+							"email".to_string(),
+							"offline_access".to_string(),
+						],
+					},
+				),
+				(
+					"test-public-client".to_string(),
+					OAuthClientConfig {
+						name: "Test Public Client".to_string(),
+						logo_url: "https://example.com/logo.svg".to_string(),
+						client_uri: "https://example.com".to_string(),
+						client_secret: None,
+						redirect_uris: vec!["http://127.0.0.1/callback".to_string()],
+						allowed_scopes: vec!["openid".to_string(), "profile".to_string()],
+					},
+				),
+			]
+			.into_iter()
+			.collect(),
 		},
 	};
 

@@ -1,4 +1,5 @@
 use std::{
+	collections::BTreeMap,
 	env,
 	fmt::{Display, Formatter},
 	net::SocketAddr,
@@ -89,6 +90,12 @@ pub struct AppConfig {
 	pub social_login: SocialLoginConfig,
 	/// Knobs for the OCI registry endpoints
 	pub registry: RegistryConfig,
+	/// The settings for Patr's own OAuth 2.1 / OpenID Connect provider.
+	/// Defaulted because every config file written before this feature
+	/// existed omits it, and the config crate treats a missing field as a
+	/// hard error — without this the API refuses to boot on upgrade.
+	#[serde(default)]
+	pub oauth: OAuthConfig,
 }
 
 /// OCI registry settings — currently the values surfaced in the
@@ -337,4 +344,35 @@ pub struct GitHubOAuthConfig {
 	/// "Connect GitHub" flow from Profile → Connected Accounts.
 	/// In production: `https://app.patr.cloud/profile/github/callback`.
 	pub connect_callback_url: String,
+}
+
+/// Patr's own OAuth 2.1 / OpenID Connect provider. Clients are declared here,
+/// not registered at runtime.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct OAuthConfig {
+	/// Keyed by `client_id`. Config file only: the env source can't express
+	/// the lists, and camel-cases key segments so `patr-cli` can't be written.
+	pub clients: BTreeMap<String, OAuthClientConfig>,
+}
+
+/// A single OAuth client, declared in the config.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthClientConfig {
+	/// Shown on the consent screen and the authorized-apps list.
+	pub name: String,
+	/// Icon shown alongside the name.
+	pub logo_url: String,
+	/// The client's own homepage.
+	pub client_uri: String,
+	/// `None` for a public client, which relies on PKCE alone. The CLI is one.
+	#[serde(default)]
+	pub client_secret: Option<String>,
+	/// Matched exactly, except loopback addresses ignore the port — a native
+	/// client binds an ephemeral one (RFC 8252 section 7.3).
+	pub redirect_uris: Vec<String>,
+	/// Gate the claims in `/userinfo` and the id token, not what the token can
+	/// do against the API.
+	pub allowed_scopes: Vec<String>,
 }

@@ -10,6 +10,9 @@ pub(super) mod initializer;
 /// The meta data for the database. This is mostly used for the version number
 /// of the database and handling the migrations for the database.
 pub(super) mod meta_data;
+/// Patr's own OAuth 2.1 / OpenID Connect provider: the client registry and
+/// the keys that sign the tokens it issues.
+pub(super) mod oauth;
 /// The role based access control for the database. This is used to handle the
 /// permissions for the users and what workspace they have access to.
 pub(super) mod rbac;
@@ -21,7 +24,7 @@ pub(super) mod user;
 pub(super) mod workspace;
 
 pub use self::initializer::initialize;
-pub(super) use self::{actor_client::*, meta_data::*, rbac::*, user::*, workspace::*};
+pub(super) use self::{actor_client::*, meta_data::*, oauth::*, rbac::*, user::*, workspace::*};
 
 /// Connects to the database based on a config. Not much to say here.
 #[instrument(skip(config))]

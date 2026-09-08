@@ -54,5 +54,25 @@
 	"registry": {
 		"service": "patr.example.com",
 		"realm": "https://patr.example.com/api/auth/docker-login"
+	},
+	"oauth": {
+		"clients": {
+			"patr-cli": {
+				"name": "Patr CLI",
+				"logoUrl": "https://patr.example.com/favicon.svg",
+				"clientUri": "https://github.com/patr-cloud/patr",
+				"clientSecret": null,
+				"redirectUris": [
+					"http://127.0.0.1/callback",
+					"http://[::1]/callback"
+				],
+				"allowedScopes": [
+					"openid",
+					"profile",
+					"email",
+					"offline_access"
+				]
+			}
+		}
 	}
 }
