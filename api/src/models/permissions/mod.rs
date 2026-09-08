@@ -169,15 +169,16 @@ async fn authenticate_jwt(
 	}
 	trace!("JWT audience valid");
 
-	let entry = if let Some(entry) = cache::read(redis, &claims.sub).await {
-		trace!("Cached auth data found for login `{}`", claims.sub);
+	// `sid` is the login, and keys the cache; `sub` is the user it belongs to.
+	let entry = if let Some(entry) = cache::read(redis, &claims.sid).await {
+		trace!("Cached auth data found for login `{}`", claims.sid);
 		entry
 	} else {
-		let entry = web_dashboard::load_actor_auth_data(&mut *database, &claims.sub).await?;
+		let entry = web_dashboard::load_actor_auth_data(&mut *database, &claims.sid).await?;
 
 		cache::write(
 			redis,
-			&claims.sub,
+			&claims.sid,
 			&entry,
 			constants::CACHED_PERMISSIONS_VALIDITY,
 		)
@@ -185,6 +186,14 @@ async fn authenticate_jwt(
 
 		entry
 	};
+
+	// A token whose two halves disagree is malformed however it got that way.
+	// Checked on every request, cache hit or not.
+	if claims.sub != entry.actor_id {
+		warn!("JWT `sub` does not match the user owning `sid`");
+		return Err(ErrorType::MalformedAccessToken);
+	}
+	trace!("JWT sub matches the login's user");
 
 	let ActorAuthDataCacheKind::WebLogin {
 		email,
@@ -206,7 +215,7 @@ async fn authenticate_jwt(
 			login: UserLoginType::WebLogin,
 		})
 		.created(created)
-		.login_id(claims.sub)
+		.login_id(claims.sid)
 		.permissions(entry.permissions)
 		.build())
 }
