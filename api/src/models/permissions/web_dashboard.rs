@@ -24,18 +24,13 @@ pub(super) async fn load_actor_auth_data(
 		SELECT
 			"user".*
 		FROM
-			"user"
-		INNER JOIN
-			user_login
-		ON
-			"user".id = user_login.user_id
-		INNER JOIN
 			web_login
+		INNER JOIN
+			"user"
 		ON
-			user_login.login_id = web_login.login_id
+			"user".id = web_login.user_id
 		WHERE
-			user_login.login_id = $1 AND
-			user_login.login_type = 'web_login';
+			web_login.login_id = $1;
 		"#,
 		login_id as _
 	}
