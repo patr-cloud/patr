@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX oauth_refresh_token_uq_login_id ON oauth_refresh_token(login_id) WHERE consumed IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "ca7916cf23e1e1d6b1385febd52034320b13a2f2d96b11463b9333202199b854"
+}
