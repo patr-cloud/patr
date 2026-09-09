@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE WORKSPACE_ACTOR_TYPE AS ENUM('user', 'service_account');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b6bf2bf04938d8e31e0a047ff5dbd21cb76a1248a840174e79124f070b2716ff"
+}
