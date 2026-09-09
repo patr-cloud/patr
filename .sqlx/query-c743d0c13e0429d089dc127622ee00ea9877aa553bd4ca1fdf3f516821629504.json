@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO workspace_actor(id, workspace_id, actor_type) VALUES ($1, $2, 'service_account');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c743d0c13e0429d089dc127622ee00ea9877aa553bd4ca1fdf3f516821629504"
+}
