@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO resource(id, resource_type_id, workspace_id, created) VALUES (GENERATE_RESOURCE_ID(), (SELECT id FROM resource_type WHERE name = 'serviceAccount'), $1, NOW()) RETURNING id AS \"id: Uuid\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d3a9bbf628c2777ba6464e03f6fc2c05b688e8e425545fff60b3f23bf83e0937"
+}
