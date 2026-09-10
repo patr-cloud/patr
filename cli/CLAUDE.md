@@ -19,7 +19,20 @@ Every command module has a `pub struct Args` (deriving `clap::Args`; empty if no
 
 ## State
 
-`AppState` is persisted to `~/.local/share/patr/cli/config.json` (`utils::storage`). Two fields: `target_channel: Channel` and `auth: AuthState` (an `#[serde(untagged)]` enum — `LoggedIn { token, current_workspace }` or `LoggedOut`). **The nested-enum shape is deliberate** — `current_workspace` can't exist without a `token`, so it's unrepresentable as two optional fields. To mutate: `load()` the full state, modify `state.auth`, `state.save()` — don't build a fresh `AppState` (you'd drop `target_channel`). `load()` falls back to `Default` on any error.
+`AppState` is persisted to `~/.local/share/patr/cli/config.json` (`utils::storage`). Two fields: `target_channel: Channel` and `auth: AuthState` (an `#[serde(untagged)]` enum — `LoggedIn { token, current_workspace, refresh_token, token_expiry }` or `LoggedOut`). **The nested-enum shape is deliberate** — `current_workspace` can't exist without a `token`, so it's unrepresentable as two optional fields. To mutate: `load()` the full state, modify `state.auth`, `state.save()` — don't build a fresh `AppState` (you'd drop `target_channel`). `load()` falls back to `Default` on any error.
+
+**Destructure `LoggedIn` with `..`.** The variant grows; matching it exhaustively means every new field breaks 20-odd call sites. The two places that *construct* it (`login.rs`, `workspace/switch.rs`) must name every field, and `switch` in particular has to carry the OAuth half over — dropping it silently downgrades a browser login to one that can never refresh.
+
+Because the enum is `untagged`, a field serde can't parse doesn't error — the whole variant fails to match and the state falls through to `LoggedOut`, logging the user out. That's why `token_expiry` is unix seconds rather than a timestamp.
+
+## Login and the OAuth session
+
+`patr login` runs the OAuth 2.1 loopback flow of RFC 8252 (`utils::oauth`): bind an ephemeral port on `127.0.0.1`, send the browser to the API's `/auth/oauth/authorize`, and wait for it to come back with a code, which PKCE binds to this process. `patr-cli` is a **public client** — no secret, because a secret shipped in a binary isn't one — registered in the API's `oauth.clients` config with `http://127.0.0.1/callback`; the server ignores the port for loopback redirects, so the CLI binds whatever's free.
+
+- **`--token` still takes an API token** and skips all of it. That's the CI path: no browser, no consent screen, nothing to refresh.
+- **The access token is renewed once per invocation**, in `commands::execute` before dispatch — a CLI run lasts seconds, so a token fresh at dispatch is fresh throughout, and the alternative is a refresh check at every call site. Skipped for `--token`, `login`, `logout`, `upgrade` and `uninstall`.
+- **A rejected refresh clears the session** and returns `NotLoggedIn`; a refresh that can't reach the API is left alone. Collapsing the two would log people out whenever their wifi dropped.
+- **`patr logout` revokes the grant** (RFC 7009), best-effort — local state is cleared whether or not the API answers.
 
 ## Errors
 
@@ -75,4 +88,6 @@ reverted. Concretely:
 API and asserts on the exact request bodies. `constants::API_BASE_URL` is a compile-time
 constant, so the recipe builds the tests with `PATR_TEST_API_BASE_URL` set — plain
 `cargo test -p cli` will point them at a real API and fail. One fixed port means one shared
-server, hence `--test-threads=1`.
+server, hence `--test-threads=1`. The recipe also exports `CONFIG_PATH`, because the
+session-renewal tests write the refreshed state back and would otherwise clobber your real
+login — `unsafe_code` is forbidden, so the suite can't set it itself.
