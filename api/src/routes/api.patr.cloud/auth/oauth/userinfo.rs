@@ -6,7 +6,10 @@ use axum::{
 };
 
 use crate::{
-	models::{oauth::identity::build_identity_claims, permissions},
+	models::{
+		oauth::identity::{UserIdentity, build_identity_claims},
+		permissions,
+	},
 	prelude::*,
 	utils::extractors::ClientIP,
 };
@@ -60,7 +63,14 @@ pub async fn userinfo(
 		);
 	};
 
-	Json(build_identity_claims(&grant.user_data, &grant.scope)).into_response()
+	let identity = UserIdentity {
+		id: grant.user_data.id,
+		first_name: &grant.user_data.first_name,
+		last_name: &grant.user_data.last_name,
+		email: &grant.user_data.email,
+	};
+
+	Json(build_identity_claims(&identity, &grant.scope)).into_response()
 }
 
 /// Pulls the token out of an `Authorization: Bearer` header.
