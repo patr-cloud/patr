@@ -17,10 +17,7 @@ pub(super) async fn execute(
 	}
 
 	let access_token = match state.auth {
-		AuthState::LoggedIn {
-			token,
-			current_workspace: _,
-		} => token,
+		AuthState::LoggedIn { token, .. } => token,
 		AuthState::LoggedOut {} => {
 			return Err(AppError::NotLoggedIn);
 		}

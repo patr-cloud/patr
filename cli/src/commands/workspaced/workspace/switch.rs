@@ -26,6 +26,8 @@ pub(super) async fn execute(
 	let AuthState::LoggedIn {
 		token,
 		current_workspace: _,
+		refresh_token,
+		token_expiry,
 	} = state.auth.clone()
 	else {
 		return Err(AppError::NotLoggedIn);
@@ -68,9 +70,14 @@ pub(super) async fn execute(
 				.clone()
 		});
 
+	// The whole session is rebuilt, so the OAuth half has to be carried over
+	// explicitly — dropping it here would silently downgrade a browser login
+	// to a session that can never refresh.
 	state.auth = AuthState::LoggedIn {
 		token,
 		current_workspace: Some(workspace.id),
+		refresh_token,
+		token_expiry,
 	};
 	state.save()?;
 
