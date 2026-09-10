@@ -3,7 +3,7 @@ use jsonwebtoken::{
 	Algorithm,
 	DecodingKey,
 	EncodingKey,
-	jwk::{AlgorithmParameters, Jwk, PublicKeyUse},
+	jwk::{AlgorithmParameters, Jwk, JwkSet, PublicKeyUse},
 };
 use sha2::{Digest, Sha256};
 
@@ -101,4 +101,11 @@ pub fn get_signing_key(config: &AppConfig) -> Result<SigningKey, ErrorType> {
 /// Finds the key a token names in its `kid`, if it is one of ours.
 pub fn get_key_by_id(config: &AppConfig, kid: &str) -> Result<Option<SigningKey>, ErrorType> {
 	Ok(load_keys(config)?.into_iter().find(|key| key.kid == kid))
+}
+
+/// Every configured key, so a token signed by an older one still verifies.
+pub fn get_jwks(config: &AppConfig) -> Result<JwkSet, ErrorType> {
+	Ok(JwkSet {
+		keys: load_keys(config)?.into_iter().map(|key| key.jwk).collect(),
+	})
 }

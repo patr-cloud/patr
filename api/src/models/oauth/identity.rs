@@ -1,5 +1,6 @@
-use models::RequestUserData;
 use serde::{Deserialize, Serialize};
+
+use crate::prelude::*;
 
 /// The identity claims a grant's scopes entitle a client to see.
 ///
@@ -32,21 +33,38 @@ pub struct IdentityClaims {
 	pub email_verified: Option<bool>,
 }
 
+/// Just enough of a user to build their identity claims.
+///
+/// Deliberately not `RequestUserData`: that carries a whole permission map,
+/// and the two callers here have neither the need for one nor the same way
+/// of getting it — `/userinfo` has already authenticated the request, while
+/// `/token` is minting an id token for a grant it has only just created.
+pub struct UserIdentity<'a> {
+	/// The user id, which becomes `sub`.
+	pub id: Uuid,
+	/// Their given name.
+	pub first_name: &'a str,
+	/// Their family name.
+	pub last_name: &'a str,
+	/// Their email address, which is also their unique identifier.
+	pub email: &'a str,
+}
+
 /// Builds the identity claims for a user, keeping only what `scope` allows.
 ///
 /// `scope` is the space-delimited set stored on the grant at consent time,
 /// not whatever the client asks for now: RFC 6749 section 6 makes a refresh
 /// default to the originally granted scope, so a client cannot widen its own
 /// view of the user after the fact.
-pub fn build_identity_claims(user: &RequestUserData, scope: &str) -> IdentityClaims {
+pub fn build_identity_claims(user: &UserIdentity<'_>, scope: &str) -> IdentityClaims {
 	let granted = |wanted: &str| scope.split_whitespace().any(|scope| scope == wanted);
 
 	IdentityClaims {
 		sub: user.id.to_string(),
 		name: granted("profile").then(|| format!("{} {}", user.first_name, user.last_name)),
-		given_name: granted("profile").then(|| user.first_name.clone()),
-		family_name: granted("profile").then(|| user.last_name.clone()),
-		email: granted("email").then(|| user.email.clone()),
+		given_name: granted("profile").then(|| user.first_name.to_owned()),
+		family_name: granted("profile").then(|| user.last_name.to_owned()),
+		email: granted("email").then(|| user.email.to_owned()),
 		// Asserted rather than stored: there is no column for it, and there
 		// does not need to be. Sign-up is OTP-gated on the address itself and
 		// the GitHub path only accepts an email GitHub has already verified,

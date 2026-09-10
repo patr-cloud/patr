@@ -11,6 +11,9 @@ use crate::{prelude::*, utils::config::AppConfig};
 /// The authorization endpoint. The front channel: a browser arrives here
 /// from the client, and leaves for the consent screen.
 mod authorize;
+/// The provider metadata document and the JWKS, both served from
+/// `/.well-known/` so a client can find everything else from the issuer.
+mod discovery;
 /// The OAuth-shaped error envelope. The protocol endpoints do not use
 /// Patr's, because a client library matches on the spec's field names.
 mod error;
@@ -94,6 +97,13 @@ pub fn append_query_params(uri: &str, params: &[(&str, String)]) -> String {
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
+		// Relative to the API's root, so these resolve to `{issuer}/.well-known/…`
+		// under both the cloud host fanout and the self-hosted `/api` prefix.
+		.route(
+			"/.well-known/openid-configuration",
+			get(discovery::openid_configuration),
+		)
+		.route("/.well-known/jwks.json", get(discovery::jwks))
 		.route("/auth/oauth/authorize", get(authorize::authorize))
 		.route("/auth/oauth/token", post(token::token))
 		// Both methods, per OIDC Core section 5.3.
