@@ -74,7 +74,7 @@ install:
 
 up:
     docker compose -f docker-compose.yml up -d --wait
-    docker run --rm --network e2e_default --entrypoint sh minio/mc -c 'mc alias set local http://minio:9000 minioadmin minioadmin && mc mb --ignore-existing local/patr-e2e'
+    docker run --rm --network e2e_default --entrypoint sh quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z -c 'mc alias set local http://minio:9000 minioadmin minioadmin && mc mb --ignore-existing local/patr-e2e'
     for v in $(echo "${DOCKER_VERSIONS:-}" | tr ',' ' '); do docker pull "docker:$v-dind"; done
 
 test *args:
