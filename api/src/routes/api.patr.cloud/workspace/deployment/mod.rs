@@ -38,18 +38,18 @@ Figure out how to structure:
 */
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.merge(deploy_history::setup_routes(state, allowed_client_type).await)
-		.mount_endpoint(machine_type, state, allowed_client_type)
-		.mount_auth_endpoint(list_deployment, state, allowed_client_type)
-		.mount_auth_endpoint(create_deployment, state, allowed_client_type)
-		.mount_auth_endpoint(get_deployment_info, state, allowed_client_type)
-		.mount_auth_endpoint(start_deployment, state, allowed_client_type)
-		.mount_auth_endpoint(stop_deployment, state, allowed_client_type)
-		.mount_auth_endpoint(get_deployment_logs, state, allowed_client_type)
-		.mount_auth_endpoint(delete_deployment, state, allowed_client_type)
-		.mount_auth_endpoint(update_deployment, state, allowed_client_type)
-		.mount_auth_endpoint(get_deployment_metric, state, allowed_client_type)
-		.mount_auth_endpoint(stream_deployment_logs, state, allowed_client_type)
+		.merge(deploy_history::setup_routes(state, allowed_client_types).await)
+		.mount_endpoint(machine_type, state, allowed_client_types)
+		.mount_auth_endpoint(list_deployment, state, allowed_client_types)
+		.mount_auth_endpoint(create_deployment, state, allowed_client_types)
+		.mount_auth_endpoint(get_deployment_info, state, allowed_client_types)
+		.mount_auth_endpoint(start_deployment, state, allowed_client_types)
+		.mount_auth_endpoint(stop_deployment, state, allowed_client_types)
+		.mount_auth_endpoint(get_deployment_logs, state, allowed_client_types)
+		.mount_auth_endpoint(delete_deployment, state, allowed_client_types)
+		.mount_auth_endpoint(update_deployment, state, allowed_client_types)
+		.mount_auth_endpoint(get_deployment_metric, state, allowed_client_types)
+		.mount_auth_endpoint(stream_deployment_logs, state, allowed_client_types)
 }

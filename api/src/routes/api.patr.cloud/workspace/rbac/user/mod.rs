@@ -28,14 +28,14 @@ use self::{
 };
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(invite_user_to_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(list_users_in_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(list_workspace_invites, state, allowed_client_type)
-		.mount_auth_endpoint(remove_user_from_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(resend_workspace_invite, state, allowed_client_type)
-		.mount_auth_endpoint(revoke_workspace_invite, state, allowed_client_type)
-		.mount_auth_endpoint(update_user_roles_in_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(update_workspace_invite_roles, state, allowed_client_type)
+		.mount_auth_endpoint(invite_user_to_workspace, state, allowed_client_types)
+		.mount_auth_endpoint(list_users_in_workspace, state, allowed_client_types)
+		.mount_auth_endpoint(list_workspace_invites, state, allowed_client_types)
+		.mount_auth_endpoint(remove_user_from_workspace, state, allowed_client_types)
+		.mount_auth_endpoint(resend_workspace_invite, state, allowed_client_types)
+		.mount_auth_endpoint(revoke_workspace_invite, state, allowed_client_types)
+		.mount_auth_endpoint(update_user_roles_in_workspace, state, allowed_client_types)
+		.mount_auth_endpoint(update_workspace_invite_roles, state, allowed_client_types)
 }

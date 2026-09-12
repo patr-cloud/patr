@@ -22,6 +22,7 @@ macros::declare_api_endpoint!(
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceDeleted,
 		resource_type: ResourceType::Deployment,

@@ -61,7 +61,11 @@ cfg_if! {
 		/// header to the six platform subdomains.
 		#[instrument(skip(state))]
 		pub async fn setup_routes(state: &AppState) -> Router {
-			let api_router = api_patr_cloud::setup_routes(state, ClientType::ApiToken).await;
+			let api_router = api_patr_cloud::setup_routes(
+				state,
+				&[ClientType::ApiToken, ClientType::ServiceAccount],
+			)
+			.await;
 			let app_router = app_patr_cloud::setup_routes(state).await;
 			let assets_router = assets_patr_cloud::setup_routes(state).await;
 			let loki_router = loki_patr_cloud::setup_routes(state).await;
@@ -100,9 +104,21 @@ cfg_if! {
 			Router::new()
 				.merge(registry_patr_cloud::setup_routes(state).await)
 				.merge(loki_patr_cloud::setup_routes(state).await)
+				// Self-hosted serves every client from this one router — the
+				// dashboard, third-party API tokens, and service accounts
+				// (runners). Each endpoint's own `ALLOWED_CLIENT_TYPES` still
+				// gates who may actually call it.
 				.nest(
 					"/api",
-					api_patr_cloud::setup_routes(state, ClientType::WebDashboard).await,
+					api_patr_cloud::setup_routes(
+						state,
+						&[
+							ClientType::WebDashboard,
+							ClientType::ApiToken,
+							ClientType::ServiceAccount,
+						],
+					)
+					.await,
 				)
 				.nest("/mimir", mimir_patr_cloud::setup_routes(state).await)
 				.nest("/assets", assets_patr_cloud::setup_routes(state).await)

@@ -9,7 +9,8 @@ pub async fn initialize_actor_client_tables(
 	query!(
 		r#"
 		CREATE TYPE ACTOR_CLIENT_TYPE AS ENUM(
-			'user_login'
+			'user_login',
+			'service_account'
 		);
 		"#
 	)

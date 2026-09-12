@@ -30,26 +30,26 @@ use self::{
 
 /// Sets up the user routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, allowed_client_types: &[ClientType]) -> Router {
 	Router::new()
-		.merge(api_token::setup_routes(state, allowed_client_type).await)
-		.merge(mfa::setup_routes(state, allowed_client_type).await)
+		.merge(api_token::setup_routes(state, allowed_client_types).await)
+		.merge(mfa::setup_routes(state, allowed_client_types).await)
 		.merge(
 			#[cfg(feature = "cloud")]
 			{
-				social_logins::setup_routes(state, allowed_client_type).await
+				social_logins::setup_routes(state, allowed_client_types).await
 			},
 			#[cfg(not(feature = "cloud"))]
 			{
 				Router::new()
 			},
 		)
-		.merge(web_logins::setup_routes(state, allowed_client_type).await)
-		.mount_auth_endpoint(accept_workspace_invite, state, allowed_client_type)
-		.mount_auth_endpoint(preview_workspace_invite, state, allowed_client_type)
-		.mount_auth_endpoint(change_password, state, allowed_client_type)
-		.mount_auth_endpoint(get_user_details, state, allowed_client_type)
-		.mount_auth_endpoint(get_user_info, state, allowed_client_type)
-		.mount_auth_endpoint(list_workspaces, state, allowed_client_type)
-		.mount_auth_endpoint(update_user_info, state, allowed_client_type)
+		.merge(web_logins::setup_routes(state, allowed_client_types).await)
+		.mount_auth_endpoint(accept_workspace_invite, state, allowed_client_types)
+		.mount_auth_endpoint(preview_workspace_invite, state, allowed_client_types)
+		.mount_auth_endpoint(change_password, state, allowed_client_types)
+		.mount_auth_endpoint(get_user_details, state, allowed_client_types)
+		.mount_auth_endpoint(get_user_info, state, allowed_client_types)
+		.mount_auth_endpoint(list_workspaces, state, allowed_client_types)
+		.mount_auth_endpoint(update_user_info, state, allowed_client_types)
 }
