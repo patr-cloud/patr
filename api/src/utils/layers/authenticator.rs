@@ -150,6 +150,7 @@ where
 				&req.state.config,
 				req.client_ip,
 				token,
+				<E as ApiEndpoint>::API_ALLOWED,
 			)
 			.await?;
 

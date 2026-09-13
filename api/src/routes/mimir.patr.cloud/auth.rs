@@ -44,6 +44,7 @@ pub(super) async fn authenticate_and_authorize(
 		&state.config,
 		addr.ip(),
 		api_token,
+		true,
 	)
 	.await
 	.map_err(|err| {

@@ -64,6 +64,12 @@ pub enum ErrorType {
 	Unauthorized,
 	/// The access token (JWT) provided is invalid
 	AuthorizationTokenInvalid,
+	/// The credential is valid, but not of a kind this endpoint accepts. An
+	/// OAuth grant acts on a user's behalf from software they do not control,
+	/// so it is kept away from the endpoints that change how they log in.
+	/// Distinct from [`Self::Unauthorized`] on purpose: retrying, refreshing
+	/// or logging in again will never help.
+	ClientTypeNotAllowed,
 	/// The email provided is not available. It is being used by another account
 	EmailUnavailable,
 	/// The reset token used to reset the given user's password is invalid.
@@ -169,6 +175,7 @@ impl ErrorType {
 			Self::MalformedRefreshToken => StatusCode::BAD_REQUEST,
 			Self::Unauthorized => StatusCode::UNAUTHORIZED,
 			Self::AuthorizationTokenInvalid => StatusCode::UNAUTHORIZED,
+			Self::ClientTypeNotAllowed => StatusCode::FORBIDDEN,
 			Self::EmailUnavailable => StatusCode::CONFLICT,
 			Self::InvalidPasswordResetToken => StatusCode::BAD_REQUEST,
 			Self::ResourceDoesNotExist => StatusCode::NOT_FOUND,
@@ -230,6 +237,9 @@ impl ErrorType {
 			Self::MalformedRefreshToken => "Your refresh token is invalid. Please login again",
 			Self::Unauthorized => "You are not authorized to perform that action",
 			Self::AuthorizationTokenInvalid => "Your access token has expired. Please login again",
+			Self::ClientTypeNotAllowed => {
+				"This endpoint cannot be used with the kind of credential you provided"
+			}
 			Self::EmailUnavailable => "An account already exists with that email",
 			Self::InvalidPasswordResetToken => {
 				"The token provided to reset your password is not valid"

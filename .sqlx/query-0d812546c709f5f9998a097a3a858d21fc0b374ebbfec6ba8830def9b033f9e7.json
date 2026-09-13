@@ -1,0 +1,105 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT oauth_login.client_id, oauth_login.scope, oauth_login.revoked, \"user\".* FROM oauth_login INNER JOIN \"user\" ON oauth_login.user_id = \"user\".id WHERE oauth_login.login_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "client_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "scope",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "revoked",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "password",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "first_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "last_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "created",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "email",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "workspace_limit",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "password_reset_token",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "password_reset_token_expiry",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
+        "name": "password_reset_attempts",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "mfa_secret",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0d812546c709f5f9998a097a3a858d21fc0b374ebbfec6ba8830def9b033f9e7"
+}

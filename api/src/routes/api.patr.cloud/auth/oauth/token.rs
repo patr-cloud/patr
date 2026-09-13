@@ -26,6 +26,7 @@ use time::OffsetDateTime;
 use super::error::{OAuthError, OAuthErrorCode};
 use crate::{
 	models::oauth::{
+		self,
 		claims::OAuthAccessTokenClaims,
 		keys,
 		types::{OAuthAuthorizationCode, OAuthReplacementTokens, hash_code},
@@ -433,13 +434,13 @@ fn mint_access_token(
 	})?;
 
 	let claims = OAuthAccessTokenClaims {
-		iss: super::issuer(&state.config),
+		iss: oauth::issuer(&state.config),
 		// The user, not the grant. Stable across every grant they hold.
 		sub: *user_id,
 		// The API is the audience. Pinning this is what stops an id token —
 		// which names the *client* as its audience — being replayed here as
 		// an API credential.
-		aud: super::api_audience(&state.config),
+		aud: oauth::api_audience(&state.config),
 		azp: client_id.to_owned(),
 		sid: *login_id,
 		scope: scope.to_owned(),
