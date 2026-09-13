@@ -100,10 +100,15 @@ export default createMiddleware({
 			});
 		}
 
+		// Carry where they were going, so an interrupted flow (OAuth consent,
+		// say) resumes after logging in instead of dropping them on the
+		// dashboard. Sanitised on the way back out, at the point of use.
+		const returnTo = encodeURIComponent(url.pathname + url.search);
+
 		return new Response(null, {
 			status: 302,
 			headers: {
-				Location: "/login",
+				Location: `/login?returnTo=${returnTo}`,
 				"Set-Cookie": authCookie("", 0),
 			},
 		});

@@ -18,6 +18,7 @@ import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction, useAuthState } from "~/hooks";
 import { IS_CLOUD } from "~/utils/env";
 import { EMAIL_PATTERN, validateEmail } from "~/utils/validation";
+import { sanitizeReturnTo } from "~/utils/return-to";
 
 interface InputFields {
 	email: string;
@@ -29,6 +30,7 @@ const Login = () => {
 	const [, setAuthState] = useAuthState();
 	const router = useRouter();
 	const navigate = useNavigate();
+	const search = Route.useSearch();
 	const toast = useToast();
 	const [githubLoading, setGithubLoading] = createSignal(false);
 	const [showMfa, setShowMfa] = createSignal(false);
@@ -133,9 +135,15 @@ const Login = () => {
 				},
 			});
 			await router.invalidate();
-			// If the user arrived here from a workspace invite link, resume that
-			// flow instead of dropping them on the dashboard.
-			if (sessionStorage.getItem("pendingWorkspaceInvite")) {
+			// Resume whatever the user was doing before they were sent here.
+			// `returnTo` is user-controlled, so it is narrowed to a path on
+			// this origin first — otherwise the login page becomes an open
+			// redirect, and a very convincing phishing hop.
+			const returnTo = sanitizeReturnTo(search().returnTo);
+			if (returnTo) {
+				navigate({ to: returnTo, replace: true });
+			} else if (sessionStorage.getItem("pendingWorkspaceInvite")) {
+				// Predates `returnTo`; kept working for links already sent out.
 				navigate({ to: "/accept-invite", replace: true });
 			} else {
 				navigate({ to: "/", replace: true });
@@ -313,5 +321,8 @@ const Login = () => {
 };
 
 export const Route = createFileRoute("/_logged-out/login/")({
+	validateSearch: (search: Record<string, unknown>): { returnTo?: string } => ({
+		returnTo: (search.returnTo as string) || undefined,
+	}),
 	component: Login,
 });
