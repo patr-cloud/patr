@@ -143,6 +143,33 @@ impl TestSetup {
 			.await
 	}
 
+	/// Make a raw form-encoded POST against the api-routed server, with
+	/// optional HTTP Basic credentials.
+	///
+	/// `/token` takes `application/x-www-form-urlencoded` and authenticates
+	/// the client by Basic header or body field — neither of which the typed
+	/// helpers can express.
+	pub async fn make_raw_api_form_post(
+		&self,
+		path: &str,
+		form: &[(&str, &str)],
+		basic_auth: Option<(&str, &str)>,
+	) -> TestResponse {
+		let mut request = self
+			.api
+			.post(path)
+			.add_header("X-Real-IP", random_ipv4().to_string())
+			.form(&form.iter().copied().collect::<Vec<_>>());
+
+		if let Some((id, secret)) = basic_auth {
+			use base64::{Engine as _, prelude::BASE64_STANDARD};
+			let encoded = BASE64_STANDARD.encode(format!("{id}:{secret}"));
+			request = request.add_header("Authorization", format!("Basic {encoded}"));
+		}
+
+		request.await
+	}
+
 	/// Make a typed API call against the routes configured for
 	/// `ClientType::ApiToken` authentication. Use this for any test that
 	/// presents a `patrv1.{refresh}.{login_id}` API token in the
@@ -362,6 +389,17 @@ impl TestSetup {
 			.expect("failed to write redis key");
 	}
 
+	/// Delete the value at `key` from the test Redis.
+	pub async fn delete_redis_value(&self, key: &str) {
+		use rustis::commands::GenericCommands;
+
+		self.state
+			.redis
+			.del(key)
+			.await
+			.expect("failed to delete redis key");
+	}
+
 	/// Compute the current TOTP code for a base32-encoded secret. Used by MFA
 	/// tests that need to submit a valid OTP.
 	pub fn compute_totp(&self, secret_base32: &str) -> String {
@@ -410,6 +448,22 @@ impl TestSetup {
 
 /// Helps setup the test server and database for API tests. This is used by all
 /// API tests, so it should be kept up to date and working.
+/// The key `api/tests/Justfile` generates. Resolved against the manifest
+/// directory because cargo runs tests from `api/`.
+fn test_signing_key() -> String {
+	let path = concat!(
+		env!("CARGO_MANIFEST_DIR"),
+		"/../config/oauth-signing-key.pem"
+	);
+
+	std::fs::read_to_string(path).unwrap_or_else(|err| {
+		panic!(
+			"could not read the OAuth signing key at `{path}`: {err}. Run the tests via `just \
+			 api test`, which generates it."
+		)
+	})
+}
+
 pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	// Bind listeners now and pass them to axum::serve below. Axum-test's
 	// `http_transport_with_ip_port` has a drop-then-rebind race that collides
@@ -591,6 +645,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 			]
 			.into_iter()
 			.collect(),
+			signing_keys: vec![test_signing_key()],
 		},
 	};
 

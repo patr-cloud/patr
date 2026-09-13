@@ -21,6 +21,11 @@ pub enum OAuthErrorCode {
 	InvalidRequest,
 	/// The client is not known, or failed to authenticate.
 	InvalidClient,
+	/// The authorization code or refresh token is invalid, expired, revoked,
+	/// already used, or was issued to another client.
+	InvalidGrant,
+	/// The grant type is not one this server implements.
+	UnsupportedGrantType,
 	/// The response type is not one this server implements. OAuth 2.1 only
 	/// defines `code`.
 	UnsupportedResponseType,
@@ -45,6 +50,8 @@ impl OAuthErrorCode {
 		match self {
 			Self::InvalidRequest => "invalid_request",
 			Self::InvalidClient => "invalid_client",
+			Self::InvalidGrant => "invalid_grant",
+			Self::UnsupportedGrantType => "unsupported_grant_type",
 			Self::UnsupportedResponseType => "unsupported_response_type",
 			Self::InvalidScope => "invalid_scope",
 			Self::AccessDenied => "access_denied",

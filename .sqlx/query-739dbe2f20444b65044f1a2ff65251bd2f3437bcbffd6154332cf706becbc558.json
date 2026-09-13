@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE oauth_refresh_token SET consumed = COALESCE(consumed, $1) WHERE login_id = $2 RETURNING id AS \"id: Uuid\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "739dbe2f20444b65044f1a2ff65251bd2f3437bcbffd6154332cf706becbc558"
+}

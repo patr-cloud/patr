@@ -91,6 +91,30 @@ pub struct OAuthAuthorizationCode {
 	pub created_user_agent: String,
 }
 
+/// The token pair a refresh token minted when it was consumed, parked in
+/// Redis for the length of the grace window.
+///
+/// Clients race themselves — the CLI refreshing on two threads at once is
+/// ordinary behaviour, not an attack — and without this the loser of the
+/// race presents a token that is already consumed and gets the whole grant
+/// revoked. Replaying the pair leaves both callers holding exactly what they
+/// would have held had the requests been serialised.
+///
+/// The plaintext refresh token is deliberately nowhere in Postgres, so this
+/// cannot be reconstructed from the row; it has to be kept. Redis is where
+/// it belongs — it is wanted for [`OAUTH_REFRESH_TOKEN_GRACE_PERIOD`] and
+/// never again, and a TTL expires it without a sweep.
+///
+/// [`OAUTH_REFRESH_TOKEN_GRACE_PERIOD`]: crate::utils::constants::OAUTH_REFRESH_TOKEN_GRACE_PERIOD
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthReplacementTokens {
+	/// The access token that was minted.
+	pub access_token: String,
+	/// The refresh token that was minted, in plaintext.
+	pub refresh_token: String,
+}
+
 /// Hashes a code for use as its Redis key.
 ///
 /// Keyed on the hash rather than the code itself so that a Redis dump, or a

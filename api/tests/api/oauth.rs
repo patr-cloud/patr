@@ -13,9 +13,18 @@ use crate::prelude::*;
 const CLIENT_ID: &str = "test-client";
 /// Its one registered redirect URI.
 const REDIRECT_URI: &str = "http://localhost:19999/cb";
-/// A syntactically valid S256 challenge. The exchange half is PR 4's
-/// problem; `/authorize` only checks it is present and non-empty.
-const CODE_CHALLENGE: &str = "E9Melhoa2OwvfrEr_gYNIYq0M3vLU7QAOPqPzYGZjnI";
+/// The S256 challenge for [`CODE_VERIFIER`], i.e.
+/// `base64url(sha256(verifier))` with the padding stripped.
+const CODE_CHALLENGE: &str = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+
+/// Pulls the token id out of a `patrv1.{secret}.{id}` refresh token.
+fn token_id(refresh_token: &str) -> Uuid {
+	refresh_token
+		.rsplit('.')
+		.next()
+		.and_then(|id| Uuid::parse_str(id).ok())
+		.expect("a refresh token ending in its id")
+}
 
 /// Builds an `/authorize` query with every required parameter, so each test
 /// can override exactly the one it is about and nothing else.
@@ -516,4 +525,543 @@ async fn the_authorize_endpoint_is_rate_limited() {
 	// Reported in the body rather than bounced to the client's redirect_uri,
 	// so a throttled request cannot be turned into a redirect.
 	assert!(response.text().contains("temporarily_unavailable"));
+}
+
+// ---------------------------------------------------------------------------
+// POST /auth/oauth/token
+// ---------------------------------------------------------------------------
+
+/// The client secret seeded in `setup.rs` for [`CLIENT_ID`].
+const CLIENT_SECRET: &str = "test-client-secret";
+/// The PKCE verifier whose challenge is [`CODE_CHALLENGE`]. The verifier is
+/// RFC 7636's own worked example.
+const CODE_VERIFIER: &str = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+
+/// Runs a full authorize → consent → code cycle and returns the code.
+async fn issue_code(setup: &TestSetup, scope: &str) -> (String, TestUser) {
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_raw_api_get(&format!(
+			"/auth/oauth/authorize?{}",
+			authorize_query(&[("scope", scope)])
+		))
+		.await;
+
+	let url = reqwest::Url::parse(&location(&response)).expect("Location should parse");
+	let request_id = Uuid::parse_str(
+		&url.query_pairs()
+			.find(|(key, _)| key == "requestId")
+			.map(|(_, value)| value.into_owned())
+			.expect("missing requestId"),
+	)
+	.expect("requestId should be a UUID");
+
+	let consent = setup
+		.make_web_dashboard_call(
+			ApiRequest::<SubmitConsentRequest>::builder()
+				.path(SubmitConsentPath { request_id })
+				.headers(SubmitConsentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(SubmitConsentRequest { approved: true })
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<SubmitConsentResponse>>();
+
+	let redirect =
+		reqwest::Url::parse(&consent.response.redirect_uri).expect("redirect should parse");
+	let code = redirect
+		.query_pairs()
+		.find(|(key, _)| key == "code")
+		.map(|(_, value)| value.into_owned())
+		.expect("a code should have been issued");
+
+	(code, user)
+}
+
+/// Exchanges a code, authenticating with HTTP Basic.
+async fn exchange(setup: &TestSetup, code: &str) -> TestResponse {
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "authorization_code"),
+				("code", code),
+				("redirect_uri", REDIRECT_URI),
+				("code_verifier", CODE_VERIFIER),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+}
+
+#[tokio::test]
+async fn exchanging_a_code_returns_tokens() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid profile offline_access").await;
+
+	let response = exchange(&setup, &code).await;
+	response.assert_status(StatusCode::OK);
+
+	// The response must be a bare body, not Patr's success envelope — a
+	// client library reads these names off the top level.
+	let body: serde_json::Value = response.json();
+	assert!(
+		body.get("success").is_none(),
+		"the token response must not be wrapped in Patr's envelope: {body}"
+	);
+	assert!(body["access_token"].is_string());
+	assert_eq!(body["token_type"], "Bearer");
+	assert!(body["expires_in"].is_number());
+	assert!(body["refresh_token"].is_string());
+	assert_eq!(body["scope"], "openid profile offline_access");
+
+	// Tokens must never be cached by anything in the path.
+	assert_eq!(
+		response
+			.headers()
+			.get(http::header::CACHE_CONTROL)
+			.and_then(|value| value.to_str().ok()),
+		Some("no-store")
+	);
+}
+
+#[tokio::test]
+async fn the_access_token_is_an_es256_jwt_naming_the_api_as_its_audience() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, user) = issue_code(&setup, "openid offline_access").await;
+
+	let body: serde_json::Value = exchange(&setup, &code).await.json();
+	let token = body["access_token"].as_str().expect("an access token");
+
+	let header = jsonwebtoken::decode_header(token).expect("the header should parse");
+	assert_eq!(header.alg, jsonwebtoken::Algorithm::ES256);
+	assert!(header.kid.is_some(), "the header must name the signing key");
+	// RFC 9068. Together with `aud`, this is what stops an id token — which
+	// names the client as its audience — being replayed as an API credential.
+	assert_eq!(header.typ.as_deref(), Some("at+jwt"));
+
+	// Decoded without verification: the point here is which claims were put
+	// in, not whether the signature holds (covered by the JWKS unit test).
+	let claims = token.split('.').nth(1).expect("a payload segment");
+	let decoded = base64::Engine::decode(&base64::prelude::BASE64_URL_SAFE_NO_PAD, claims)
+		.expect("the payload should be base64url");
+	let claims: serde_json::Value =
+		serde_json::from_slice(&decoded).expect("the payload should be JSON");
+
+	// `sub` is the user and `sid` is the grant. Getting these the wrong way
+	// round would make relying parties treat each new grant as a new account.
+	assert_eq!(claims["sub"], user.user_id.to_string());
+	assert_ne!(claims["sid"], claims["sub"]);
+	assert_eq!(claims["azp"], CLIENT_ID);
+}
+
+#[tokio::test]
+async fn a_code_cannot_be_exchanged_twice() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid offline_access").await;
+
+	exchange(&setup, &code).await.assert_status(StatusCode::OK);
+
+	let replayed = exchange(&setup, &code).await;
+	replayed.assert_status(StatusCode::BAD_REQUEST);
+	assert!(replayed.text().contains("invalid_grant"));
+}
+
+#[tokio::test]
+async fn the_wrong_code_verifier_is_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid").await;
+
+	// The whole point of PKCE: holding the code is not enough.
+	let response = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "authorization_code"),
+				("code", &code),
+				("redirect_uri", REDIRECT_URI),
+				("code_verifier", "not-the-verifier-that-was-used"),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await;
+
+	response.assert_status(StatusCode::BAD_REQUEST);
+	assert!(response.text().contains("invalid_grant"));
+}
+
+#[tokio::test]
+async fn a_mismatched_redirect_uri_is_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid").await;
+
+	let response = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "authorization_code"),
+				("code", &code),
+				("redirect_uri", "http://localhost:19999/somewhere-else"),
+				("code_verifier", CODE_VERIFIER),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await;
+
+	response.assert_status(StatusCode::BAD_REQUEST);
+	assert!(response.text().contains("invalid_grant"));
+}
+
+#[tokio::test]
+async fn client_credentials_are_accepted_in_the_body_as_well_as_basic() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid").await;
+
+	// Grafana's oauth2 library tries Basic first and falls back to body
+	// fields; supporting only one would fail against it.
+	let response = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "authorization_code"),
+				("client_id", CLIENT_ID),
+				("client_secret", CLIENT_SECRET),
+				("code", &code),
+				("redirect_uri", REDIRECT_URI),
+				("code_verifier", CODE_VERIFIER),
+			],
+			None,
+		)
+		.await;
+
+	response.assert_status(StatusCode::OK);
+}
+
+#[tokio::test]
+async fn a_wrong_client_secret_is_unauthorized() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid").await;
+
+	let response = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "authorization_code"),
+				("code", &code),
+				("redirect_uri", REDIRECT_URI),
+				("code_verifier", CODE_VERIFIER),
+			],
+			Some((CLIENT_ID, "not-the-secret")),
+		)
+		.await;
+
+	// RFC 6749 5.2: a client that fails to authenticate gets 401 and a
+	// challenge, so it can tell bad credentials from a bad request. Unlike
+	// /authorize, the caller here is a server, not a browser.
+	response.assert_status(StatusCode::UNAUTHORIZED);
+	assert!(
+		response
+			.headers()
+			.get(http::header::WWW_AUTHENTICATE)
+			.is_some()
+	);
+	assert!(response.text().contains("invalid_client"));
+}
+
+#[tokio::test]
+async fn a_code_cannot_be_redeemed_by_another_client() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid").await;
+
+	// Authenticates fine as itself, but the code belongs to someone else.
+	let response = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "authorization_code"),
+				("client_id", "test-public-client"),
+				("code", &code),
+				("redirect_uri", REDIRECT_URI),
+				("code_verifier", CODE_VERIFIER),
+			],
+			None,
+		)
+		.await;
+
+	response.assert_status(StatusCode::BAD_REQUEST);
+	assert!(response.text().contains("invalid_grant"));
+}
+
+#[tokio::test]
+async fn no_refresh_token_without_offline_access() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid profile").await;
+
+	let body: serde_json::Value = exchange(&setup, &code).await.json();
+	assert!(
+		body.get("refresh_token").is_none(),
+		"a refresh token should only be issued for offline_access: {body}"
+	);
+}
+
+#[tokio::test]
+async fn refreshing_rotates_the_token_and_retires_the_old_one() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid offline_access").await;
+
+	let first: serde_json::Value = exchange(&setup, &code).await.json();
+	let original = first["refresh_token"].as_str().expect("a refresh token");
+
+	let second = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[("grant_type", "refresh_token"), ("refresh_token", original)],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await;
+	second.assert_status(StatusCode::OK);
+	let second: serde_json::Value = second.json();
+	let rotated = second["refresh_token"].as_str().expect("a rotated token");
+	assert_ne!(rotated, original, "the refresh token should rotate");
+}
+
+#[tokio::test]
+async fn a_raced_refresh_token_replays_the_pair_it_already_minted() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid offline_access").await;
+
+	let first: serde_json::Value = exchange(&setup, &code).await.json();
+	let original = first["refresh_token"]
+		.as_str()
+		.expect("a refresh token")
+		.to_owned();
+
+	let second: serde_json::Value = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				("refresh_token", &original),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.json();
+	let rotated = second["refresh_token"]
+		.as_str()
+		.expect("a rotated token")
+		.to_owned();
+
+	// Within the grace window a replay is treated as a race and handed the
+	// same pair back — that is what stops ordinary client concurrency from
+	// logging people out. The grant must still be alive afterwards.
+	let raced: serde_json::Value = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				("refresh_token", &original),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.json();
+	assert_eq!(
+		raced["refresh_token"].as_str(),
+		Some(rotated.as_str()),
+		"a raced refresh should return the refresh token the loser already minted"
+	);
+	assert_eq!(
+		raced["access_token"], second["access_token"],
+		"and the access token that came with it, so both racers hold one pair"
+	);
+
+	// The rotated token still works, so nothing was revoked by the race.
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[("grant_type", "refresh_token"), ("refresh_token", &rotated)],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.assert_status(StatusCode::OK);
+}
+
+#[tokio::test]
+async fn replaying_a_refresh_token_outside_the_grace_window_revokes_the_grant() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid offline_access").await;
+
+	let first: serde_json::Value = exchange(&setup, &code).await.json();
+	let original = first["refresh_token"]
+		.as_str()
+		.expect("a refresh token")
+		.to_owned();
+	let original_id = token_id(&original);
+
+	let second: serde_json::Value = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				("refresh_token", &original),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.json();
+	let rotated = second["refresh_token"]
+		.as_str()
+		.expect("a rotated token")
+		.to_owned();
+
+	// Backdate the consumption so the replay lands outside the window. Past
+	// it there is no benign reading left: the token was used once and is
+	// being presented again, which is what a stolen token looks like.
+	setup
+		.execute_sql(&format!(
+			"UPDATE oauth_refresh_token SET consumed = NOW() - INTERVAL '1 hour' \
+			 WHERE id = '{original_id}'"
+		))
+		.await;
+
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				("refresh_token", &original),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+
+	// The whole family dies with the replay, so the token the attacker did
+	// not have is dead too.
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[("grant_type", "refresh_token"), ("refresh_token", &rotated)],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn a_lost_replacement_in_redis_refuses_the_refresh_without_revoking() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid offline_access").await;
+
+	let first: serde_json::Value = exchange(&setup, &code).await.json();
+	let original = first["refresh_token"]
+		.as_str()
+		.expect("a refresh token")
+		.to_owned();
+
+	let second: serde_json::Value = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				("refresh_token", &original),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.json();
+	let rotated = second["refresh_token"]
+		.as_str()
+		.expect("a rotated token")
+		.to_owned();
+
+	// Simulate Redis losing the pair — a flush, an eviction, a failover.
+	setup
+		.delete_redis_value(&redis_keys::oauth_replacement_tokens(&token_id(&original)))
+		.await;
+
+	// Still inside the window, so this is not evidence of anything. The one
+	// request fails and the client retries; the grant survives.
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				("refresh_token", &original),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[("grant_type", "refresh_token"), ("refresh_token", &rotated)],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.assert_status(StatusCode::OK);
+}
+
+#[tokio::test]
+async fn a_forged_secret_against_a_real_token_id_does_not_revoke_the_grant() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid offline_access").await;
+
+	let first: serde_json::Value = exchange(&setup, &code).await.json();
+	let original = first["refresh_token"]
+		.as_str()
+		.expect("a refresh token")
+		.to_owned();
+
+	// Same token id, wrong secret. This is a guess, not a replay — treating
+	// it as one would let anyone kill a victim's grant by iterating ids.
+	let token_id = original.rsplit('.').next().expect("a token id");
+	let forged = format!("patrv1.{}.{}", Uuid::new_v4(), token_id);
+
+	let response = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[("grant_type", "refresh_token"), ("refresh_token", &forged)],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await;
+	response.assert_status(StatusCode::BAD_REQUEST);
+
+	// The real token must still work.
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				("refresh_token", &original),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.assert_status(StatusCode::OK);
+}
+
+#[tokio::test]
+async fn an_unsupported_grant_type_is_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	// client_credentials has no user, so there is no permission map to act
+	// with under this scope model. It is deliberately not implemented.
+	let response = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[("grant_type", "client_credentials")],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await;
+
+	response.assert_status(StatusCode::BAD_REQUEST);
+	assert!(response.text().contains("unsupported_grant_type"));
 }
