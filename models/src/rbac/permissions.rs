@@ -295,41 +295,6 @@ pub enum BillingPermission {
 	MakePayment,
 }
 
-/// A list of all permissions that can be granted on a volume.
-#[derive(
-	Eq,
-	Ord,
-	Copy,
-	Hash,
-	Debug,
-	Clone,
-	Display,
-	EnumIter,
-	PartialEq,
-	Serialize,
-	PartialOrd,
-	EnumString,
-	EnumMessage,
-	Deserialize,
-	VariantNames,
-)]
-#[strum(serialize_all = "camelCase")]
-#[serde(rename_all = "camelCase")]
-pub enum VolumePermission {
-	/// This permission allows the user to create a new volume in a workspace.
-	Create,
-	/// This permission allows the user to view the volume and it's details, but
-	/// not edit it, delete it, or create a new one.
-	View,
-	/// This permission allows the user to edit the volume, but not delete it or
-	/// create a new one.
-	Edit,
-	/// This permission allows the user to delete the volume, but not create a
-	/// new one, view it, or edit it. This permission is useful for users or API
-	/// tokens that need to only delete volumes by their ID.
-	Delete,
-}
-
 /// A list of all permissions that can be granted on a resource.
 #[derive(
 	Eq,
@@ -356,9 +321,6 @@ pub enum Permission {
 	/// All permissions related to a deployments
 	#[strum(to_string = "deployment::{0}")]
 	Deployment(DeploymentPermission),
-	/// All permissions related to volumes
-	#[strum(to_string = "volume::{0}")]
-	Volume(VolumePermission),
 	/// All permissions related to container registry repositories
 	#[strum(to_string = "containerRegistryRepository::{0}")]
 	ContainerRegistryRepository(ContainerRegistryRepositoryPermission),
@@ -409,7 +371,6 @@ impl Permission {
 			Permission::ManagedURL(permission) => permission.get_documentation(),
 			Permission::Runner(permission) => permission.get_documentation(),
 			Permission::Secret(permission) => permission.get_documentation(),
-			Permission::Volume(permission) => permission.get_documentation(),
 			Permission::ViewRoles | Permission::ModifyRoles | Permission::EditWorkspace => {
 				self.get_documentation()
 			}
@@ -437,7 +398,6 @@ impl FromStr for Permission {
 			"managedURL" => Self::ManagedURL(permission.parse()?),
 			"runner" => Self::Runner(permission.parse()?),
 			"secret" => Self::Secret(permission.parse()?),
-			"volume" => Self::Volume(permission.parse()?),
 			"viewRoles" => Self::ViewRoles,
 			"modifyRoles" => Self::ModifyRoles,
 			"editWorkspace" => Self::EditWorkspace,

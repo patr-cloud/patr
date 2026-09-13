@@ -4,7 +4,6 @@ use models::api::workspace::{
 	domain::*,
 	runner::*,
 	secret::*,
-	volume::*,
 };
 
 use crate::prelude::*;
@@ -44,22 +43,6 @@ async fn typed_deletes_refuse_an_id_of_another_type() {
 			.await;
 		statuses.push(("secret", response.status_code()));
 	}
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<DeleteVolumeRequest>::builder()
-				.path(DeleteVolumePath {
-					workspace_id: workspace.id,
-					volume_id: deployment.id,
-				})
-				.headers(DeleteVolumeRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-	statuses.push(("volume", response.status_code()));
 
 	let response = setup
 		.make_web_dashboard_call(

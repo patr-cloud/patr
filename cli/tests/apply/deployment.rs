@@ -32,7 +32,6 @@ struct Ids {
 	workspace: Uuid,
 	runner: Uuid,
 	deployment: Uuid,
-	volume: Uuid,
 	/// The machine type the existing deployment runs on.
 	machine_type: Uuid,
 	/// The machine type `ListAllDeploymentMachineType` returns first.
@@ -45,7 +44,6 @@ impl Ids {
 			workspace: Uuid::parse_str("00000000000000000000000000000001").unwrap(),
 			runner: Uuid::parse_str("00000000000000000000000000000002").unwrap(),
 			deployment: Uuid::parse_str("00000000000000000000000000000003").unwrap(),
-			volume: Uuid::parse_str("00000000000000000000000000000004").unwrap(),
 			machine_type: Uuid::parse_str("00000000000000000000000000000005").unwrap(),
 			other_machine_type: Uuid::parse_str("00000000000000000000000000000006").unwrap(),
 		}
@@ -75,7 +73,7 @@ async fn mount_existing(ids: &Ids) -> &'static wiremock::MockServer {
 		server,
 		ids.workspace,
 		existing,
-		running_details_with_volume(ids.volume),
+		running_details_with_volume(),
 	)
 	.await;
 	mount_deployment_update(server, ids.workspace, ids.deployment).await;
@@ -104,9 +102,7 @@ async fn update_preserves_volumes_and_machine_type() {
 
 	assert_eq!(
 		body.running_details.volumes,
-		[(ids.volume, "/data".to_string())]
-			.into_iter()
-			.collect::<std::collections::BTreeMap<_, _>>(),
+		running_details_with_volume().volumes,
 		"apply detached the volume the config file doesn't describe"
 	);
 	assert_eq!(
@@ -206,7 +202,7 @@ async fn update_rejects_a_registry_change() {
 		server,
 		ids.workspace,
 		existing,
-		running_details_with_volume(ids.volume),
+		running_details_with_volume(),
 	)
 	.await;
 	mount_deployment_update(server, ids.workspace, ids.deployment).await;
@@ -251,7 +247,7 @@ async fn registry_change_error_spells_out_a_patr_repository() {
 		server,
 		ids.workspace,
 		existing,
-		running_details_with_volume(ids.volume),
+		running_details_with_volume(),
 	)
 	.await;
 	mount_repository_info(server, ids.workspace, repository_id, "my-app").await;

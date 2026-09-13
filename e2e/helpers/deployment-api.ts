@@ -41,7 +41,7 @@ export type DeploymentInfo = {
 	startupProbe?: { port: number; path: string };
 	livenessProbe?: { port: number; path: string };
 	configMounts: Record<string, string>;
-	volumes: Record<string, string>;
+	volumes: Record<string, Record<string, never>>;
 };
 
 // The body the create endpoint expects. registry + running_details are
@@ -62,7 +62,7 @@ export type CreateDeploymentBody = {
 	startupProbe?: { port: number; path: string };
 	livenessProbe?: { port: number; path: string };
 	configMounts?: Record<string, string>;
-	volumes?: Record<string, string>;
+	volumes?: Record<string, Record<string, never>>;
 	deployOnCreate: boolean;
 };
 
@@ -81,7 +81,7 @@ export type CreateDeploymentOpts = {
 	startupProbe?: { port: number; path: string };
 	livenessProbe?: { port: number; path: string };
 	configMounts?: Record<string, string>;
-	volumes?: Record<string, string>;
+	volumes?: Record<string, Record<string, never>>;
 };
 
 // Build a default Patr-registry create body from opts. deployOnCreate defaults
