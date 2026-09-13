@@ -607,10 +607,16 @@ pub(crate) async fn delete(runner: &DockerRunner, id: Uuid) -> Result<(), Runner
 
 	// `delete_service` returns before Swarm's task reaper has removed the
 	// exited task containers, and a stopped-but-not-yet-removed container
-	// still holds its volumes, so the first few attempts can get
-	// `409 Conflict: volume is in use`. Retry briefly rather than passing
-	// `force` — `force` doesn't override an in-use volume, it only corrupts
-	// the daemon's refcount when it fails.
+	// still holds its volumes, so the first attempts get
+	// `409 Conflict: volume is in use`. Retry rather than passing `force` —
+	// `force` doesn't override an in-use volume, it only corrupts the
+	// daemon's refcount when it fails.
+	//
+	// The wait is bounded by the task's shutdown: SIGTERM, then
+	// `StopGracePeriod` (Docker's default 10s — this runner doesn't set it),
+	// then SIGKILL and container removal, plus a flush of the volume's dirty
+	// pages on unmount. The ceiling has to stay above that sum; if a grace
+	// period is ever configured here, raise it to match.
 	let volumes = docker
 		.list_volumes(Some(ListVolumesOptions {
 			filters: Some(HashMap::from([(
@@ -631,7 +637,7 @@ pub(crate) async fn delete(runner: &DockerRunner, id: Uuid) -> Result<(), Runner
 				.await
 			{
 				Ok(()) => break,
-				Err(err) if attempts < 20 => {
+				Err(err) if attempts < 40 => {
 					attempts += 1;
 					trace!("Volume {} still in use, retrying: {}", volume.name, err);
 					tokio::time::sleep(std::time::Duration::from_millis(500)).await;
