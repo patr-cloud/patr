@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use models::{
+	ApiErrorResponseBody,
 	ApiSuccessResponseBody,
 	api::workspace::deployment::{deploy_history::*, *},
 	utils::{Base64String, ListResourceQuery, StringifiedU16, Uuid},
@@ -915,95 +916,158 @@ async fn create_deployment_duplicate_name() {
 	);
 }
 
+/// A create body with the given volume paths.
+fn patr_body_with_volumes(
+	repo: Uuid,
+	runner: Uuid,
+	machine_type: Uuid,
+	paths: &[&str],
+) -> CreateDeploymentRequest {
+	let mut body = patr_body(repo, runner, machine_type);
+	body.running_details.volumes = paths
+		.iter()
+		.map(|path| ((*path).to_string(), VolumeConfig {}))
+		.collect();
+	body
+}
+
 #[tokio::test]
-async fn create_deployment_with_volumes() {
+async fn create_deployment_with_volumes_round_trips() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 	let runner = setup
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
-	let volume = setup
-		.create_test_volume(&user.access_token, workspace.id)
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
 		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
 
-	let mt_id = setup
-		.make_web_dashboard_call(
-			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
-				.path(ListAllDeploymentMachineTypePath {
-					workspace_id: workspace.id,
-				})
-				.headers(ListAllDeploymentMachineTypeRequestHeaders {
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
+	let body = patr_body_with_volumes(repo.id, runner.id, mt, &["/data", "/var/lib/postgresql"]);
+	let expected = body.running_details.volumes.clone();
+	let id = send_create(&setup, &user.access_token, workspace.id, body)
 		.await
-		.json::<ApiSuccessResponseBody<ListAllDeploymentMachineTypeResponse>>()
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
 		.response
-		.machine_types[0]
+		.id
 		.id;
 
-	let mut volumes = BTreeMap::new();
-	volumes.insert(volume.id, "/data".to_string());
+	let info = get_info(&setup, &user.access_token, workspace.id, id).await;
+	assert_eq!(info.running_details.volumes, expected);
 
-	let create_resp = setup
-		.make_web_dashboard_call(
-			ApiRequest::<CreateDeploymentRequest>::builder()
-				.path(CreateDeploymentPath {
-					workspace_id: workspace.id,
-				})
-				.headers(CreateDeploymentRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(CreateDeploymentRequest {
-					name: random_name(8),
-					registry: DeploymentRegistry::ExternalRegistry {
-						registry: "docker.io".to_string(),
-						image_name: "library/nginx".to_string(),
-					},
-					image_tag: "latest".to_string(),
-					runner: runner.id,
-					machine_type: mt_id,
-					running_details: DeploymentRunningDetails {
-						deploy_on_push: false,
-						min_horizontal_scale: 1,
-						max_horizontal_scale: 1,
-						ports: BTreeMap::new(),
-						environment_variables: BTreeMap::new(),
-						startup_probe: None,
-						liveness_probe: None,
-						config_mounts: BTreeMap::new(),
-						volumes,
-					},
-					deploy_on_create: false,
-				})
-				.build(),
-		)
-		.await
-		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>();
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<GetDeploymentInfoRequest>::builder()
-				.path(GetDeploymentInfoPath {
-					workspace_id: workspace.id,
-					deployment_id: create_resp.response.id.id,
-				})
-				.headers(GetDeploymentInfoRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await
-		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>();
-
+	// Update is clear-then-reinsert: drop one, keep one.
+	let mut update = full_update(&setup, &user.access_token, workspace.id, id).await;
+	update.running_details.volumes.remove("/data");
+	assert!(
+		send_update(&setup, &user.access_token, workspace.id, id, update)
+			.await
+			.status_code()
+			.is_success()
+	);
+	let info = get_info(&setup, &user.access_token, workspace.id, id).await;
 	assert_eq!(
-		response.response.running_details.volumes.get(&volume.id),
-		Some(&"/data".to_string()),
-		"deployment should report its mounted volume"
+		info.running_details.volumes.keys().collect::<Vec<_>>(),
+		["/var/lib/postgresql"]
+	);
+}
+
+/// The path CHECK on `deployment_volume` is the validation, surfaced as a 400.
+#[tokio::test]
+async fn create_deployment_with_malformed_volume_path_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	for path in [
+		"data",
+		"/",
+		"/data/",
+		"//data",
+		"/data//x",
+		"/data/./x",
+		"/data/../x",
+	] {
+		let body = patr_body_with_volumes(repo.id, runner.id, mt, &[path]);
+		let response = send_create(&setup, &user.access_token, workspace.id, body).await;
+		assert_eq!(
+			response.json::<ApiErrorResponseBody>().error,
+			ErrorType::WrongParameters,
+			"{path:?} must be rejected"
+		);
+	}
+}
+
+/// A config mount and a volume at the same path is caught before the DB.
+#[tokio::test]
+async fn create_deployment_volume_colliding_with_config_mount_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut body = patr_body_with_volumes(repo.id, runner.id, mt, &["/etc/app"]);
+	body.running_details
+		.config_mounts
+		.insert("/etc/app".to_string(), Base64String::from(b"x".to_vec()));
+	let response = send_create(&setup, &user.access_token, workspace.id, body).await;
+	assert_eq!(
+		response.json::<ApiErrorResponseBody>().error,
+		ErrorType::WrongParameters
+	);
+}
+
+/// Volumes are node-local, so more than one replica is refused on create and
+/// on update.
+#[tokio::test]
+async fn deployment_with_volumes_requires_single_replica() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut body = patr_body_with_volumes(repo.id, runner.id, mt, &["/data"]);
+	body.running_details.max_horizontal_scale = 2;
+	let response = send_create(&setup, &user.access_token, workspace.id, body).await;
+	assert_eq!(
+		response.json::<ApiErrorResponseBody>().error,
+		ErrorType::VolumesRequireSingleReplica
+	);
+
+	let body = patr_body_with_volumes(repo.id, runner.id, mt, &["/data"]);
+	let id = send_create(&setup, &user.access_token, workspace.id, body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response
+		.id
+		.id;
+
+	let mut update = full_update(&setup, &user.access_token, workspace.id, id).await;
+	update.running_details.min_horizontal_scale = 2;
+	update.running_details.max_horizontal_scale = 2;
+	let response = send_update(&setup, &user.access_token, workspace.id, id, update).await;
+	assert_eq!(
+		response.json::<ApiErrorResponseBody>().error,
+		ErrorType::VolumesRequireSingleReplica
 	);
 }
 

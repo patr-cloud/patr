@@ -120,11 +120,21 @@ pub struct DeploymentRunningDetails {
 	/// The config map attached to a deployment
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
 	pub config_mounts: BTreeMap<String, Base64String>,
-	/// The volume ID attached to a deployment, along with the path it is
-	/// mounted on
+	/// Directories inside the container whose contents survive restarts,
+	/// redeploys and image changes. Keyed by absolute mount path.
 	#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-	pub volumes: BTreeMap<Uuid, String>,
+	pub volumes: BTreeMap<String, VolumeConfig>,
 }
+
+/// Per-volume configuration.
+///
+/// Deliberately empty today. `name`, `size` and a workspace-volume reference
+/// can be added as optional fields without breaking the wire format. Declared
+/// with braces rather than as a unit struct — a unit struct serializes to
+/// `null`, which would break exactly that promise.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, JsonSchema, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct VolumeConfig {}
 
 /// The type of environment variable
 /// The keys can either have a string as a value or a secret
@@ -176,10 +186,14 @@ impl EnvironmentVariableValue {
 /// Validates a deployment's running details. The runner hands the container
 /// each environment variable as a `KEY=value` string and refuses blank ones, so
 /// a key can't be empty or hold `=`, whitespace or NUL, and a value can't be
-/// blank or hold NUL.
+/// blank or hold NUL. A path can't be both a config mount and a volume either —
+/// Docker would refuse the duplicate mount point at deploy time, so catch it at
+/// create time. Nested paths are fine, and a volume path's shape is enforced by
+/// the `deployment_volume` CHECK constraint.
 ///
 /// # Errors
-/// Returns an error naming the first environment variable that breaks a rule.
+/// Returns an error naming the first environment variable that breaks a rule,
+/// or the first path claimed by both a config mount and a volume.
 pub fn validate_running_details(
 	details: DeploymentRunningDetails,
 ) -> Result<DeploymentRunningDetails, preprocess::Error> {
@@ -197,6 +211,16 @@ pub fn validate_running_details(
 				"Environment variable `{key}` can't be blank"
 			)));
 		}
+	}
+
+	if let Some(path) = details
+		.config_mounts
+		.keys()
+		.find(|path| details.volumes.contains_key(*path))
+	{
+		return Err(preprocess::Error::new(format!(
+			"`{path}` is both a config mount and a volume"
+		)));
 	}
 
 	Ok(details)
@@ -481,4 +505,50 @@ pub struct DeploymentLog {
 	pub timestamp: OffsetDateTime,
 	/// The logs of a deployment
 	pub log: String,
+}
+
+#[cfg(test)]
+mod tests {
+	use std::collections::BTreeMap;
+
+	use super::{DeploymentRunningDetails, VolumeConfig, validate_running_details};
+	use crate::utils::Base64String;
+
+	/// Running details with the given volume and config-mount paths, everything
+	/// else defaulted.
+	fn details(volumes: &[&str], config_mounts: &[&str]) -> DeploymentRunningDetails {
+		DeploymentRunningDetails {
+			deploy_on_push: false,
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 1,
+			ports: BTreeMap::new(),
+			environment_variables: BTreeMap::new(),
+			startup_probe: None,
+			liveness_probe: None,
+			config_mounts: config_mounts
+				.iter()
+				.map(|path| ((*path).to_string(), Base64String::from(Vec::new())))
+				.collect(),
+			volumes: volumes
+				.iter()
+				.map(|path| ((*path).to_string(), VolumeConfig {}))
+				.collect(),
+		}
+	}
+
+	#[test]
+	fn rejects_only_a_config_mount_at_a_volume_path() {
+		assert!(validate_running_details(details(&["/data"], &["/data"])).is_err());
+		// Nested is fine — Docker mounts it like any other nested mount point.
+		assert!(validate_running_details(details(&["/data"], &["/data/config.json"])).is_ok());
+		assert!(validate_running_details(details(&["/data", "/data/sub"], &[])).is_ok());
+	}
+
+	#[test]
+	fn volume_config_serializes_as_empty_object() {
+		assert_eq!(
+			serde_json::to_string(&details(&["/data"], &[]).volumes).unwrap(),
+			r#"{"/data":{}}"#
+		);
+	}
 }

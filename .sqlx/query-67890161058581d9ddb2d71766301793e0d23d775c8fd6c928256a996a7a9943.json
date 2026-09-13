@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM deployment_volume WHERE id = $1;",
+  "query": "DELETE FROM deployment_volume WHERE deployment_id = $1;",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "466211106fae110ba40a425a3f41778887094d9907b131a1e1709878d40edd48"
+  "hash": "67890161058581d9ddb2d71766301793e0d23d775c8fd6c928256a996a7a9943"
 }

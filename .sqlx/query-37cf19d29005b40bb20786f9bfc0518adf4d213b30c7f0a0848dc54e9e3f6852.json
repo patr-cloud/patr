@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n    id,\n    status,\n    last_result AS result\nFROM\n    apalis.jobs\nWHERE\n    id IN (\n        SELECT\n            value::text\n        FROM\n            jsonb_array_elements_text($1) AS value\n    )\n    AND (\n        status = 'Done'\n        OR (\n            status = 'Failed'\n            AND attempts >= max_attempts\n        )\n        OR status = 'Killed'\n    );\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "result",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "37cf19d29005b40bb20786f9bfc0518adf4d213b30c7f0a0848dc54e9e3f6852"
+}

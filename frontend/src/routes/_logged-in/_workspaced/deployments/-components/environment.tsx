@@ -12,12 +12,13 @@ import { EventT } from "~/utils/types";
 import ConfigMount from "./config-mount";
 import EnvList from "./env-list";
 import { isSameUpdate, toUpdateRequest } from "./utils";
+import VolumeMount from "./volume-mount";
 
 interface DeploymentEnvironmentProps {
 	deploymentId: string;
 }
 
-/** What the deployment's container is given at startup: env vars and config files. */
+/** What the deployment's container is given at startup: env vars, config files and volumes. */
 const DeploymentEnvironment = (props: DeploymentEnvironmentProps) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
@@ -40,6 +41,7 @@ const DeploymentEnvironment = (props: DeploymentEnvironmentProps) => {
 	const [isUpdating, setIsUpdating] = createSignal(false);
 	const [envValid, setEnvValid] = createSignal(true);
 	const [configMountsValid, setConfigMountsValid] = createSignal(true);
+	const [volumesValid, setVolumesValid] = createSignal(true);
 
 	// Whether the draft would change anything if saved. Update stays disabled
 	// until it would.
@@ -136,6 +138,24 @@ const DeploymentEnvironment = (props: DeploymentEnvironmentProps) => {
 					onChange={(next) => setLocalInfo((prev) => (prev ? { ...prev, configMounts: next } : undefined))}
 					onValidityChange={setConfigMountsValid}
 				/>
+
+				<div class="border-t border-border-color w-full mt-2" />
+
+				<div class="flex flex-col gap-1 w-full">
+					<h2 class="text-lg text-white font-semibold">Volumes</h2>
+					<p class="text-sm text-grey">
+						Directories whose contents survive restarts. Removing one keeps its data on the runner, so
+						re-adding the same path restores it. A deployment with volumes runs a single replica.
+					</p>
+				</div>
+
+				<VolumeMount
+					disabled={() => !deploymentPermissions().edit}
+					value={() => deploymentQuery.data?.volumes ?? {}}
+					configMountPaths={() => Object.keys(localInfo()?.configMounts ?? {})}
+					onChange={(next) => setLocalInfo((prev) => (prev ? { ...prev, volumes: next } : undefined))}
+					onValidityChange={setVolumesValid}
+				/>
 			</div>
 
 			<Show when={deploymentPermissions().edit}>
@@ -145,7 +165,7 @@ const DeploymentEnvironment = (props: DeploymentEnvironmentProps) => {
 						<span class="text-sm text-grey">Unsaved changes</span>
 					</Show>
 					<Button
-						disabled={!isDirty() || isUpdating() || !envValid() || !configMountsValid()}
+						disabled={!isDirty() || isUpdating() || !envValid() || !configMountsValid() || !volumesValid()}
 						loading={isUpdating()}
 						loadingContent={() => <span>Updating...</span>}
 						type="submit"

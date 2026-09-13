@@ -44,7 +44,6 @@ pub mod prelude {
 			ResourceType,
 			RunnerPermission,
 			SecretPermission,
-			VolumePermission,
 		},
 		utils::{
 			AppAuthentication,

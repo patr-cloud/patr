@@ -542,7 +542,7 @@ where
 	db_helpers::delete_all_managed_urls_in_database(&mut transaction).await?;
 
 	// Clear all deployment-related tables.
-	query("DELETE FROM deployment_volume_mount;")
+	query("DELETE FROM deployment_volume;")
 		.execute(&mut *transaction)
 		.await?;
 	query("DELETE FROM deployment_deploy_history;")

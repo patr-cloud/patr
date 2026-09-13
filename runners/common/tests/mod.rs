@@ -17,6 +17,7 @@ mod managed_server;
 mod schema;
 mod status_reconciliation;
 mod supervision;
+mod volumes;
 
 mod prelude {
 	pub use std::time::Duration;

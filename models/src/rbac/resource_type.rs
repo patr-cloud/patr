@@ -43,10 +43,6 @@ pub enum ResourceType {
 	/// container image. It can be scaled horizontally, and can be configured to
 	/// deploy on push.
 	Deployment,
-	/// A volume within a workspace. A volume is a persistent storage that can
-	/// be attached to a deployment. It can be used to store data that needs to
-	/// persist across deployments.
-	Volume,
 	/// A container registry repository within a workspace. A container registry
 	/// repository is a collection of container images that can be deployed to
 	/// a deployment, which will be run on a runner.

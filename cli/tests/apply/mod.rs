@@ -209,7 +209,7 @@ pub fn external_deployment(
 
 /// Running details with a volume attached — the thing the IaaC schema can't
 /// describe and apply therefore has to preserve.
-pub fn running_details_with_volume(volume_id: Uuid) -> DeploymentRunningDetails {
+pub fn running_details_with_volume() -> DeploymentRunningDetails {
 	DeploymentRunningDetails {
 		deploy_on_push: false,
 		min_horizontal_scale: 1,
@@ -221,7 +221,9 @@ pub fn running_details_with_volume(volume_id: Uuid) -> DeploymentRunningDetails 
 		startup_probe: None,
 		liveness_probe: None,
 		config_mounts: BTreeMap::new(),
-		volumes: [(volume_id, "/data".to_string())].into_iter().collect(),
+		volumes: [("/data".to_string(), VolumeConfig {})]
+			.into_iter()
+			.collect(),
 	}
 }
 

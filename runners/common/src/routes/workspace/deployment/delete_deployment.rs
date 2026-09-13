@@ -33,7 +33,7 @@ pub async fn delete_deployment(
 	query(
 		r#"
 		DELETE FROM
-			deployment_volume_mount
+			deployment_volume
 		WHERE
 			deployment_id = $1;
 		"#,

@@ -205,31 +205,28 @@ pub async fn create_deployment(
 
 	trace!("Inserted config mounts for deployment");
 
-	for (volume_id, mount_path) in &volumes {
+	for path in volumes.keys() {
 		query(
 			r#"
-			INSERT INTO 
-				deployment_volume_mount(
+			INSERT INTO
+				deployment_volume(
 					deployment_id,
-					volume_id,
-					volume_mount_path
+					path
 				)
 			VALUES
 				(
 					$1,
-					$2,
-					$3
+					$2
 				);
 			"#,
 		)
 		.bind(deployment_id)
-		.bind(volume_id)
-		.bind(mount_path)
+		.bind(path)
 		.execute(&mut **database)
 		.await?;
 	}
 
-	trace!("Inserted volume mounts for deployment");
+	trace!("Inserted volumes for deployment");
 
 	// Notify the actor system after the transaction commits (the
 	// DataStoreConnectionLayer commits after we return Ok). Use send_after
