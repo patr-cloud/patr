@@ -131,6 +131,30 @@ impl TestSetup {
 			.await
 	}
 
+	/// Make a raw GET against the api-routed server, carrying a bearer token.
+	///
+	/// `/userinfo` is a plain axum route that reads the `Authorization`
+	/// header itself, so it needs a raw request with a token on it.
+	pub async fn make_raw_api_get_authed(&self, path: &str, token: &str) -> TestResponse {
+		self.api
+			.get(path)
+			.add_header("X-Real-IP", random_ipv4().to_string())
+			.add_header("Authorization", format!("Bearer {token}"))
+			.await
+	}
+
+	/// Make a raw POST against the api-routed server, carrying a bearer token.
+	///
+	/// OIDC Core section 5.3 requires `/userinfo` to answer POST as well as
+	/// GET, so both need exercising.
+	pub async fn make_raw_api_post_authed(&self, path: &str, token: &str) -> TestResponse {
+		self.api
+			.post(path)
+			.add_header("X-Real-IP", random_ipv4().to_string())
+			.add_header("Authorization", format!("Bearer {token}"))
+			.await
+	}
+
 	/// Make a raw form-encoded POST against the api-routed server, with
 	/// optional HTTP Basic credentials.
 	///
