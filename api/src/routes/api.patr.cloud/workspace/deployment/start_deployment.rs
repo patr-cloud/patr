@@ -315,10 +315,9 @@ pub async fn start_deployment(
 	let volumes = query!(
 		r#"
 		SELECT
-			volume_id AS "volume_id: Uuid",
-			volume_mount_path
+			path
 		FROM
-			deployment_volume_mount
+			deployment_volume
 		WHERE
 			deployment_id = $1;
 		"#,
@@ -327,13 +326,8 @@ pub async fn start_deployment(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|row| {
-		let volume_id = row.volume_id;
-		let volume_mount_path = row.volume_mount_path;
-
-		Ok((volume_id, volume_mount_path))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
+	.map(|row| (row.path, VolumeConfig {}))
+	.collect::<BTreeMap<_, _>>();
 
 	let name = row.name;
 	let image_tag = row.image_tag;

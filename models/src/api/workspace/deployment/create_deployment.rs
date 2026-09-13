@@ -1,4 +1,4 @@
-use super::{DeploymentRegistry, DeploymentRunningDetails};
+use super::{DeploymentRegistry, DeploymentRunningDetails, validate_running_details};
 use crate::{
 	prelude::*,
 	utils::constants::{DEPLOYMENT_IMAGE_TAG_REGEX, RESOURCE_NAME_REGEX},
@@ -44,7 +44,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub machine_type: Uuid,
 		/// The details of the deployment which contains information related to configuration
-		#[preprocess(none)]
+		#[preprocess(custom = "validate_running_details")]
 		#[serde(flatten)]
 		pub running_details: DeploymentRunningDetails,
 		/// Option to start the deployment once it is created

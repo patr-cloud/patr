@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_volume ADD CONSTRAINT deployment_volume_fk_deployment_id FOREIGN KEY(deployment_id) REFERENCES deployment(id), ADD CONSTRAINT deployment_volume_chk_path_valid CHECK(path ~ '^(/[^/]+)+$' AND path !~ '/\\.\\.?(/|$)' AND LENGTH(path) <= 4096);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a856324fea18091db26436bfddaf651dac531f2bbc0e93ce7ee734c3e3e5b2a5"
+}

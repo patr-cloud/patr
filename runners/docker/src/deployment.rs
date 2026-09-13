@@ -4,19 +4,27 @@ use bollard::{
 	auth::DockerCredentials,
 	models::{
 		HealthConfig,
+		Mount,
+		MountType,
+		MountVolumeOptions,
 		NetworkAttachmentConfig,
 		ServiceSpec,
 		ServiceSpecMode,
 		ServiceSpecModeReplicated,
+		ServiceSpecUpdateConfig,
+		ServiceSpecUpdateConfigOrderEnum,
 		TaskSpec,
 		TaskSpecContainerSpec,
 		TaskSpecContainerSpecConfigs,
 		TaskSpecContainerSpecFile1,
+		VolumeCreateRequest,
 	},
 	query_parameters::{
 		ListConfigsOptions,
 		ListServicesOptions,
 		ListServicesOptionsBuilder,
+		ListVolumesOptions,
+		RemoveVolumeOptions,
 		UpdateServiceOptionsBuilder,
 	},
 };
@@ -53,7 +61,7 @@ pub(crate) async fn upsert(
 		startup_probe,
 		liveness_probe,
 		config_mounts,
-		volumes: _, // TODO
+		volumes,
 	}: DeploymentRunningDetails,
 ) -> Result<(), RunnerError> {
 	let service_name = format!("patr-{}", id);
@@ -211,6 +219,65 @@ pub(crate) async fn upsert(
 		});
 	}
 
+	// Volumes: one named Docker volume per path, mounted read-write. The name
+	// is derived from the path, so removing a path and re-adding it later
+	// finds the same data — detaching never deletes a volume; only
+	// `delete()` does.
+	//
+	// Volumes are created explicitly (rather than by the daemon on first
+	// mount) so they carry the labels `delete()` sweeps on. The same labels go
+	// on the mount too, for the case where the daemon creates one anyway.
+	let volume_labels = HashMap::from([
+		(String::from("managed-by"), String::from("patr")),
+		(
+			String::from("patr.version"),
+			String::from(constants::PATR_VERSION),
+		),
+		(String::from("patr.deploymentId"), id.to_string()),
+	]);
+	let mut volume_mounts = Vec::with_capacity(volumes.len());
+	for path in volumes.keys() {
+		let volume_name = crate::utils::deployment_volume_name(id, path);
+		let exists = match docker.inspect_volume(&volume_name).await {
+			Ok(_) => true,
+			Err(bollard::errors::Error::DockerResponseServerError {
+				status_code: 404, ..
+			}) => false,
+			Err(err) => {
+				error!("Error inspecting volume `{}`: {:?}", volume_name, err);
+				return Err(RunnerError::host(err));
+			}
+		};
+		if !exists {
+			docker
+				.create_volume(VolumeCreateRequest {
+					name: Some(volume_name.clone()),
+					labels: Some(volume_labels.clone()),
+					..Default::default()
+				})
+				.await
+				.map_err(|err| {
+					error!(
+						"Error creating volume `{}` for `{}`: {:?}",
+						volume_name, path, err
+					);
+					RunnerError::host(err)
+				})?;
+		}
+
+		volume_mounts.push(Mount {
+			target: Some(path.clone()),
+			source: Some(volume_name),
+			typ: Some(MountType::VOLUME),
+			read_only: Some(false),
+			volume_options: Some(MountVolumeOptions {
+				labels: Some(volume_labels.clone()),
+				..Default::default()
+			}),
+			..Default::default()
+		});
+	}
+
 	// Build the service spec
 	let networks = Some(vec![NetworkAttachmentConfig {
 		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
@@ -267,6 +334,11 @@ pub(crate) async fn upsert(
 				])),
 				health_check,
 				hosts: Some(vec![format!("host.docker.internal:{host_ip}")]),
+				mounts: if volume_mounts.is_empty() {
+					None
+				} else {
+					Some(volume_mounts)
+				},
 				configs: if mount_configs.is_empty() {
 					None
 				} else {
@@ -283,6 +355,24 @@ pub(crate) async fn upsert(
 				// Autoscaling between min and max would require external tools
 				replicas: Some(min_horizontal_scale as i64),
 			}),
+			..Default::default()
+		}),
+		update_config: Some(ServiceSpecUpdateConfig {
+			// Zero-downtime deploys for stateless deployments: start the new
+			// task, then stop the old one. Traffic reaches the service through
+			// the ingress network alias, not a published host port, so both
+			// tasks can coexist briefly.
+			//
+			// A deployment with volumes must be `stop-first`: the old task has
+			// to release its volumes before the new one mounts them, or both
+			// write the same directory at once.
+			order: Some(
+				if volumes.is_empty() {
+					ServiceSpecUpdateConfigOrderEnum::START_FIRST
+				} else {
+					ServiceSpecUpdateConfigOrderEnum::STOP_FIRST
+				},
+			),
 			..Default::default()
 		}),
 		..Default::default()
@@ -320,6 +410,10 @@ pub(crate) async fn upsert(
 	// (i.e. a mount was removed from this deployment). `update_config`'s own
 	// cleanup is scoped per base_name, so it only handles content churn within
 	// an ordinal — not a whole ordinal going away.
+	//
+	// There is deliberately no volume analogue of this sweep. A volume whose
+	// path was removed from the deployment must survive, so re-adding the path
+	// gets the data back. Volumes are only reclaimed by `delete()`.
 	let base_name_prefix = format!("config-{}-", id);
 	let existing_mount_configs = docker
 		.list_configs(Some(ListConfigsOptions {
@@ -437,11 +531,14 @@ pub(crate) async fn list_running<'a>(
 	.boxed()
 }
 
-/// Delete the deployment with the given ID. This will remove the service
-/// if it exists. The deployment's ingress config is not deleted here — it
-/// must be removed via [`ingress::delete_deployment_config`] which first
-/// unmounts it from Caddy.
-pub(crate) async fn delete(
+/// Stop the deployment with the given ID: remove the service and its configs
+/// but keep its volumes, so a later [`upsert`] finds the data where it left
+/// it.
+///
+/// The deployment's ingress config is not deleted here — it must be removed
+/// via [`ingress::delete_deployment_config`] which first unmounts it from
+/// Caddy.
+pub(crate) async fn stop(
 	DockerRunner { docker, .. }: &DockerRunner,
 	id: Uuid,
 ) -> Result<(), RunnerError> {
@@ -494,6 +591,65 @@ pub(crate) async fn delete(
 				"Failed to clean up mount config {} for deleted deployment {}: {}",
 				config_id, id, err
 			);
+		}
+	}
+
+	Ok(())
+}
+
+/// Delete the deployment with the given ID: everything [`stop`] does, then
+/// reclaim its volumes. Irreversible — use [`stop`] for a deployment that
+/// will be started again.
+pub(crate) async fn delete(runner: &DockerRunner, id: Uuid) -> Result<(), RunnerError> {
+	stop(runner, id).await?;
+
+	let DockerRunner { docker, .. } = runner;
+
+	// `delete_service` returns before Swarm's task reaper has removed the
+	// exited task containers, and a stopped-but-not-yet-removed container
+	// still holds its volumes, so the first attempts get
+	// `409 Conflict: volume is in use`. Retry rather than passing `force` —
+	// `force` doesn't override an in-use volume, it only corrupts the
+	// daemon's refcount when it fails.
+	//
+	// The wait is bounded by the task's shutdown: SIGTERM, then
+	// `StopGracePeriod` (Docker's default 10s — this runner doesn't set it),
+	// then SIGKILL and container removal, plus a flush of the volume's dirty
+	// pages on unmount. The ceiling has to stay above that sum; if a grace
+	// period is ever configured here, raise it to match.
+	let volumes = docker
+		.list_volumes(Some(ListVolumesOptions {
+			filters: Some(HashMap::from([(
+				String::from("label"),
+				vec![format!("patr.deploymentId={}", id)],
+			)])),
+		}))
+		.await
+		.map_err(RunnerError::host)?
+		.volumes
+		.unwrap_or_default();
+
+	for volume in volumes {
+		let mut attempts = 0u32;
+		loop {
+			match docker
+				.remove_volume(&volume.name, None::<RemoveVolumeOptions>)
+				.await
+			{
+				Ok(()) => break,
+				Err(err) if attempts < 40 => {
+					attempts += 1;
+					trace!("Volume {} still in use, retrying: {}", volume.name, err);
+					tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+				}
+				Err(err) => {
+					warn!(
+						"Failed to reclaim volume {} for deleted deployment {}: {}",
+						volume.name, id, err
+					);
+					break;
+				}
+			}
 		}
 	}
 

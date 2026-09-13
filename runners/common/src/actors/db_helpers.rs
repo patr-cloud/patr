@@ -16,7 +16,7 @@ use crate::prelude::*;
 ///
 /// Owned child tables (`deployment_exposed_port`,
 /// `deployment_environment_variable`, `deployment_config_mounts`,
-/// `deployment_volume_mount`) are cleared and re-inserted; `managed_url` and
+/// `deployment_volume`) are cleared and re-inserted; `managed_url` and
 /// `deployment_deploy_history` are NOT touched so a `DeploymentUpdated` event
 /// from upstream doesn't cascade-wipe the runner's managed URL state.
 #[instrument(skip(connection))]
@@ -144,7 +144,7 @@ pub async fn upsert_deployment_in_database(
 	query(
 		r#"
 		DELETE FROM
-			deployment_volume_mount
+			deployment_volume
 		WHERE
 			deployment_id = $1;
 		"#,
@@ -273,22 +273,20 @@ pub async fn upsert_deployment_in_database(
 		.await?;
 	}
 
-	for (volume_id, mount_path) in &volumes {
+	for path in volumes.keys() {
 		query(
 			r#"
 			INSERT INTO
-				deployment_volume_mount(
+				deployment_volume(
 					deployment_id,
-					volume_id,
-					volume_mount_path
+					path
 				)
 			VALUES
-				($1, $2, $3);
+				($1, $2);
 			"#,
 		)
 		.bind(deployment_id)
-		.bind(volume_id)
-		.bind(mount_path)
+		.bind(path)
 		.execute(&mut *connection)
 		.await?;
 	}
@@ -400,7 +398,7 @@ pub async fn delete_deployment_in_database(
 	query(
 		r#"
 		DELETE FROM
-			deployment_volume_mount
+			deployment_volume
 		WHERE
 			deployment_id = $1;
 		"#,

@@ -65,6 +65,12 @@ pub async fn create_deployment(
 		return Err(ErrorType::WrongParameters);
 	}
 
+	// Volumes are node-local, so a deployment that has any can only run one
+	// replica — the same rule Render, Railway and CapRover apply.
+	if !volumes.is_empty() && (min_horizontal_scale > 1 || max_horizontal_scale > 1) {
+		return Err(ErrorType::VolumesRequireSingleReplica);
+	}
+
 	let now = OffsetDateTime::now_utc();
 
 	let deployment_id = query!(
@@ -309,38 +315,30 @@ pub async fn create_deployment(
 
 	query!(
 		r#"
-		INSERT INTO 
-			deployment_volume_mount(
+		INSERT INTO
+			deployment_volume(
 				deployment_id,
-				volume_id,
-				volume_mount_path
+				path
 			)
 		SELECT
 			*
 		FROM
 			UNNEST(
 				$1::UUID[],
-				$2::UUID[],
-				$3::TEXT[]
+				$2::TEXT[]
 			);
 		"#,
 		&volumes
 			.iter()
 			.map(|_| deployment_id.into())
 			.collect::<Vec<_>>(),
-		&volumes
-			.iter()
-			.map(|(volume_id, _)| (*volume_id).into())
-			.collect::<Vec<_>>(),
-		&volumes
-			.iter()
-			.map(|(_, mount_path)| mount_path.clone())
-			.collect::<Vec<_>>(),
+		&volumes.keys().cloned().collect::<Vec<_>>(),
 	)
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {
-		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
+		// The path CHECK constraint is the validation for volume paths.
+		sqlx::Error::Database(err) if err.is_check_violation() => ErrorType::WrongParameters,
 		err => ErrorType::server_error(err),
 	})?;
 

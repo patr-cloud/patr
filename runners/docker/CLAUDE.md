@@ -6,6 +6,7 @@ The live runner: implements `RunnerExecutor` over **Docker Swarm** via `bollard`
 
 - A deployment → a Swarm **service** `patr-{deployment_id}` (replicas = `min_horizontal_scale`).
 - Config mounts, ingress routing, tunnel tokens, alloy config → Swarm **configs** (Swarm's "file into a container" mechanism).
+- Volumes → named Docker **volumes** `patr-{deployment_id}-{sha256(path)[:16]}`, one per path, labelled `managed-by=patr` + `patr.deploymentId`. Name is path-derived (never an ordinal) so remove-then-re-add finds the same data. **Detaching never deletes a volume** — only `deployment::delete` does, via a label sweep with a short 409 retry (Swarm reaps exited tasks async). `stop_deployment` tears down the service and keeps volumes; that split is what makes Stop safe. Volumes are node-local; all managed runners are single-node today.
 - Image resolution: Patr-registry deployments carry only a `repository_id`, so it calls the API (`GetContainerRepositoryInfo`) to resolve the name; digest-pinned when a live digest is set. Patr-registry pulls use `patr` / api-token creds; external registries pull anonymously.
 
 ## Two non-obvious patterns
@@ -20,7 +21,8 @@ Ingress is a Caddy service (`patr-ingress`), always deployed. `PUBLIC` publishes
 ## Known holes (verified)
 
 - **Secret env vars `todo!()` → runtime panic** (`src/deployment.rs`): a deployment with `EnvironmentVariableValue::Secret` will panic at reconcile. Not yet implemented.
-- Paused deployments, `machine_type`, and volumes are ignored. Swarm supports one healthcheck, so `liveness_probe` wins over `startup_probe`.
+- Paused deployments and `machine_type` are ignored. Swarm supports one healthcheck, so `liveness_probe` wins over `startup_probe`.
+- **Update order depends on volumes**: `start-first` (zero-downtime) for stateless deployments, `stop-first` when volumes are present so the old task releases them before the new one mounts them.
 - **`enableIpv6` (default true) must be set false** on hosts whose Swarm has no IPv6 address pool, or every task fails to get an address.
 
 ## Config / lifecycle / build
