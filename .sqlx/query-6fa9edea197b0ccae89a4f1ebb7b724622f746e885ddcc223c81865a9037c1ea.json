@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT oauth_refresh_token.token_hash, oauth_refresh_token.expiry, oauth_refresh_token.consumed, oauth_login.login_id AS \"grant_id: Uuid\", oauth_login.client_id, oauth_login.user_id AS \"user_id: Uuid\", oauth_login.scope, oauth_login.revoked FROM oauth_refresh_token INNER JOIN oauth_login ON oauth_refresh_token.login_id = oauth_login.login_id WHERE oauth_refresh_token.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "expiry",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "consumed",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "grant_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "client_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "user_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "scope",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "revoked",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "6fa9edea197b0ccae89a4f1ebb7b724622f746e885ddcc223c81865a9037c1ea"
+}

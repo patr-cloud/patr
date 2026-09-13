@@ -28,6 +28,9 @@ pub enum OAuthErrorCode {
 	InvalidGrant,
 	/// The grant type is not one this server implements.
 	UnsupportedGrantType,
+	/// RFC 7009 section 2.2.1: the `token_type_hint` named a kind of token
+	/// this server does not issue, so the request cannot be honoured.
+	UnsupportedTokenType,
 	/// The response type is not one this server implements. OAuth 2.1 only
 	/// defines `code`.
 	UnsupportedResponseType,
@@ -54,6 +57,7 @@ impl OAuthErrorCode {
 			Self::InvalidClient => "invalid_client",
 			Self::InvalidGrant => "invalid_grant",
 			Self::UnsupportedGrantType => "unsupported_grant_type",
+			Self::UnsupportedTokenType => "unsupported_token_type",
 			Self::UnsupportedResponseType => "unsupported_response_type",
 			Self::InvalidScope => "invalid_scope",
 			Self::AccessDenied => "access_denied",

@@ -13,6 +13,9 @@ use crate::{prelude::*, utils::config::AppConfig};
 /// The authorization endpoint. The front channel: a browser arrives here
 /// from the client, and leaves for the consent screen.
 mod authorize;
+/// Client authentication, shared by every back-channel endpoint that takes
+/// `client_secret_basic` or `client_secret_post` credentials.
+mod client_auth;
 /// The provider metadata document and the JWKS, both served from
 /// `/.well-known/` so a client can find everything else from the issuer.
 mod discovery;
@@ -20,6 +23,11 @@ mod discovery;
 mod error;
 /// Reads the pending authorization request behind a consent screen.
 mod get_consent_request;
+/// The introspection endpoint, which tells a confidential client whether a
+/// token it was handed is still good.
+mod introspect;
+/// The revocation endpoint, which lets a client end a grant it holds.
+mod revoke;
 /// Records the user's decision and hands back where to send them.
 mod submit_consent;
 /// The token endpoint. The back channel: a client's own server exchanges a
@@ -111,6 +119,8 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		)
 		.route("/.well-known/jwks.json", get(discovery::jwks))
 		.route("/auth/oauth/token", post(token::token))
+		.route("/auth/oauth/revoke", post(revoke::revoke))
+		.route("/auth/oauth/introspect", post(introspect::introspect))
 		// Both methods, per OIDC Core section 5.3.
 		.route(
 			"/auth/oauth/userinfo",

@@ -61,6 +61,12 @@ export const apiTokenKeys = {
 	detail: (id: string) => [...apiTokenKeys.all(), "detail", id] as const,
 };
 
+export const oauthGrantKeys = {
+	all: () => ["oauthGrants"] as const,
+	list: (page: string | undefined, count: string | undefined) =>
+		[...oauthGrantKeys.all(), "list", page, count] as const,
+};
+
 export const containerRegistryKeys = {
 	all: (workspaceId: string) => ["containerRegistry", workspaceId] as const,
 	list: (workspaceId: string, page: string | undefined, count: string | undefined) =>
