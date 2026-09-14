@@ -10,6 +10,7 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 	Router::new()
 		.mount_auth_endpoint(create_secret, state, allowed_client_type)
 		.mount_auth_endpoint(delete_secret, state, allowed_client_type)
+		.mount_auth_endpoint(get_secret_for_runner, state, allowed_client_type)
 		.mount_auth_endpoint(get_secret_info, state, allowed_client_type)
 		.mount_auth_endpoint(list_secrets_for_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(update_secret, state, allowed_client_type)
@@ -177,6 +178,46 @@ async fn delete_secret(
 		.body(DeleteSecretResponse)
 		.headers(())
 		.status_code(StatusCode::ACCEPTED)
+		.build()
+		.into_result()
+}
+
+/// Returns a secret's OpenBao read response to a runner.
+///
+/// - The authorizer already checked `Runner::Execute` and that the secret exists in the workspace.
+/// - The value is never logged.
+async fn get_secret_for_runner(
+	AuthenticatedAppRequest {
+		request:
+			ProcessedApiRequest {
+				path: GetSecretForRunnerPath {
+					workspace_id,
+					secret_id,
+				},
+				query: (),
+				headers: _,
+				body: GetSecretForRunnerRequestProcessed,
+			},
+		database: _,
+		redis: _,
+		client_ip: _,
+		user_data: _,
+		state,
+	}: AuthenticatedAppRequest<'_, GetSecretForRunnerRequest>,
+) -> Result<AppResponse<GetSecretForRunnerRequest>, ErrorType> {
+	trace!("Getting secret value for ID: `{secret_id}`");
+
+	// Build the OpenBao path from the request path, never from stored data.
+	let secret = OpenBaoClient::new(&state.config.open_bao)
+		.read_secret(workspace_id, secret_id)
+		.await
+		.map_err(|err| ErrorType::server_error(err))?
+		.ok_or(ErrorType::ResourceDoesNotExist)?;
+
+	AppResponse::builder()
+		.body(GetSecretForRunnerResponse { secret })
+		.headers(())
+		.status_code(StatusCode::OK)
 		.build()
 		.into_result()
 }

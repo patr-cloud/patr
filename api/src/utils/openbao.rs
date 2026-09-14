@@ -108,6 +108,37 @@ impl OpenBaoClient {
 		Ok(())
 	}
 
+	/// Reads a secret from OpenBao's KV v2 store at
+	/// `secret/data/{workspace_id}/{secret_id}`.
+	///
+	/// - Returns OpenBao's response body as-is.
+	/// - Returns `None` if OpenBao has no value at that path.
+	pub async fn read_secret(
+		&self,
+		workspace_id: impl Display,
+		secret_id: impl Display,
+	) -> Result<Option<serde_json::Value>, reqwest::Error> {
+		let response = self
+			.client
+			.get(format!(
+				"{}/v1/secret/data/{}/{}",
+				self.endpoint, workspace_id, secret_id
+			))
+			.header("X-Vault-Token", &self.token)
+			.send()
+			.await?;
+
+		if response.status() == reqwest::StatusCode::NOT_FOUND {
+			return Ok(None);
+		}
+
+		response
+			.error_for_status()?
+			.json::<serde_json::Value>()
+			.await
+			.map(Some)
+	}
+
 	/// Permanently deletes a secret (all versions) from OpenBao's KV v2 store by
 	/// removing its metadata at `secret/metadata/{workspace_id}/{secret_id}`.
 	pub async fn delete_secret(
