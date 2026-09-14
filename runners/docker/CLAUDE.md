@@ -7,6 +7,7 @@ The live runner: implements `RunnerExecutor` over **Docker Swarm** via `bollard`
 - A deployment → a Swarm **service** `patr-{deployment_id}` (replicas = `min_horizontal_scale`).
 - Config mounts, ingress routing, tunnel tokens, alloy config → Swarm **configs** (Swarm's "file into a container" mechanism).
 - Image resolution: Patr-registry deployments carry only a `repository_id`, so it calls the API (`GetContainerRepositoryInfo`) to resolve the name; digest-pinned when a live digest is set. Patr-registry pulls use `patr` / api-token creds; external registries pull anonymously.
+- Secret env vars: each `EnvironmentVariableValue::Secret` is resolved at reconcile via the API (`GetSecretForRunner`, which proxies OpenBao) and baked into the service env. Managed mode only. Values are never logged or stored in SQLite. A rotated secret only reaches a service on redeploy.
 
 ## Two non-obvious patterns
 
@@ -19,7 +20,6 @@ Ingress is a Caddy service (`patr-ingress`), always deployed. `PUBLIC` publishes
 
 ## Known holes (verified)
 
-- **Secret env vars `todo!()` → runtime panic** (`src/deployment.rs`): a deployment with `EnvironmentVariableValue::Secret` will panic at reconcile. Not yet implemented.
 - Paused deployments, `machine_type`, and volumes are ignored. Swarm supports one healthcheck, so `liveness_probe` wins over `startup_probe`.
 - **`enableIpv6` (default true) must be set false** on hosts whose Swarm has no IPv6 address pool, or every task fails to get an address.
 
