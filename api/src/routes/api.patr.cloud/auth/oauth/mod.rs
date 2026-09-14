@@ -1,54 +1,93 @@
-use axum::Router;
+use std::{collections::BTreeMap, net::IpAddr};
 
-use crate::prelude::*;
+use axum::{Router, routing::get};
 
-/// The endpoint to authorize a user.
-///
-/// This is the first step. The third-party app opens a browser and sends the
-/// user to this endpoint on our API. Here, the user logs in (using the
-/// frontend) and gives the third-party app permission to access their data in
-/// the API. This endpoint is used to authorize a user using OAuth2.1. It
-/// returns a temporary code that can be exchanged for an access token and a
-/// refresh token.
+use self::error::{OAuthError, OAuthErrorCode};
+use crate::{prelude::*, utils::config::AppConfig};
+
+/// The authorization endpoint. The front channel: a browser arrives here
+/// from the client, and leaves for the consent screen.
 mod authorize;
-/// The endpoint to get details about the access token and refresh token.
-///
-/// The third-party app can call this endpoint to get information about the
-/// access token and refresh token. This is useful for debugging and monitoring
-/// the tokens. It’s like asking, "Is this key still good?" This endpoint is
-/// used to get details about the access token and refresh token. It returns
-/// information about the token, such as the user ID, the scopes, and the expiry
-/// time.
-mod introspect;
-/// The endpoint to revoke an access token.
-///
-/// If the user or the third-party app wants to stop the app’s access (like
-/// logging out or revoking permission), the app can call this endpoint to tell
-/// the API to deactivate the access token and refresh token. This endpoint is
-/// used to revoke an access token. This is useful when a user wants to log out
-/// of a third-party app. The access token is invalidated and the user will have
-/// to log in again to get a new access token.
-mod revoke;
-/// The endpoint to exchange a temporary code for an access token and a refresh
-/// token.
-///
-/// After the user approves the third-party app, the API  server gives the app a
-/// temporary code. The app sends this code to the /token endpoint to exchange
-/// it for an access token and a refresh token. The access token is what the
-/// third-party app will use to access the user’s data on the API. This endpoint
-/// is used to exchange a temporary code for an access token and a
-/// refresh token. The temporary code is obtained by authorizing a user using
-/// the [`authorize()`] endpoint.
-mod token;
+/// The OAuth-shaped error envelope. The protocol endpoints do not use
+/// Patr's, because a client library matches on the spec's field names.
+mod error;
+/// Reads the pending authorization request behind a consent screen.
+mod get_consent_request;
+/// Records the user's decision and hands back where to send them.
+mod submit_consent;
 
-use self::{authorize::*, introspect::*, revoke::*, token::*};
+use self::{get_consent_request::*, submit_consent::*};
 
-/// Sets up the oauth routes
+/// Applies the API's rate limits to a raw OAuth route.
+///
+/// The protocol endpoints are plain axum routes, so they never pass through
+/// `RateLimiterLayer` the way a `declare_api_endpoint!` one does — which left
+/// the whole OAuth surface unthrottled. `/token` is the reason this matters:
+/// it takes a client secret and a refresh token secret, and is reachable
+/// without a session.
+///
+/// Keyed per-IP, with the same windows as the rest of the API rather than a
+/// second set to keep in step. Note that a server-to-server client puts all of
+/// its users' traffic on one IP, so tightening these would throttle a busy
+/// first-party client long before it inconvenienced an attacker.
+pub async fn enforce_rate_limit(state: &AppState, client_ip: IpAddr) -> Result<(), OAuthError> {
+	crate::models::rate_limiter::check_rate_limit(
+		&mut state.redis.clone(),
+		client_ip,
+		None,
+		&crate::utils::layers::RATE_LIMITS,
+	)
+	.await
+	.map_err(|err| {
+		warn!("Rate limit tripped on an OAuth endpoint: {}", err);
+		OAuthError::new(
+			OAuthErrorCode::TemporarilyUnavailable,
+			"too many requests; slow down and try again",
+		)
+	})
+}
+
+/// The dashboard's origin, where the browser is sent for consent.
+///
+/// Cloud serves it on `app.`; self-hosted off the base domain directly.
+pub fn dashboard_url(config: &AppConfig) -> String {
+	let base_domain = &config.server.base_domain;
+	if cfg!(feature = "cloud") {
+		format!("https://app.{base_domain}")
+	} else {
+		format!("https://{base_domain}")
+	}
+}
+
+/// Appends query parameters to a URI, keeping whatever it already carries.
+///
+/// A registered `redirect_uri` is allowed its own query string, and RFC 6749
+/// section 3.1.2 says the response parameters are added to it rather than
+/// replacing it — so this cannot just format a `?` on.
+pub fn append_query_params(uri: &str, params: &[(&str, String)]) -> String {
+	let encoded = serde_qs::to_string(&params.iter().cloned().collect::<BTreeMap<_, _>>())
+		.unwrap_or_default();
+	if encoded.is_empty() {
+		return uri.to_owned();
+	}
+
+	let separator = if uri.contains('?') { '&' } else { '?' };
+	format!("{uri}{separator}{encoded}")
+}
+
+/// Sets up the OAuth routes.
+///
+/// The protocol endpoints are plain axum routes rather than
+/// `declare_api_endpoint!` ones: a conformant OAuth response is a bare body,
+/// where the macro wraps everything in Patr's success envelope, and a client
+/// library would reject the result outright. The consent endpoints are
+/// ordinary Patr JSON that only the dashboard calls, so those keep the macro
+/// and everything that comes with it.
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
-		.mount_endpoint(authorize, state, allowed_client_type)
-		.mount_endpoint(introspect, state, allowed_client_type)
-		.mount_endpoint(revoke, state, allowed_client_type)
-		.mount_endpoint(token, state, allowed_client_type)
+		.route("/auth/oauth/authorize", get(authorize::authorize))
+		.with_state(state.clone())
+		.mount_auth_endpoint(get_consent_request, state, allowed_client_type)
+		.mount_auth_endpoint(submit_consent, state, allowed_client_type)
 }
