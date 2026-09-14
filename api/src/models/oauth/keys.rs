@@ -1,6 +1,7 @@
 use base64::{Engine as _, prelude::BASE64_URL_SAFE_NO_PAD};
 use jsonwebtoken::{
 	Algorithm,
+	DecodingKey,
 	EncodingKey,
 	jwk::{AlgorithmParameters, Jwk, PublicKeyUse},
 };
@@ -16,6 +17,20 @@ pub struct SigningKey {
 	pub encoding_key: EncodingKey,
 	/// The public half, ready to publish.
 	pub jwk: Jwk,
+}
+
+impl SigningKey {
+	/// The public half, for verifying.
+	pub fn decoding_key(&self) -> Result<DecodingKey, ErrorType> {
+		DecodingKey::from_jwk(&self.jwk)
+			.inspect_err(|err| {
+				error!(
+					"Error building a decoding key for kid `{}`: {}",
+					self.kid, err
+				);
+			})
+			.map_err(ErrorType::server_error)
+	}
 }
 
 /// Every signing key in the config, in declared order. Parsed per call:
@@ -81,4 +96,9 @@ pub fn get_signing_key(config: &AppConfig) -> Result<SigningKey, ErrorType> {
 		error!("No OAuth signing key is configured — set `oauth.signingKeys`");
 		ErrorType::server_error("no OAuth signing key is configured")
 	})
+}
+
+/// Finds the key a token names in its `kid`, if it is one of ours.
+pub fn get_key_by_id(config: &AppConfig, kid: &str) -> Result<Option<SigningKey>, ErrorType> {
+	Ok(load_keys(config)?.into_iter().find(|key| key.kid == kid))
 }

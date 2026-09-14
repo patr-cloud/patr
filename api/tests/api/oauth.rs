@@ -5,7 +5,12 @@ use api::{
 	redis::keys as redis_keys,
 };
 use axum_test::TestResponse;
-use models::{ApiSuccessResponseBody, api::auth::oauth::*, utils::Uuid};
+use models::{
+	ApiSuccessResponseBody,
+	api::{auth::oauth::*, user::*},
+	utils::Uuid,
+};
+use time::{Duration, OffsetDateTime};
 
 use crate::prelude::*;
 
@@ -16,6 +21,19 @@ const REDIRECT_URI: &str = "http://localhost:19999/cb";
 /// The S256 challenge for [`CODE_VERIFIER`], i.e.
 /// `base64url(sha256(verifier))` with the padding stripped.
 const CODE_CHALLENGE: &str = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+
+/// Pulls the `sid` — the grant id — out of an access token.
+///
+/// Read without verifying: the test only needs to name the row it is about
+/// to reach into, and the server is what decides whether the token is good.
+fn grant_id_of(access_token: &str) -> Uuid {
+	let payload = access_token.split('.').nth(1).expect("a JWT payload");
+	let decoded = base64::Engine::decode(&base64::prelude::BASE64_URL_SAFE_NO_PAD, payload)
+		.expect("a base64url payload");
+	let claims: serde_json::Value = serde_json::from_slice(&decoded).expect("a JSON payload");
+
+	Uuid::parse_str(claims["sid"].as_str().expect("a `sid` claim")).expect("`sid` is a UUID")
+}
 
 /// Pulls the token id out of a `patrv1.{secret}.{id}` refresh token.
 fn token_id(refresh_token: &str) -> Uuid {
@@ -1064,4 +1082,305 @@ async fn an_unsupported_grant_type_is_rejected() {
 
 	response.assert_status(StatusCode::BAD_REQUEST);
 	assert!(response.text().contains("unsupported_grant_type"));
+}
+
+/// Runs the whole flow and hands back a usable access token.
+async fn issue_access_token(setup: &TestSetup, scope: &str) -> (String, TestUser) {
+	let (code, user) = issue_code(setup, scope).await;
+	let tokens: serde_json::Value = exchange(setup, &code).await.json();
+
+	(
+		tokens["access_token"]
+			.as_str()
+			.expect("an access token")
+			.to_owned(),
+		user,
+	)
+}
+
+#[tokio::test]
+async fn an_oauth_access_token_authenticates_the_api() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid profile email").await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await;
+
+	response.assert_status(StatusCode::OK);
+	let body = response.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+	assert_eq!(body.response.basic_user_info.id, user.user_id);
+	assert_eq!(body.response.email, user.email);
+}
+
+#[tokio::test]
+async fn an_oauth_grant_sees_the_same_workspaces_as_the_user() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid").await;
+
+	// No ceiling: the grant acts with the user's full current authority, so
+	// the two views have to agree exactly. If a ceiling is ever added this is
+	// the test that will notice.
+	let via_grant = setup
+		.make_api_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.path(ListUserWorkspacesPath)
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ListUserWorkspacesRequest)
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListUserWorkspacesResponse>>();
+
+	let via_session = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.path(ListUserWorkspacesPath)
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ListUserWorkspacesRequest)
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListUserWorkspacesResponse>>();
+
+	assert_eq!(
+		via_grant
+			.response
+			.workspaces
+			.iter()
+			.map(|workspace| workspace.id)
+			.collect::<Vec<_>>(),
+		via_session
+			.response
+			.workspaces
+			.iter()
+			.map(|workspace| workspace.id)
+			.collect::<Vec<_>>(),
+	);
+}
+
+#[tokio::test]
+async fn an_api_false_endpoint_rejects_an_oauth_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _user) = issue_access_token(&setup, "openid").await;
+
+	// Listing (and so revoking) the user's browser sessions is exactly the
+	// kind of thing a grant must not reach. On the cloud build these
+	// endpoints are filtered out of the API arm at mount time; self-hosted
+	// mounts the whole API as WebDashboard, so the authenticator is the only
+	// thing standing here — which is why this goes through the web arm.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListWebLoginsRequest>::builder()
+				.path(ListWebLoginsPath)
+				.headers(ListWebLoginsRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ListWebLoginsRequest)
+				.build(),
+		)
+		.await;
+
+	response.assert_status(StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn an_id_token_presented_as_a_bearer_token_is_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid").await;
+
+	// Forge the thing PR 6 will legitimately mint: same key, same `kid`,
+	// same signature — only `typ` and `aud` differ. Relying parties treat id
+	// tokens as non-secret and write them to logs and cookies, so this is
+	// the realistic attack, not a malformed-token one.
+	let key = api::models::oauth::keys::get_signing_key(&setup.state().config)
+		.expect("a signing key should exist");
+
+	let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::ES256);
+	header.kid = Some(key.kid.clone());
+	header.typ = Some("JWT".to_owned());
+
+	let now = OffsetDateTime::now_utc();
+	let id_token = jsonwebtoken::encode(
+		&header,
+		&serde_json::json!({
+			"iss": format!("https://api.{}", setup.state().config.server.base_domain),
+			"sub": user.user_id.to_string(),
+			// An id token names the client, not the API.
+			"aud": CLIENT_ID,
+			"exp": (now + Duration::minutes(5)).unix_timestamp(),
+			"iat": now.unix_timestamp(),
+		}),
+		&key.encoding_key,
+	)
+	.expect("failed to mint an id token");
+
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(&id_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+
+	// And the real access token still works, so the rejection was about the
+	// token rather than the setup.
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::OK);
+}
+
+#[tokio::test]
+async fn revoking_a_grant_stops_its_access_token_immediately() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _user) = issue_access_token(&setup, "openid").await;
+
+	let grant_id = grant_id_of(&access_token);
+
+	setup
+		.execute_sql(&format!(
+			"UPDATE oauth_login SET revoked = NOW() WHERE login_id = '{grant_id}'"
+		))
+		.await;
+
+	// The JWT is still perfectly valid and unexpired. What kills it is the
+	// grant row being read on every request.
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn userinfo_answers_get_and_post() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid").await;
+
+	for response in [
+		setup
+			.make_raw_api_get_authed("/auth/oauth/userinfo", &access_token)
+			.await,
+		setup
+			.make_raw_api_post_authed("/auth/oauth/userinfo", &access_token)
+			.await,
+	] {
+		response.assert_status(StatusCode::OK);
+		let claims: serde_json::Value = response.json();
+		assert_eq!(
+			claims["sub"].as_str(),
+			Some(user.user_id.to_string().as_str())
+		);
+	}
+}
+
+#[tokio::test]
+async fn userinfo_returns_only_the_claims_the_scopes_allow() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let (openid_only, _user) = issue_access_token(&setup, "openid").await;
+	let claims: serde_json::Value = setup
+		.make_raw_api_get_authed("/auth/oauth/userinfo", &openid_only)
+		.await
+		.json();
+	assert!(claims["sub"].is_string(), "`sub` is never gated");
+	assert!(
+		claims.get("email").is_none(),
+		"`email` needs the email scope"
+	);
+	assert!(
+		claims.get("name").is_none(),
+		"`name` needs the profile scope"
+	);
+
+	let (full, user) = issue_access_token(&setup, "openid profile email").await;
+	let claims: serde_json::Value = setup
+		.make_raw_api_get_authed("/auth/oauth/userinfo", &full)
+		.await
+		.json();
+	assert_eq!(claims["email"].as_str(), Some(user.email.as_str()));
+	assert_eq!(claims["email_verified"].as_bool(), Some(true));
+	assert!(claims["name"].is_string());
+	assert!(claims["given_name"].is_string());
+	assert!(claims["family_name"].is_string());
+}
+
+#[tokio::test]
+async fn userinfo_without_a_token_challenges_for_a_bearer() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup.make_raw_api_get("/auth/oauth/userinfo").await;
+
+	response.assert_status(StatusCode::UNAUTHORIZED);
+	// RFC 6750 section 3: without the challenge a client cannot tell an
+	// expired token from a request it should not retry.
+	let challenge = response
+		.headers()
+		.get("www-authenticate")
+		.expect("a WWW-Authenticate challenge")
+		.to_str()
+		.expect("a printable challenge");
+	assert!(challenge.starts_with("Bearer "), "got `{challenge}`");
+}
+
+#[tokio::test]
+async fn a_web_dashboard_jwt_is_still_rejected_by_the_api_arm() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	// The OAuth branch classifies on ES256 and must not have widened the
+	// api arm to the dashboard's HS256 sessions on its way past.
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
 }
