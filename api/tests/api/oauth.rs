@@ -557,12 +557,18 @@ const CODE_VERIFIER: &str = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
 
 /// Runs a full authorize → consent → code cycle and returns the code.
 async fn issue_code(setup: &TestSetup, scope: &str) -> (String, TestUser) {
+	issue_code_with(setup, &[("scope", scope)]).await
+}
+
+/// The same, but with the whole `/authorize` query open to overrides, for the
+/// tests that care about a parameter other than `scope` — `nonce`, say.
+async fn issue_code_with(setup: &TestSetup, overrides: &[(&str, &str)]) -> (String, TestUser) {
 	let user = setup.create_test_user().await;
 
 	let response = setup
 		.make_raw_api_get(&format!(
 			"/auth/oauth/authorize?{}",
-			authorize_query(&[("scope", scope)])
+			authorize_query(overrides)
 		))
 		.await;
 
@@ -1376,6 +1382,286 @@ async fn a_web_dashboard_jwt_is_still_rejected_by_the_api_arm() {
 				.path(GetUserInfoPath)
 				.headers(GetUserInfoRequestHeaders {
 					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+}
+
+/// Fetches the published JWKS and finds the key a token's header names.
+///
+/// Deliberately the long way round — header `kid`, then look it up in the
+/// document a relying party would have fetched — because that is the path a
+/// real client takes, and it is what catches a JWK that is published but not
+/// selectable.
+async fn decoding_key_for(setup: &TestSetup, token: &str) -> jsonwebtoken::DecodingKey {
+	let jwks: jsonwebtoken::jwk::JwkSet = setup
+		.make_raw_api_get("/.well-known/jwks.json")
+		.await
+		.json();
+
+	let kid = jsonwebtoken::decode_header(token)
+		.expect("a decodable header")
+		.kid
+		.expect("a `kid` naming the signing key");
+
+	let jwk = jwks.find(&kid).expect("the JWKS should publish that `kid`");
+
+	jsonwebtoken::DecodingKey::from_jwk(jwk).expect("the JWK should build a decoding key")
+}
+
+#[tokio::test]
+async fn the_discovery_document_advertises_only_what_is_mounted() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup
+		.make_raw_api_get("/.well-known/openid-configuration")
+		.await;
+	response.assert_status(StatusCode::OK);
+	let doc: serde_json::Value = response.json();
+
+	let issuer = doc["issuer"].as_str().expect("an issuer").to_owned();
+
+	// Every endpoint the document names has to actually answer, and every
+	// endpoint that answers has to be named. Listing one that does not exist
+	// is worse than omitting it — a client library will happily POST to it.
+	let mut endpoints = doc
+		.as_object()
+		.expect("an object")
+		.keys()
+		.filter(|key| key.ends_with("_endpoint"))
+		.cloned()
+		.collect::<Vec<_>>();
+	endpoints.sort();
+	assert_eq!(
+		endpoints,
+		[
+			"authorization_endpoint",
+			"token_endpoint",
+			"userinfo_endpoint"
+		],
+		"revocation and introspection are not mounted yet; add them here when they are"
+	);
+
+	for (key, path) in [
+		("authorization_endpoint", "/auth/oauth/authorize"),
+		("token_endpoint", "/auth/oauth/token"),
+		("userinfo_endpoint", "/auth/oauth/userinfo"),
+		("jwks_uri", "/.well-known/jwks.json"),
+	] {
+		assert_eq!(
+			doc[key].as_str(),
+			Some(format!("{issuer}{path}").as_str()),
+			"{key} should hang off the issuer"
+		);
+	}
+
+	// OAuth 2.1 removes `plain`, and advertising it would invite a client to
+	// downgrade to it.
+	assert_eq!(
+		doc["code_challenge_methods_supported"],
+		serde_json::json!(["S256"])
+	);
+	assert_eq!(doc["response_types_supported"], serde_json::json!(["code"]));
+	assert_eq!(
+		doc["id_token_signing_alg_values_supported"],
+		serde_json::json!(["ES256"])
+	);
+	assert_eq!(
+		doc["subject_types_supported"],
+		serde_json::json!(["public"])
+	);
+}
+
+#[tokio::test]
+async fn the_jwks_publishes_selectable_keys_and_no_private_material() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup.make_raw_api_get("/.well-known/jwks.json").await;
+	response.assert_status(StatusCode::OK);
+	let jwks: serde_json::Value = response.json();
+
+	let keys = jwks["keys"].as_array().expect("a keys array");
+	assert!(!keys.is_empty(), "at least one key should be published");
+
+	for key in keys {
+		// The one thing that must never appear here. `d` is the private
+		// scalar; publishing it would hand out the ability to mint tokens.
+		assert!(
+			key.get("d").is_none(),
+			"a published JWK must carry no private material: {key}"
+		);
+
+		// A client picks a key by `kid`, then filters on `use` and `alg`. A
+		// JWK missing any of them is silently skipped and verification fails
+		// with an unhelpful "no applicable key".
+		assert!(key["kid"].is_string(), "missing `kid`: {key}");
+		assert_eq!(key["use"].as_str(), Some("sig"), "missing `use`: {key}");
+		assert_eq!(key["alg"].as_str(), Some("ES256"), "missing `alg`: {key}");
+		assert_eq!(key["kty"].as_str(), Some("EC"), "wrong `kty`: {key}");
+		assert_eq!(key["crv"].as_str(), Some("P-256"), "wrong `crv`: {key}");
+	}
+}
+
+#[tokio::test]
+async fn the_id_token_verifies_against_the_published_jwks() {
+	let setup = setup().await.expect("failed to setup test server");
+	const NONCE: &str = "n-0S6_WzA2Mj";
+
+	let (code, user) = issue_code_with(
+		&setup,
+		&[("scope", "openid profile email"), ("nonce", NONCE)],
+	)
+	.await;
+
+	let tokens: serde_json::Value = exchange(&setup, &code).await.json();
+	let id_token = tokens["id_token"].as_str().expect("an id token").to_owned();
+	let access_token = tokens["access_token"].as_str().expect("an access token");
+
+	// Exactly what a relying party does: fetch the JWKS, pick the key the
+	// header names, and insist on the algorithm, issuer and audience.
+	let key = decoding_key_for(&setup, &id_token).await;
+	let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::ES256);
+	validation.set_audience(&[CLIENT_ID]);
+	validation.set_issuer(&[format!(
+		"https://api.{}",
+		setup.state().config.server.base_domain
+	)]);
+
+	let claims = jsonwebtoken::decode::<serde_json::Value>(&id_token, &key, &validation)
+		.expect("the id token should verify against the published JWKS")
+		.claims;
+
+	assert_eq!(
+		claims["sub"].as_str(),
+		Some(user.user_id.to_string().as_str())
+	);
+	assert_eq!(
+		claims["nonce"].as_str(),
+		Some(NONCE),
+		"the nonce ties this token to the request that started the flow"
+	);
+	assert_eq!(claims["email"].as_str(), Some(user.email.as_str()));
+	assert!(claims["name"].is_string());
+	assert!(claims["auth_time"].is_number());
+
+	// OIDC Core section 3.1.3.6: left-most 128 bits of SHA-256, base64url.
+	// Computed independently here, so a wrong slice or encoding shows up.
+	let expected = base64::Engine::encode(
+		&base64::prelude::BASE64_URL_SAFE_NO_PAD,
+		&<sha2::Sha256 as sha2::Digest>::digest(access_token.as_bytes())[..16],
+	);
+	assert_eq!(
+		claims["at_hash"].as_str(),
+		Some(expected.as_str()),
+		"at_hash should bind the id token to the access token it came with"
+	);
+}
+
+#[tokio::test]
+async fn a_tampered_id_token_fails_verification() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid").await;
+
+	let tokens: serde_json::Value = exchange(&setup, &code).await.json();
+	let id_token = tokens["id_token"].as_str().expect("an id token").to_owned();
+	let key = decoding_key_for(&setup, &id_token).await;
+
+	// Flip one character of the signature. Everything else about the token is
+	// untouched, so only the signature check can catch this.
+	let (rest, signature) = id_token.rsplit_once('.').expect("a JWT signature");
+	let flipped = signature
+		.chars()
+		.next()
+		.map(|first| if first == 'A' { 'B' } else { 'A' })
+		.expect("a non-empty signature");
+	let tampered = format!("{rest}.{flipped}{}", &signature[1..]);
+
+	jsonwebtoken::decode::<serde_json::Value>(
+		&tampered,
+		&key,
+		&jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::ES256),
+	)
+	.expect_err("a tampered id token must not verify");
+}
+
+#[tokio::test]
+async fn a_grant_cannot_be_started_without_the_openid_scope() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	// Every flow this server runs is an OIDC one, so `openid` is refused up
+	// front rather than quietly producing a grant with no id token. This is
+	// what makes the id token unconditional on the exchange.
+	let response = setup
+		.make_raw_api_get(&format!(
+			"/auth/oauth/authorize?{}",
+			authorize_query(&[("scope", "offline_access")])
+		))
+		.await;
+
+	response.assert_status(StatusCode::SEE_OTHER);
+	let url = reqwest::Url::parse(&location(&response)).expect("Location should parse");
+	assert!(
+		url.as_str().starts_with(REDIRECT_URI),
+		"a bad scope is reported to the client, not the browser"
+	);
+	assert_eq!(
+		url.query_pairs()
+			.find(|(key, _)| key == "error")
+			.map(|(_, value)| value.into_owned()),
+		Some("invalid_scope".to_owned())
+	);
+}
+
+#[tokio::test]
+async fn a_refresh_does_not_return_an_id_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid offline_access").await;
+
+	let first: serde_json::Value = exchange(&setup, &code).await.json();
+	assert!(first["id_token"].is_string(), "the exchange mints one");
+	let refresh_token = first["refresh_token"].as_str().expect("a refresh token");
+
+	// OIDC Core section 12.2 allows the refresh response to omit it, and
+	// echoing the original nonce onto a later token would defeat the point of
+	// having one.
+	let refreshed: serde_json::Value = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				("refresh_token", refresh_token),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.json();
+
+	assert!(refreshed["access_token"].is_string());
+	assert!(refreshed.get("id_token").is_none());
+}
+
+#[tokio::test]
+async fn a_real_id_token_is_rejected_as_an_api_credential() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid").await;
+
+	let tokens: serde_json::Value = exchange(&setup, &code).await.json();
+	let id_token = tokens["id_token"].as_str().expect("an id token");
+
+	// The genuine article this time, not a hand-rolled forgery: correctly
+	// signed by a live key, but `typ: JWT` and the client as its audience.
+	// Relying parties treat these as non-secret and put them in logs and
+	// cookies, so this is the realistic path to an API credential.
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(id_token).unwrap(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(GetUserInfoRequest)

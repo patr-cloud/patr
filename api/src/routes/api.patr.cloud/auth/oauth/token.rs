@@ -27,7 +27,8 @@ use super::error::{OAuthError, OAuthErrorCode};
 use crate::{
 	models::oauth::{
 		self,
-		claims::OAuthAccessTokenClaims,
+		claims::{IdTokenClaims, OAuthAccessTokenClaims},
+		identity::{UserIdentity, build_identity_claims},
 		keys,
 		types::{OAuthAuthorizationCode, OAuthReplacementTokens, hash_code},
 	},
@@ -75,6 +76,9 @@ pub struct TokenResponse {
 	/// The rotated refresh token, when one was issued.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	refresh_token: Option<String>,
+	/// The id token, when `openid` was granted.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	id_token: Option<String>,
 	/// The granted scope, space-delimited.
 	scope: String,
 }
@@ -317,6 +321,27 @@ async fn exchange_code(
 		None
 	};
 
+	// `openid` is what turns an OAuth authorization into a login. `/authorize`
+	// already refuses a request without it, so in practice this is always
+	// taken — it is here so that relaxing that rule degrades to plain OAuth
+	// rather than minting an id token nobody asked for.
+	let id_token = if issued.scopes.iter().any(|scope| scope == "openid") {
+		Some(
+			mint_id_token(
+				state,
+				&mut connection,
+				&issued,
+				client_id,
+				&scope,
+				&access_token,
+				now,
+			)
+			.await?,
+		)
+	} else {
+		None
+	};
+
 	connection.commit().await.map_err(server_error)?;
 
 	let _ = client;
@@ -328,8 +353,92 @@ async fn exchange_code(
 			.whole_seconds()
 			.unsigned_abs(),
 		refresh_token,
+		id_token,
 		scope,
 	})
+}
+
+/// Mints the id token for a freshly created grant.
+///
+/// Only ever on the authorization code exchange, never on a refresh. OIDC
+/// Core section 12.2 says a refresh response "might not contain an id token",
+/// but that if it does and the original request carried a `nonce`, the same
+/// value MUST be echoed — which would mean storing the nonce for the life of
+/// the grant. A nonce exists to tie one id token to one authentication
+/// request, so keeping it around to replay onto later ones is the wrong
+/// shape. Clients that want a fresh id token can start a new authorization.
+async fn mint_id_token(
+	state: &AppState,
+	connection: &mut DatabaseTransaction,
+	issued: &OAuthAuthorizationCode,
+	client_id: &str,
+	scope: &str,
+	access_token: &str,
+	now: OffsetDateTime,
+) -> Result<String, OAuthError> {
+	let user = query!(
+		r#"
+		SELECT
+			id AS "id: Uuid",
+			first_name,
+			last_name,
+			email
+		FROM
+			"user"
+		WHERE
+			id = $1;
+		"#,
+		issued.user_id as _,
+	)
+	.fetch_one(&mut **connection)
+	.await
+	.map_err(server_error)?;
+
+	let key = keys::get_signing_key(&state.config).map_err(|err| {
+		error!("No signing key available: {}", err);
+		OAuthError::new(OAuthErrorCode::ServerError, "no signing key is available")
+	})?;
+
+	let claims = IdTokenClaims {
+		iss: oauth::issuer(&state.config),
+		// The client, not the API — see the type's own note.
+		aud: client_id.to_owned(),
+		exp: now + constants::OAUTH_ID_TOKEN_VALIDITY,
+		iat: now,
+		// When the user last proved who they were, which is a property of the
+		// browser session that approved this, not of this exchange.
+		auth_time: issued.auth_time,
+		nonce: issued.nonce.clone(),
+		at_hash: at_hash(access_token),
+		identity: build_identity_claims(
+			&UserIdentity {
+				id: user.id,
+				first_name: &user.first_name,
+				last_name: &user.last_name,
+				email: &user.email,
+			},
+			scope,
+		),
+	};
+
+	let mut header = Header::new(jsonwebtoken::Algorithm::ES256);
+	header.kid = Some(key.kid.clone());
+
+	jsonwebtoken::encode(&header, &claims, &key.encoding_key).map_err(|err| {
+		error!("Error signing an id token: {}", err);
+		OAuthError::new(OAuthErrorCode::ServerError, "could not sign the id token")
+	})
+}
+
+/// The `at_hash` claim for an access token.
+///
+/// OIDC Core section 3.1.3.6: the left-most half of the hash the signing
+/// algorithm implies, base64url-encoded. ES256 means SHA-256, so that is the
+/// first 16 of its 32 bytes.
+fn at_hash(access_token: &str) -> String {
+	use base64::prelude::BASE64_URL_SAFE_NO_PAD;
+
+	BASE64_URL_SAFE_NO_PAD.encode(&Sha256::digest(access_token.as_bytes())[..16])
 }
 
 /// Checks a PKCE verifier against the challenge the request was started with.
@@ -682,6 +791,7 @@ async fn rotate_refresh_token(
 					.whole_seconds()
 					.unsigned_abs(),
 				refresh_token: Some(replacement.refresh_token),
+				id_token: None,
 				scope: row.scope,
 			});
 		}
@@ -788,6 +898,7 @@ async fn rotate_refresh_token(
 			.whole_seconds()
 			.unsigned_abs(),
 		refresh_token: Some(refresh_token),
+		id_token: None,
 		scope: row.scope,
 	})
 }
