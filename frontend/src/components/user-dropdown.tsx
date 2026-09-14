@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/solid-router";
 import { createSignal, Show } from "solid-js";
-import { FiKey, FiSettings, FiLogOut } from "solid-icons/fi";
+import { FiKey, FiLogOut, FiSettings, FiShield } from "solid-icons/fi";
 import { useAuthState, useClickOutside } from "~/hooks";
 import CopyableField from "./copyable-field";
 import { CopyableFieldVariant } from "~/utils/color";
@@ -78,6 +78,14 @@ const UserDropdown = () => {
 						>
 							<FiKey size={16} />
 							<span class="text-sm">API Keys</span>
+						</Link>
+						<Link
+							to="/profile/authorized-apps"
+							class="flex items-center gap-3 px-3 py-2 rounded-xs hover:bg-white/5 transition-colors text-gray-300 hover:text-white"
+							onClick={() => setIsOpen(false)}
+						>
+							<FiShield size={16} />
+							<span class="text-sm">Authorized Apps</span>
 						</Link>
 						<Link
 							to={"/profile" as string}

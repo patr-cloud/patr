@@ -25,6 +25,10 @@ struct ProviderMetadata {
 	token_endpoint: String,
 	/// Where the identity claims are read from.
 	userinfo_endpoint: String,
+	/// Where a client ends a grant it holds.
+	revocation_endpoint: String,
+	/// Where a confidential client asks whether a token is still good.
+	introspection_endpoint: String,
 	/// Where the public halves of the signing keys are published.
 	jwks_uri: String,
 	/// Authorization code only. OAuth 2.1 removes the implicit and password
@@ -68,6 +72,8 @@ pub async fn openid_configuration(
 		authorization_endpoint: format!("{issuer}/auth/oauth/authorize"),
 		token_endpoint: format!("{issuer}/auth/oauth/token"),
 		userinfo_endpoint: format!("{issuer}/auth/oauth/userinfo"),
+		revocation_endpoint: format!("{issuer}/auth/oauth/revoke"),
+		introspection_endpoint: format!("{issuer}/auth/oauth/introspect"),
 		jwks_uri: format!("{issuer}/.well-known/jwks.json"),
 		issuer,
 		response_types_supported: ["code"],

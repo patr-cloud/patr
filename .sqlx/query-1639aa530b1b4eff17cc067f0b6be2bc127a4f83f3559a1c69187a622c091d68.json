@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT oauth_refresh_token.token_hash, oauth_login.login_id AS \"grant_id: Uuid\", oauth_login.client_id FROM oauth_refresh_token INNER JOIN oauth_login ON oauth_refresh_token.login_id = oauth_login.login_id WHERE oauth_refresh_token.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "grant_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "client_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1639aa530b1b4eff17cc067f0b6be2bc127a4f83f3559a1c69187a622c091d68"
+}

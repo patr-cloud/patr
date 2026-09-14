@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT login_id AS \"login_id: Uuid\" FROM oauth_login WHERE user_id = $1 AND client_id = $2 AND revoked IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "login_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9719e5eb14043c4bfc8d8965314f38c290f52ea14025c8052b7567642a648d1d"
+}

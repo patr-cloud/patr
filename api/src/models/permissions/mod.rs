@@ -59,7 +59,7 @@ mod web_dashboard;
 
 pub use self::{
 	api_token::get_permissions_for_api_token,
-	oauth::{OAuthGrantContext, get_grant_context, is_oauth_access_token},
+	oauth::{OAuthGrantContext, get_grant_context, is_oauth_access_token, validate_access_token},
 };
 
 /// Gets the user data for the given token based on the allowed client type.
