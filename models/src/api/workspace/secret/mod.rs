@@ -8,6 +8,8 @@ use crate::prelude::*;
 mod create_secret;
 /// The endpoint to delete a secret in the workspace
 mod delete_secret;
+/// The endpoint for a runner to read the value of a secret
+mod get_secret_for_runner;
 /// The endpoint to get the information of a secret in the workspace
 mod get_secret_info;
 /// The endpoint to list all the secrets in the workspace
@@ -18,6 +20,7 @@ mod update_secret;
 pub use self::{
 	create_secret::*,
 	delete_secret::*,
+	get_secret_for_runner::*,
 	get_secret_info::*,
 	list_secrets_for_workspace::*,
 	update_secret::*,
