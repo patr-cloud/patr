@@ -25,3 +25,4 @@ mod m022_token_ceiling_evaluation;
 mod m023_drop_legacy_permission_tables;
 mod m024_revise_default_role_ladder;
 mod m025_invalidate_web_logins_for_sub_claim;
+mod m026_oauth_provider;
