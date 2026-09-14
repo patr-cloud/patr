@@ -25,6 +25,7 @@ package-managed = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+base64              = { workspace = true, features = ["default"] }
 clap                = { workspace = true, features = ["cargo", "default", "derive", "env", "string"] }
 comfy-table         = { workspace = true, features = ["default"] }
 common              = { workspace = true, features = [] }

@@ -59,14 +59,30 @@ impl fmt::Display for Channel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum AuthState {
-	/// The user is logged in with an API token and (optionally) a selected
-	/// workspace.
+	/// The user is logged in and (optionally) has a selected workspace.
+	///
+	/// The token is either an OAuth access token from `patr login`, or an API
+	/// token the user pasted or passed with `--token`. The two are told apart
+	/// by `refresh_token`: only the OAuth path has one.
 	#[serde(rename_all = "camelCase")]
 	LoggedIn {
 		/// The user's access token.
 		token: BearerToken,
 		/// The currently selected workspace id.
 		current_workspace: Option<Uuid>,
+		/// The OAuth refresh token, when this session came from a browser
+		/// login. Absent for an API token, which never expires and so has
+		/// nothing to refresh.
+		#[serde(default, skip_serializing_if = "Option::is_none")]
+		refresh_token: Option<String>,
+		/// When `token` stops being accepted, as unix seconds.
+		///
+		/// Unix seconds rather than a timestamp because this enum is
+		/// `untagged`: a field serde cannot parse makes the whole variant fail
+		/// to match, and the state falls through to `LoggedOut` — silently
+		/// logging the user out. An integer cannot fail that way.
+		#[serde(default, skip_serializing_if = "Option::is_none")]
+		token_expiry: Option<i64>,
 	},
 	/// The user is logged out. Serializes as `{}` so it flattens cleanly.
 	LoggedOut {},

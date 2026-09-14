@@ -12,6 +12,11 @@ export PATR_TEST_API_BASE_URL := "http://127.0.0.1:39123"
 # can't set this itself.
 export PATR_TEST_APP_NAME := "from-the-environment"
 
+# The session-renewal tests write the refreshed session back to disk. Pointed
+# at a scratch file so a test run can't clobber the developer's real login,
+# and set here for the same reason as the variable above.
+export CONFIG_PATH := justfile_directory() / "../../target/tmp/cli-test-state.json"
+
 test *args:
     #!/usr/bin/env bash
     set -euo pipefail

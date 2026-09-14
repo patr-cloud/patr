@@ -11,3 +11,5 @@ pub mod setup;
 
 /// Tests for `patr apply`.
 pub mod apply;
+/// Tests for the OAuth session the CLI logs in with.
+pub mod oauth;
