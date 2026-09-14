@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT secret.id AS \"id: Uuid\", secret.name AS \"name: String\", resource.created AS \"created: OffsetDateTime\", secret.last_updated AS \"last_updated: OffsetDateTime\" FROM secret JOIN resource ON secret.id = resource.id WHERE secret.id = $1 AND secret.workspace_id = $2 AND secret.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name: String",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created: OffsetDateTime",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_updated: OffsetDateTime",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "4387caa9661e0cb9345fbd3f4698108f7a1278189c0e7a598b9fe58bcb8bf40b"
+}
