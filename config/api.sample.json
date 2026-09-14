@@ -56,6 +56,9 @@
 		"realm": "https://patr.example.com/api/auth/docker-login"
 	},
 	"oauth": {
+		"signingKeys": [
+			"config/oauth-signing-key.pem"
+		],
 		"clients": {
 			"patr-cli": {
 				"name": "Patr CLI",
