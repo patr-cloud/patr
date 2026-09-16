@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT token_expiry, refresh_token FROM web_login WHERE login_id = $1 FOR UPDATE;",
+  "query": "SELECT token_expiry, refresh_token, user_id AS \"user_id: Uuid\" FROM web_login WHERE login_id = $1 FOR UPDATE;",
   "describe": {
     "columns": [
       {
@@ -12,6 +12,11 @@
         "ordinal": 1,
         "name": "refresh_token",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id: Uuid",
+        "type_info": "Uuid"
       }
     ],
     "parameters": {
@@ -21,8 +26,9 @@
     },
     "nullable": [
       false,
+      false,
       false
     ]
   },
-  "hash": "f356141d0372759f51574770c76be3394d2e1ba8eb61746f0bd02f0e618d7400"
+  "hash": "1d8017d3c9c08d6350e8e9f18fdd522a41ea08effb6642acb367da793ba23c85"
 }
