@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE oauth_login ADD CONSTRAINT oauth_login_pk PRIMARY KEY(login_id), ADD CONSTRAINT oauth_login_uq_login_id_user_id UNIQUE(login_id, user_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "e7e55b04999484e9fd80a237208befb72f835b7a4c8c3bc202935011bc28b56e"
+}

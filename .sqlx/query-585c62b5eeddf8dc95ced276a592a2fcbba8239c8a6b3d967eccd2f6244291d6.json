@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE oauth_client(client_id TEXT NOT NULL, name TEXT NOT NULL, logo_url TEXT NOT NULL, client_uri TEXT NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "585c62b5eeddf8dc95ced276a592a2fcbba8239c8a6b3d967eccd2f6244291d6"
+}

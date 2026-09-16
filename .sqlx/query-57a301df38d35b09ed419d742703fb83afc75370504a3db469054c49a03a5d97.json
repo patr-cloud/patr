@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX oauth_refresh_token_idx_login_id ON oauth_refresh_token(login_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "57a301df38d35b09ed419d742703fb83afc75370504a3db469054c49a03a5d97"
+}
