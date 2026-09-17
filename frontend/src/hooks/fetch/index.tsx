@@ -10,6 +10,7 @@ import { useRolesQuery, useAllRolesQuery, useRoleInfoQuery, useRoleUsersQuery } 
 import { useMembersQuery } from "./members";
 import { useInvitesQuery } from "./invitations";
 import { useApiTokensQuery, useApiTokenInfoQuery } from "./api-tokens";
+import { useOAuthGrantsQuery } from "./oauth-grants";
 import {
 	useContainerRegistriesQuery,
 	useContainerRegistryInfoQuery,
@@ -46,6 +47,7 @@ export {
 	useMembersQuery,
 	useInvitesQuery,
 	useApiTokensQuery,
+	useOAuthGrantsQuery,
 	useApiTokenInfoQuery,
 	useContainerRegistriesQuery,
 	useContainerRegistryInfoQuery,

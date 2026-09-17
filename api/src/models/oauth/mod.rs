@@ -9,6 +9,8 @@ pub mod keys;
 /// authorization code flow.
 pub mod types;
 
+use time::OffsetDateTime;
+
 use crate::{prelude::*, utils::config::AppConfig};
 
 /// The OIDC issuer identifier.
@@ -32,4 +34,85 @@ pub fn issuer(config: &AppConfig) -> String {
 /// the two cannot be swapped.
 pub fn api_audience(config: &AppConfig) -> String {
 	issuer(config)
+}
+
+/// Revokes a grant and everything issued under it: the same recipe
+/// `logout.rs` uses for a web session, because a grant is a login. Shared by
+/// reuse detection in `/token`, by `/revoke` and by the dashboard, so there is
+/// one way a grant dies.
+#[instrument(skip(connection, redis))]
+pub async fn revoke_grant(
+	connection: &mut DatabaseConnection,
+	redis: &mut rustis::client::Client,
+	login_id: &Uuid,
+) -> Result<(), ErrorType> {
+	use rustis::commands::{GenericCommands, StringCommands};
+
+	let now = OffsetDateTime::now_utc();
+
+	query!(
+		r#"
+		UPDATE
+			oauth_login
+		SET
+			revoked = $1
+		WHERE
+			login_id = $2 AND
+			revoked IS NULL;
+		"#,
+		now,
+		login_id as _,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Every token in the family, so nothing outlives the revocation.
+	let tokens = query!(
+		r#"
+		UPDATE
+			oauth_refresh_token
+		SET
+			consumed = COALESCE(consumed, $1)
+		WHERE
+			login_id = $2
+		RETURNING
+			id AS "id: Uuid";
+		"#,
+		now,
+		login_id as _,
+	)
+	.fetch_all(&mut *connection)
+	.await?;
+
+	// Otherwise a grant revoked mid-window would keep replaying a live pair
+	// to anyone presenting the token that caused the revocation.
+	if !tokens.is_empty() {
+		redis
+			.del(
+				tokens
+					.into_iter()
+					.map(|token| redis::keys::oauth_replacement_tokens(&token.id))
+					.collect::<Vec<_>>(),
+			)
+			.await?;
+	}
+
+	redis
+		.del(redis::keys::permission_for_login_id(login_id))
+		.await?;
+
+	// Outlives the cache it invalidates, so a map written just before this
+	// cannot survive the timestamp that condemns it.
+	redis
+		.setex(
+			redis::keys::login_id_revocation_timestamp(login_id),
+			constants::CACHED_PERMISSIONS_VALIDITY
+				.whole_seconds()
+				.unsigned_abs() +
+				100,
+			now.unix_timestamp_nanos().to_string(),
+		)
+		.await?;
+
+	Ok(())
 }

@@ -55,53 +55,7 @@ pub async fn get_grant_context(
 	config: &AppConfig,
 	token: &str,
 ) -> Result<OAuthGrantContext, ErrorType> {
-	trace!("Parsing authentication header as an OAuth access token");
-
-	let header = jsonwebtoken::decode_header(token).map_err(|err| {
-		warn!("Invalid OAuth access token header: {}", err);
-		ErrorType::MalformedAccessToken
-	})?;
-
-	if header.typ.as_deref() != Some(ACCESS_TOKEN_TYP) {
-		warn!(
-			"OAuth access token has `typ` {:?}, expected `{}`",
-			header.typ, ACCESS_TOKEN_TYP
-		);
-		return Err(ErrorType::MalformedAccessToken);
-	}
-
-	let kid = header.kid.as_deref().ok_or_else(|| {
-		warn!("OAuth access token carries no `kid`");
-		ErrorType::MalformedAccessToken
-	})?;
-
-	let Some(key) = keys::get_key_by_id(config, kid)? else {
-		warn!("OAuth access token names an unknown `kid`: {}", kid);
-		return Err(ErrorType::MalformedAccessToken);
-	};
-
-	// Algorithm, issuer and audience are all pinned in the validator rather
-	// than checked afterwards, so there is no path where a token is decoded
-	// without them having been enforced.
-	let mut validation = Validation::new(Algorithm::ES256);
-	validation.set_issuer(&[issuer(config)]);
-	validation.set_audience(&[api_audience(config)]);
-	validation.set_required_spec_claims(&["iss", "sub", "aud", "exp"]);
-
-	let claims =
-		jsonwebtoken::decode::<OAuthAccessTokenClaims>(token, &key.decoding_key()?, &validation)
-			.map_err(|err| {
-				warn!("Invalid OAuth access token: {}", err);
-				ErrorType::AuthorizationTokenInvalid
-			})?
-			.claims;
-
-	trace!("OAuth access token signature, issuer and audience are valid");
-
-	if OffsetDateTime::now_utc() < claims.nbf {
-		warn!("OAuth access token is not valid yet");
-		return Err(ErrorType::AuthorizationTokenInvalid);
-	}
+	let claims = validate_access_token(config, token)?;
 
 	let Some(grant) = query!(
 		r#"
@@ -169,6 +123,68 @@ pub async fn get_grant_context(
 		scope: grant.scope,
 		client_id: grant.client_id,
 	})
+}
+
+/// Validates an OAuth access token's signature and claims, and nothing else.
+///
+/// Stops short of resolving the grant, so a caller that only wants to know
+/// what a token says — `/introspect`, say — does not pay for a permission map
+/// it is going to discard. Whether the grant behind it is still live is a
+/// separate question, and [`get_grant_context`] is what answers it.
+#[instrument(skip(config, token))]
+pub fn validate_access_token(
+	config: &AppConfig,
+	token: &str,
+) -> Result<OAuthAccessTokenClaims, ErrorType> {
+	trace!("Parsing authentication header as an OAuth access token");
+
+	let header = jsonwebtoken::decode_header(token).map_err(|err| {
+		warn!("Invalid OAuth access token header: {}", err);
+		ErrorType::MalformedAccessToken
+	})?;
+
+	if header.typ.as_deref() != Some(ACCESS_TOKEN_TYP) {
+		warn!(
+			"OAuth access token has `typ` {:?}, expected `{}`",
+			header.typ, ACCESS_TOKEN_TYP
+		);
+		return Err(ErrorType::MalformedAccessToken);
+	}
+
+	let kid = header.kid.as_deref().ok_or_else(|| {
+		warn!("OAuth access token carries no `kid`");
+		ErrorType::MalformedAccessToken
+	})?;
+
+	let Some(key) = keys::get_key_by_id(config, kid)? else {
+		warn!("OAuth access token names an unknown `kid`: {}", kid);
+		return Err(ErrorType::MalformedAccessToken);
+	};
+
+	// Algorithm, issuer and audience are all pinned in the validator rather
+	// than checked afterwards, so there is no path where a token is decoded
+	// without them having been enforced.
+	let mut validation = Validation::new(Algorithm::ES256);
+	validation.set_issuer(&[issuer(config)]);
+	validation.set_audience(&[api_audience(config)]);
+	validation.set_required_spec_claims(&["iss", "sub", "aud", "exp"]);
+
+	let claims =
+		jsonwebtoken::decode::<OAuthAccessTokenClaims>(token, &key.decoding_key()?, &validation)
+			.map_err(|err| {
+				warn!("Invalid OAuth access token: {}", err);
+				ErrorType::AuthorizationTokenInvalid
+			})?
+			.claims;
+
+	trace!("OAuth access token signature, issuer and audience are valid");
+
+	if OffsetDateTime::now_utc() < claims.nbf {
+		warn!("OAuth access token is not valid yet");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	}
+
+	Ok(claims)
 }
 
 /// Whether a bearer token looks like one this module should handle.
