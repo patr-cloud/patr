@@ -376,3 +376,34 @@ pub struct OAuthClientConfig {
 	/// do against the API.
 	pub allowed_scopes: Vec<String>,
 }
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	/// The shape an operator writes in `config/api.json`.
+	#[test]
+	fn clients_parse_from_a_map() {
+		let config: OAuthConfig = serde_json::from_str(
+			r#"{"clients":{"grafana":{"name":"Grafana","logoUrl":"https://g/logo.svg","clientUri":"https://g","clientSecret":"s","redirectUris":["https://g/cb"],"allowedScopes":["openid"]}}}"#,
+		)
+		.expect("a map of clients should parse");
+
+		let client = config
+			.clients
+			.get("grafana")
+			.expect("grafana should be present");
+		assert_eq!(client.name, "Grafana");
+		assert_eq!(client.client_secret.as_deref(), Some("s"));
+		assert_eq!(client.redirect_uris, vec!["https://g/cb"]);
+	}
+
+	/// Every config file written before this feature existed omits the key,
+	/// and the config crate treats a missing field as a hard error — so
+	/// without the default the API would refuse to boot on upgrade.
+	#[test]
+	fn oauth_config_defaults_to_no_clients() {
+		let config: OAuthConfig = serde_json::from_str("{}").expect("an empty block should parse");
+		assert!(config.clients.is_empty());
+	}
+}

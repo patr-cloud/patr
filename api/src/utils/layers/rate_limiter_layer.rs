@@ -12,7 +12,11 @@ use crate::{models::rate_limiter::check_rate_limit, prelude::*};
 
 /// The global rate limit windows applied to all endpoints.
 /// Each tuple is (max_requests, window_duration).
-const RATE_LIMITS: [(u32, Duration); 3] = if cfg!(debug_assertions) {
+///
+/// Visible to the crate because the OAuth protocol endpoints are raw axum
+/// routes and never see this layer — they call `check_rate_limit` with these
+/// directly, rather than inventing a second set of numbers to keep in step.
+pub(crate) const RATE_LIMITS: [(u32, Duration); 3] = if cfg!(debug_assertions) {
 	// Loose enough that SPA page-load bursts in the e2e suite (~8 parallel
 	// queries per route mount, plus retries) never trip it; tight enough that
 	// the rate-limit tests can exhaust the window within one second on a slow
