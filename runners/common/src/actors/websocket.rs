@@ -288,17 +288,21 @@ where
 	// Split into read (Stream) and write (Sink) halves.
 	let (mut sink, read_stream) = stream.split();
 
-	// Send the runner's exposure type before pumping.
+	// Send the handshake before pumping.
 	if sink
-		.send(
-			StreamRunnerDataForWorkspaceClientMsg::SetRunnerExposureType {
-				exposure_type: E::runner_exposure_type(&state.config),
-			},
-		)
+		.send(StreamRunnerDataForWorkspaceClientMsg::Handshake {
+			// Parse CARGO_PKG_VERSION directly so pre-release labels
+			// (e.g. `0.18.0-alpha.1`) are preserved — macros::version!()
+			// only reads MAJOR/MINOR/PATCH and drops the pre-release.
+			version: env!("CARGO_PKG_VERSION")
+				.parse()
+				.expect("CARGO_PKG_VERSION must be a valid semver"),
+			exposure_type: E::runner_exposure_type(&state.config),
+		})
 		.await
 		.is_err()
 	{
-		error!("Failed to send exposure type, reconnecting");
+		error!("Failed to send handshake, reconnecting");
 		schedule_reconnect(&myself, state);
 		return;
 	}
@@ -469,8 +473,8 @@ where
 					resource_type: ResourceType::ManagedURL,
 				});
 		}
-		ExposureTypeRequired => {
-			warn!("Server requested exposure type to be set again");
+		HandshakeRequired => {
+			warn!("Server requested handshake to be sent again");
 		}
 	}
 

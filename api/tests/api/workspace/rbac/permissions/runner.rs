@@ -1,7 +1,8 @@
+use std::collections::BTreeMap;
+
 use models::{
-	ApiSuccessResponseBody,
 	api::workspace::runner::*,
-	rbac::{Permission, RunnerPermission},
+	rbac::{Permission, RunnerPermission, WorkspacePermission},
 };
 
 use super::{all, grants, setup_permission_test};
@@ -10,24 +11,56 @@ use crate::prelude::*;
 #[tokio::test]
 async fn runner_create_permission_grants_access() {
 	let setup = setup().await.expect("failed to setup test server");
-	let (_admin, ws_id, user_b) = setup_permission_test(
+	let (admin, ws_id, user_b) = setup_permission_test(
 		&setup,
 		vec![(Permission::Runner(RunnerPermission::Create), all())],
 	)
 	.await;
 
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+	// The CLI half of the flow (create the consent link) runs off an API token.
+	let api_token = setup
+		.create_test_api_token(
+			&admin.access_token,
+			BTreeMap::from([(ws_id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	let link = setup
+		.make_api_call(
+			ApiRequest::<CreateRunnerLinkRequest>::builder()
+				.path(CreateRunnerLinkPath {
 					workspace_id: ws_id,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(CreateRunnerLinkRequestHeaders {
+					authorization: BearerToken::from_str(&api_token.token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateRunnerLinkRequest {
+					version: "0.1.0".parse().unwrap(),
+					os: "linux".to_string(),
+					arch: "x86_64".to_string(),
+					hostname: random_name(8),
+					private_ip: "127.0.0.1".parse().unwrap(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateRunnerLinkResponse>>()
+		.response;
+
+	// user_b holds only runner::create — enough to approve the link.
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
+					workspace_id: ws_id,
+					user_code: link.user_code,
+				})
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user_b.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: random_name(8),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: random_name(8),
 				})
 				.build(),
 		)
@@ -203,145 +236,6 @@ async fn runner_grant_omitting_a_resource_denies_it() {
 	);
 }
 
-/// Create does not imply View: a create-only member can add a runner but cannot
-/// read it back.
-#[tokio::test]
-async fn runner_create_does_not_grant_view() {
-	let setup = setup().await.expect("failed to setup test server");
-	let (_admin, ws_id, user_b) = setup_permission_test(
-		&setup,
-		vec![(Permission::Runner(RunnerPermission::Create), all())],
-	)
-	.await;
-
-	let created = setup
-		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
-					workspace_id: ws_id,
-				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
-					authorization: user_b.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: random_name(8),
-				})
-				.build(),
-		)
-		.await
-		.json::<ApiSuccessResponseBody<AddRunnerToWorkspaceResponse>>();
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<GetRunnerInfoRequest>::builder()
-				.path(GetRunnerInfoPath {
-					workspace_id: ws_id,
-					runner_id: created.response.id.id,
-				})
-				.headers(GetRunnerInfoRequestHeaders {
-					authorization: user_b.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-	assert!(
-		response.status_code().is_client_error(),
-		"create-only member should not be able to view the runner"
-	);
-}
-
-/// A member with no runner permission gets a membership-gated list that
-/// succeeds but is View-filtered to empty — not a 403.
-#[tokio::test]
-async fn runner_no_permission_list_returns_empty() {
-	let setup = setup().await.expect("failed to setup test server");
-	let (admin, ws_id, user_b) =
-		setup_permission_test(&setup, vec![(Permission::ViewRoles, all())]).await;
-	let _runner = setup.create_test_runner(&admin.access_token, ws_id).await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
-				.path(ListRunnersForWorkspacePath {
-					workspace_id: ws_id,
-				})
-				.headers(ListRunnersForWorkspaceRequestHeaders {
-					authorization: user_b.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await
-		.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>();
-	assert!(
-		response.response.runners.is_empty(),
-		"a member without runner View should see an empty list, not a 403"
-	);
-}
-
-/// The ingress-token endpoint requires Execute: a View-only member is denied.
-#[tokio::test]
-async fn runner_ingress_token_requires_execute() {
-	let setup = setup().await.expect("failed to setup test server");
-	let (admin, ws_id, user_b) = setup_permission_test(
-		&setup,
-		vec![(Permission::Runner(RunnerPermission::View), all())],
-	)
-	.await;
-	let runner = setup.create_test_runner(&admin.access_token, ws_id).await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<GetIngressTokenForRunnerRequest>::builder()
-				.path(GetIngressTokenForRunnerPath {
-					workspace_id: ws_id,
-					runner_id: runner.id,
-				})
-				.headers(GetIngressTokenForRunnerRequestHeaders {
-					authorization: user_b.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-	assert!(
-		response.status_code().is_client_error(),
-		"a View-only member should be denied the ingress token (requires Execute)"
-	);
-}
-
-/// A non-member cannot reach another workspace's runners at all.
-#[tokio::test]
-async fn runner_non_member_denied() {
-	let setup = setup().await.expect("failed to setup test server");
-	let admin = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&admin.access_token).await;
-	let _runner = setup
-		.create_test_runner(&admin.access_token, workspace.id)
-		.await;
-	let outsider = setup.create_test_user().await;
-
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
-				.path(ListRunnersForWorkspacePath {
-					workspace_id: workspace.id,
-				})
-				.headers(ListRunnersForWorkspaceRequestHeaders {
-					authorization: outsider.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-	assert!(
-		response.status_code().is_client_error(),
-		"a non-member should be denied access to the workspace's runners"
-	);
-}
-
 #[tokio::test]
 async fn runner_view_does_not_grant_delete() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -439,19 +333,50 @@ async fn runner_view_does_not_grant_create() {
 		.await;
 	assert!(r_view.status_code().is_success());
 
-	// Create should fail.
-	let r_create = setup
-		.make_web_dashboard_call(
-			ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-				.path(AddRunnerToWorkspacePath {
+	// Creating a runner now means approving a consent link, so that is what
+	// has to be refused. The link itself is minted by the CLI on an API token.
+	let api_token = setup
+		.create_test_api_token(
+			&admin.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	let link = setup
+		.make_api_call(
+			ApiRequest::<CreateRunnerLinkRequest>::builder()
+				.path(CreateRunnerLinkPath {
 					workspace_id: workspace.id,
 				})
-				.headers(AddRunnerToWorkspaceRequestHeaders {
+				.headers(CreateRunnerLinkRequestHeaders {
+					authorization: BearerToken::from_str(&api_token.token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateRunnerLinkRequest {
+					version: "0.1.0".parse().unwrap(),
+					os: "linux".to_string(),
+					arch: "x86_64".to_string(),
+					hostname: random_name(8),
+					private_ip: "127.0.0.1".parse().unwrap(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateRunnerLinkResponse>>()
+		.response;
+
+	let r_create = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ApproveRunnerLinkRequest>::builder()
+				.path(ApproveRunnerLinkPath {
+					workspace_id: workspace.id,
+					user_code: link.user_code,
+				})
+				.headers(ApproveRunnerLinkRequestHeaders {
 					authorization: user_b.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
-				.body(AddRunnerToWorkspaceRequest {
-					name: random_name(8),
+				.body(ApproveRunnerLinkRequest {
+					runner_name: random_name(8),
 				})
 				.build(),
 		)

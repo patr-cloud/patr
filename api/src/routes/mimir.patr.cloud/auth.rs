@@ -54,6 +54,22 @@ pub(super) async fn authenticate_and_authorize(
 			.unwrap()
 	})?;
 
+	// Now that a runner authenticates as its own service account, metric push
+	// can be restricted to them: a human credential must not write metrics on
+	// a runner's behalf, however privileged it is.
+	if user_data.client_type() != ActorClientType::ServiceAccount {
+		warn!(
+			"Mimir push attempted by non-service-account client: {:?}",
+			user_data.client_type()
+		);
+		return Err(Response::builder()
+			.status(StatusCode::FORBIDDEN)
+			.body(Body::from(
+				"Mimir push is only allowed from service accounts",
+			))
+			.unwrap());
+	}
+
 	// Look up which workspace this runner belongs to
 	let workspace_id =
 		super::cache::get_workspace_for_runner(&mut database, &mut redis_conn, &runner_id)

@@ -95,6 +95,20 @@ pub fn ip_lookup_data(ip: IpAddr) -> String {
 	format!("ipLookupData:{}", ip)
 }
 
+/// The key used to store a pending runner consent link. Lookup by the
+/// (workspace, 8-char user_code) tuple from the verification URL. Holds the
+/// device_code (for constant-time compare on verify) plus the metadata the
+/// consent page shows. TTL matches the link expiry (5 minutes). Approval
+/// mutates the entry in place to add the issued runner+SA token; the entry
+/// is deleted on first successful verify claim.
+///
+/// Workspace is part of the key so a verify/get/approve from a different
+/// workspace's URL is naturally a key miss — no separate validation branch
+/// in the handlers.
+pub fn runner_setup_data(workspace_id: Uuid, user_code: &str) -> String {
+	format!("runnerSetupData:{}:{}", workspace_id, user_code)
+}
+
 /// The key used for the sliding window rate limiter sorted set, keyed by IP
 /// address (or IPv6 /64 subnet) and window duration.
 pub fn rate_limit_ip(identifier: &str, window_secs: u64) -> String {
