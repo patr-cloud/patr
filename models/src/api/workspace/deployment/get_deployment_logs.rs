@@ -41,5 +41,6 @@ macros::declare_api_endpoint!(
 		/// logs - The log message
 		pub logs: Vec<DeploymentLog>
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

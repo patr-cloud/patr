@@ -26,5 +26,6 @@ macros::declare_api_endpoint!(
 		/// The runner ingress token
 		pub token: String,
 	},
+	client_type = [ApiToken, ServiceAccount, WebDashboard],
 	audit_log = NoAuditLogger,
 );

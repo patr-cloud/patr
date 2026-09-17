@@ -22,6 +22,8 @@ mod volume;
 mod runner;
 /// The list of secrets that are added to a workspace
 mod secret;
+/// The list of service accounts that belong to a workspace
+mod service_account;
 
 /// Initializes all workspace-related tables
 #[instrument(skip(connection))]
@@ -53,6 +55,7 @@ pub async fn initialize_workspace_tables(
 
 	runner::initialize_runner_tables(connection).await?;
 	secret::initialize_secret_tables(connection).await?;
+	service_account::initialize_service_account_tables(connection).await?;
 
 	Ok(())
 }
@@ -110,6 +113,7 @@ pub async fn initialize_workspace_indices(
 
 	runner::initialize_runner_indices(connection).await?;
 	secret::initialize_secret_indices(connection).await?;
+	service_account::initialize_service_account_indices(connection).await?;
 
 	Ok(())
 }
@@ -143,6 +147,7 @@ pub async fn initialize_workspace_constraints(
 
 	runner::initialize_runner_constraints(connection).await?;
 	secret::initialize_secret_constraints(connection).await?;
+	service_account::initialize_service_account_constraints(connection).await?;
 
 	Ok(())
 }

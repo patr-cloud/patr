@@ -40,7 +40,6 @@ pub(super) async fn authenticate_and_authorize(
 	let user_data = permissions::get_user_data_for_token(
 		&mut database,
 		&mut redis_conn,
-		ClientType::ApiToken,
 		&state.config,
 		addr.ip(),
 		api_token,

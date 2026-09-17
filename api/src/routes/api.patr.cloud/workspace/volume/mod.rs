@@ -16,11 +16,11 @@ use self::{
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_volume, state, allowed_client_type)
-		.mount_auth_endpoint(delete_volume, state, allowed_client_type)
-		.mount_auth_endpoint(get_volume_info, state, allowed_client_type)
-		.mount_auth_endpoint(list_volumes, state, allowed_client_type)
-		.mount_auth_endpoint(update_volume, state, allowed_client_type)
+		.mount_auth_endpoint(create_volume, state, host_client_types)
+		.mount_auth_endpoint(delete_volume, state, host_client_types)
+		.mount_auth_endpoint(get_volume_info, state, host_client_types)
+		.mount_auth_endpoint(list_volumes, state, host_client_types)
+		.mount_auth_endpoint(update_volume, state, host_client_types)
 }

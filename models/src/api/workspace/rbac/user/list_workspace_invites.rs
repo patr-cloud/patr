@@ -44,7 +44,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::ViewRoles,
 		}
 	},
-	api = false,
+	client_type = [WebDashboard],
 	response = {
 		/// The list of pending invites, each with its invite ID
 		pub invites: Vec<WithId<WorkspaceInvite>>,
