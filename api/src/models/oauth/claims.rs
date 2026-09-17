@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::oauth::identity::IdentityClaims, prelude::*};
 
 /// The claims in an OAuth access token.
 ///
@@ -46,6 +46,47 @@ pub struct OAuthAccessTokenClaims {
 	pub iat: OffsetDateTime,
 	/// A unique id for this token.
 	pub jti: Uuid,
+}
+
+/// The claims in an OIDC id token.
+///
+/// Not a credential: an id token is a signed statement *about* a login, for
+/// the client that asked for it, and relying parties treat it as non-secret.
+/// Which is why its audience is the client rather than the API, and why the
+/// authenticator refuses one presented as a bearer token.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IdTokenClaims {
+	/// The issuer, which the client checks against its configuration.
+	pub iss: String,
+	/// The client this token was minted for. An access token names the API
+	/// instead; keeping the two apart is what makes them non-interchangeable.
+	pub aud: String,
+	/// When this token expires.
+	#[serde(with = "datetime_as_seconds")]
+	pub exp: OffsetDateTime,
+	/// When it was issued.
+	#[serde(with = "datetime_as_seconds")]
+	pub iat: OffsetDateTime,
+	/// When the user actually authenticated in the browser session that
+	/// approved the grant — which can be a good deal earlier than `iat`.
+	#[serde(with = "datetime_as_seconds")]
+	pub auth_time: OffsetDateTime,
+	/// The value the client sent on the authorization request, echoed back
+	/// verbatim. The client compares it to what it stored, which is what ties
+	/// this token to the request it started rather than one an attacker
+	/// injected.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub nonce: Option<String>,
+	/// The left-most 128 bits of `SHA-256(access_token)`, base64url-encoded.
+	///
+	/// Lets a client confirm the access token it received belongs with this
+	/// id token, so the two cannot be mixed from different responses.
+	pub at_hash: String,
+	/// `sub` and the scope-gated profile claims, flattened in so this reads
+	/// as one object on the wire and cannot drift from `/userinfo` — OIDC
+	/// Core section 5.3.2 requires the two agree.
+	#[serde(flatten)]
+	pub identity: IdentityClaims,
 }
 
 /// Serialises an `OffsetDateTime` as the unix seconds JWTs use.
