@@ -2,7 +2,18 @@ set shell := ["bash", "-uc"]
 set positional-arguments := true
 set working-directory := "../.."
 
-test *args:
+# Generate the signing keys before running the tests
+[private]
+signing-key:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    if [ ! -f config/oauth-signing-key.pem ]; then
+        openssl ecparam -name prime256v1 -genkey -noout |
+            openssl pkcs8 -topk8 -nocrypt > config/oauth-signing-key.pem
+    fi
+
+test *args: signing-key
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -74,7 +85,7 @@ test *args:
 
     cargo nextest run -p api --test integration-tests --no-fail-fast "$@"
 
-conformance:
+conformance: signing-key
     #!/usr/bin/env bash
     set -euo pipefail
 

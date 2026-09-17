@@ -2,7 +2,9 @@ use std::{
 	collections::BTreeMap,
 	env,
 	fmt::{Display, Formatter},
+	fs,
 	net::SocketAddr,
+	path::{Path, PathBuf},
 };
 
 use config::{Case, Config, Environment, File};
@@ -354,6 +356,48 @@ pub struct OAuthConfig {
 	/// Keyed by `client_id`. Config file only: the env source can't express
 	/// the lists, and camel-cases key segments so `patr-cli` can't be written.
 	pub clients: BTreeMap<String, OAuthClientConfig>,
+	/// PKCS#8 PEM files holding the ES256 keys that sign tokens. Generate one
+	/// with:
+	///
+	/// ```sh
+	/// openssl ecparam -name prime256v1 -genkey -noout |
+	///     openssl pkcs8 -topk8 -nocrypt > config/oauth-signing-key.pem
+	/// ```
+	///
+	/// The first signs; all are published in the JWKS. `kid` is the RFC 7638
+	/// thumbprint. Not `jwt_secret`: that would let a relying party mint web
+	/// sessions. Config file only, like `clients`.
+	#[serde(deserialize_with = "read_signing_keys")]
+	pub signing_keys: Vec<String>,
+}
+
+/// Reads the PEMs at parse time, so a bad path fails the boot rather than the
+/// first token request.
+fn read_signing_keys<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+	D: serde::Deserializer<'de>,
+{
+	Vec::<PathBuf>::deserialize(deserializer)?
+		.into_iter()
+		.map(|path| {
+			// Same `../` fallback as the config file itself.
+			fs::read_to_string(&path)
+				.or_else(|err| {
+					if path.is_relative() {
+						fs::read_to_string(Path::new("..").join(&path))
+					} else {
+						Err(err)
+					}
+				})
+				.map_err(|err| {
+					serde::de::Error::custom(format!(
+						"could not read the OAuth signing key at `{}`: {}",
+						path.display(),
+						err,
+					))
+				})
+		})
+		.collect()
 }
 
 /// A single OAuth client, declared in the config.
