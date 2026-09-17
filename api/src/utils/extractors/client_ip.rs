@@ -24,10 +24,16 @@ pub struct ClientIP(
 	pub IpAddr,
 );
 
-impl FromRequestParts<()> for ClientIP {
+/// Generic over the router state so the raw OAuth routes — which carry
+/// `AppState` — can use this too. The state is never read; only the peer and
+/// the forwarded header are.
+impl<S> FromRequestParts<S> for ClientIP
+where
+	S: Send + Sync,
+{
 	type Rejection = Infallible;
 
-	async fn from_request_parts(parts: &mut Parts, _: &()) -> Result<Self, Self::Rejection> {
+	async fn from_request_parts(parts: &mut Parts, _: &S) -> Result<Self, Self::Rejection> {
 		static PRIVATE_RANGES: LazyLock<Vec<IpNetwork>> = LazyLock::new(|| {
 			[
 				"127.0.0.0/8",    // IPv4 loopback

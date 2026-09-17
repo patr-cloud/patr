@@ -1,0 +1,20 @@
+{
+	"oauth": {
+		"clients": {
+			"e2e": {
+				"name": "E2E Test App",
+				"logoUrl": "http://localhost:19999/logo.svg",
+				"clientUri": "http://localhost:19999",
+				"clientSecret": "e2e-client-secret",
+				"redirectUris": [
+					"http://localhost:19999/cb"
+				],
+				"allowedScopes": [
+					"openid",
+					"profile",
+					"email"
+				]
+			}
+		}
+	}
+}

@@ -118,6 +118,31 @@ impl TestSetup {
 		req.json(&request.body).await
 	}
 
+	/// Make a raw GET against the api-routed server.
+	///
+	/// The OAuth protocol endpoints are plain axum routes rather than typed
+	/// `ApiRequest` ones — they speak the spec's wire format, not Patr's —
+	/// so they cannot go through the helpers above. Redirects are not
+	/// followed, because for `/authorize` the redirect *is* the result.
+	pub async fn make_raw_api_get(&self, path: &str) -> TestResponse {
+		self.api
+			.get(path)
+			.add_header("X-Real-IP", random_ipv4().to_string())
+			.await
+	}
+
+	/// Make a raw GET against the api-routed server from a fixed IP.
+	///
+	/// The helper above randomises `X-Real-IP` so tests don't share a
+	/// rate-limit bucket; a test that is *about* the rate limit needs the
+	/// opposite, so it can exhaust one deliberately.
+	pub async fn make_raw_api_get_from_ip(&self, path: &str, ip: std::net::IpAddr) -> TestResponse {
+		self.api
+			.get(path)
+			.add_header("X-Real-IP", ip.to_string())
+			.await
+	}
+
 	/// Make a typed API call against the routes configured for
 	/// `ClientType::ApiToken` authentication. Use this for any test that
 	/// presents a `patrv1.{refresh}.{login_id}` API token in the

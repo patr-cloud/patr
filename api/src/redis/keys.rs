@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 
 use models::api::auth::SocialLoginProvider;
+use sha2::{Digest, Sha256};
 
 use crate::prelude::*;
 
@@ -133,8 +134,11 @@ pub fn oauth_authorization_request(request_id: &Uuid) -> String {
 
 /// An issued authorization code, keyed by its SHA-256 so a Redis dump doesn't
 /// hand out live codes. Consumed with `GETDEL`, so a replay finds nothing.
-pub fn oauth_authorization_code(code_hash: &str) -> String {
-	format!("oauth:authorizationCode:{}", code_hash)
+pub fn oauth_authorization_code(code: &str) -> String {
+	format!(
+		"oauth:authorizationCode:{}",
+		hex::encode(Sha256::digest(code.as_bytes()))
+	)
 }
 
 /// The pair a consumed refresh token minted, replayed to a client that raced
