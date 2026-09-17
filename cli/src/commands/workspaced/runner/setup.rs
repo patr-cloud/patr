@@ -68,6 +68,7 @@ pub async fn execute(
 		let AuthState::LoggedIn {
 			token,
 			current_workspace,
+			..
 		} = state.auth
 		else {
 			return Err(AppError::NotLoggedIn);

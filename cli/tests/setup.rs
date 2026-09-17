@@ -49,15 +49,72 @@ pub async fn reset() -> &'static MockServer {
 	server
 }
 
-/// A logged-in state pointing at `workspace_id`.
+/// A logged-in state pointing at `workspace_id`, holding an API token.
 pub fn state(workspace_id: Uuid) -> AppState {
 	AppState {
 		target_channel: Channel::Alpha,
 		auth: AuthState::LoggedIn {
 			token: "patrv1.test-token".parse::<BearerToken>().unwrap(),
 			current_workspace: Some(workspace_id),
+			refresh_token: None,
+			token_expiry: None,
 		},
 	}
+}
+
+/// The workspace an [`oauth_state`] session starts on. Deliberately not one
+/// any test's stub server returns, so an assertion that it changed means
+/// something.
+pub const STARTING_WORKSPACE: &str = "000000000000000000000000000000ff";
+
+/// A logged-in state holding an OAuth session, with `token` expiring at
+/// `token_expiry` (unix seconds).
+pub fn oauth_state(token: &str, refresh_token: &str, token_expiry: i64) -> AppState {
+	AppState {
+		target_channel: Channel::Alpha,
+		auth: AuthState::LoggedIn {
+			token: token.parse::<BearerToken>().unwrap(),
+			current_workspace: Some(Uuid::parse_str(STARTING_WORKSPACE).unwrap()),
+			refresh_token: Some(refresh_token.to_owned()),
+			token_expiry: Some(token_expiry),
+		},
+	}
+}
+
+/// Run the CLI with the given argv, as the user would.
+///
+/// Goes through `commands::execute` rather than a command's own `execute`, so
+/// the dispatch-time session renewal is exercised too — that is the whole
+/// point for the OAuth tests.
+pub async fn run(state: AppState, argv: &[&str]) -> Result<CommandOutput, AppError> {
+	use clap::Parser;
+
+	// The renewal path writes the refreshed session back, and without this it
+	// would write over whatever real login the developer running the suite
+	// has. `cli/tests/Justfile` sets it; `unsafe_code` is forbidden, so the
+	// suite cannot set it itself.
+	assert!(
+		std::env::var("CONFIG_PATH").is_ok(),
+		"the tests were run without CONFIG_PATH, so they would write to the real CLI state file. \
+		 Run them via `just cli::test`."
+	);
+
+	let AppArgs { args, command } = AppArgs::try_parse_from(argv).expect("failed to parse args");
+
+	cli::commands::execute(command, args, state).await
+}
+
+/// Read back the state the CLI last wrote.
+///
+/// Deliberately not `AppState::load`: that also layers the user's real config
+/// files on top of `CONFIG_PATH`, so it would answer with the login of
+/// whoever is running the suite.
+pub fn saved_state() -> AppState {
+	let path = std::env::var("CONFIG_PATH").expect("CONFIG_PATH should be set — see `run`");
+	let contents = std::fs::read(&path)
+		.unwrap_or_else(|err| panic!("the CLI should have written `{path}`: {err}"));
+
+	serde_json::from_slice(&contents).expect("the saved state should deserialize")
 }
 
 /// A `200 OK` carrying the standard success envelope.

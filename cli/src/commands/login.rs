@@ -1,33 +1,33 @@
 use std::str::FromStr;
 
-use inquire::Password;
 use models::{ApiSuccessResponseBody, api::user::*, prelude::*};
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::oauth};
 
 /// A command that logs the user into their Patr account.
+///
+/// Two ways in. `--token` takes an API token, which is what CI does: there is
+/// no browser to open and no user to consent. Everything else goes through the
+/// OAuth flow, which is a real login — the resulting session is tied to the
+/// user's account, shows up under their authorized apps, and can be revoked
+/// from the dashboard.
 pub(super) async fn execute(
 	global_args: GlobalArgs,
 	mut state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	// Prompt for the token
-	let token = global_args.token.unwrap_or_else(|| {
-		let token_url = format!("{}/profile/api-tokens/new", constants::FRONTEND_BASE_URL);
-
-		eprintln!("Opening your browser to create a new API token...");
-		match open::that(&token_url) {
-			Ok(()) => eprintln!("Opened '{}' successfully.", token_url),
-			Err(_err) => {
-				eprintln!("If the browser did not open, please visit '{}'", token_url)
-			}
+	let (token, refresh_token, token_expiry) = match global_args.token {
+		// An API token never expires and cannot be refreshed, so it is stored
+		// on its own.
+		Some(token) => (token, None, None),
+		None => {
+			let tokens = oauth::login().await?;
+			(
+				tokens.access_token,
+				tokens.refresh_token,
+				Some(tokens.expiry),
+			)
 		}
-
-		Password::new("Paste your API token here:")
-			.with_help_message("Create an API token in your browser and paste it here")
-			.without_confirmation()
-			.prompt()
-			.expect_tty("Failed to read API token")
-	});
+	};
 
 	// Verify the token by fetching user info
 	let GetUserInfoResponse {
@@ -72,6 +72,8 @@ pub(super) async fn execute(
 	state.auth = AuthState::LoggedIn {
 		token: BearerToken::from_str(&token)?,
 		current_workspace,
+		refresh_token,
+		token_expiry,
 	};
 	state.save()?;
 

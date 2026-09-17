@@ -1,7 +1,10 @@
+use std::str::FromStr;
+
 use clap::{Args, Parser, Subcommand};
+use time::OffsetDateTime;
 
 use self::workspaced::WorkspacedCommand;
-use crate::prelude::*;
+use crate::{prelude::*, utils::oauth};
 
 /// The command to apply a configuration to a workspace.
 mod apply;
@@ -88,6 +91,8 @@ pub async fn execute(
 	global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
+	let state = renew_session(&command, &global_args, state).await?;
+
 	match command {
 		GlobalCommand::Login => login::execute(global_args, state).await,
 		GlobalCommand::Logout => logout::execute(global_args, state).await,
@@ -97,6 +102,73 @@ pub async fn execute(
 		GlobalCommand::Uninstall(args) => uninstall::execute(args, global_args, state).await,
 		GlobalCommand::Workspaced(commands) => {
 			workspaced::execute(commands, global_args, state).await
+		}
+	}
+}
+
+/// Renews the OAuth access token, if this invocation needs one and the stored
+/// one is about to expire.
+///
+/// Done once here rather than around each request: a CLI invocation lasts
+/// seconds, so a token that is fresh at dispatch is still fresh when the last
+/// request goes out, and the alternative is a refresh check threaded through
+/// every call site.
+///
+/// A refresh the server rejects means the grant is gone — revoked from the
+/// dashboard, or expired. That clears the local session and reports it as
+/// such, rather than letting the command run and fail with a 401 the user
+/// cannot act on. A refresh that cannot reach the API is left alone: the
+/// command will fail on its own if the network really is down.
+async fn renew_session(
+	command: &GlobalCommand,
+	global_args: &GlobalArgs,
+	mut state: AppState,
+) -> Result<AppState, AppError> {
+	// `--token` is the CI path, and an API token has nothing to refresh.
+	// `login` is about to replace the session, `logout` to throw it away, and
+	// the lifecycle commands never touch the API at all.
+	if global_args.token.is_some() ||
+		matches!(
+			command,
+			GlobalCommand::Login |
+				GlobalCommand::Logout |
+				GlobalCommand::Upgrade(_) |
+				GlobalCommand::Uninstall(_)
+		) {
+		return Ok(state);
+	}
+
+	let AuthState::LoggedIn {
+		current_workspace,
+		refresh_token: Some(refresh_token),
+		token_expiry,
+		..
+	} = &state.auth
+	else {
+		return Ok(state);
+	};
+
+	if !oauth::needs_refresh(*token_expiry, OffsetDateTime::now_utc().unix_timestamp()) {
+		return Ok(state);
+	}
+
+	let current_workspace = *current_workspace;
+
+	match oauth::refresh(refresh_token).await? {
+		oauth::RefreshOutcome::Refreshed(tokens) => {
+			state.auth = AuthState::LoggedIn {
+				token: BearerToken::from_str(&tokens.access_token)?,
+				current_workspace,
+				refresh_token: tokens.refresh_token,
+				token_expiry: Some(tokens.expiry),
+			};
+			state.clone().save()?;
+			Ok(state)
+		}
+		oauth::RefreshOutcome::Rejected => {
+			state.auth = AuthState::LoggedOut {};
+			state.save()?;
+			Err(AppError::NotLoggedIn)
 		}
 	}
 }
