@@ -3,7 +3,7 @@ use std::{any::Any, collections::BTreeMap, net::IpAddr};
 use axum::{
 	Router,
 	response::{IntoResponse, Response},
-	routing::post,
+	routing::{get, post},
 };
 use tower_http::catch_panic::CatchPanicLayer;
 
@@ -22,6 +22,8 @@ mod submit_consent;
 /// The token endpoint. The back channel: a client's own server exchanges a
 /// code, or rotates a refresh token, here.
 mod token;
+/// The UserInfo endpoint, which answers "who is this token for".
+mod userinfo;
 
 use self::{authorize::*, get_consent_request::*, submit_consent::*};
 
@@ -78,29 +80,6 @@ pub fn dashboard_url(config: &AppConfig) -> String {
 	}
 }
 
-/// The OIDC issuer identifier.
-///
-/// Everything derives from this: the `iss` claim in every token, and the URL
-/// a client fetches the discovery document from. Cloud serves the API on its
-/// own subdomain; self-hosted path-routes it under `/api`.
-pub fn issuer(config: &AppConfig) -> String {
-	let base_domain = &config.server.base_domain;
-	if cfg!(feature = "cloud") {
-		format!("https://api.{base_domain}")
-	} else {
-		format!("https://{base_domain}/api")
-	}
-}
-
-/// The audience an access token must name to be accepted by the API.
-///
-/// The same value as the issuer, because the API is both. What matters is
-/// that it differs from an id token's audience — which is the client — so
-/// the two cannot be swapped.
-pub fn api_audience(config: &AppConfig) -> String {
-	issuer(config)
-}
-
 /// Appends query parameters to a URI, keeping whatever it already carries.
 ///
 /// A registered `redirect_uri` is allowed its own query string, and RFC 6749
@@ -122,6 +101,11 @@ pub fn append_query_params(uri: &str, params: &[(&str, String)]) -> String {
 pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
 	Router::new()
 		.route("/auth/oauth/token", post(token::token))
+		// Both methods, per OIDC Core section 5.3.
+		.route(
+			"/auth/oauth/userinfo",
+			get(userinfo::userinfo).post(userinfo::userinfo),
+		)
 		.layer(CatchPanicLayer::custom(on_protocol_panic))
 		.with_state(state.clone())
 		.mount_endpoint(authorize, state, allowed_client_type)

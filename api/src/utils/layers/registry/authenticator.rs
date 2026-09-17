@@ -116,6 +116,7 @@ where
 				&req.config,
 				req.client_ip,
 				token,
+				true,
 			)
 			.await
 			.map_err(|err| {

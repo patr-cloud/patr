@@ -39,6 +39,7 @@ pub async fn docker_login(
 		&state.config,
 		client_ip,
 		authorization.password(),
+		true,
 	)
 	.await?;
 
