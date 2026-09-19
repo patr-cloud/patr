@@ -144,12 +144,13 @@ const DeploymentEnvironment = (props: DeploymentEnvironmentProps) => {
 				<div class="flex flex-col gap-1 w-full">
 					<h2 class="text-lg text-white font-semibold">Volumes</h2>
 					<p class="text-sm text-grey">
-						Directories whose contents survive restarts. Removing one keeps its data on the runner, so
-						re-adding the same path restores it. A deployment with volumes runs a single replica.
+						Directories whose contents survive restarts and redeploys. A deployment with volumes runs a
+						single replica.
 					</p>
 				</div>
 
 				<VolumeMount
+					showLabel={false}
 					disabled={() => !deploymentPermissions().edit}
 					value={() => deploymentQuery.data?.volumes ?? {}}
 					configMountPaths={() => Object.keys(localInfo()?.configMounts ?? {})}
