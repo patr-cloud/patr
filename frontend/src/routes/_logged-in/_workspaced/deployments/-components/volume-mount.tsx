@@ -123,46 +123,51 @@ const VolumeMount = (props: VolumeMountProps) => {
 	return (
 		<div class="flex flex-col gap-0 w-full">
 			<Show when={!get(props.disabled)}>
-				<div class="flex gap-8 items-center w-full">
+				{/* Top-aligned, with the error inside the input column: the label
+				    is taller than the input, so hanging the error off the row would
+				    leave it closer to the next row than to the input it belongs to. */}
+				<div class="flex gap-8 items-start w-full">
 					<Label
 						parentClass="flex-2"
 						label="Volumes"
-						comments="Directories that persist across restarts. Removing one keeps its data on the runner; re-adding the same path restores it. A deployment with volumes runs a single replica."
+						comments="Directories that persist across restarts. Single replica only."
 					/>
-					<section class="flex-10 flex items-center gap-4 w-full">
-						<Input
-							type={InputType.Text}
-							value={draftPath()}
-							onInput={(e) => setDraftPath(e.currentTarget.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
+					<div class="flex-10 flex flex-col gap-1 w-full">
+						<section class="flex items-center gap-4 w-full">
+							<Input
+								type={InputType.Text}
+								value={draftPath()}
+								onInput={(e) => setDraftPath(e.currentTarget.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.preventDefault();
+										addDraft();
+									}
+								}}
+								class="flex-12"
+								id="deployment-volume-path"
+								name="deployment-volume-path"
+								placeholder="Mount path (e.g. /data)"
+							/>
+
+							<Button
+								type="button"
+								variant={ButtonVariant.Contained}
+								class="flex-1"
+								onClick={(e) => {
 									e.preventDefault();
 									addDraft();
-								}
-							}}
-							class="flex-12"
-							id="deployment-volume-path"
-							name="deployment-volume-path"
-							placeholder="Mount path (e.g. /data)"
-						/>
+								}}
+							>
+								<FiPlus size={16} />
+							</Button>
+						</section>
 
-						<Button
-							type="button"
-							variant={ButtonVariant.Contained}
-							class="flex-1"
-							onClick={(e) => {
-								e.preventDefault();
-								addDraft();
-							}}
-						>
-							<FiPlus size={16} />
-						</Button>
-					</section>
+						<Show when={error()}>
+							<p class="text-sm text-error">{error()}</p>
+						</Show>
+					</div>
 				</div>
-
-				<Show when={error()}>
-					<p class="text-sm text-error mt-1 ml-20">{error()}</p>
-				</Show>
 			</Show>
 
 			<Show when={get(props.disabled) && rows().length > 0}>
@@ -216,6 +221,15 @@ const VolumeMount = (props: VolumeMountProps) => {
 					);
 				}}
 			</Index>
+
+			<Show when={!get(props.disabled) && rows().length > 0}>
+				<div class="flex gap-8 w-full mt-2">
+					<div class="flex-2" />
+					<small class="flex-10 text-xxs text-grey">
+						Removing a volume keeps its data on the runner; re-adding the same path restores it.
+					</small>
+				</div>
+			</Show>
 		</div>
 	);
 };
