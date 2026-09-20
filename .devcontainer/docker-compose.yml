@@ -21,7 +21,7 @@ services:
       - PGPASSWORD=postgres
     volumes:
       - ..:/workspace:cached
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker-host.sock
     depends_on:
       - postgres
       - redis

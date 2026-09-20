@@ -20,12 +20,8 @@ use bollard::{
 		UpdateServiceOptionsBuilder,
 	},
 };
-use futures::{Stream, StreamExt};
-use models::api::workspace::{
-	container_registry::*,
-	deployment::*,
-	secret::{GetSecretForRunnerPath, GetSecretForRunnerRequest, GetSecretForRunnerRequestHeaders},
-};
+use futures::{Stream, StreamExt, TryStreamExt};
+use models::api::workspace::{container_registry::*, deployment::*};
 
 use crate::prelude::*;
 
@@ -118,54 +114,33 @@ pub(crate) async fn upsert(
 		format!("{}:{}", image_path, image_tag)
 	};
 
-	// Resolve secret env vars through the API, which proxies OpenBao.
+	// Resolve secret env vars through secrets.patr.cloud, which proxies OpenBao.
 	// Values stay in memory only and are never logged.
-	let mut env = Vec::with_capacity(environment_variables.len());
-	for (key, value) in environment_variables {
-		let value = match value {
-			EnvironmentVariableValue::String(value) => value,
-			EnvironmentVariableValue::Secret { from_secret } => {
-				let RunnerMode::Managed {
-					workspace_id,
-					runner_id: _,
-					api_token,
-					user_agent,
-				} = &settings.mode
-				else {
-					return Err(RunnerError::UpstreamServerError(ErrorType::server_error(
-						"Secret environment variable encountered in self-hosted mode",
-					)));
-				};
-				client::make_request(
-					ApiRequest::<GetSecretForRunnerRequest>::builder()
-						.path(GetSecretForRunnerPath {
-							workspace_id: *workspace_id,
-							secret_id: from_secret,
-						})
-						.headers(GetSecretForRunnerRequestHeaders {
-							authorization: api_token.clone(),
-							user_agent: user_agent.clone(),
-						})
-						.query(())
-						.body(GetSecretForRunnerRequest)
-						.build(),
-				)
-				.await
-				.map_err(|err| err.body.error)?
-				.body
-				.secret
-				.pointer("/data/data/value")
-				.and_then(|value| value.as_str())
-				.map(String::from)
-				.ok_or_else(|| {
-					RunnerError::UpstreamServerError(ErrorType::server_error(format!(
-						"Secret `{from_secret}` has no value"
-					)))
-				})?
-			}
-		};
-		env.push(format!("{}={}", key, value));
-	}
+	let env = futures::stream::iter(environment_variables)
+		.then(|(key, value)| async move {
+			let value = match value {
+				EnvironmentVariableValue::String(value) => value,
+				EnvironmentVariableValue::Secret { from_secret } => {
+					let RunnerMode::Managed {
+						workspace_id,
+						runner_id,
+						api_token,
+						user_agent: _,
+					} = &settings.mode
+					else {
+						return Err(RunnerError::UpstreamServerError(ErrorType::server_error(
+							"Secret environment variable encountered in self-hosted mode",
+						)));
+					};
+					client::get_secret_value(*runner_id, api_token, *workspace_id, from_secret)
+						.await?
+				}
+			};
+
+			Ok(format!("{}={}", key, value))
+		})
+		.try_collect::<Vec<_>>()
+		.await?;
 
 	// Build registry credentials for both image pull and Swarm task scheduling.
 	// Patr registry images need managed-mode auth; external registries are

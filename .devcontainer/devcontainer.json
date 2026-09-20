@@ -6,6 +6,15 @@
 	"updateRemoteUserUID": true,
 	"service": "app",
 	"workspaceFolder": "/workspace",
+	// Gives the container a usable /var/run/docker.sock (socat proxy over the
+	// host socket mounted at /var/run/docker-host.sock) plus the `docker
+	// compose` plugin, which the Docker runner and `just api test` both need.
+	"features": {
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+			"moby": true,
+			"dockerDashComposeVersion": "latest"
+		}
+	},
 	"customizations": {
 		"vscode": {
 			"extensions": [

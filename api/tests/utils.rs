@@ -12,6 +12,7 @@ use models::{
 			managed_url::*,
 			rbac::{role::*, user::*},
 			runner::*,
+			secret::*,
 			volume::*,
 			*,
 		},
@@ -71,6 +72,13 @@ pub struct TestDomain {
 pub struct TestVolume {
 	pub id: Uuid,
 	pub name: String,
+}
+
+/// A test secret, along with the plaintext value it was created with.
+pub struct TestSecret {
+	pub id: Uuid,
+	pub name: String,
+	pub value: String,
 }
 
 /// A test container repository.
@@ -406,6 +414,36 @@ impl TestSetup {
 		TestVolume {
 			id: response.id.id,
 			name,
+		}
+	}
+
+	/// Create a secret in a workspace, returning its ID, name and value.
+	pub async fn create_test_secret(&self, token: &BearerToken, workspace_id: Uuid) -> TestSecret {
+		let name = random_name(8).to_uppercase();
+		let value = random_name(16);
+
+		let response = self
+			.make_web_dashboard_call(
+				ApiRequest::<CreateSecretRequest>::builder()
+					.path(CreateSecretPath { workspace_id })
+					.headers(CreateSecretRequestHeaders {
+						authorization: token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(CreateSecretRequest {
+						name: name.clone(),
+						value: value.clone(),
+					})
+					.build(),
+			)
+			.await
+			.json::<ApiSuccessResponseBody<CreateSecretResponse>>()
+			.response;
+
+		TestSecret {
+			id: response.id.id,
+			name,
+			value,
 		}
 	}
 

@@ -4,11 +4,13 @@ The backend binary. See the root `CLAUDE.md` for workspace-wide build/sqlx/style
 
 ## One app, many hostnames
 
-`api/` serves six logical hosts off a single axum app, dispatched by the `Host` header (`src/routes/mod.rs`): `api.` (REST API), `app.` (dashboard — `/api/*` re-mounts the API as `WebDashboard`, everything else reverse-proxies to `FRONTEND_URL`), `registry.` (OCI registry), `loki.` / `mimir.` (authenticated push proxies), `assets.`.
+`api/` serves seven logical hosts off a single axum app, dispatched by the `Host` header (`src/routes/mod.rs`): `api.` (REST API), `app.` (dashboard — `/api/*` re-mounts the API as `WebDashboard`, everything else reverse-proxies to `FRONTEND_URL`), `registry.` (OCI registry), `loki.` / `mimir.` (authenticated push proxies), `assets.`, `secrets.` (authenticated OpenBao read proxy — runners only, see below).
 
-**In debug builds each host gets its own port** (`src/app.rs`): base `bind_address` = api, +1 app, +2 registry, +3 loki, +4 assets, +5 mimir. Hit `localhost:<base+N>` locally, not vhosts. Release dispatches all on one port by Host header.
+**In debug builds each host gets its own port** (`src/app.rs`): base `bind_address` = api, +1 app, +2 registry, +3 loki, +4 assets, +5 mimir, +6 secrets. Hit `localhost:<base+N>` locally, not vhosts. Release dispatches all on one port by Host header.
 
 api/ does **not** embed the frontend — it reverse-proxies to `FRONTEND_URL` (default `http://localhost:3030`).
+
+**`secrets.` is the runner's read path for secret values.** It mirrors OpenBao's own KV v2 API (`GET /v1/secret/data/{workspace_id}/{secret_id}`) and streams OpenBao's response back untouched, so any OpenBao-compatible client can read it. Auth follows the loki/mimir proxies: Basic `{runner_id}:{api_token}`, `Runner::Execute` on that runner, and the secret must live in the runner's workspace. Everything else about secrets (create/update/delete, metadata reads) stays on `api.`, which talks to OpenBao server-side.
 
 The **self-hosted** build (`--no-default-features`) collapses the six-way `Host` fanout into a single base-domain path router (`/api`, `/mimir`, `/assets`, `/v2` for the registry, frontend fallback) — see the cloud/self-hosted section in root `CLAUDE.md`.
 

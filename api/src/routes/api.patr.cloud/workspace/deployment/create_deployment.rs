@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use axum::http::StatusCode;
 #[cfg(feature = "cloud")]
 use cloudflare::{
@@ -233,9 +235,42 @@ pub async fn create_deployment(
 
 	trace!("Set constraints to immediate");
 
+	// A deployment may only reference secrets of its own workspace. The FK on
+	// `secret_id` only proves the secret exists, so check the workspace here.
+	// Missing, deleted and foreign secrets all read the same, so this never
+	// reveals that someone else's secret exists.
+	let referenced_secrets = environment_variables
+		.values()
+		.filter_map(|value| value.secret_id().map(sqlx::types::Uuid::from))
+		.collect::<BTreeSet<_>>();
+
+	if !referenced_secrets.is_empty() {
+		let valid_secrets = query!(
+			r#"
+			SELECT
+				COUNT(*) AS "count!"
+			FROM
+				secret
+			WHERE
+				id = ANY($1) AND
+				workspace_id = $2 AND
+				deleted IS NULL;
+			"#,
+			&referenced_secrets.iter().copied().collect::<Vec<_>>(),
+			workspace_id as _,
+		)
+		.fetch_one(&mut **database)
+		.await?
+		.count;
+
+		if valid_secrets != referenced_secrets.len() as i64 {
+			return Err(ErrorType::ResourceDoesNotExist);
+		}
+	}
+
 	query!(
 		r#"
-		INSERT INTO 
+		INSERT INTO
 			deployment_environment_variable(
 				deployment_id,
 				name,

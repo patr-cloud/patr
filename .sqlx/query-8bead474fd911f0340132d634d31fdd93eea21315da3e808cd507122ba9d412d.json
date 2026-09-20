@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT secret.id AS \"id: Uuid\", secret.name AS \"name: String\", resource.created AS \"created: OffsetDateTime\", secret.last_updated AS \"last_updated: OffsetDateTime\", COUNT(*) OVER() AS \"total_count!\" FROM secret JOIN resource ON secret.id = resource.id WHERE secret.workspace_id = $1 AND secret.deleted IS NULL ORDER BY resource.created DESC LIMIT $2 OFFSET $3;",
+  "query": "SELECT secret.id AS \"id: Uuid\", secret.name AS \"name: String\", resource.created AS \"created: OffsetDateTime\", secret.last_updated AS \"last_updated: OffsetDateTime\" FROM secret INNER JOIN resource ON secret.id = resource.id WHERE secret.id = $1 AND secret.workspace_id = $2 AND secret.deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -27,27 +27,20 @@
         "ordinal": 3,
         "name": "last_updated: OffsetDateTime",
         "type_info": "Timestamptz"
-      },
-      {
-        "ordinal": 4,
-        "name": "total_count!",
-        "type_info": "Int8"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Int8",
-        "Int8"
+        "Uuid"
       ]
     },
     "nullable": [
       false,
       false,
       false,
-      false,
-      null
+      false
     ]
   },
-  "hash": "2d1a520da6b33bd596401073dd595fc9d4404e621c731a7f0eff6efbb351c369"
+  "hash": "8bead474fd911f0340132d634d31fdd93eea21315da3e808cd507122ba9d412d"
 }

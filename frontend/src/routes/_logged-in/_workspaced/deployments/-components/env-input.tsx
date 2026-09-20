@@ -1,10 +1,12 @@
-import { FiTrash2, FiUpload } from "solid-icons/fi";
+import { FiLock, FiTrash2, FiUpload } from "solid-icons/fi";
 import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
 import { Button, ButtonVariant, Input, InputType, Label } from "~/components";
+import { useSecretsQuery } from "~/hooks/fetch";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
+import EnvConvertModal from "./env-convert-modal";
 import EnvUploadModal from "./env-upload-modal";
 
 interface EnvInputProps {
@@ -128,6 +130,31 @@ const EnvInput = (props: EnvInputProps) => {
 	};
 
 	const [uploadOpen, setUploadOpen] = createSignal(false);
+	const [convertOpen, setConvertOpen] = createSignal(false);
+
+	// Only plain, non-empty values can become secrets.
+	const convertible = createMemo(() =>
+		rows()
+			.filter((row) => row.key !== "" && typeof row.value === "string" && row.value !== "")
+			.map((row) => ({ key: row.key, value: row.value as string }))
+	);
+
+	// Secret names are unique per workspace, so a key that already names one
+	// can't be converted — the modal flags those rows.
+	const secretsQuery = useSecretsQuery(
+		() => undefined,
+		() => "100"
+	);
+
+	const existingSecretNames = createMemo(
+		() => new Set((secretsQuery.data?.secrets ?? []).map((secret) => secret.name.toLowerCase()))
+	);
+
+	const applyConvertedSecrets = (converted: Record<string, EnvironmentVariableValue>) => {
+		setRows((prev) =>
+			prev.map((row) => (row.key !== "" && converted[row.key] ? { ...row, value: converted[row.key] } : row))
+		);
+	};
 
 	// Committed keys the upload modal validates against: a key already bound to a
 	// secret must not be silently replaced with a plain value from a .env file.
@@ -266,20 +293,39 @@ const EnvInput = (props: EnvInputProps) => {
 				</Index>
 
 				<Show when={!get(props.disabled)}>
-					<Button
-						type="button"
-						variant={ButtonVariant.Plain}
-						onClick={() => setUploadOpen(true)}
-						class="self-start flex items-center gap-2 text-sm cursor-pointer"
-					>
-						<FiUpload size={14} />
-						Upload your .env file
-					</Button>
+					<div class="flex items-center gap-4">
+						<Button
+							type="button"
+							variant={ButtonVariant.Plain}
+							onClick={() => setUploadOpen(true)}
+							class="self-start flex items-center gap-2 text-sm cursor-pointer"
+						>
+							<FiUpload size={14} />
+							Upload your .env file
+						</Button>
+						<Button
+							type="button"
+							variant={ButtonVariant.Plain}
+							disabled={convertible().length === 0}
+							onClick={() => setConvertOpen(true)}
+							class="self-start flex items-center gap-2 text-sm cursor-pointer"
+						>
+							<FiLock size={14} />
+							Convert to secrets
+						</Button>
+					</div>
 					<EnvUploadModal
 						isOpen={uploadOpen}
 						setIsOpen={setUploadOpen}
 						existingKeys={existingKeys}
 						onSubmit={applyUploadedEnvs}
+					/>
+					<EnvConvertModal
+						isOpen={convertOpen}
+						setIsOpen={setConvertOpen}
+						convertible={convertible}
+						existingSecretNames={existingSecretNames}
+						onConverted={applyConvertedSecrets}
 					/>
 				</Show>
 			</div>

@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT runner.workspace_id AS \"runner_workspace_id: Uuid\", secret.workspace_id AS \"secret_workspace_id: Uuid\" FROM runner, secret WHERE runner.id = $1 AND runner.deleted IS NULL AND secret.id = $2 AND secret.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "runner_workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "secret_workspace_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "6e38a30038aab9e271933e0b146a8f61d41977b00ccd04523d7eadef251f7cc3"
+}

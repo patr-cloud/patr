@@ -54,5 +54,9 @@
 	"registry": {
 		"service": "patr.example.com",
 		"realm": "https://patr.example.com/api/auth/docker-login"
+	},
+	"openBao": {
+		"endpoint": "http://secrets:8200",
+		"token": "dev-root-token"
 	}
 }

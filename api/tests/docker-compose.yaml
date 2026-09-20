@@ -36,6 +36,19 @@ services:
       timeout: 3s
       retries: 30
 
+  openbao:
+    image: openbao/openbao:2.5.0
+    command: server -dev -dev-listen-address=0.0.0.0:8200
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: test-root-token
+    ports:
+      - "18200:8200"
+    healthcheck:
+      test: ["CMD", "bao", "status", "-address=http://127.0.0.1:8200"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
   loki:
     image: grafana/loki:3.2.0
     command: -config.file=/etc/loki/test-config.yaml

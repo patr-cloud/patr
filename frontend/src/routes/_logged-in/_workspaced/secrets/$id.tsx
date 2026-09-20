@@ -54,7 +54,7 @@ const SecretDetailPage = () => {
 
 		const requestBody: UpdateSecretRequest = {
 			name: secretName,
-			value: value() ? value() : null,
+			value: value() ? value() : undefined,
 		};
 
 		const response = await httpRequest<UpdateSecretResponse>(

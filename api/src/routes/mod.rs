@@ -34,6 +34,11 @@ pub mod mimir_patr_cloud;
 #[path = "registry.patr.cloud/mod.rs"]
 pub mod registry_patr_cloud;
 
+/// The routes for serving https://secrets.patr.cloud as an authenticated
+/// OpenBao read proxy for runners
+#[path = "secrets.patr.cloud/mod.rs"]
+pub mod secrets_patr_cloud;
+
 /// Turns a panic caught while handling a request into a 500 response instead of
 /// letting it tear down the connection. Shared by both the cloud and
 /// self-hosted routers below.
@@ -67,6 +72,7 @@ cfg_if! {
 			let loki_router = loki_patr_cloud::setup_routes(state).await;
 			let mimir_router = mimir_patr_cloud::setup_routes(state).await;
 			let registry_router = registry_patr_cloud::setup_routes(state).await;
+			let secrets_router = secrets_patr_cloud::setup_routes(state).await;
 
 			Router::new()
 				.fallback(any(async |request: Request<Body>| {
@@ -82,6 +88,7 @@ cfg_if! {
 						"loki.patr.cloud" => loki_router.oneshot(request).await,
 						"mimir.patr.cloud" => mimir_router.oneshot(request).await,
 						"registry.patr.cloud" => registry_router.oneshot(request).await,
+						"secrets.patr.cloud" => secrets_router.oneshot(request).await,
 						_ => Ok(Response::builder()
 							.status(StatusCode::NOT_FOUND)
 							.body(Body::empty())
@@ -105,6 +112,7 @@ cfg_if! {
 					api_patr_cloud::setup_routes(state, ClientType::WebDashboard).await,
 				)
 				.nest("/mimir", mimir_patr_cloud::setup_routes(state).await)
+				.nest("/secrets", secrets_patr_cloud::setup_routes(state).await)
 				.nest("/assets", assets_patr_cloud::setup_routes(state).await)
 				.fallback(app_patr_cloud::proxy)
 				.layer(CatchPanicLayer::custom(on_request_panic))

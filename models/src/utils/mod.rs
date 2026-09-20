@@ -179,6 +179,13 @@ pub mod constants {
 		"https://api.patr.cloud"
 	};
 
+	/// Base URL for the secret store proxy, which speaks OpenBao's KV v2 API
+	pub const SECRETS_BASE_URL: &str = if cfg!(debug_assertions) {
+		"http://localhost:3006"
+	} else {
+		"https://secrets.patr.cloud"
+	};
+
 	/// Patr's container registry URL
 	pub const CONTAINER_REGISTRY_URL: &str = "registry.patr.cloud";
 
@@ -194,6 +201,13 @@ pub mod constants {
 	/// Matches a string that is between 4 and 255 characters long and can have
 	/// digits, letters, hyphens, underscores, spaces and dots.
 	pub const RESOURCE_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_ \.]{4,255}$");
+
+	/// The Regex to validate a secret name. Same character set as a resource
+	/// name, but from one character: a secret's name is a label for a value
+	/// (the environment-variable key lives on the deployment, which refers to
+	/// the secret by id), and those keys are routinely shorter than four
+	/// characters — `ID`, `DB`, `PAT`.
+	pub const SECRET_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_ \.]{1,255}$");
 
 	/// The Regex to validate a container registry repository name. Unlike a
 	/// generic resource name, this must satisfy the registry's storage

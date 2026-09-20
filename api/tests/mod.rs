@@ -13,6 +13,9 @@ pub mod api;
 pub mod loki;
 /// All tests related to the OCI registry are in this module.
 pub mod registry;
+/// All tests related to the secrets.patr.cloud OpenBao proxy are in this
+/// module.
+pub mod secrets;
 
 /// Convenience re-exports for all tests.
 pub mod prelude {

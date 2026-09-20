@@ -88,7 +88,6 @@ pub struct AppConfig {
 	#[cfg(feature = "cloud")]
 	pub social_login: SocialLoginConfig,
 	/// The configuration for OpenBao, the store for resource secrets
-	#[cfg(feature = "cloud")]
 	pub open_bao: OpenBaoConfig,
 	/// Knobs for the OCI registry endpoints
 	pub registry: RegistryConfig,
@@ -321,7 +320,6 @@ pub struct IpInfoConfig {
 /// environment-variable secrets, etc.). OpenBao holds the secret values; Patr's
 /// database stores only references. The API authenticates to OpenBao with
 /// [`token`](Self::token).
-#[cfg(feature = "cloud")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OpenBaoConfig {
