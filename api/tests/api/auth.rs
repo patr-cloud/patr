@@ -269,6 +269,106 @@ async fn logout_works() {
 		.assert_json(&ApiSuccessResponseBody::new(LogoutResponse));
 }
 
+/// Deleting a web login from another session logs that session out at once:
+/// its access token is rejected on the very next call.
+#[tokio::test]
+async fn deleted_web_login_is_rejected_immediately() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let (other_access, other_refresh) = setup.login_test_user(&user.email, &user.password).await;
+	let other_access = BearerToken::from_str(&other_access).unwrap();
+	// The refresh token is `{login_id}.{secret}`.
+	let other_login_id = Uuid::parse_str(other_refresh.split_once('.').unwrap().0).unwrap();
+
+	let whoami = |token: BearerToken| {
+		setup.make_web_dashboard_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: token,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+
+	assert!(
+		whoami(other_access.clone())
+			.await
+			.status_code()
+			.is_success(),
+		"the second session should work before it is deleted"
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteWebLoginRequest>::builder()
+				.path(DeleteWebLoginPath {
+					login_id: other_login_id,
+				})
+				.headers(DeleteWebLoginRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(DeleteWebLoginResponse));
+
+	assert_eq!(
+		401,
+		whoami(other_access).await.status_code().as_u16(),
+		"the deleted session should be rejected with 401"
+	);
+	assert!(
+		whoami(user.access_token.clone())
+			.await
+			.status_code()
+			.is_success(),
+		"the session that did the deleting should still work"
+	);
+}
+
+/// A login that isn't the caller's is not deletable and reports not found.
+#[tokio::test]
+async fn delete_web_login_of_another_user_is_not_found() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let other = setup.create_test_user().await;
+	let other_login_id =
+		Uuid::parse_str(other.refresh_token.0.token().split_once('.').unwrap().0).unwrap();
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteWebLoginRequest>::builder()
+				.path(DeleteWebLoginPath {
+					login_id: other_login_id,
+				})
+				.headers(DeleteWebLoginRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(404, response.status_code().as_u16());
+	assert!(
+		setup
+			.make_web_dashboard_call(
+				ApiRequest::<GetUserInfoRequest>::builder()
+					.headers(GetUserInfoRequestHeaders {
+						authorization: other.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await
+			.status_code()
+			.is_success(),
+		"the other user's session should be untouched"
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Renew Access Token
 // ---------------------------------------------------------------------------
