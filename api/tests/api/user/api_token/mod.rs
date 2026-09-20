@@ -19,6 +19,8 @@ pub mod ceiling;
 pub mod crud;
 /// Cross-user isolation.
 pub mod isolation;
+/// A revoked, regenerated or updated token changes behaviour at once.
+pub mod revocation;
 /// The nbf/exp window, malformed tokens, and IP restrictions.
 pub mod validity;
 
