@@ -1,9 +1,7 @@
 use axum::http::StatusCode;
 use models::{api::workspace::*, rbac::WorkspacePermission};
-use rustis::commands::StringCommands;
-use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 /// The handler for the authenticated user to leave a workspace. The owner
 /// (super admin) of a workspace cannot leave it — they must transfer or delete
@@ -91,20 +89,9 @@ pub async fn leave_workspace(
 		.await?;
 	}
 
-	info!("User left workspace. Setting revocation timestamp");
+	info!("User left workspace. Marking cached permissions stale");
 
-	redis
-		.setex(
-			redis::keys::user_id_revocation_timestamp(&user_data.id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting the revocation timestamp: `{err}`");
-		})?;
+	permissions::mark_actor_stale(redis, &user_data.id).await?;
 
 	AppResponse::builder()
 		.body(LeaveWorkspaceResponse)

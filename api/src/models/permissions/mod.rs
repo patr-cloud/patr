@@ -52,10 +52,14 @@ pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Pe
 
 /// Contains the functions to extract permissions for an API token.
 mod api_token;
+/// Marks cached permissions stale when the data behind them changes.
+mod cache;
 /// Contains the functions to extract permissions for a service account token.
 mod service_account;
 /// Contains the functions to extract permissions for a web dashboard JWT.
 mod web_dashboard;
+
+pub use self::cache::{mark_actor_stale, mark_all_stale, mark_login_stale, mark_workspace_stale};
 
 /// Resolve the effective permission map for an identity, keyed by its identity
 /// ID.
@@ -96,7 +100,7 @@ pub async fn get_permissions_for_identity(
 		}
 	};
 
-	// The stored `creation_time` is what the revocation timestamps in
+	// The stored `creation_time` is what the stale-since stamps in
 	// `get_cached_permissions` are compared against.
 	redis_connection
 		.setex(
@@ -142,14 +146,14 @@ pub async fn get_user_data_for_token(
 }
 
 /// Read the cached permission map for `login_id` from Redis if it is still
-/// valid. Validity is checked against four revocation timestamps (identity,
+/// valid. Validity is checked against four stale-since stamps (identity,
 /// login, workspace, global): if any timestamp is newer than the cache
 /// entry's `creation_time`, the entry is stale, gets deleted, and `None` is
 /// returned so the caller recomputes from the database.
 ///
 /// `identity_id` is the user ID for human identities and the service account
 /// ID for service accounts — both share the
-/// [`user_id_revocation_timestamp`][redis::keys::user_id_revocation_timestamp]
+/// [`actor_cache_stale_since`][redis::keys::actor_cache_stale_since]
 /// namespace, so rotating a service account's token invalidates its cached
 /// permissions the same way revoking a user's does.
 async fn get_cached_permissions(
@@ -177,10 +181,10 @@ async fn get_cached_permissions(
 	// timestamp exists in Redis, and the data inserted into redis was inserted
 	// after this timestamp, it is considered valid.
 
-	// Check user revocation, then loginId revocation, then workspace ID revocation
+	// Check the actor stamp, then the login stamp, then the workspace stamps
 	let is_valid = 'validity: {
-		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::user_id_revocation_timestamp(identity_id))
+		let stale = redis_connection
+			.get::<Option<String>>(redis::keys::actor_cache_stale_since(identity_id))
 			.await?
 			.and_then(|s| s.parse::<i128>().ok())
 			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
@@ -191,12 +195,12 @@ async fn get_cached_permissions(
 			})
 			.is_some();
 
-		if revoked {
+		if stale {
 			break 'validity false;
 		}
 
-		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::login_id_revocation_timestamp(login_id))
+		let stale = redis_connection
+			.get::<Option<String>>(redis::keys::login_cache_stale_since(login_id))
 			.await?
 			.and_then(|s| s.parse::<i128>().ok())
 			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
@@ -207,13 +211,13 @@ async fn get_cached_permissions(
 			})
 			.is_some();
 
-		if revoked {
+		if stale {
 			break 'validity false;
 		}
 
 		for workspace_id in data.permission.keys() {
-			let revoked = redis_connection
-				.get::<Option<String>>(redis::keys::workspace_id_revocation_timestamp(workspace_id))
+			let stale = redis_connection
+				.get::<Option<String>>(redis::keys::workspace_cache_stale_since(workspace_id))
 				.await?
 				.and_then(|s| s.parse::<i128>().ok())
 				.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
@@ -224,13 +228,13 @@ async fn get_cached_permissions(
 				})
 				.is_some();
 
-			if revoked {
+			if stale {
 				break 'validity false;
 			}
 		}
 
-		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::global_revocation_timestamp())
+		let stale = redis_connection
+			.get::<Option<String>>(redis::keys::all_cache_stale_since())
 			.await?
 			.and_then(|s| s.parse::<i128>().ok())
 			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
@@ -241,11 +245,11 @@ async fn get_cached_permissions(
 			})
 			.is_some();
 
-		if revoked {
+		if stale {
 			break 'validity false;
 		}
 
-		// None of the revocation timestamps exist, so the data in Redis is
+		// None of the stale-since stamps are newer, so the data in Redis is
 		// valid and can be used
 		true
 	};

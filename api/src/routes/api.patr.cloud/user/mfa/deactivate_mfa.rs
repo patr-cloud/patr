@@ -1,10 +1,8 @@
 use axum::http::StatusCode;
 use models::api::user::*;
-use rustis::commands::StringCommands as _;
-use time::OffsetDateTime;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
-use crate::{prelude::*, redis::keys as redis};
+use crate::{models::permissions, prelude::*};
 
 pub async fn deactivate_mfa(
 	AuthenticatedAppRequest {
@@ -110,18 +108,7 @@ pub async fn deactivate_mfa(
 	.execute(&mut **database)
 	.await?;
 
-	redis
-		.setex(
-			redis::user_id_revocation_timestamp(&user_data.id.into()),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting user_id_revocation_timestamp: `{}`", err);
-		})?;
+	permissions::mark_actor_stale(redis, &user_data.id).await?;
 
 	AppResponse::builder()
 		.body(DeactivateMfaResponse)

@@ -1,9 +1,7 @@
 use axum::http::StatusCode;
 use models::api::workspace::rbac::role::*;
-use rustis::commands::StringCommands;
-use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 /// The handler to update a role in a workspace. This will update the name,
 /// description, and permissions of the role.
@@ -134,20 +132,7 @@ pub async fn update_role(
 
 	trace!("Role permissions replaced");
 
-	redis
-		.setex(
-			redis::keys::workspace_id_revocation_timestamp(&workspace_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting the revocation timestamp: `{}`", err);
-		})?;
-
-	trace!("Revocation timestamp set");
+	permissions::mark_workspace_stale(redis, &workspace_id).await?;
 
 	AppResponse::builder()
 		.body(UpdateRoleResponse)
