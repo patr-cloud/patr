@@ -657,7 +657,7 @@ async fn sign_up_and_login_are_case_insensitive() {
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
 
-	setup
+	_ = setup
 		.make_web_dashboard_call(
 			ApiRequest::<CompleteSignUpRequest>::builder()
 				.headers(CompleteSignUpRequestHeaders {

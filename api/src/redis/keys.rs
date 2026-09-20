@@ -9,32 +9,32 @@ pub fn permission_for_login_id(login_id: &Uuid) -> String {
 	format!("permissions:{}", login_id)
 }
 
-/// The key used to store if a user ID has been revoked or not. If revoked,
-/// any cached user data (that has been stored before the timestamp) will
-/// have to be refetched from the database.
-pub fn user_id_revocation_timestamp(user_id: &Uuid) -> String {
-	format!("userIdRevocationTimestamp:{}", user_id)
+/// Stamp for one login ID: cached permissions for this login created before
+/// this instant are stale and must be refetched from the database. Bumped when
+/// the credential itself changes (revoked, regenerated, updated, logged out).
+pub fn login_cache_stale_since(login_id: &Uuid) -> String {
+	format!("loginCacheStaleSince:{}", login_id)
 }
 
-/// The key used to store if a login ID has been revoked or not. If revoked,
-/// any cached user data (that has been stored before the timestamp) will
-/// have to be refetched from the database.
-pub fn login_id_revocation_timestamp(login_id: &Uuid) -> String {
-	format!("loginIdRevocationTimestamp:{}", login_id)
+/// Stamp for one actor (user or service account): cached permissions for any
+/// of its logins created before this instant are stale. Bumped when something
+/// about the actor changes that every login inherits (password, MFA, roles,
+/// workspace membership).
+pub fn actor_cache_stale_since(actor_id: &Uuid) -> String {
+	format!("actorCacheStaleSince:{}", actor_id)
 }
 
-/// The key used to store if a workspace ID has been revoked or not. If revoked,
-/// any cached user data (that has been stored before the timestamp) will
-/// have to be refetched from the database.
-pub fn workspace_id_revocation_timestamp(workspace_id: &Uuid) -> String {
-	format!("workspaceIdRevocationTimestamp:{}", workspace_id)
+/// Stamp for one workspace: cached permissions on this workspace created
+/// before this instant are stale. Bumped when a role in the workspace changes
+/// or the workspace is deleted.
+pub fn workspace_cache_stale_since(workspace_id: &Uuid) -> String {
+	format!("workspaceCacheStaleSince:{}", workspace_id)
 }
 
-/// The key used to store if all data has been revoked or not. If revoked,
-/// any cached user data (that has been stored before the timestamp) will
-/// have to be refetched from the database.
-pub fn global_revocation_timestamp() -> String {
-	String::from("globalRevocationTimestamp")
+/// Stamp for everything: all cached permissions created before this instant are
+/// stale. Reserved for operator-driven global invalidation.
+pub fn all_cache_stale_since() -> String {
+	String::from("allCacheStaleSince")
 }
 
 /// The key used to store the mfa secret of a user

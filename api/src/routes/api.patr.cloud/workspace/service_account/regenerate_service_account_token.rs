@@ -1,10 +1,8 @@
 use argon2::{Algorithm, Argon2, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
 use models::api::workspace::service_account::*;
-use rustis::commands::StringCommands;
-use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn regenerate_service_account_token(
 	AuthenticatedAppRequest {
@@ -64,15 +62,7 @@ pub async fn regenerate_service_account_token(
 	}
 
 	// Invalidate cached permissions for the old token
-	redis
-		.setex(
-			redis::keys::user_id_revocation_timestamp(&service_account_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-		)
-		.await?;
+	permissions::mark_actor_stale(redis, &service_account_id).await?;
 
 	let token = format!("patrv1.{}.{}", refresh_token, service_account_id);
 

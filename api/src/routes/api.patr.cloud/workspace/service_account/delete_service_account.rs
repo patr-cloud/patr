@@ -1,9 +1,7 @@
 use axum::http::StatusCode;
 use models::api::workspace::service_account::*;
-use rustis::commands::StringCommands;
-use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn delete_service_account(
 	AuthenticatedAppRequest {
@@ -87,15 +85,7 @@ pub async fn delete_service_account(
 	.await?;
 
 	// Invalidate cached permissions
-	redis
-		.setex(
-			redis::keys::user_id_revocation_timestamp(&service_account_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-		)
-		.await?;
+	permissions::mark_actor_stale(redis, &service_account_id).await?;
 
 	AppResponse::builder()
 		.body(DeleteServiceAccountResponse)

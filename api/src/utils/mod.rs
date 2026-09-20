@@ -76,8 +76,7 @@ pub mod constants {
 	/// The duration that the permission data in Redis will be valid for. Beyond
 	/// that, the data will be considered stale and will be reloaded from the
 	/// database. This is done to prevent the Redis data from having infinite
-	/// keys for permission revocations, since they're not stored in the
-	/// database.
+	/// stale-since stamps, since they are not stored in the database.
 	pub const CACHED_PERMISSIONS_VALIDITY: time::Duration = time::Duration::days(2);
 
 	/// The version of the database. This is used to determine whether the
