@@ -1,8 +1,7 @@
 use models::{api::user::*, rbac::WorkspacePermission};
 use reqwest::StatusCode;
-use rustis::commands::GenericCommands;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn update_api_token(
 	AuthenticatedAppRequest {
@@ -254,9 +253,7 @@ pub async fn update_api_token(
 		}
 	}
 
-	redis
-		.del(redis::keys::permission_for_login_id(&token_id))
-		.await?;
+	permissions::mark_login_stale(redis, &token_id).await?;
 
 	AppResponse::builder()
 		.body(UpdateApiTokenResponse)
