@@ -1,12 +1,10 @@
 use axum::http::StatusCode;
 use models::api::workspace::rbac::user::*;
-use rustis::commands::StringCommands;
-use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 /// The handler to remove a user from a workspace. This will remove the user
-/// from the workspace, and set the revocation timestamp in Redis.
+/// from the workspace, and mark their cached permissions stale.
 pub async fn remove_user_from_workspace(
 	AuthenticatedAppRequest {
 		request:
@@ -83,20 +81,9 @@ pub async fn remove_user_from_workspace(
 	.execute(&mut **database)
 	.await?;
 
-	info!("User removed. Setting revocation timestamp");
+	info!("User removed. Marking cached permissions stale");
 
-	redis
-		.setex(
-			redis::keys::user_id_revocation_timestamp(&user_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting the revocation timestamp: `{}`", err);
-		})?;
+	permissions::mark_actor_stale(redis, &user_id).await?;
 
 	AppResponse::builder()
 		.body(RemoveUserFromWorkspaceResponse)

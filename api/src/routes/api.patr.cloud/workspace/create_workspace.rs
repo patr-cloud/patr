@@ -43,8 +43,8 @@ pub async fn create_workspace(
 	cfg_if! {
 		if #[cfg(feature = "cloud")] {
 			use axum::http::StatusCode;
-			use rustis::commands::StringCommands;
-			use std::ops::Add;
+
+			use crate::models::permissions;
 
 			info!("Creating workspace: `{name}`");
 
@@ -165,20 +165,8 @@ pub async fn create_workspace(
 
 			create_default_roles_for_workspace(&mut **database, &workspace_id).await?;
 
-			// Revoke the token of the user who created the workspace
-			redis
-				.setex(
-					redis::keys::user_id_revocation_timestamp(&user_id),
-					constants::CACHED_PERMISSIONS_VALIDITY
-						.whole_seconds()
-						.unsigned_abs()
-						.add(300),
-					OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-				)
-				.await
-				.inspect_err(|err| {
-					error!("Error setting the revocation timestamp: `{}`", err);
-				})?;
+			// The creator's cached permissions predate the new workspace
+			permissions::mark_actor_stale(redis, &user_id).await?;
 
 			AppResponse::builder()
 				.body(CreateWorkspaceResponse {
