@@ -1,11 +1,7 @@
-use std::ops::Add;
-
 use axum::http::StatusCode;
 use models::api::workspace::*;
-use rustis::commands::{SetExpiration, StringCommands};
-use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 /// The handler to delete a workspace. This will delete all associated data
 /// with the workspace, including the database, container registry, and any
@@ -103,23 +99,8 @@ pub async fn delete_workspace(
 	.execute(&mut **database)
 	.await?;
 
-	// Revoke all tokens that have access to the workspace
-	redis
-		.set_with_options(
-			redis::keys::workspace_id_revocation_timestamp(&workspace.id),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-			None,
-			SetExpiration::Ex(
-				constants::CACHED_PERMISSIONS_VALIDITY
-					.whole_seconds()
-					.unsigned_abs()
-					.add(300),
-			),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting the revocation timestamp: `{}`", err);
-		})?;
+	// Cached permissions on this workspace are now stale
+	permissions::mark_workspace_stale(redis, &workspace.id).await?;
 
 	AppResponse::builder()
 		.body(DeleteWorkspaceResponse)
