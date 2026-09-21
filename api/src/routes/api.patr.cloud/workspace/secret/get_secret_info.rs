@@ -21,7 +21,7 @@ pub async fn get_secret_info(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, GetSecretInfoRequest>,
 ) -> Result<AppResponse<GetSecretInfoRequest>, ErrorType> {

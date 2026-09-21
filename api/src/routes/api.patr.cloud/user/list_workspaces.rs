@@ -19,7 +19,7 @@ pub async fn list_workspaces(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListUserWorkspacesRequest>,
 ) -> Result<AppResponse<ListUserWorkspacesRequest>, ErrorType> {
@@ -44,7 +44,7 @@ pub async fn list_workspaces(
 			) AND
 			workspace.deleted IS NULL;
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 	)
 	.fetch_all(&mut **database)
 	.await?

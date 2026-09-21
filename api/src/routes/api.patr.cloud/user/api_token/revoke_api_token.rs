@@ -19,7 +19,7 @@ pub async fn revoke_api_token(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, RevokeApiTokenRequest>,
 ) -> Result<AppResponse<RevokeApiTokenRequest>, ErrorType> {
@@ -36,7 +36,7 @@ pub async fn revoke_api_token(
 			user_id = $2;
 		"#,
 		token_id as _,
-		user_data.id as _,
+		actor_data.id as _,
 	)
 	.execute(&mut **database)
 	.await?

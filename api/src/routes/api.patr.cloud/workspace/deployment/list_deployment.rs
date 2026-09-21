@@ -37,7 +37,7 @@ pub async fn list_deployment(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListDeploymentRequest>,
 ) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
@@ -81,7 +81,7 @@ pub async fn list_deployment(
 		OFFSET $10;
 		"#,
 		workspace_id as _,
-		user_data.login_id as _,
+		actor_data.login_id as _,
 		Permission::Deployment(DeploymentPermission::View) as _,
 		name_filter as _,
 		image_tag_filter as _,

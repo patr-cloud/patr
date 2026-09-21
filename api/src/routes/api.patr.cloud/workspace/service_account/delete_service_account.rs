@@ -23,7 +23,7 @@ pub async fn delete_service_account(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteServiceAccountRequest>,
 ) -> Result<AppResponse<DeleteServiceAccountRequest>, ErrorType> {

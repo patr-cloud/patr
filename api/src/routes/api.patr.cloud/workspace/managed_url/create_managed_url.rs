@@ -43,7 +43,7 @@ pub async fn create_managed_url(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, CreateManagedURLRequest>,
 ) -> Result<AppResponse<CreateManagedURLRequest>, ErrorType> {

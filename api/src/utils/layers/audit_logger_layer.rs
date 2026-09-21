@@ -118,7 +118,7 @@ where
 				database,
 				redis,
 				client_ip,
-				user_data,
+				actor_data,
 				state,
 			} = req;
 
@@ -135,7 +135,7 @@ where
 							database,
 							redis,
 							client_ip,
-							user_data,
+							actor_data,
 							state,
 						})
 						.await;
@@ -143,7 +143,7 @@ where
 			};
 
 			let user_agent = request.headers.get_header().as_str().to_owned();
-			let login_id = user_data.login_id;
+			let login_id = actor_data.login_id;
 			let ip_details = ip::lookup(client_ip, &state).await?;
 			let client_ip_network = IpNetwork::from(client_ip);
 
@@ -183,7 +183,7 @@ where
 								database,
 								redis,
 								client_ip,
-								user_data,
+								actor_data,
 								state,
 							})
 							.await?,
@@ -196,7 +196,7 @@ where
 							database,
 							redis,
 							client_ip,
-							user_data,
+							actor_data,
 							state,
 						})
 						.await?;

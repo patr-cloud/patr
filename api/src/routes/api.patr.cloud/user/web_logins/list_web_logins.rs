@@ -13,7 +13,7 @@ pub async fn list_web_logins(
 		database,
 		redis,
 		client_ip,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, ListWebLoginsRequest>,
 ) -> Result<AppResponse<ListWebLoginsRequest>, ErrorType> {

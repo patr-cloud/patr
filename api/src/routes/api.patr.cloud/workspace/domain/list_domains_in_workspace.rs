@@ -31,7 +31,7 @@ pub async fn list_domains_in_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListDomainsInWorkspaceRequest>,
 ) -> Result<AppResponse<ListDomainsInWorkspaceRequest>, ErrorType> {
@@ -65,7 +65,7 @@ pub async fn list_domains_in_workspace(
 		OFFSET $9;
 		"#,
 		workspace_id as _,
-		user_data.login_id as _,
+		actor_data.login_id as _,
 		Permission::Domain(DomainPermission::View) as _,
 		name_filter as _,
 		is_verified_filter as _,
