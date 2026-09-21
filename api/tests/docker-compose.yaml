@@ -15,6 +15,7 @@ services:
 
   redis:
     image: redis:7
+    command: ["redis-server", "--maxmemory-policy", "noeviction"]
     ports:
       - "16379:6379"
     healthcheck:

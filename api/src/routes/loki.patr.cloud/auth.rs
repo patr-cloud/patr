@@ -37,7 +37,7 @@ pub(super) async fn authenticate_and_authorize(
 	let mut redis_conn = state.redis.clone();
 
 	// Authenticate the API token
-	let user_data = permissions::get_user_data_for_token(
+	let user_data = permissions::authenticate(
 		&mut database,
 		&mut redis_conn,
 		&state.config,

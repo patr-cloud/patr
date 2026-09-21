@@ -32,7 +32,7 @@ pub async fn docker_login(
 	// Validate the API token before echoing it back as the bearer token.
 	// Without this, `docker login` succeeds with any password and the failure
 	// only surfaces later, mid-push, as an opaque registry error.
-	permissions::get_user_data_for_token(
+	permissions::authenticate(
 		database,
 		redis,
 		&state.config,

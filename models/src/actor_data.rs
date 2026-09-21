@@ -91,7 +91,7 @@ impl ActorData {
 #[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(setter(into)))]
-pub struct RequestUserData {
+pub struct RequestActorData {
 	/// The ID of the actor (user ID or service account ID).
 	pub id: Uuid,
 	/// Who is making the request, and through which kind of credential.
@@ -105,7 +105,7 @@ pub struct RequestUserData {
 	pub permissions: BTreeMap<Uuid, WorkspacePermission>,
 }
 
-impl RequestUserData {
+impl RequestActorData {
 	/// The kind of credential this request authenticated with.
 	#[must_use]
 	pub fn client_type(&self) -> ActorClientType {
