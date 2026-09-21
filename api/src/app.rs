@@ -5,7 +5,7 @@ use std::{
 
 use apalis_postgres::PostgresStorage;
 use axum::extract::FromRef;
-use models::{RequestUserData, prelude::*};
+use models::{RequestActorData, prelude::*};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
 use tokio::net::TcpListener;
@@ -279,7 +279,7 @@ where
 	/// The IP address of the client that made the request.
 	pub client_ip: IpAddr,
 	/// The user data of the current authenticated user.
-	pub user_data: RequestUserData,
+	pub user_data: RequestActorData,
 	/// The application state
 	pub state: AppState,
 }

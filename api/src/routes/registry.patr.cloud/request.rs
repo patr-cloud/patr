@@ -2,7 +2,7 @@ use std::{fmt::Debug, net::IpAddr};
 
 use aws_sdk_s3::Client as S3Client;
 use axum::body::Body;
-use models::RequestUserData;
+use models::RequestActorData;
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
 use typed_builder::TypedBuilder;
@@ -154,7 +154,7 @@ where
 	/// The IP address of the client that made the request.
 	pub client_ip: IpAddr,
 	/// The user data of the current authenticated user.
-	pub user_data: RequestUserData,
+	pub user_data: RequestActorData,
 	/// The application configuration.
 	pub config: AppConfig,
 }

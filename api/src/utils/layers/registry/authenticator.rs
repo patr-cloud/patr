@@ -109,7 +109,7 @@ where
 			let BearerToken(token) = req.request.headers.get_header();
 			let token = token.token();
 
-			let user_data = permissions::get_user_data_for_token(
+			let user_data = permissions::authenticate(
 				req.database,
 				req.redis,
 				&req.config,

@@ -83,6 +83,9 @@ mod private {
 	pub trait Sealed {}
 }
 
+/// The structs that represent the actor behind an authenticated request. Used
+/// by the audit logger middleware, other middleware, and the API itself.
+mod actor_data;
 /// Contains the enum used to represent an error response from the API. This is
 /// an exhaustive list of all the possible error types and the status codes for
 /// the error variant
@@ -96,9 +99,5 @@ mod request;
 /// API can return, including success responses, error responses, and a
 /// flattened enum to parse the response from the API.
 mod response;
-/// The structs that are used to represent user data in a request. These structs
-/// will be used by the audit logger middleware, other middleware, and the API
-/// itself.
-mod user_data;
 
-pub use self::{error::*, request::*, response::*, user_data::*};
+pub use self::{actor_data::*, error::*, request::*, response::*};

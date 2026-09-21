@@ -150,13 +150,13 @@ where
 		// permits that the host also serves. Empty means it has no callers on
 		// this host and isn't mounted at all; otherwise it is the one list the
 		// authenticator checks.
-		let served_client_types = <E as ApiEndpoint>::ALLOWED_CLIENT_TYPES
+		let accepted_client_types = <E as ApiEndpoint>::ALLOWED_CLIENT_TYPES
 			.iter()
 			.copied()
 			.filter(|client_type| host_client_types.contains(client_type))
 			.collect::<Vec<_>>();
 
-		if served_client_types.is_empty() {
+		if accepted_client_types.is_empty() {
 			self
 		} else {
 			self.route(
@@ -171,7 +171,7 @@ where
 							// The cookie-to-Bearer shim is only needed if a
 							// dashboard session can actually reach this route here.
 							.option_layer(
-								served_client_types
+								accepted_client_types
 									.contains(&ActorClientType::WebDashboard)
 									.then(WebDashboardAuthCookieLayer::new),
 							)
@@ -179,7 +179,7 @@ where
 							.layer(DataStoreConnectionLayer::with_state(state.clone()))
 							.layer(PreprocessLayer::new())
 							.layer(UserAgentValidationLayer::new())
-							.layer(AuthenticationLayer::new(served_client_types))
+							.layer(AuthenticationLayer::new(accepted_client_types))
 							.layer(AuthorizationLayer::new())
 							.layer(AuthRateLimiterLayer::new())
 							.layer(AuditLoggerLayer::new())

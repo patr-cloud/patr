@@ -4,9 +4,11 @@ use models::api::auth::SocialLoginProvider;
 
 use crate::prelude::*;
 
-/// The key used to store the permissions for a login ID
-pub fn permission_for_login_id(login_id: &Uuid) -> String {
-	format!("permissions:{}", login_id)
+/// The key holding the cached authentication data for a login ID: the actor
+/// behind it, which kind of login it is, and its permissions. Compared against
+/// the `*_cache_stale_since` stamps below on every read.
+pub fn auth_data_for_login_id(login_id: &Uuid) -> String {
+	format!("authData:{}", login_id)
 }
 
 /// Stamp for one login ID: cached permissions for this login created before
