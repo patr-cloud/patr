@@ -13,11 +13,11 @@ use crate::{models::permissions, prelude::*};
 
 /// The [`tower::Layer`] used to authenticate requests. This will parse the
 /// [`BearerToken`] header and verify it against the database. If the token is
-/// valid, the [`RequestUserData`][1] will be added to the request. All
+/// valid, the [`RequestActorData`][1] will be added to the request. All
 /// subsequent underlying layers will recieve an [`AuthenticatedAppRequest`]
-/// with the appropriate [`RequestUserData`][1] filled.
+/// with the appropriate [`RequestActorData`][1] filled.
 ///
-/// [1]: ::models::RequestUserData
+/// [1]: ::models::RequestActorData
 pub struct AuthenticationLayer<E>
 where
 	E: ApiEndpoint<Authenticator = AppAuthentication<E>>,
@@ -26,7 +26,7 @@ where
 	/// Who this route responds to on the host it is mounted on. Already the
 	/// intersection of the endpoint's own allowlist and the host's, so this
 	/// is the only check a request has to pass.
-	served_client_types: Vec<ActorClientType>,
+	accepted_client_types: Vec<ActorClientType>,
 	/// The endpoint type that this layer will handle
 	endpoint: PhantomData<E>,
 }
@@ -37,9 +37,9 @@ where
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Helper function to initialize an authentication layer
-	pub fn new(served_client_types: Vec<ActorClientType>) -> Self {
+	pub fn new(accepted_client_types: Vec<ActorClientType>) -> Self {
 		Self {
-			served_client_types,
+			accepted_client_types,
 			endpoint: PhantomData,
 		}
 	}
@@ -56,7 +56,7 @@ where
 	fn layer(&self, inner: S) -> Self::Service {
 		AuthenticationService {
 			inner,
-			served_client_types: self.served_client_types.clone(),
+			accepted_client_types: self.accepted_client_types.clone(),
 			endpoint: PhantomData,
 		}
 	}
@@ -69,7 +69,7 @@ where
 {
 	fn clone(&self) -> Self {
 		Self {
-			served_client_types: self.served_client_types.clone(),
+			accepted_client_types: self.accepted_client_types.clone(),
 			endpoint: PhantomData,
 		}
 	}
@@ -83,8 +83,8 @@ where
 {
 	/// The inner service that will be called after the request is authenticated
 	inner: S,
-	/// See [`AuthenticationLayer::served_client_types`].
-	served_client_types: Vec<ActorClientType>,
+	/// See [`AuthenticationLayer::accepted_client_types`].
+	accepted_client_types: Vec<ActorClientType>,
 	/// The endpoint type that this layer will handle
 	endpoint: PhantomData<E>,
 }
@@ -112,13 +112,13 @@ where
 	))]
 	fn call(&mut self, req: AppRequest<'a, E>) -> Self::Future {
 		let mut inner = self.inner.clone();
-		let served_client_types = self.served_client_types.clone();
+		let accepted_client_types = self.accepted_client_types.clone();
 		async move {
 			trace!("Authenticating request");
 			let BearerToken(token) = req.request.headers.get_header();
 			let token = token.token();
 
-			let user_data = permissions::get_user_data_for_token(
+			let user_data = permissions::authenticate(
 				req.database,
 				req.redis,
 				&req.state.config,
@@ -127,7 +127,7 @@ where
 			)
 			.await?;
 
-			if !served_client_types.contains(&user_data.client_type()) {
+			if !accepted_client_types.contains(&user_data.client_type()) {
 				return Err(ErrorType::Unauthorized);
 			}
 
@@ -164,7 +164,7 @@ where
 	fn clone(&self) -> Self {
 		Self {
 			inner: self.inner.clone(),
-			served_client_types: self.served_client_types.clone(),
+			accepted_client_types: self.accepted_client_types.clone(),
 			endpoint: PhantomData,
 		}
 	}

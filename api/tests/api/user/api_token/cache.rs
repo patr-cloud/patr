@@ -1,6 +1,6 @@
-//! A changed credential stops working at once. Each test uses the token first
-//! so its permissions are cached, then changes it and expects the very next
-//! call to reflect the change rather than the cached state.
+//! The auth cache. A used token is served from Redis without touching the
+//! database; a changed credential stops working at once regardless. Each test
+//! uses the token first so it is cached, then acts and checks the next call.
 
 use std::{collections::BTreeMap, net::IpAddr, str::FromStr};
 
@@ -9,6 +9,79 @@ use models::{ApiSuccessResponseBody, api::user::*, rbac::WorkspacePermission};
 
 use super::{call_with_token, mint_token_raw};
 use crate::prelude::*;
+
+/// Once a token has been used, its next call is served from the cache and
+/// never reaches the database: revoking it behind the API's back (so nothing
+/// marks the cache stale) doesn't stop it.
+#[tokio::test]
+async fn used_api_token_is_served_from_cache() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	assert!(
+		call_with_token(&setup, &api_token.token)
+			.await
+			.status_code()
+			.is_success(),
+		"the first call should populate the cache"
+	);
+
+	sqlx::query(&format!(
+		"UPDATE user_api_token SET revoked = NOW() WHERE token_id = '{}'",
+		api_token.id
+	))
+	.execute(setup.database())
+	.await
+	.expect("revoke query");
+
+	assert!(
+		call_with_token(&setup, &api_token.token)
+			.await
+			.status_code()
+			.is_success(),
+		"the second call should be served from the cache without a database lookup"
+	);
+}
+
+/// A cached login doesn't vouch for the secret: once a token has been used,
+/// the same login ID with a wrong secret is still rejected.
+#[tokio::test]
+async fn cached_api_token_still_checks_the_secret() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	assert!(
+		call_with_token(&setup, &api_token.token)
+			.await
+			.status_code()
+			.is_success(),
+		"the first call should populate the cache"
+	);
+
+	let forged = format!("patrv1.{}.{}", Uuid::new_v4(), api_token.id);
+	assert_eq!(
+		401,
+		call_with_token(&setup, &forged)
+			.await
+			.status_code()
+			.as_u16(),
+		"a wrong secret for a cached login should be rejected with 401"
+	);
+}
 
 /// A revoked token is rejected on the next call.
 #[tokio::test]

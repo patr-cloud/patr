@@ -106,7 +106,7 @@ pub async fn logout(
 	trace!("Deleted user login");
 
 	_ = redis
-		.del(redis::permission_for_login_id(&login_id))
+		.del(redis::auth_data_for_login_id(&login_id))
 		.await
 		.inspect_err(|err| {
 			error!(
