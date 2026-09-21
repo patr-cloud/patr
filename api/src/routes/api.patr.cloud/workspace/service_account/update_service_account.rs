@@ -27,7 +27,7 @@ pub async fn update_service_account(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateServiceAccountRequest>,
 ) -> Result<AppResponse<UpdateServiceAccountRequest>, ErrorType> {
@@ -108,7 +108,7 @@ pub async fn update_service_account(
 			service_account_id as _,
 			&role_ids as _,
 			&scope_ids as _,
-			user_data.id as _,
+			actor_data.id as _,
 		)
 		.execute(&mut **database)
 		.await

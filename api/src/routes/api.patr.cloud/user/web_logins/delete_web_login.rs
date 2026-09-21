@@ -21,7 +21,7 @@ pub async fn delete_web_login(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteWebLoginRequest>,
 ) -> Result<AppResponse<DeleteWebLoginRequest>, ErrorType> {
@@ -36,7 +36,7 @@ pub async fn delete_web_login(
 			user_id = $2;
 		"#,
 		login_id as _,
-		user_data.id as _,
+		actor_data.id as _,
 	)
 	.execute(&mut **database)
 	.await?

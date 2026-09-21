@@ -46,7 +46,7 @@ pub async fn list_tags(
 		redis: _,
 		s3: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, ListTagsPath>,
 ) -> Result<RegistryResponse<ListTagsPath>, RegistryError> {

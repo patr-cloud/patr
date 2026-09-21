@@ -24,7 +24,7 @@ pub async fn remove_user_from_workspace(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, RemoveUserFromWorkspaceRequest>,
 ) -> Result<AppResponse<RemoveUserFromWorkspaceRequest>, ErrorType> {

@@ -52,7 +52,7 @@ pub async fn delete_manifest(
 		redis: _,
 		s3: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, DeleteManifestPath>,
 ) -> Result<RegistryResponse<DeleteManifestPath>, RegistryError> {

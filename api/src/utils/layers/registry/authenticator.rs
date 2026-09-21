@@ -109,7 +109,7 @@ where
 			let BearerToken(token) = req.request.headers.get_header();
 			let token = token.token();
 
-			let user_data = permissions::authenticate(
+			let actor_data = permissions::authenticate(
 				req.database,
 				req.redis,
 				&req.config,
@@ -131,7 +131,7 @@ where
 					.build()
 			})?;
 
-			debug!("User authenticated successfully: {}", user_data.id);
+			debug!("User authenticated successfully: {}", actor_data.id);
 
 			// Create authenticated request
 			let request = AuthenticatedRegistryAppRequest {
@@ -140,7 +140,7 @@ where
 				redis: req.redis,
 				s3: req.s3,
 				client_ip: req.client_ip,
-				user_data,
+				actor_data,
 				config: req.config,
 			};
 

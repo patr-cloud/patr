@@ -24,7 +24,7 @@ pub async fn regenerate_service_account_token(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, RegenerateServiceAccountTokenRequest>,
 ) -> Result<AppResponse<RegenerateServiceAccountTokenRequest>, ErrorType> {

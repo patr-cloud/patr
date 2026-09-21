@@ -31,7 +31,7 @@ pub async fn list_runners_for_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListRunnersForWorkspaceRequest>,
 ) -> Result<AppResponse<ListRunnersForWorkspaceRequest>, ErrorType> {
@@ -65,7 +65,7 @@ pub async fn list_runners_for_workspace(
 		OFFSET $9;
 		"#,
 		workspace_id as _,
-		user_data.login_id as _,
+		actor_data.login_id as _,
 		Permission::Runner(RunnerPermission::View) as _,
 		name_filter,
 		connected_filter,

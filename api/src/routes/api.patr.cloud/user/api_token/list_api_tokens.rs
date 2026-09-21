@@ -35,11 +35,11 @@ pub async fn list_api_tokens(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListApiTokensRequest>,
 ) -> Result<AppResponse<ListApiTokensRequest>, ErrorType> {
-	trace!("Listing API tokens for user: {}", user_data.id);
+	trace!("Listing API tokens for user: {}", actor_data.id);
 
 	let mut total_count = 0;
 	let tokens = query!(
@@ -70,7 +70,7 @@ pub async fn list_api_tokens(
 		LIMIT $10
 		OFFSET $11;
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 		name_filter,
 		token_nbf_filter.as_ref().map(|token_nbf| token_nbf.start()) as _,
 		token_nbf_filter.as_ref().map(|token_nbf| token_nbf.end()) as _,

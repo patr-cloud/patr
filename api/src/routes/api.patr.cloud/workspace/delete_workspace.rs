@@ -23,7 +23,7 @@ pub async fn delete_workspace(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteWorkspaceRequest>,
 ) -> Result<AppResponse<DeleteWorkspaceRequest>, ErrorType> {
@@ -46,7 +46,7 @@ pub async fn delete_workspace(
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	// Make sure the workspace is owned by the user
-	if workspace.super_admin_id != user_data.id {
+	if workspace.super_admin_id != actor_data.id {
 		return Err(ErrorType::ResourceDoesNotExist);
 	}
 

@@ -37,7 +37,7 @@ pub(super) async fn authenticate_and_authorize(
 	let mut redis_conn = state.redis.clone();
 
 	// Authenticate the API token
-	let user_data = permissions::authenticate(
+	let actor_data = permissions::authenticate(
 		&mut database,
 		&mut redis_conn,
 		&state.config,
@@ -80,10 +80,10 @@ pub(super) async fn authenticate_and_authorize(
 	)
 	.await;
 
-	if !user_data.has_permission_on_resource(workspace_id, runner_id, permission_id) {
+	if !actor_data.has_permission_on_resource(workspace_id, runner_id, permission_id) {
 		warn!(
 			"User {} does not have Runner::Execute on runner {} in workspace {}",
-			user_data.id, runner_id, workspace_id
+			actor_data.id, runner_id, workspace_id
 		);
 		return Err(Response::builder()
 			.status(StatusCode::FORBIDDEN)

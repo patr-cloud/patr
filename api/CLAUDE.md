@@ -17,7 +17,7 @@ The **self-hosted** build (`--no-default-features`) collapses the six-way `Host`
 An endpoint's shape — path, method, request/response DTOs, `authentication`, `audit_log`, `#[preprocess(...)]` validation, RBAC permission — is declared with `macros::declare_api_endpoint!` in the **`models`** crate. `api/` only holds the **handler** and mounts it. Adding an endpoint = (1) declare it in `models`, (2) write the handler under `src/routes/<host>/...`, (3) `mount_*` it in that module's `setup_routes`.
 
 - Mount via the `RouterExt` trait: `.mount_endpoint` (unauth), `.mount_auth_endpoint`, `.mount_registry_endpoint`.
-- Handlers destructure `AuthenticatedAppRequest { request, database, redis, client_ip, user_data, state }` and return `Result<AppResponse<E>, ErrorType>`.
+- Handlers destructure `AuthenticatedAppRequest { request, database, redis, client_ip, actor_data, state }` and return `Result<AppResponse<E>, ErrorType>`.
 - **The layer stack owns the DB transaction** (`DataStoreConnectionLayer`): it auto-commits on `Ok`, auto-rolls-back on `Err`. Handlers never begin/commit a tx — just return `Result`.
 - `mount_*` takes an `allowed_client_type`. If a client is `ApiToken` and the endpoint's `API_ALLOWED` is false, it's silently not mounted.
 

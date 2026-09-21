@@ -21,7 +21,7 @@ pub async fn update_workspace_info(
 		database,
 		redis,
 		client_ip,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, UpdateWorkspaceInfoRequest>,
 ) -> Result<AppResponse<UpdateWorkspaceInfoRequest>, ErrorType> {
@@ -61,7 +61,7 @@ pub async fn update_workspace_info(
 			database,
 			redis,
 			client_ip,
-			user_data,
+			actor_data,
 			state,
 		})
 		.await?

@@ -19,11 +19,11 @@ pub async fn list_social_logins(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListSocialLoginsRequest>,
 ) -> Result<AppResponse<ListSocialLoginsRequest>, ErrorType> {
-	trace!("Listing social logins for user: {}", user_data.id);
+	trace!("Listing social logins for user: {}", actor_data.id);
 
 	let logins = query!(
 		r#"
@@ -37,7 +37,7 @@ pub async fn list_social_logins(
 		ORDER BY
 			linked_at ASC;
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 	)
 	.fetch_all(&mut **database)
 	.await?

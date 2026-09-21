@@ -22,7 +22,7 @@ pub async fn delete_volume(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteVolumeRequest>,
 ) -> Result<AppResponse<DeleteVolumeRequest>, ErrorType> {

@@ -118,7 +118,7 @@ where
 			let BearerToken(token) = req.request.headers.get_header();
 			let token = token.token();
 
-			let user_data = permissions::authenticate(
+			let actor_data = permissions::authenticate(
 				req.database,
 				req.redis,
 				&req.state.config,
@@ -127,12 +127,12 @@ where
 			)
 			.await?;
 
-			if !accepted_client_types.contains(&user_data.client_type()) {
+			if !accepted_client_types.contains(&actor_data.client_type()) {
 				return Err(ErrorType::Unauthorized);
 			}
 
-			Span::current().record("patr.user_id", display(user_data.id));
-			Span::current().record("patr.login_id", display(user_data.login_id));
+			Span::current().record("patr.user_id", display(actor_data.id));
+			Span::current().record("patr.login_id", display(actor_data.login_id));
 
 			let AppRequest {
 				request,
@@ -147,7 +147,7 @@ where
 				redis,
 				client_ip,
 				state,
-				user_data,
+				actor_data,
 			};
 			inner.call(req).await
 		}

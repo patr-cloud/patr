@@ -23,7 +23,7 @@ pub async fn get_mfa_secret(
 		redis,
 		client_ip: _,
 		state: _,
-		user_data,
+		actor_data,
 	}: AuthenticatedAppRequest<'_, GetMfaSecretRequest>,
 ) -> Result<AppResponse<GetMfaSecretRequest>, ErrorType> {
 	info!("Getting MFA secret");
@@ -37,7 +37,7 @@ pub async fn get_mfa_secret(
 		WHERE
 			id = $1;
 		"#,
-		user_data.id as _
+		actor_data.id as _
 	)
 	.fetch_one(&mut **database)
 	.await?;
@@ -58,12 +58,12 @@ pub async fn get_mfa_secret(
 			.inspect_err(|err| {
 				error!(
 					"Unable to parse MFA secret for userId `{}`: {}",
-					user_data.id,
+					actor_data.id,
 					err.to_string()
 				);
 			})?,
 		Some(constants::TOTP_ISSUER.to_string()),
-		user_data
+		actor_data
 			.actor
 			.email()
 			.ok_or(ErrorType::Unauthorized)?
@@ -72,7 +72,7 @@ pub async fn get_mfa_secret(
 	.inspect_err(|err| {
 		error!(
 			"Unable to parse TOTP for userId `{}`: {}",
-			user_data.id,
+			actor_data.id,
 			err.to_string()
 		);
 	})?
@@ -81,7 +81,7 @@ pub async fn get_mfa_secret(
 
 	redis
 		.setex(
-			redis::user_mfa_secret(&user_data.id),
+			redis::user_mfa_secret(&actor_data.id),
 			Duration::minutes(5).whole_seconds().unsigned_abs(),
 			secret.clone(),
 		)
@@ -89,7 +89,7 @@ pub async fn get_mfa_secret(
 		.inspect_err(|err| {
 			error!(
 				"Error setting the MFA secret for user `{}`: `{}`",
-				user_data.id, err
+				actor_data.id, err
 			);
 		})?;
 

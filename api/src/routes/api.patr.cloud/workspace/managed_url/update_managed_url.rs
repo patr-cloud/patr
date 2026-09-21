@@ -31,7 +31,7 @@ pub async fn update_managed_url(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, UpdateManagedURLRequest>,
 ) -> Result<AppResponse<UpdateManagedURLRequest>, ErrorType> {

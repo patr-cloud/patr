@@ -20,7 +20,7 @@ pub async fn get_user_details(
 		redis: _,
 		client_ip: _,
 		state: _,
-		user_data: _,
+		actor_data: _,
 	}: AuthenticatedAppRequest<'_, GetUserDetailsRequest>,
 ) -> Result<AppResponse<GetUserDetailsRequest>, ErrorType> {
 	info!("Getting user details by UserID");

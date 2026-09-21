@@ -23,7 +23,7 @@ pub async fn get_service_account_info(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, GetServiceAccountInfoRequest>,
 ) -> Result<AppResponse<GetServiceAccountInfoRequest>, ErrorType> {
