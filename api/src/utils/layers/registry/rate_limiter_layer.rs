@@ -133,7 +133,7 @@ where
 			check_rate_limit(
 				req.redis,
 				req.client_ip,
-				Some(&req.user_data.login_id),
+				Some(&req.actor_data.login_id),
 				&RATE_LIMITS,
 			)
 			.await

@@ -33,7 +33,7 @@ pub async fn change_password(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, ChangePasswordRequest>,
 ) -> Result<AppResponse<ChangePasswordRequest>, ErrorType> {
@@ -49,7 +49,7 @@ pub async fn change_password(
 		WHERE
 			id = $1;
 		"#,
-		user_data.id
+		actor_data.id
 	)
 	.fetch_one(&mut **database)
 	.await?;
@@ -83,7 +83,7 @@ pub async fn change_password(
 
 	if let Some(mfa_secret) = row.mfa_secret {
 		let Some(mfa_otp) = mfa_otp else {
-			debug!("MFA required for userId `{}`", user_data.id);
+			debug!("MFA required for userId `{}`", actor_data.id);
 			return Err(ErrorType::MfaRequired);
 		};
 
@@ -95,14 +95,14 @@ pub async fn change_password(
 			.with_secret(Secret::try_from_base32(mfa_secret).map_err(|err| {
 				error!(
 					"Unable to parse MFA secret for userId `{}`: {}",
-					user_data.id,
+					actor_data.id,
 					err.to_string()
 				);
 				ErrorType::server_error(err)
 			})?)
 			.with_issuer(Some(constants::TOTP_ISSUER))
 			.with_account_name(
-				user_data
+				actor_data
 					.actor
 					.email()
 					.ok_or(ErrorType::Unauthorized)?
@@ -112,7 +112,7 @@ pub async fn change_password(
 			.inspect_err(|err| {
 				error!(
 					"Unable to parse TOTP for userId `{}`: {}",
-					user_data.id,
+					actor_data.id,
 					err.to_string()
 				);
 			})
@@ -121,7 +121,7 @@ pub async fn change_password(
 			.is_some();
 
 		if !mfa_valid {
-			info!("MFA OTP invalid for userId `{}`", user_data.id);
+			info!("MFA OTP invalid for userId `{}`", actor_data.id);
 			return Err(ErrorType::MfaOtpInvalid);
 		}
 	}
@@ -153,12 +153,12 @@ pub async fn change_password(
 			id = $2;
 		"#,
 		&hashed_password,
-		user_data.id,
+		actor_data.id,
 	)
 	.execute(&mut **database)
 	.await?;
 
-	trace!("Password updated for userId `{}`", user_data.id);
+	trace!("Password updated for userId `{}`", actor_data.id);
 
 	// Drop every other web login the user has — the password the attacker
 	// used to mint them is now invalid for the refresh path. Keep the
@@ -171,13 +171,13 @@ pub async fn change_password(
 			user_id = $1 AND
 			login_id != $2;
 		"#,
-		user_data.id,
-		user_data.login_id,
+		actor_data.id,
+		actor_data.login_id,
 	)
 	.execute(&mut **database)
 	.await?;
 
-	permissions::mark_actor_stale(redis, &user_data.id).await?;
+	permissions::mark_actor_stale(redis, &actor_data.id).await?;
 
 	AppResponse::builder()
 		.body(ChangePasswordResponse)

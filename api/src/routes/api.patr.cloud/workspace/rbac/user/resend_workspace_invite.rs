@@ -30,7 +30,7 @@ pub async fn resend_workspace_invite(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		mut state,
 	}: AuthenticatedAppRequest<'_, ResendWorkspaceInviteRequest>,
 ) -> Result<AppResponse<ResendWorkspaceInviteRequest>, ErrorType> {
@@ -95,7 +95,7 @@ pub async fn resend_workspace_invite(
 		"#,
 		token_hash,
 		token_expiry,
-		user_data.id,
+		actor_data.id,
 		now,
 		invite_id,
 	)
@@ -136,7 +136,7 @@ pub async fn resend_workspace_invite(
 			invite.email,
 			WorkspaceInviteEmail {
 				workspace_name,
-				invited_by: user_data.actor.display_name(),
+				invited_by: actor_data.actor.display_name(),
 				accept_url: accept_url.clone(),
 				expiry: constants::WORKSPACE_INVITE_VALIDITY.to_string(),
 			},

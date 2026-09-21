@@ -21,7 +21,7 @@ pub async fn deactivate_mfa(
 		redis,
 		client_ip: _,
 		state: _,
-		user_data,
+		actor_data,
 	}: AuthenticatedAppRequest<'_, DeactivateMfaRequest>,
 ) -> Result<AppResponse<DeactivateMfaRequest>, ErrorType> {
 	info!("Deactivating MFA for user");
@@ -35,7 +35,7 @@ pub async fn deactivate_mfa(
 		WHERE
 			id = $1;
 		"#,
-		user_data.id
+		actor_data.id
 	)
 	.fetch_one(&mut **database)
 	.await?;
@@ -52,13 +52,13 @@ pub async fn deactivate_mfa(
 		.with_secret(Secret::try_from_base32(secret.clone()).inspect_err(|err| {
 			error!(
 				"Unable to parse MFA secret for userId `{}`: {}",
-				user_data.id,
+				actor_data.id,
 				err.to_string()
 			);
 		})?)
 		.with_issuer(Some(constants::TOTP_ISSUER))
 		.with_account_name(
-			user_data
+			actor_data
 				.actor
 				.email()
 				.ok_or(ErrorType::Unauthorized)?
@@ -68,7 +68,7 @@ pub async fn deactivate_mfa(
 		.inspect_err(|err| {
 			error!(
 				"Unable to parse TOTP for userId `{}`: {}",
-				user_data.id,
+				actor_data.id,
 				err.to_string()
 			);
 		})?
@@ -88,7 +88,7 @@ pub async fn deactivate_mfa(
 		WHERE
 			id = $1;
 		"#,
-		user_data.id
+		actor_data.id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -103,13 +103,13 @@ pub async fn deactivate_mfa(
 			user_id = $1 AND
 			login_id != $2;
 		"#,
-		user_data.id,
-		user_data.login_id,
+		actor_data.id,
+		actor_data.login_id,
 	)
 	.execute(&mut **database)
 	.await?;
 
-	permissions::mark_actor_stale(redis, &user_data.id).await?;
+	permissions::mark_actor_stale(redis, &actor_data.id).await?;
 
 	AppResponse::builder()
 		.body(DeactivateMfaResponse)

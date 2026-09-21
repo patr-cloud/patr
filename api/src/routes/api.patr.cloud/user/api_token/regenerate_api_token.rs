@@ -20,7 +20,7 @@ pub async fn regenerate_api_token(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, RegenerateApiTokenRequest>,
 ) -> Result<AppResponse<RegenerateApiTokenRequest>, ErrorType> {
@@ -56,7 +56,7 @@ pub async fn regenerate_api_token(
 		"#,
 		hashed_refresh_token,
 		token_id,
-		user_data.id,
+		actor_data.id,
 	)
 	.execute(&mut **database)
 	.await?

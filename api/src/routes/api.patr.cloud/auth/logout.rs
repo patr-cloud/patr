@@ -20,11 +20,11 @@ pub async fn logout(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, LogoutRequest>,
 ) -> Result<AppResponse<LogoutRequest>, ErrorType> {
-	info!("Logging out user: {}", user_data.id);
+	info!("Logging out user: {}", actor_data.id);
 
 	// User agent being a browser is expected to be checked in the
 	// UserAgentValidationLayer

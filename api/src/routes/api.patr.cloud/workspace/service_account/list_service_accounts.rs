@@ -35,7 +35,7 @@ pub async fn list_service_accounts(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListServiceAccountsRequest>,
 ) -> Result<AppResponse<ListServiceAccountsRequest>, ErrorType> {
@@ -66,7 +66,7 @@ pub async fn list_service_accounts(
 		OFFSET $7;
 		"#,
 		workspace_id,
-		user_data.login_id,
+		actor_data.login_id,
 		Permission::ServiceAccount(ServiceAccountPermission::View) as _,
 		name_filter,
 		description_filter,

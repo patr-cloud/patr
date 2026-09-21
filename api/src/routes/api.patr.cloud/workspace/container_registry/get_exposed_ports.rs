@@ -30,7 +30,7 @@ pub async fn get_exposed_ports(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, GetContainerRepositoryExposedPortsRequest>,
 ) -> Result<AppResponse<GetContainerRepositoryExposedPortsRequest>, ErrorType> {

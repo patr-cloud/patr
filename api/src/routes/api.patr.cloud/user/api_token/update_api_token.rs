@@ -30,7 +30,7 @@ pub async fn update_api_token(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateApiTokenRequest>,
 ) -> Result<AppResponse<UpdateApiTokenRequest>, ErrorType> {
@@ -70,7 +70,7 @@ pub async fn update_api_token(
 		token_exp,
 		allowed_ips.as_deref(),
 		token_id,
-		user_data.id,
+		actor_data.id,
 	)
 	.execute(&mut **database)
 	.await
@@ -173,7 +173,7 @@ pub async fn update_api_token(
 						);
 					"#,
 					token_id,
-					user_data.id,
+					actor_data.id,
 					workspace_id,
 				)
 				.execute(&mut **database)

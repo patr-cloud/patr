@@ -35,7 +35,7 @@ pub async fn create_workspace(
 		database,
 		redis,
 		client_ip,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, CreateWorkspaceRequest>,
 ) -> Result<AppResponse<CreateWorkspaceRequest>, ErrorType> {
@@ -47,7 +47,7 @@ pub async fn create_workspace(
 
 			info!("Creating workspace: `{name}`");
 
-			let user_id = user_data.id;
+			let user_id = actor_data.id;
 			let available = super::is_name_available(AuthenticatedAppRequest {
 				request: ProcessedApiRequest {
 					path: IsWorkspaceNameAvailablePath,
@@ -63,7 +63,7 @@ pub async fn create_workspace(
 				database,
 				redis,
 				client_ip,
-				user_data,
+				actor_data,
 				state,
 			})
 			.await?
@@ -183,7 +183,7 @@ pub async fn create_workspace(
 				database,
 				redis,
 				client_ip,
-				user_data,
+				actor_data,
 				state,
 			);
 			return Err(ErrorType::FeatureNotSupported);

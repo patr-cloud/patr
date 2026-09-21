@@ -25,7 +25,7 @@ pub async fn create_service_account(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, CreateServiceAccountRequest>,
 ) -> Result<AppResponse<CreateServiceAccountRequest>, ErrorType> {
@@ -171,7 +171,7 @@ pub async fn create_service_account(
 		id,
 		&role_ids,
 		&scope_ids,
-		user_data.id,
+		actor_data.id,
 	)
 	.execute(&mut **database)
 	.await
