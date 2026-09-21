@@ -23,7 +23,7 @@ pub async fn list_workspace_invites(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListWorkspaceInvitesRequest>,
 ) -> Result<AppResponse<ListWorkspaceInvitesRequest>, ErrorType> {

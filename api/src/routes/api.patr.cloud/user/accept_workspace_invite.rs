@@ -24,11 +24,11 @@ pub async fn accept_workspace_invite(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, AcceptWorkspaceInviteRequest>,
 ) -> Result<AppResponse<AcceptWorkspaceInviteRequest>, ErrorType> {
-	info!("User `{}` accepting invite `{invite_id}`", user_data.id);
+	info!("User `{}` accepting invite `{invite_id}`", actor_data.id);
 
 	let now = OffsetDateTime::now_utc();
 
@@ -95,7 +95,7 @@ pub async fn accept_workspace_invite(
 				email = $2::CITEXT
 		) AS "owns_email!: bool";
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 		invite.email,
 	)
 	.fetch_one(&mut **database)
@@ -129,7 +129,7 @@ pub async fn accept_workspace_invite(
 		VALUES
 			($1, $2, $3);
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 		workspace_id as _,
 		&actor_id as _,
 	)
@@ -199,7 +199,7 @@ pub async fn accept_workspace_invite(
 
 	info!("Invite accepted. Marking cached permissions stale");
 
-	permissions::mark_actor_stale(redis, &user_data.id).await?;
+	permissions::mark_actor_stale(redis, &actor_data.id).await?;
 
 	AppResponse::builder()
 		.body(AcceptWorkspaceInviteResponse {

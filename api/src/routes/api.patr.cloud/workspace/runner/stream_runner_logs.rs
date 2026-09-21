@@ -50,7 +50,7 @@ pub async fn stream_runner_logs(
 		database: _,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, StreamRunnerLogsRequest>,
 ) -> Result<AppResponse<StreamRunnerLogsRequest>, ErrorType> {

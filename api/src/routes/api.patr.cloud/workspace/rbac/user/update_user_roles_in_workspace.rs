@@ -27,7 +27,7 @@ pub async fn update_user_roles_in_workspace(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateUserRolesInWorkspaceRequest>,
 ) -> Result<AppResponse<UpdateUserRolesInWorkspaceRequest>, ErrorType> {
@@ -129,7 +129,7 @@ pub async fn update_user_roles_in_workspace(
 		&actor_id as _,
 		&role_ids as _,
 		&scope_ids as _,
-		&user_data.id as _,
+		&actor_data.id as _,
 	)
 	.execute(&mut **database)
 	.await

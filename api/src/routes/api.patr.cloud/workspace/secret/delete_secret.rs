@@ -21,7 +21,7 @@ pub async fn delete_secret(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, DeleteSecretRequest>,
 ) -> Result<AppResponse<DeleteSecretRequest>, ErrorType> {

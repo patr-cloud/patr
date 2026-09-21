@@ -22,13 +22,16 @@ pub async fn leave_workspace(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, LeaveWorkspaceRequest>,
 ) -> Result<AppResponse<LeaveWorkspaceRequest>, ErrorType> {
-	info!("User `{}` leaving workspace `{workspace_id}`", user_data.id);
+	info!(
+		"User `{}` leaving workspace `{workspace_id}`",
+		actor_data.id
+	);
 
-	if user_data
+	if actor_data
 		.permissions
 		.get(&workspace_id)
 		.is_some_and(WorkspacePermission::is_super_admin)
@@ -52,7 +55,7 @@ pub async fn leave_workspace(
 					workspace_id = $2
 			);
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 		workspace_id as _,
 	)
 	.execute(&mut **database)
@@ -69,7 +72,7 @@ pub async fn leave_workspace(
 			actor_id AS "actor_id: Uuid";
 		"#,
 		workspace_id as _,
-		user_data.id as _,
+		actor_data.id as _,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -91,7 +94,7 @@ pub async fn leave_workspace(
 
 	info!("User left workspace. Marking cached permissions stale");
 
-	permissions::mark_actor_stale(redis, &user_data.id).await?;
+	permissions::mark_actor_stale(redis, &actor_data.id).await?;
 
 	AppResponse::builder()
 		.body(LeaveWorkspaceResponse)

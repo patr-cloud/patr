@@ -63,7 +63,7 @@ pub async fn update_deployment(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
@@ -332,7 +332,7 @@ pub async fn update_deployment(
 		.filter_map(EnvironmentVariableValue::secret_id)
 		.filter(|secret_id| !existing_secrets.contains(secret_id))
 		.any(|secret_id| {
-			!user_data.has_permission_on_resource(workspace_id, secret_id, view_secret_permission)
+			!actor_data.has_permission_on_resource(workspace_id, secret_id, view_secret_permission)
 		}) {
 		return Err(ErrorType::Unauthorized);
 	}

@@ -154,7 +154,7 @@ where
 	/// The IP address of the client that made the request.
 	pub client_ip: IpAddr,
 	/// The user data of the current authenticated user.
-	pub user_data: RequestActorData,
+	pub actor_data: RequestActorData,
 	/// The application configuration.
 	pub config: AppConfig,
 }

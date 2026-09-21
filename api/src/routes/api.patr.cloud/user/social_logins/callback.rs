@@ -40,14 +40,14 @@ pub async fn social_login_callback(
 			},
 		database,
 		redis,
-		user_data,
+		actor_data,
 		state,
 		..
 	}: AuthenticatedAppRequest<'_, ConnectSocialLoginCallbackRequest>,
 ) -> Result<AppResponse<ConnectSocialLoginCallbackRequest>, ErrorType> {
 	trace!(
 		"Processing GitHub connect callback for user {}",
-		user_data.id
+		actor_data.id
 	);
 
 	#[expect(irrefutable_let_patterns)]
@@ -79,10 +79,10 @@ pub async fn social_login_callback(
 	// The state token's user_id must match the caller's JWT. Guards against
 	// a connect started in tab A (logged in as Alice) accidentally
 	// completing in tab B after a re-login as Bob.
-	if state_user_id != user_data.id {
+	if state_user_id != actor_data.id {
 		warn!(
 			"GitHub connect-state user_id ({}) does not match caller ({})",
-			state_user_id, user_data.id
+			state_user_id, actor_data.id
 		);
 		return Err(ErrorType::SocialLoginFailed);
 	}
@@ -165,10 +165,10 @@ pub async fn social_login_callback(
 	.map(|row| Uuid::from(row.user_id));
 
 	match existing_owner {
-		Some(owner) if owner != user_data.id => {
+		Some(owner) if owner != actor_data.id => {
 			warn!(
 				"GitHub identity {} is already linked to user {} (caller: {})",
-				github_external_id, owner, user_data.id
+				github_external_id, owner, actor_data.id
 			);
 			return Err(ErrorType::ResourceAlreadyExists);
 		}
@@ -193,7 +193,7 @@ pub async fn social_login_callback(
 						$3
 					);
 				"#,
-				user_data.id as _,
+				actor_data.id as _,
 				github_external_id,
 				OffsetDateTime::now_utc(),
 			)

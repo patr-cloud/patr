@@ -26,7 +26,7 @@ pub async fn invite_user_to_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		mut state,
 	}: AuthenticatedAppRequest<'_, InviteUserToWorkspaceRequest>,
 ) -> Result<AppResponse<InviteUserToWorkspaceRequest>, ErrorType> {
@@ -125,7 +125,7 @@ pub async fn invite_user_to_workspace(
 		email.as_ref(),
 		token_hash,
 		token_expiry,
-		user_data.id as _,
+		actor_data.id as _,
 		now,
 	)
 	.fetch_one(&mut **database)
@@ -211,7 +211,7 @@ pub async fn invite_user_to_workspace(
 			email.into_owned(),
 			WorkspaceInviteEmail {
 				workspace_name,
-				invited_by: user_data.actor.display_name(),
+				invited_by: actor_data.actor.display_name(),
 				accept_url: accept_url.clone(),
 				expiry: constants::WORKSPACE_INVITE_VALIDITY.to_string(),
 			},
