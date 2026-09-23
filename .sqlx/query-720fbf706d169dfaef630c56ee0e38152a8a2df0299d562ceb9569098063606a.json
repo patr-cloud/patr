@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE runner(id UUID NOT NULL, name TEXT NOT NULL, is_connected BOOLEAN NOT NULL, last_seen TIMESTAMPTZ, workspace_id UUID NOT NULL, cloudflare_tunnel_id TEXT NOT NULL, deleted TIMESTAMPTZ, /* Column order matters: `query!` decodes `SELECT *` by index, so a fresh database must lay this table out exactly as the migrations do — added columns go at the end, in migration order. */ version TEXT NOT NULL, service_account_id UUID NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "720fbf706d169dfaef630c56ee0e38152a8a2df0299d562ceb9569098063606a"
+}

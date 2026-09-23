@@ -43,10 +43,10 @@ pub(super) async fn authenticate_and_authorize(
 		&state.config,
 		addr.ip(),
 		api_token,
-		&[
-			ActorClientType::UserLogin(UserLoginType::ApiToken),
-			ActorClientType::ServiceAccount,
-		],
+		// A runner authenticates as its own service account, so only those
+		// may push: a human credential must not write on a runner's behalf,
+		// however privileged it is.
+		&[ActorClientType::ServiceAccount],
 	)
 	.await
 	.map_err(|err| {

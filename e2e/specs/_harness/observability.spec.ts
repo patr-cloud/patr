@@ -5,6 +5,7 @@ import {
 	observabilityRequests,
 	resetObservability,
 } from '@/helpers/observability';
+import { createRunnerAPI } from '@/helpers/runner-api';
 
 // Harness check for the Loki/Mimir stub. A runner (created via the API, no DinD
 // needed) is enough to exercise the logs/metrics read path: configure canned
@@ -14,12 +15,9 @@ async function createRunner(
 	api: ApiClient,
 	user: UserHandle & { workspaceId: string },
 ): Promise<string> {
-	const r = await api.request<{ id: string }>('POST', `/workspace/${user.workspaceId}/runner`, {
-		token: user.accessToken,
-		clientIp: user.clientIp,
-		body: { name: `obs-${crypto.randomUUID().slice(0, 8)}` },
-	});
-	return r.id;
+	// Runners are only mintable through the consent-link flow now.
+	const runner = await createRunnerAPI(api, user, user.workspaceId);
+	return runner.id;
 }
 
 test.describe('observability stub (loki/mimir)', () => {
