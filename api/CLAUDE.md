@@ -39,7 +39,7 @@ The OCI registry has its **own parallel stack** (`RegistryEndpoint` trait, `Regi
 
 ## Bindings
 
-After renaming or changing any request/response type (in `models`), run `cargo bindings` or CI fails on stale `frontend/src/bindings`.
+After renaming or changing any request/response type (in `models`), run `just bindings` or CI fails on stale `frontend/src/bindings`. Not bare `cargo bindings` — that skips the `index.ts` barrel rebuild.
 
 ## Background jobs
 

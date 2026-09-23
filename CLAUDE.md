@@ -51,9 +51,8 @@ The same codebase builds two flavors. The **cloud** build is the public `patr.cl
 - `cargo api` — run the backend (dashboard on `http://localhost:3001`).
 - `cargo docker` — run the Docker runner.
 - `cargo patr` — run the CLI.
-- `cargo bindings` — regenerate the frontend TS bindings (`test -p models export_bindings`). **CI fails if bindings are stale.**
+- `cargo bindings` — raw ts-rs export (`test -p models export_bindings`). **Don't run it directly — use `just bindings`**, which runs it *and* rebuilds the `frontend/src/bindings/index.ts` barrel that ts-rs doesn't manage. **CI fails if bindings are stale.**
 - `cargo new-migration <name>` — scaffold a DB migration.
-- `cargo prepare` — single-feature `.sqlx/` regen (use `just prepare` for the full cloud + self-hosted merge).
 
 ## Config
 

@@ -69,7 +69,7 @@ reverted. Concretely:
 
 ## Verification
 
-`cargo check -p cli`, `cargo clippy -p cli --no-deps` (per-package), `cargo bindings` after touching `models`.
+`cargo check -p cli`, `cargo clippy -p cli --no-deps` (per-package), `just bindings` after touching `models`.
 
 **Tests: `just cli::test`.** The suite (`cli/tests/`) drives commands against a `wiremock` stub
 API and asserts on the exact request bodies. `constants::API_BASE_URL` is a compile-time

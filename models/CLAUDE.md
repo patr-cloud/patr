@@ -13,7 +13,7 @@ Shared DTOs and types used by the API, frontend (via generated TS bindings), CLI
 
 - The endpoint macro auto-derives `ts_rs::TS` with `#[ts(export, rename_all = "camelCase")]` — generated request/response types export with no extra annotation.
 - **Hand-written shared DTOs must opt in manually**: add `TS` to the derive list and `#[serde(rename_all = "camelCase")]`, matching the surrounding block. Field overrides use `#[ts(type = "...")]` / `#[ts(as = "...")]` (e.g. `OffsetDateTime` → `Date`).
-- **Regenerate after ANY type change here**: `cargo bindings` (= `test -p models export_bindings`; `TS_RS_EXPORT_DIR = frontend/src/bindings`). **CI fails on stale bindings.** All bindings must be reachable from the `frontend/src/bindings/index.ts` barrel.
+- **Regenerate after ANY type change here**: `just bindings` — it runs `cargo bindings` (= `test -p models export_bindings`; `TS_RS_EXPORT_DIR = frontend/src/bindings`) and then rebuilds the `frontend/src/bindings/index.ts` barrel, which ts-rs doesn't manage. Bare `cargo bindings` leaves the barrel stale. **CI fails on stale bindings.**
 
 ## Gotchas
 
