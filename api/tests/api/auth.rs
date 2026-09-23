@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use headers::authorization::Authorization;
 use models::{
 	ApiSuccessResponseBody,
-	api::{auth::*, user::*},
+	api::{auth::*, user::*, workspace::*},
 	rbac::WorkspacePermission,
 };
 
@@ -367,6 +367,81 @@ async fn delete_web_login_of_another_user_is_not_found() {
 			.is_success(),
 		"the other user's session should be untouched"
 	);
+}
+
+// ---------------------------------------------------------------------------
+// Which kinds of client a route accepts
+// ---------------------------------------------------------------------------
+
+/// A JWT sent to a route that only takes API tokens is never parsed as a JWT:
+/// as far as that route is concerned it's a malformed API token.
+#[tokio::test]
+async fn jwt_on_an_api_token_route_is_a_malformed_api_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(400, response.status_code().as_u16());
+}
+
+/// A service account token on a route that takes API tokens but not service
+/// accounts is rejected, whether the account is cached or not.
+#[tokio::test]
+async fn service_account_token_on_an_api_token_only_route_is_unauthorized() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let service_account = setup
+		.create_test_service_account(&admin.access_token, workspace.id, vec![])
+		.await;
+	let sa_token = BearerToken::from_str(&service_account.token).unwrap();
+
+	let get_user_info = || {
+		setup.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: sa_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+
+	// Not cached yet: rejected at the lookup, before anything is loaded.
+	assert_eq!(401, get_user_info().await.status_code().as_u16());
+
+	// Cache it through a route that does take service accounts…
+	assert!(
+		setup
+			.make_api_call(
+				ApiRequest::<GetWorkspaceInfoRequest>::builder()
+					.path(GetWorkspaceInfoPath {
+						workspace_id: workspace.id,
+					})
+					.headers(GetWorkspaceInfoRequestHeaders {
+						authorization: sa_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await
+			.status_code()
+			.is_success(),
+		"a service account should be able to read its own workspace"
+	);
+
+	// …and it is still rejected here, now from the cached entry.
+	assert_eq!(401, get_user_info().await.status_code().as_u16());
 }
 
 // ---------------------------------------------------------------------------
