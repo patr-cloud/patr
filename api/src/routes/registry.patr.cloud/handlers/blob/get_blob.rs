@@ -211,7 +211,8 @@ pub async fn get_blob(
 	let exists_in_redis = if !exists_in_db {
 		redis
 			.exists(keys::repository_for_registry_blob(&repository_id, &digest))
-			.await? > 0
+			.await? >
+			0
 	} else {
 		true
 	};
