@@ -22,7 +22,7 @@ pub async fn delete_domain_in_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteDomainInWorkspaceRequest>,
 ) -> Result<AppResponse<DeleteDomainInWorkspaceRequest>, ErrorType> {

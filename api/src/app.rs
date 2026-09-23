@@ -5,7 +5,7 @@ use std::{
 
 use apalis_postgres::PostgresStorage;
 use axum::extract::FromRef;
-use models::{RequestUserData, prelude::*};
+use models::{RequestActorData, prelude::*};
 use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
 use tokio::net::TcpListener;
@@ -91,9 +91,12 @@ pub async fn serve(state: &AppState) {
 				async {
 					axum::serve(
 						api_listener,
-						crate::routes::api_patr_cloud::setup_routes(state, ClientType::ApiToken)
-							.await
-							.into_make_service_with_connect_info::<SocketAddr>(),
+						crate::routes::api_patr_cloud::setup_routes(
+							state,
+							&[ActorClientType::UserLogin(UserLoginType::ApiToken), ActorClientType::ServiceAccount],
+						)
+						.await
+						.into_make_service_with_connect_info::<SocketAddr>(),
 					)
 					.with_graceful_shutdown(crate::exit_signal())
 					.await
@@ -276,7 +279,7 @@ where
 	/// The IP address of the client that made the request.
 	pub client_ip: IpAddr,
 	/// The user data of the current authenticated user.
-	pub user_data: RequestUserData,
+	pub actor_data: RequestActorData,
 	/// The application state
 	pub state: AppState,
 }

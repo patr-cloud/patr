@@ -77,10 +77,10 @@ pub async fn handle_blob_mount(
 	);
 
 	// 2. Verify user has access to source workspace
-	verify_workspace_access(&req.user_data, source_repo.workspace_id()).map_err(|e| {
+	verify_workspace_access(&req.actor_data, source_repo.workspace_id()).map_err(|e| {
 		warn!(
 			source_workspace = %source_repo.workspace_id(),
-			user_id = %req.user_data.id,
+			user_id = %req.actor_data.id,
 			"User does not have access to source workspace"
 		);
 		e

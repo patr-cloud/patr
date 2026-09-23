@@ -17,14 +17,15 @@ The **self-hosted** build (`--no-default-features`) collapses the six-way `Host`
 An endpoint's shape — path, method, request/response DTOs, `authentication`, `audit_log`, `#[preprocess(...)]` validation, RBAC permission — is declared with `macros::declare_api_endpoint!` in the **`models`** crate. `api/` only holds the **handler** and mounts it. Adding an endpoint = (1) declare it in `models`, (2) write the handler under `src/routes/<host>/...`, (3) `mount_*` it in that module's `setup_routes`.
 
 - Mount via the `RouterExt` trait: `.mount_endpoint` (unauth), `.mount_auth_endpoint`, `.mount_registry_endpoint`.
-- Handlers destructure `AuthenticatedAppRequest { request, database, redis, client_ip, user_data, state }` and return `Result<AppResponse<E>, ErrorType>`.
+- Handlers destructure `AuthenticatedAppRequest { request, database, redis, client_ip, actor_data, state }` and return `Result<AppResponse<E>, ErrorType>`.
 - **The layer stack owns the DB transaction** (`DataStoreConnectionLayer`): it auto-commits on `Ok`, auto-rolls-back on `Err`. Handlers never begin/commit a tx — just return `Result`.
 - `mount_*` takes an `allowed_client_type`. If a client is `ApiToken` and the endpoint's `API_ALLOWED` is false, it's silently not mounted.
 
 ## Auth & caching
 
-- Web dashboard sessions use **JWT**; API tokens are `patrv1.{refresh_token}.{login_id}` (parsed in `src/models/permissions/api_token.rs`, `src/utils/layers/registry/authenticator.rs`).
-- **Redis** (`rustis`, `src/redis/`) is not just a cache — it holds the cached permission map per `login_id` (with multi-level revocation timestamps; validity `CACHED_PERMISSIONS_VALIDITY` = 2 days), rate-limit buckets (sorted sets), pub/sub for WebSocket log/metric streams, and operational caches. Key namespace lives in `src/redis/keys.rs`.
+- Web dashboard sessions use **JWT**; user API tokens and service account tokens are both `patrv1.{secret}.{login_id}`. Every bearer token goes through `permissions::authenticate` (`src/models/permissions/mod.rs`): parsed as a JWT first, else as `patrv1.`; the login ID keys a Redis entry (`ActorAuthDataCache`) holding the actor, its kind and its permissions, so a cache hit does no DB work. A miss does one `actor_client` lookup (which says whether a `patrv1.` login is an API token or a service account), verifies the secret, and loads permissions from the per-kind module. JWT claims and an API token's `allowed_ips` are re-checked per request.
+- **Cache invalidation is by stamp, not by mutation.** Anything that changes what an entry would contain calls `permissions::mark_{login,actor,workspace,all}_stale`, which writes *now* to that scope's `*_cache_stale_since` key; an entry older than a stamp covering it is a miss. `mark_login_stale` also deletes the entry. Entries and stamps share `CACHED_PERMISSIONS_VALIDITY` (2 days), so Redis **must run `maxmemory-policy noeviction`** — an evicted stamp would resurrect stale entries. Add a bump whenever you write a handler that changes credentials, roles, or membership.
+- **Redis** (`rustis`, `src/redis/`) also holds rate-limit buckets (sorted sets), pub/sub for WebSocket log/metric streams, and operational caches. Key namespace lives in `src/redis/keys.rs`.
 
 ## Database & migrations
 

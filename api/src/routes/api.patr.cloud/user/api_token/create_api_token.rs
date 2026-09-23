@@ -32,7 +32,7 @@ pub async fn create_api_token(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, CreateApiTokenRequest>,
 ) -> Result<AppResponse<CreateApiTokenRequest>, ErrorType> {
@@ -99,7 +99,7 @@ pub async fn create_api_token(
 			client
 		RETURNING user_login.login_id;
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 		now,
 	)
 	.fetch_one(&mut **database)
@@ -146,7 +146,7 @@ pub async fn create_api_token(
 		"#,
 		token_id as _,
 		&name,
-		user_data.id as _,
+		actor_data.id as _,
 		&hashed_refresh_token,
 		token_nbf,
 		token_exp,
@@ -214,7 +214,7 @@ pub async fn create_api_token(
 						);
 					"#,
 					token_id as _,
-					user_data.id as _,
+					actor_data.id as _,
 					workspace_id as _,
 				)
 				.execute(&mut **database)

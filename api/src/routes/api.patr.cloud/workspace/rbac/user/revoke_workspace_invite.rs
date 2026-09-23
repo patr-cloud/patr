@@ -24,7 +24,7 @@ pub async fn revoke_workspace_invite(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, RevokeWorkspaceInviteRequest>,
 ) -> Result<AppResponse<RevokeWorkspaceInviteRequest>, ErrorType> {

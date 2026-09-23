@@ -13,6 +13,9 @@ use models::{
 
 use crate::prelude::*;
 
+/// The auth cache: a used token is served from Redis, and a changed token
+/// isn't.
+pub mod cache;
 /// What a token may do, and how the ceiling clamps.
 pub mod ceiling;
 /// Minting, listing, reading, renaming, revoking, regenerating.

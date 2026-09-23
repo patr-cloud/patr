@@ -73,7 +73,7 @@ pub async fn head_blob(
 		redis,
 		s3,
 		client_ip: _,
-		user_data,
+		actor_data,
 		config,
 	}: AuthenticatedRegistryAppRequest<'_, HeadBlobPath>,
 ) -> Result<RegistryResponse<HeadBlobPath>, RegistryError> {
@@ -138,8 +138,8 @@ pub async fn head_blob(
 	)
 	.await;
 	let authorized =
-		user_data.has_permission_on_resource(workspace_id, repository_id, pull_permission_id) ||
-			user_data.has_permission_on_resource(
+		actor_data.has_permission_on_resource(workspace_id, repository_id, pull_permission_id) ||
+			actor_data.has_permission_on_resource(
 				workspace_id,
 				repository_id,
 				push_permission_id,
@@ -150,7 +150,7 @@ pub async fn head_blob(
 		// Workspace members get a clear 403 (they can already list repos via the
 		// API, so there's nothing to hide); non-members get a 404 so outsiders
 		// can't enumerate private repositories.
-		return if user_data.permissions.contains_key(&workspace_id) {
+		return if actor_data.permissions.contains_key(&workspace_id) {
 			RegistryError::builder()
 				.status(StatusCode::FORBIDDEN)
 				.message(format!(

@@ -35,7 +35,7 @@ pub async fn list_all_roles(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListAllRolesRequest>,
 ) -> Result<AppResponse<ListAllRolesRequest>, ErrorType> {

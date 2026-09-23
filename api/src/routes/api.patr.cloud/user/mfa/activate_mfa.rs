@@ -1,10 +1,9 @@
 use axum::http::StatusCode;
 use models::api::user::*;
 use rustis::commands::StringCommands;
-use time::OffsetDateTime;
 use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
 
-use crate::{prelude::*, redis::keys as redis};
+use crate::{models::permissions, prelude::*, redis::keys as redis};
 
 pub async fn activate_mfa(
 	AuthenticatedAppRequest {
@@ -23,7 +22,7 @@ pub async fn activate_mfa(
 		redis,
 		client_ip: _,
 		state: _,
-		user_data,
+		actor_data,
 	}: AuthenticatedAppRequest<'_, ActivateMfaRequest>,
 ) -> Result<AppResponse<ActivateMfaRequest>, ErrorType> {
 	info!("Activating MFA for user");
@@ -37,7 +36,7 @@ pub async fn activate_mfa(
 		WHERE
 			id = $1;
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -48,10 +47,10 @@ pub async fn activate_mfa(
 	}
 
 	let Some(secret) = redis
-		.get::<Option<String>>(redis::user_mfa_secret(&user_data.id))
+		.get::<Option<String>>(redis::user_mfa_secret(&actor_data.id))
 		.await?
 	else {
-		error!("MFA secret not found for userId `{}`", user_data.id);
+		error!("MFA secret not found for userId `{}`", actor_data.id);
 		return Err(ErrorType::MfaRequired);
 	};
 
@@ -65,17 +64,21 @@ pub async fn activate_mfa(
 			.inspect_err(|err| {
 				error!(
 					"Unable to parse MFA secret for userId `{}`: {}",
-					user_data.id,
+					actor_data.id,
 					err.to_string()
 				);
 			})?,
 		Some(constants::TOTP_ISSUER.to_string()),
-		user_data.email,
+		actor_data
+			.actor
+			.email()
+			.ok_or(ErrorType::Unauthorized)?
+			.to_string(),
 	)
 	.inspect_err(|err| {
 		error!(
 			"Unable to parse TOTP for userId `{}`: {}",
-			user_data.id,
+			actor_data.id,
 			err.to_string()
 		);
 	})?
@@ -94,7 +97,7 @@ pub async fn activate_mfa(
 		WHERE
 			id = $1;
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 		secret
 	)
 	.execute(&mut **database)
@@ -110,24 +113,13 @@ pub async fn activate_mfa(
 			user_id = $1 AND
 			login_id != $2;
 		"#,
-		user_data.id as _,
-		user_data.login_id as _,
+		actor_data.id as _,
+		actor_data.login_id as _,
 	)
 	.execute(&mut **database)
 	.await?;
 
-	redis
-		.setex(
-			redis::user_id_revocation_timestamp(&user_data.id.into()),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting user_id_revocation_timestamp: `{}`", err);
-		})?;
+	permissions::mark_actor_stale(redis, &actor_data.id).await?;
 
 	AppResponse::builder()
 		.body(ActivateMfaResponse)

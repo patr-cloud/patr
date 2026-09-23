@@ -36,7 +36,7 @@ pub async fn list_managed_url(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListManagedURLRequest>,
 ) -> Result<AppResponse<ListManagedURLRequest>, ErrorType> {
@@ -84,7 +84,7 @@ pub async fn list_managed_url(
 		OFFSET $10;
 		"#,
 		workspace_id as _,
-		user_data.login_id as _,
+		actor_data.login_id as _,
 		Permission::ManagedURL(ManagedURLPermission::View) as _,
 		sub_domain_filter as _,
 		domain_id_filter as _,

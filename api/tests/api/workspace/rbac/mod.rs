@@ -1295,7 +1295,7 @@ async fn add_member_to_unowned_workspace_denied() {
 	);
 }
 
-/// Creating a workspace seeds the default set of 27 roles (workspace_id = the
+/// Creating a workspace seeds the default set of 28 roles (workspace_id = the
 /// workspace id).
 #[tokio::test]
 async fn default_roles_seeded_on_workspace_create() {

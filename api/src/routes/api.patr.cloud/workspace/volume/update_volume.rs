@@ -24,7 +24,7 @@ pub async fn update_volume(
 		database,
 		redis,
 		client_ip,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, UpdateVolumeRequest>,
 ) -> Result<AppResponse<UpdateVolumeRequest>, ErrorType> {
@@ -44,7 +44,7 @@ pub async fn update_volume(
 		database,
 		redis,
 		client_ip,
-		user_data,
+		actor_data,
 		state,
 	})
 	.await?

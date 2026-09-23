@@ -110,13 +110,13 @@ where
 					extract_workspace_id,
 				} => {
 					let workspace_id = extract_workspace_id(&req.request);
-					req.user_data.permissions.contains_key(&workspace_id)
+					req.actor_data.permissions.contains_key(&workspace_id)
 				}
 				AppAuthentication::WorkspaceSuperAdminAuthenticator {
 					extract_workspace_id,
 				} => {
 					let workspace_id = extract_workspace_id(&req.request);
-					req.user_data
+					req.actor_data
 						.permissions
 						.get(&workspace_id)
 						.is_some_and(|perms| perms.is_super_admin())
@@ -133,7 +133,7 @@ where
 
 					// Check if the user has the required permission for the resource in the
 					// workspace
-					let has_permission = req.user_data.has_permission_on_resource(
+					let has_permission = req.actor_data.has_permission_on_resource(
 						workspace_id,
 						resource_id,
 						permission_id,
@@ -142,7 +142,7 @@ where
 					let has_permission = if !has_permission {
 						warn!(
 							"User {} does not have permission {} for resource {} in workspace {}",
-							req.user_data.id, permission, resource_id, workspace_id
+							req.actor_data.id, permission, resource_id, workspace_id
 						);
 						false
 					} else {

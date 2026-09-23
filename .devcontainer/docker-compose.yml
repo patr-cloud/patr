@@ -54,6 +54,7 @@ services:
 
   redis:
     image: redis:7
+    command: ["redis-server", "--maxmemory-policy", "noeviction"]
     restart: unless-stopped
     expose:
       - 6379

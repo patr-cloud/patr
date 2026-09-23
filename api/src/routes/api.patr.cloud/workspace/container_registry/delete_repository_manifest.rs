@@ -24,7 +24,7 @@ pub async fn delete_repository_manifest(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteContainerRepositoryManifestRequest>,
 ) -> Result<AppResponse<DeleteContainerRepositoryManifestRequest>, ErrorType> {

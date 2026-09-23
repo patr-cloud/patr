@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT actor_id AS \"actor_id: Uuid\", role_id AS \"role_id: Uuid\", scope_id AS \"scope_id: Uuid\" FROM role_binding WHERE actor_id = ANY($1::UUID[]);",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "actor_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "role_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "scope_id: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "92092ebf6ebc14b8eb55e274c2daf1642e08b77406f91e579d2db950c8601ab7"
+}

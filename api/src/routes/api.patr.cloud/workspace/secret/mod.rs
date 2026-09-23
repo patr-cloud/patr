@@ -4,12 +4,12 @@ use models::{ErrorType, api::workspace::secret::*};
 use crate::prelude::*;
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_secret, state, allowed_client_type)
-		.mount_auth_endpoint(delete_secret, state, allowed_client_type)
-		.mount_auth_endpoint(list_secrets_for_workspace, state, allowed_client_type)
-		.mount_auth_endpoint(update_secret, state, allowed_client_type)
+		.mount_auth_endpoint(create_secret, state, host_client_types)
+		.mount_auth_endpoint(delete_secret, state, host_client_types)
+		.mount_auth_endpoint(list_secrets_for_workspace, state, host_client_types)
+		.mount_auth_endpoint(update_secret, state, host_client_types)
 		.with_state(state.clone())
 }
 
@@ -25,7 +25,7 @@ async fn create_secret(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, CreateSecretRequest>,
 ) -> Result<AppResponse<CreateSecretRequest>, ErrorType> {
@@ -56,7 +56,7 @@ async fn delete_secret(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, DeleteSecretRequest>,
 ) -> Result<AppResponse<DeleteSecretRequest>, ErrorType> {
@@ -83,7 +83,7 @@ async fn list_secrets_for_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, ListSecretsForWorkspaceRequest>,
 ) -> Result<AppResponse<ListSecretsForWorkspaceRequest>, ErrorType> {
@@ -112,7 +112,7 @@ async fn update_secret(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, UpdateSecretRequest>,
 ) -> Result<AppResponse<UpdateSecretRequest>, ErrorType> {

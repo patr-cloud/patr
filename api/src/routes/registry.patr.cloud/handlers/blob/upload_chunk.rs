@@ -101,7 +101,7 @@ pub async fn upload_chunk(
 		redis,
 		s3,
 		client_ip,
-		user_data,
+		actor_data,
 		config,
 	}: AuthenticatedRegistryAppRequest<'_, UploadBlobChunkPath>,
 ) -> Result<RegistryResponse<UploadBlobChunkPath>, RegistryError> {
@@ -163,14 +163,14 @@ pub async fn upload_chunk(
 	.await;
 
 	let authorized =
-		user_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
+		actor_data.has_permission_on_resource(workspace_id, repository_id, permission_id);
 
 	if !authorized {
 		debug!("User lacks push access to repository");
 		// Workspace members get a clear 403 (they can already list repos via the
 		// API, so there's nothing to hide); non-members get a 404 so outsiders
 		// can't enumerate private repositories.
-		return if user_data.permissions.contains_key(&workspace_id) {
+		return if actor_data.permissions.contains_key(&workspace_id) {
 			RegistryError::builder()
 				.status(StatusCode::FORBIDDEN)
 				.message(format!(
@@ -194,10 +194,10 @@ pub async fn upload_chunk(
 			.await?,
 	)?;
 
-	if user_data.login_id != session.initiated_by_login {
+	if actor_data.login_id != session.initiated_by_login {
 		warn!(
 			"User login `{}` does not match upload session initiator `{}`",
-			user_data.login_id, session.initiated_by_login
+			actor_data.login_id, session.initiated_by_login
 		);
 		return RegistryError::builder()
 			.status(StatusCode::NOT_FOUND)

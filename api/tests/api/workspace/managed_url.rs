@@ -1110,7 +1110,7 @@ async fn create_managed_url_shares_custom_hostname_row() {
 	let f = mu_fixture(&setup).await;
 	let sub = rand_subdomain();
 	for path in ["/", "/api"] {
-		send_create_mu(
+		_ = send_create_mu(
 			&setup,
 			&f.user.access_token,
 			f.ws,
@@ -1433,7 +1433,7 @@ async fn list_managed_urls_ordered_created_desc() {
 async fn list_managed_urls_page_out_of_bounds() {
 	let setup = setup().await.expect("failed to setup test server");
 	let f = mu_fixture(&setup).await;
-	send_create_mu(
+	_ = send_create_mu(
 		&setup,
 		&f.user.access_token,
 		f.ws,

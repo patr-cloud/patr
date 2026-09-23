@@ -48,7 +48,7 @@ pub async fn get_runner_logs(
 		database: _,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, GetRunnerLogsRequest>,
 ) -> Result<AppResponse<GetRunnerLogsRequest>, ErrorType> {

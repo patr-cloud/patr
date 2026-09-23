@@ -19,7 +19,7 @@ pub async fn is_domain_valid(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, IsDomainValidRequest>,
 ) -> Result<AppResponse<IsDomainValidRequest>, ErrorType> {

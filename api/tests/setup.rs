@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, net::SocketAddr, sync::Once};
 use api::utils::config::{CloudflareConfig, GitHubOAuthConfig, IpInfoConfig, SocialLoginConfig};
 use api::{
 	app::AppState,
-	prelude::ClientType,
+	prelude::{ActorClientType, UserLoginType},
 	routes::{
 		api_patr_cloud,
 		loki_patr_cloud,
@@ -117,8 +117,8 @@ impl TestSetup {
 	}
 
 	/// Make a typed API call against the routes configured for
-	/// `ClientType::ApiToken` authentication. Use this for any test that
-	/// presents a `patrv1.{refresh}.{login_id}` API token in the
+	/// `ActorClientType::UserLogin(UserLoginType::ApiToken)` authentication. Use this for any test
+	/// that presents a `patrv1.{refresh}.{login_id}` API token in the
 	/// `Authorization` header — the WebDashboard-routed server rejects it as
 	/// a malformed access token.
 	///
@@ -620,16 +620,25 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 
 	let api = TestServer::builder().build(axum::serve(
 		api_listener,
-		api_patr_cloud::setup_routes(&state, ClientType::ApiToken)
-			.await
-			.into_make_service_with_connect_info::<SocketAddr>(),
+		api_patr_cloud::setup_routes(
+			&state,
+			&[
+				ActorClientType::UserLogin(UserLoginType::ApiToken),
+				ActorClientType::ServiceAccount,
+			],
+		)
+		.await
+		.into_make_service_with_connect_info::<SocketAddr>(),
 	));
 
 	let web = TestServer::builder().save_cookies().build(axum::serve(
 		web_listener,
-		api_patr_cloud::setup_routes(&state, ClientType::WebDashboard)
-			.await
-			.into_make_service_with_connect_info::<SocketAddr>(),
+		api_patr_cloud::setup_routes(
+			&state,
+			&[ActorClientType::UserLogin(UserLoginType::WebLogin)],
+		)
+		.await
+		.into_make_service_with_connect_info::<SocketAddr>(),
 	));
 
 	let registry = TestServer::builder().build(axum::serve(
