@@ -115,7 +115,10 @@ where
 				&req.config,
 				req.client_ip,
 				token,
-				&[ActorClientType::ApiToken, ActorClientType::ServiceAccount],
+				&[
+					ActorClientType::UserLogin(UserLoginType::ApiToken),
+					ActorClientType::ServiceAccount,
+				],
 			)
 			.await
 			.map_err(|err| {

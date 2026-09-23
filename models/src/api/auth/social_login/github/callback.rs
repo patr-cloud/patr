@@ -14,7 +14,7 @@ macros::declare_api_endpoint!(
 		/// `github` for now.
 		pub provider: SocialLoginProvider,
 	},
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,

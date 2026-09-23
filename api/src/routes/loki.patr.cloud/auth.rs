@@ -43,7 +43,10 @@ pub(super) async fn authenticate_and_authorize(
 		&state.config,
 		addr.ip(),
 		api_token,
-		&[ActorClientType::ApiToken, ActorClientType::ServiceAccount],
+		&[
+			ActorClientType::UserLogin(UserLoginType::ApiToken),
+			ActorClientType::ServiceAccount,
+		],
 	)
 	.await
 	.map_err(|err| {

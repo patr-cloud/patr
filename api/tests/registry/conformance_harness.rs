@@ -60,7 +60,10 @@ async fn conformance_harness() {
 	let state = setup.state().clone();
 	let api_router = api::routes::api_patr_cloud::setup_routes(
 		&state,
-		&[ActorClientType::ApiToken, ActorClientType::ServiceAccount],
+		&[
+			ActorClientType::UserLogin(UserLoginType::ApiToken),
+			ActorClientType::ServiceAccount,
+		],
 	)
 	.await;
 	let registry_router = api::routes::registry_patr_cloud::setup_routes(&state).await;

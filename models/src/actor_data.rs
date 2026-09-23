@@ -10,6 +10,11 @@ use crate::{prelude::*, rbac::WorkspacePermission, utils::ActorClientType};
 /// holds many logins, and each is either a web session or an API token.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(
+	not(target_arch = "wasm32"),
+	derive(sqlx::Type),
+	sqlx(type_name = "USER_LOGIN_TYPE", rename_all = "snake_case")
+)]
 pub enum UserLoginType {
 	/// A web dashboard session, authenticated via JWT.
 	WebLogin,
@@ -49,14 +54,7 @@ impl ActorData {
 	#[must_use]
 	pub fn client_type(&self) -> ActorClientType {
 		match self {
-			Self::User {
-				login: UserLoginType::WebLogin,
-				..
-			} => ActorClientType::WebDashboard,
-			Self::User {
-				login: UserLoginType::ApiToken,
-				..
-			} => ActorClientType::ApiToken,
+			Self::User { login, .. } => ActorClientType::UserLogin(*login),
 			Self::ServiceAccount { .. } => ActorClientType::ServiceAccount,
 		}
 	}

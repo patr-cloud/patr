@@ -172,7 +172,7 @@ where
 							// dashboard session can actually reach this route here.
 							.option_layer(
 								accepted_client_types
-									.contains(&ActorClientType::WebDashboard)
+									.contains(&ActorClientType::UserLogin(UserLoginType::WebLogin))
 									.then(WebDashboardAuthCookieLayer::new),
 							)
 							.layer(RequestParserLayer::new())

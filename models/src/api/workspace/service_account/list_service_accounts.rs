@@ -28,6 +28,6 @@ macros::declare_api_endpoint!(
 		/// The list of service accounts in the workspace
 		pub service_accounts: Vec<WithId<ServiceAccount>>,
 	},
-	client_type = [WebDashboard, ApiToken],
+	client_type = [WebLogin, ApiToken],
 	audit_log = NoAuditLogger,
 );

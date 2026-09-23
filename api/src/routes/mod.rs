@@ -63,7 +63,7 @@ cfg_if! {
 		pub async fn setup_routes(state: &AppState) -> Router {
 			let api_router = api_patr_cloud::setup_routes(
 				state,
-				&[ActorClientType::ApiToken, ActorClientType::ServiceAccount],
+				&[ActorClientType::UserLogin(UserLoginType::ApiToken), ActorClientType::ServiceAccount],
 			)
 			.await;
 			let app_router = app_patr_cloud::setup_routes(state).await;
@@ -113,8 +113,8 @@ cfg_if! {
 					api_patr_cloud::setup_routes(
 						state,
 						&[
-							ActorClientType::WebDashboard,
-							ActorClientType::ApiToken,
+							ActorClientType::UserLogin(UserLoginType::WebLogin),
+							ActorClientType::UserLogin(UserLoginType::ApiToken),
 							ActorClientType::ServiceAccount,
 						],
 					)
