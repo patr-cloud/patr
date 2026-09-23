@@ -24,8 +24,8 @@ where
 	<E::RequestBody as Preprocessable>::Processed: Send,
 {
 	/// Who this route responds to on the host it is mounted on. Already the
-	/// intersection of the endpoint's own allowlist and the host's, so this
-	/// is the only check a request has to pass.
+	/// intersection of the endpoint's own allowlist and the host's; passed to
+	/// [`permissions::authenticate`], which only parses these kinds.
 	accepted_client_types: Vec<ActorClientType>,
 	/// The endpoint type that this layer will handle
 	endpoint: PhantomData<E>,
@@ -124,12 +124,9 @@ where
 				&req.state.config,
 				req.client_ip,
 				token,
+				&accepted_client_types,
 			)
 			.await?;
-
-			if !accepted_client_types.contains(&actor_data.client_type()) {
-				return Err(ErrorType::Unauthorized);
-			}
 
 			Span::current().record("patr.user_id", display(actor_data.id));
 			Span::current().record("patr.login_id", display(actor_data.login_id));
