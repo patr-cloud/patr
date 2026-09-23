@@ -1,5 +1,8 @@
 /// All API token related data of a user
 mod api_token;
+/// All OAuth grant related data of a user. A grant is a third-party client
+/// holding a credential that acts on the user's behalf.
+mod oauth_login;
 /// All web login related data of a user. Any login that is done through the
 /// web dashboard will be stored here.
 mod web_login;
@@ -16,6 +19,7 @@ pub async fn initialize_user_login_tables(
 		r#"
 		CREATE TYPE USER_LOGIN_TYPE AS ENUM(
 			'api_token',
+			'oauth_login',
 			'web_login'
 		);
 		"#
@@ -40,6 +44,7 @@ pub async fn initialize_user_login_tables(
 
 	web_login::initialize_web_login_tables(&mut *connection).await?;
 	api_token::initialize_api_token_tables(&mut *connection).await?;
+	oauth_login::initialize_oauth_login_tables(&mut *connection).await?;
 
 	Ok(())
 }
@@ -65,6 +70,7 @@ pub async fn initialize_user_login_indices(
 
 	web_login::initialize_web_login_indices(&mut *connection).await?;
 	api_token::initialize_api_token_indices(&mut *connection).await?;
+	oauth_login::initialize_oauth_login_indices(&mut *connection).await?;
 
 	Ok(())
 }
@@ -90,6 +96,7 @@ pub async fn initialize_user_login_constraints(
 
 	web_login::initialize_web_login_constraints(&mut *connection).await?;
 	api_token::initialize_api_token_constraints(&mut *connection).await?;
+	oauth_login::initialize_oauth_login_constraints(&mut *connection).await?;
 
 	query!(
 		r#"

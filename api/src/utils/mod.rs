@@ -145,6 +145,27 @@ pub mod constants {
 	/// unnecessary load on the IP lookup service.
 	pub const IP_LOOKUP_FAILURE_VALIDITY: time::Duration = time::Duration::days(1);
 
+	// --------------------All OAuth Related Constants--------------------
+
+	/// How long a pending authorization request lives between `/authorize`
+	/// parking it and the consent screen resolving it. Long enough to log in
+	/// on the way through.
+	pub const OAUTH_AUTHORIZATION_REQUEST_VALIDITY: time::Duration = time::Duration::minutes(5);
+
+	/// How long an authorization code is valid for. OAuth 2.1 caps this at
+	/// 10 minutes and recommends one — the client's backend exchanges it
+	/// within a round trip of being issued.
+	pub const OAUTH_AUTHORIZATION_CODE_VALIDITY: time::Duration = time::Duration::seconds(60);
+
+	/// How long an id token is valid for. It is consumed once, at sign-in.
+	pub const OAUTH_ID_TOKEN_VALIDITY: time::Duration = time::Duration::minutes(5);
+
+	/// How long after a refresh token is consumed its replacement pair is
+	/// still handed back rather than treated as a replay. Clients race
+	/// themselves — two requests 401 together and both refresh with the same
+	/// token — and without this they would be logged out for it.
+	pub const OAUTH_REFRESH_TOKEN_GRACE_PERIOD: time::Duration = time::Duration::seconds(10);
+
 	// -------------------All Registry Related Constants-------------------
 
 	/// The regex that a registry repository name must conform to

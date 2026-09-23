@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE oauth_login ADD CONSTRAINT oauth_login_fk FOREIGN KEY(login_id, user_id, login_type) REFERENCES user_login(login_id, user_id, login_type), ADD CONSTRAINT oauth_login_fk_client_id FOREIGN KEY(client_id) REFERENCES oauth_client(client_id), ADD CONSTRAINT oauth_login_chk_scope_not_empty CHECK(scope != '');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "0aacf9c3b9c08be9b5eb2164047c6fb9b637f5e3d78a1b68400d084266fc779c"
+}

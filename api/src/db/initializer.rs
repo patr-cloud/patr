@@ -58,18 +58,21 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 		// Create all tables
 		super::initialize_meta_tables(&mut transaction).await?;
 		super::initialize_actor_client_tables(&mut transaction).await?;
+		super::initialize_oauth_tables(&mut transaction).await?;
 		super::initialize_user_tables(&mut transaction).await?;
 		super::initialize_workspace_tables(&mut transaction).await?;
 		super::initialize_rbac_tables(&mut transaction).await?;
 
 		super::initialize_meta_indices(&mut transaction).await?;
 		super::initialize_actor_client_indices(&mut transaction).await?;
+		super::initialize_oauth_indices(&mut transaction).await?;
 		super::initialize_user_indices(&mut transaction).await?;
 		super::initialize_workspace_indices(&mut transaction).await?;
 		super::initialize_rbac_indices(&mut transaction).await?;
 
 		super::initialize_meta_constraints(&mut transaction).await?;
 		super::initialize_actor_client_constraints(&mut transaction).await?;
+		super::initialize_oauth_constraints(&mut transaction).await?;
 		super::initialize_user_constraints(&mut transaction).await?;
 		super::initialize_workspace_constraints(&mut transaction).await?;
 		super::initialize_rbac_constraints(&mut transaction).await?;
@@ -149,6 +152,35 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 	)
 	.execute(&mut *transaction)
 	.await?;
+
+	// Mirror the config's OAuth clients. Only what's configured is written;
+	// removing one that has since left the config is a manual delete.
+	for (client_id, client) in &app.config.oauth.clients {
+		trace!("Upserting OAuth client: {}", client_id);
+		query!(
+			r#"
+			INSERT INTO
+				oauth_client(
+					client_id,
+					name,
+					logo_url,
+					client_uri
+				)
+			VALUES
+				($1, $2, $3, $4)
+			ON CONFLICT(client_id) DO UPDATE SET
+				name = EXCLUDED.name,
+				logo_url = EXCLUDED.logo_url,
+				client_uri = EXCLUDED.client_uri;
+			"#,
+			client_id,
+			client.name,
+			client.logo_url,
+			client.client_uri,
+		)
+		.execute(&mut *transaction)
+		.await?;
+	}
 
 	transaction.commit().await?;
 
