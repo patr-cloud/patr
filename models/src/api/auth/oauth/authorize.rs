@@ -53,6 +53,6 @@ macros::declare_api_endpoint!(
 		/// The method used to hash the code challenge
 		pub code_challenge_method: CodeChallengeHashMethod,
 	},
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

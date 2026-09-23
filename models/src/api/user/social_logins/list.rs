@@ -6,7 +6,7 @@ macros::declare_api_endpoint!(
 	/// caller's Patr account.
 	ListSocialLogins,
 	GET "/user/social-login",
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

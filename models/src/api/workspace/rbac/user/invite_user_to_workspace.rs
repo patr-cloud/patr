@@ -23,7 +23,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::ModifyRoles,
 		}
 	},
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	request = {
 		/// The email address to invite to the workspace
 		#[preprocess(trim, lowercase, email)]

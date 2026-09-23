@@ -430,8 +430,8 @@ async fn regenerate_token_works() {
 	);
 }
 
-// NOTE: The following tests require a ActorClientType::ApiToken test server, which
-// the test infra doesn't currently support (it only runs WebDashboard mode).
+// NOTE: The following tests require a ActorClientType::UserLogin(UserLoginType::ApiToken) test
+// server, which the test infra doesn't currently support (it only runs WebDashboard mode).
 // See api/tests/TODOs.md for tracking:
 // - service_account_token_authenticates
 // - service_account_token_deleted_sa_fails

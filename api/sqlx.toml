@@ -1,8 +1,10 @@
 [macros.type-overrides]
 'UUID'                             = "models::prelude::Uuid"
+'actor_client_type'                = "models::utils::ActorClientTypeDiscriminant"
 'audit_log_type'                   = "models::utils::AuditLogType"
 'container_registry_manifest_kind' = "models::api::workspace::container_registry::ManifestKind"
 'deployment_status'                = "models::api::workspace::deployment::DeploymentStatus"
 'exposed_port_type'                = "models::api::workspace::deployment::ExposedPortType"
 'managed_url_type'                 = "models::api::workspace::managed_url::ManagedUrlType"
 'social_login_provider'            = "models::api::auth::SocialLoginProvider"
+'user_login_type'                  = "models::UserLoginType"

@@ -47,6 +47,6 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub running_details: DeploymentRunningDetails,
 	},
-	client_type = [ApiToken, ServiceAccount, WebDashboard],
+	client_type = [ApiToken, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

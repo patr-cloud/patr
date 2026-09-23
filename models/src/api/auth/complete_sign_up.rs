@@ -6,7 +6,7 @@ macros::declare_api_endpoint!(
 	/// This route will complete the sign-up process of the user.
 	CompleteSignUp,
 	POST "/auth/join",
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,

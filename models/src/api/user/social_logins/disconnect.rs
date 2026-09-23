@@ -10,7 +10,7 @@ macros::declare_api_endpoint!(
 		/// The provider to disconnect.
 		pub provider: SocialLoginProvider,
 	},
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

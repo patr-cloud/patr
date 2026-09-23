@@ -42,6 +42,7 @@ pub mod prelude {
 		AppResponse,
 		ErrorType,
 		ProcessedApiRequest,
+		UserLoginType,
 		api::{ApiEndpoint, WithId},
 		rbac::{
 			BillingPermission,

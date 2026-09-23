@@ -28,6 +28,6 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub roles: Vec<RoleBindingGrant>,
 	},
-	client_type = [ApiToken, ServiceAccount, WebDashboard],
+	client_type = [ApiToken, ServiceAccount, WebLogin],
 	audit_logger = NoAuditLogger,
 );

@@ -26,7 +26,7 @@ macros::declare_api_endpoint!(
 		/// Whether the domain is verified or not
 		pub verified: bool,
 	},
-	client_type = [ApiToken, ServiceAccount, WebDashboard],
+	client_type = [ApiToken, ServiceAccount, WebLogin],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::Domain,

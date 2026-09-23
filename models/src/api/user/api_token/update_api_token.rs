@@ -9,7 +9,7 @@ macros::declare_api_endpoint!(
 		/// The ID of the token to update
 		pub token_id: Uuid,
 	},
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,

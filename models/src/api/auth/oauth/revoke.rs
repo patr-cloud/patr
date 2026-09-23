@@ -16,6 +16,6 @@ macros::declare_api_endpoint!(
 		#[serde(rename = "access_token")]
 		pub token: String,
 	},
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

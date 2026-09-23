@@ -24,16 +24,19 @@ pub async fn setup_routes(state: &AppState) -> Router {
 		.with_state(state.clone())
 		.nest(
 			"/api",
-			api_patr_cloud::setup_routes(state, &[ActorClientType::WebDashboard])
-				.await
-				.fallback(async |req: Request<Body>| ApiErrorResponse {
-					status_code: StatusCode::NOT_FOUND,
-					body: ApiErrorResponseBody {
-						success: False,
-						error: ErrorType::WrongParameters,
-						message: format!("No API route found for {}", req.uri().path()),
-					},
-				}),
+			api_patr_cloud::setup_routes(
+				state,
+				&[ActorClientType::UserLogin(UserLoginType::WebLogin)],
+			)
+			.await
+			.fallback(async |req: Request<Body>| ApiErrorResponse {
+				status_code: StatusCode::NOT_FOUND,
+				body: ApiErrorResponseBody {
+					success: False,
+					error: ErrorType::WrongParameters,
+					message: format!("No API route found for {}", req.uri().path()),
+				},
+			}),
 		)
 		.fallback(proxy)
 }

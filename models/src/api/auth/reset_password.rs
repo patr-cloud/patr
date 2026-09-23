@@ -8,7 +8,7 @@ macros::declare_api_endpoint!(
 	/// preferred recovery method
 	ResetPassword,
 	POST "/auth/reset-password",
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
