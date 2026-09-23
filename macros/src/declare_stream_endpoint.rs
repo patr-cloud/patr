@@ -33,8 +33,9 @@ pub struct ApiEndpoint {
 	path_body: Option<FieldsNamed>,
 	/// The authentication for this endpoint.
 	auth: Option<Block>,
-	/// The client types allowed to access this endpoint.
-	allowed_client_types: Vec<Ident>,
+	/// The client types allowed to access this endpoint, as
+	/// `ActorClientType` values.
+	allowed_client_types: Vec<proc_macro2::TokenStream>,
 
 	/// The query params for the endpoint
 	query: Option<FieldsNamed>,
@@ -183,10 +184,35 @@ impl Parse for ApiEndpoint {
 					let content;
 					syn::bracketed!(content in input);
 					let types = Punctuated::<Ident, Token![,]>::parse_terminated(&content)?;
-					let types = types.into_iter().collect::<Vec<_>>();
 					if types.is_empty() {
 						return Err(Error::new(ident.span(), "client_type must not be empty"));
 					}
+					// The list uses the leaf names, which are unique across both
+					// levels of `ActorClientType`, so the nested value can be built
+					// from the name alone.
+					let types = types
+						.iter()
+						.map(|name| match name.to_string().as_str() {
+							"WebLogin" => Ok(quote::quote! {
+								models::utils::ActorClientType::UserLogin(
+									models::UserLoginType::WebLogin
+								)
+							}),
+							"ApiToken" => Ok(quote::quote! {
+								models::utils::ActorClientType::UserLogin(
+									models::UserLoginType::ApiToken
+								)
+							}),
+							"ServiceAccount" => Ok(quote::quote! {
+								models::utils::ActorClientType::ServiceAccount
+							}),
+							_ => Err(Error::new(
+								name.span(),
+								"unknown client type: expected `WebLogin`, `ApiToken` or \
+								 `ServiceAccount`",
+							)),
+						})
+						.collect::<Result<Vec<_>, _>>()?;
 					allowed_client_types = Some(types);
 				}
 				"audit_logger" | "audit_log" => {
@@ -514,7 +540,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 		impl models::api::ApiEndpoint for #request_name {
 			const METHOD: ::http::Method = ::http::Method::#method;
 			const ALLOWED_CLIENT_TYPES: &'static [models::utils::ActorClientType] = &[
-				#(models::utils::ActorClientType::#allowed_client_types),*
+				#(#allowed_client_types),*
 			];
 
 			type RequestPath = #path_name;

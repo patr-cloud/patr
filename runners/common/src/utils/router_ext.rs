@@ -4,6 +4,7 @@ use axum::{
 };
 use axum_extra::routing::TypedPath;
 use models::{
+	UserLoginType,
 	api::ApiEndpoint,
 	utils::{ActorClientType, HasHeader, NoAuthentication},
 };
@@ -67,7 +68,8 @@ where
 		R: RunnerExecutor + Send + 'static,
 	{
 		// Setup the layers for the backend
-		if <E as ApiEndpoint>::ALLOWED_CLIENT_TYPES.contains(&ActorClientType::ApiToken) ||
+		if <E as ApiEndpoint>::ALLOWED_CLIENT_TYPES
+			.contains(&ActorClientType::UserLogin(UserLoginType::ApiToken)) ||
 			cfg!(debug_assertions)
 		{
 			self.route(
@@ -101,7 +103,8 @@ where
 		R: RunnerExecutor + Send + 'static,
 	{
 		// Setup the layers for the backend
-		if <E as ApiEndpoint>::ALLOWED_CLIENT_TYPES.contains(&ActorClientType::ApiToken) ||
+		if <E as ApiEndpoint>::ALLOWED_CLIENT_TYPES
+			.contains(&ActorClientType::UserLogin(UserLoginType::ApiToken)) ||
 			cfg!(debug_assertions)
 		{
 			self.route(

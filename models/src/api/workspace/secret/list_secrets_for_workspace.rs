@@ -28,6 +28,6 @@ macros::declare_api_endpoint!(
 		/// The list of secrets in the workspace, metadata only
 		pub secrets: Vec<WithId<Secret>>
 	},
-	client_type = [ApiToken, ServiceAccount, WebDashboard],
+	client_type = [ApiToken, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );
