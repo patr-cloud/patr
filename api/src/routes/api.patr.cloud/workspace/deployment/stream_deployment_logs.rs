@@ -97,7 +97,7 @@ pub async fn stream_deployment_logs(
 			(
 				"start",
 				start_time
-					.unwrap_or(OffsetDateTime::now_utc())
+					.unwrap_or_else(OffsetDateTime::now_utc)
 					.unix_timestamp_nanos()
 					.to_string(),
 			),

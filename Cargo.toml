@@ -20,6 +20,9 @@ cast_possible_truncation      = "warn"
 cast_possible_wrap            = "warn"
 cast_sign_loss                = "warn"
 missing_docs_in_private_items = "warn"
+# `ErrorType::server_error` logs when it's constructed, so an eager
+# `.ok_or(ErrorType::server_error(..))` logs an error even on the success path.
+or_fun_call                   = "warn"
 
 [workspace.dependencies]
 anyhow                         = { default-features = false, version = "1" }

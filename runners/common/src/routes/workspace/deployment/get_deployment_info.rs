@@ -84,9 +84,9 @@ pub async fn get_deployment_info(
 			(None, Some(secret)) => Some(secret),
 			_ => None,
 		}
-		.ok_or(ErrorType::server_error(
-			"corrupted deployment, cannot find environment variable value",
-		))?;
+		.ok_or_else(|| {
+			ErrorType::server_error("corrupted deployment, cannot find environment variable value")
+		})?;
 
 		Ok((name, value))
 	})

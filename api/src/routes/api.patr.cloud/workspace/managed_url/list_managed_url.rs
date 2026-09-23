@@ -109,31 +109,33 @@ pub async fn list_managed_url(
 					ManagedUrlTypeDiscriminant::ProxyUrl => ManagedUrlType::ProxyUrl {
 						url: row
 							.url
-							.ok_or(ErrorType::server_error("url in db is NULL"))?,
+							.ok_or_else(|| ErrorType::server_error("url in db is NULL"))?,
 						http_only: row
 							.http_only
-							.ok_or(ErrorType::server_error("http_only in db is NULL"))?,
+							.ok_or_else(|| ErrorType::server_error("http_only in db is NULL"))?,
 					},
 					ManagedUrlTypeDiscriminant::Redirect => ManagedUrlType::Redirect {
 						url: row
 							.url
-							.ok_or(ErrorType::server_error("url in db is NULL"))?,
-						permanent_redirect: row
-							.permanent_redirect
-							.ok_or(ErrorType::server_error("permanent_redirect in db is NULL"))?,
+							.ok_or_else(|| ErrorType::server_error("url in db is NULL"))?,
+						permanent_redirect: row.permanent_redirect.ok_or_else(|| {
+							ErrorType::server_error("permanent_redirect in db is NULL")
+						})?,
 						http_only: row
 							.http_only
-							.ok_or(ErrorType::server_error("http_only in db is NULL"))?,
+							.ok_or_else(|| ErrorType::server_error("http_only in db is NULL"))?,
 					},
 					ManagedUrlTypeDiscriminant::ProxyDeployment => {
 						ManagedUrlType::ProxyDeployment {
 							deployment_id: row
 								.deployment_id
-								.ok_or(ErrorType::server_error("deployment_id in db is NULL"))?
+								.ok_or_else(|| {
+									ErrorType::server_error("deployment_id in db is NULL")
+								})?
 								.into(),
 							port: row
 								.port
-								.ok_or(ErrorType::server_error("port in db is NULL"))?
+								.ok_or_else(|| ErrorType::server_error("port in db is NULL"))?
 								as u16,
 						}
 					}

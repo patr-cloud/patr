@@ -25,7 +25,7 @@ pub trait RunnerExecutor: Sized {
 		std::env::current_exe()
 			.ok()
 			.and_then(|pb| pb.file_name().map(|f| f.to_string_lossy().to_string()))
-			.unwrap_or("unknown".to_string())
+			.unwrap_or_else(|| "unknown".to_string())
 	}
 
 	/// The exposure type of the runner. This is used to determine how the

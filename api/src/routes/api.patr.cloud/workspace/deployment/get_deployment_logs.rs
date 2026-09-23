@@ -72,7 +72,7 @@ pub async fn get_deployment_logs(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	let end = end_time.unwrap_or(OffsetDateTime::now_utc());
+	let end = end_time.unwrap_or_else(OffsetDateTime::now_utc);
 	let start = end - time::Duration::days(30);
 
 	let loki_response = reqwest::Client::new()

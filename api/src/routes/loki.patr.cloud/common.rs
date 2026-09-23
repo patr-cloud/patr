@@ -31,7 +31,7 @@ pub(super) fn parse_labels(labels: &str) -> Vec<(String, String)> {
 				.trim()
 				.strip_prefix('"')
 				.and_then(|s| s.strip_suffix('"'))
-				.unwrap_or(rest.trim());
+				.unwrap_or_else(|| rest.trim());
 			result.push((key.trim().to_string(), value.to_string()));
 		}
 	}
