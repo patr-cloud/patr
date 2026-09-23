@@ -1,3 +1,4 @@
+use jsonwebtoken::{DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 
@@ -88,6 +89,29 @@ impl AccessTokenData {
 	/// be considered expired, and the client should handle this by logging out
 	/// the user, or attempting to login again.
 	pub const REFRESH_TOKEN_VALIDITY: Duration = Duration::days(30);
+
+	/// Decode `token` as one of our access tokens, checking only its signature, and fails if
+	/// `token` isn't a JWT signed wtih `jwt_secret`. The claims (iss, aud, jti, nbf, exp) are
+	/// checked by the caller on every request.
+	pub fn decode(token: &str, jwt_secret: &str) -> Result<Self, jsonwebtoken::errors::Error> {
+		jsonwebtoken::decode::<AccessTokenData>(
+			token,
+			&DecodingKey::from_secret(jwt_secret.as_ref()),
+			&{
+				let mut validation = Validation::default();
+
+				// Checked by the caller on every request, since a cached login
+				// outlives any one of its access tokens
+				validation.validate_exp = false;
+				validation.validate_nbf = false;
+				validation.validate_aud = false;
+
+				validation
+			},
+		)
+		.inspect_err(|err| trace!("Token is not a JWT: {err}"))
+		.map(|data| data.claims)
+	}
 }
 
 /// A module to help serialize and deserialize `OffsetDateTime` as seconds

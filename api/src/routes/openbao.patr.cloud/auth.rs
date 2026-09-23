@@ -44,13 +44,13 @@ pub(super) async fn authenticate_and_authorize(
 	let mut redis_conn = state.redis.clone();
 
 	// Authenticate the API token
-	let actor_data = permissions::get_user_data_for_token(
+	let actor_data = permissions::authenticate(
 		&mut database,
 		&mut redis_conn,
-		ClientType::ApiToken,
 		&state.config,
 		client_ip,
 		api_token,
+		&[ActorClientType::ApiToken, ActorClientType::ServiceAccount],
 	)
 	.await
 	.map_err(|err| {
