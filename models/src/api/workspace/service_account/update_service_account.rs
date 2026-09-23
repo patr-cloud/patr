@@ -36,7 +36,7 @@ macros::declare_api_endpoint!(
 		/// Updated role grants (replaces every existing grant)
 		pub role_bindings: Option<Vec<RoleBindingGrant>>,
 	},
-	client_type = [WebDashboard, ApiToken],
+	client_type = [WebLogin, ApiToken],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::ServiceAccount,

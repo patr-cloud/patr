@@ -28,6 +28,6 @@ macros::declare_api_endpoint!(
 		/// Check if MFA is enabled or not
 		pub is_mfa_enabled: bool,
 	},
-	client_type = [WebDashboard, ApiToken],
+	client_type = [WebLogin, ApiToken],
 	audit_log = NoAuditLogger,
 );

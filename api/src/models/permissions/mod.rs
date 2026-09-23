@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, net::IpAddr, ops::Sub, str::FromStr as _};
 
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
-use models::{ActorData, RequestActorData, UserLoginType};
+use models::{ActorData, RequestActorData, utils::ActorClientTypeDiscriminant};
 use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
 use tokio::sync::OnceCell;
@@ -85,8 +85,10 @@ pub async fn authenticate(
 	token: &str,
 	accepted_client_types: &[ActorClientType],
 ) -> Result<RequestActorData, ErrorType> {
-	let accepts_jwt = accepted_client_types.contains(&ActorClientType::WebDashboard);
-	let accepts_opaque_token = accepted_client_types.contains(&ActorClientType::ApiToken) ||
+	let accepts_jwt =
+		accepted_client_types.contains(&ActorClientType::UserLogin(UserLoginType::WebLogin));
+	let accepts_opaque_token = accepted_client_types
+		.contains(&ActorClientType::UserLogin(UserLoginType::ApiToken)) ||
 		accepted_client_types.contains(&ActorClientType::ServiceAccount);
 
 	if accepts_jwt && let Ok(claims) = AccessTokenData::decode(token, &config.jwt_secret) {
@@ -246,14 +248,21 @@ async fn authenticate_opaque_token(
 		trace!("Cached auth data found for login `{login_id}`");
 		entry
 	} else {
+		// `actor_client` says which kind of login this is; for a user login,
+		// `user_login` says which kind of user login.
 		let Some(client) = query!(
 			r#"
 			SELECT
-				actor_client_type::TEXT AS "actor_client_type!"
+				actor_client.actor_client_type AS "actor_client_type: ActorClientTypeDiscriminant",
+				user_login.login_type AS "login_type?: UserLoginType"
 			FROM
 				actor_client
+			LEFT JOIN
+				user_login
+			ON
+				user_login.login_id = actor_client.id
 			WHERE
-				id = $1;
+				actor_client.id = $1;
 			"#,
 			login_id as _,
 		)
@@ -267,14 +276,29 @@ async fn authenticate_opaque_token(
 			return Err(ErrorType::AuthorizationTokenInvalid);
 		};
 
-		let (entry, ttl) = match client.actor_client_type.as_str() {
-			"user_login" => api_token::load_actor_auth_data(&mut *database, &login_id).await?,
-			"service_account" => {
+		let client_type = match (client.actor_client_type, client.login_type) {
+			(ActorClientTypeDiscriminant::UserLogin, Some(login_type)) => {
+				ActorClientType::UserLogin(login_type)
+			}
+			(ActorClientTypeDiscriminant::ServiceAccount, _) => ActorClientType::ServiceAccount,
+			(ActorClientTypeDiscriminant::UserLogin, None) => {
+				error!("User login `{login_id}` has no `user_login` row");
+				return Err(ErrorType::server_error(
+					"user login without a user_login row",
+				));
+			}
+		};
+
+		let (entry, ttl) = match client_type {
+			ActorClientType::UserLogin(UserLoginType::ApiToken) => {
+				api_token::load_actor_auth_data(&mut *database, &login_id).await?
+			}
+			ActorClientType::ServiceAccount => {
 				service_account::load_actor_auth_data(&mut *database, &login_id).await?
 			}
-			other => {
-				error!("Unknown actor client type `{other}` for login `{login_id}`");
-				return Err(ErrorType::server_error("unknown actor client type"));
+			ActorClientType::UserLogin(UserLoginType::WebLogin) => {
+				warn!("A web login's ID was presented as an API token");
+				return Err(ErrorType::AuthorizationTokenInvalid);
 			}
 		};
 
@@ -294,7 +318,8 @@ async fn authenticate_opaque_token(
 			allowed_ips,
 			token_hash,
 		} => {
-			if !accepted_client_types.contains(&ActorClientType::ApiToken) {
+			if !accepted_client_types.contains(&ActorClientType::UserLogin(UserLoginType::ApiToken))
+			{
 				warn!("Login `{login_id}` is an API token, which this route doesn't accept");
 				return Err(ErrorType::Unauthorized);
 			}

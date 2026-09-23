@@ -5,7 +5,7 @@ macros::declare_api_endpoint!(
 	/// verify their account. The recovery method can either be an email or a phone number.
 	ResendOtp,
 	POST "/auth/resend-otp",
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,

@@ -17,6 +17,6 @@ macros::declare_api_endpoint!(
 		/// The MFA secret QR code URL
 		pub qr: String,
 	},
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

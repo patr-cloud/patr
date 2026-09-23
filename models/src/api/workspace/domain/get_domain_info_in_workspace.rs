@@ -30,6 +30,6 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub workspace_domain: WithId<WorkspaceDomain>,
 	},
-	client_type = [ApiToken, ServiceAccount, WebDashboard],
+	client_type = [ApiToken, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

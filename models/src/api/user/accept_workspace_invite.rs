@@ -15,7 +15,7 @@ macros::declare_api_endpoint!(
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
 	},
-	client_type = [WebDashboard],
+	client_type = [WebLogin],
 	request = {
 		/// The ID of the invite being accepted
 		#[preprocess(none)]

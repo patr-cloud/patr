@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT actor_client.actor_client_type AS \"actor_client_type: ActorClientTypeDiscriminant\", user_login.login_type AS \"login_type?: UserLoginType\" FROM actor_client LEFT JOIN user_login ON user_login.login_id = actor_client.id WHERE actor_client.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "actor_client_type: ActorClientTypeDiscriminant",
+        "type_info": {
+          "Custom": {
+            "name": "actor_client_type",
+            "kind": {
+              "Enum": [
+                "user_login",
+                "service_account"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "login_type?: UserLoginType",
+        "type_info": {
+          "Custom": {
+            "name": "user_login_type",
+            "kind": {
+              "Enum": [
+                "api_token",
+                "web_login"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "da418cd9977fe7b2dae9cd1c6d80b680e51625cfbee60759be615ca3018974b5"
+}
