@@ -1,7 +1,6 @@
 use std::{collections::BTreeMap, net::IpAddr, ops::Sub, str::FromStr as _};
 
 use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
-use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{ActorData, RequestActorData, UserLoginType};
 use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
@@ -73,34 +72,41 @@ pub use self::cache::{mark_actor_stale, mark_all_stale, mark_login_stale, mark_w
 /// looks the login up, verifies it, loads its permissions and caches the lot
 /// until the token expires or something marks it stale (see [`cache`]).
 ///
-/// Which kinds of client a route accepts is the caller's check.
+/// `accepted_client_types` is who the caller serves. Kinds outside it aren't
+/// even parsed: a JWT sent to a route that only takes API tokens is a
+/// malformed API token as far as that route is concerned, and a `patrv1.`
+/// token of a kind the route doesn't take is rejected before any work is done
+/// on it.
 pub async fn authenticate(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
 	config: &AppConfig,
 	client_ip: IpAddr,
 	token: &str,
+	accepted_client_types: &[ActorClientType],
 ) -> Result<RequestActorData, ErrorType> {
-	match jsonwebtoken::decode::<AccessTokenData>(
-		token,
-		&DecodingKey::from_secret(config.jwt_secret.as_ref()),
-		&{
-			let mut validation = Validation::default();
+	let accepts_jwt = accepted_client_types.contains(&ActorClientType::WebDashboard);
+	let accepts_opaque_token = accepted_client_types.contains(&ActorClientType::ApiToken) ||
+		accepted_client_types.contains(&ActorClientType::ServiceAccount);
 
-			// We'll manually do this
-			validation.validate_exp = false;
-			validation.validate_nbf = false;
-			validation.validate_aud = false;
-
-			validation
-		},
-	) {
-		Ok(TokenData { header: _, claims }) => authenticate_jwt(database, redis, claims).await,
-		Err(err) => {
-			trace!("Authentication header is not a JWT: {}", err);
-			authenticate_opaque_token(database, redis, config, client_ip, token).await
-		}
+	if accepts_jwt && let Ok(claims) = AccessTokenData::decode(token, &config.jwt_secret) {
+		return authenticate_jwt(database, redis, claims).await;
 	}
+
+	if !accepts_opaque_token {
+		warn!("Authentication header is not a JWT, and only JWTs are accepted here");
+		return Err(ErrorType::MalformedAccessToken);
+	}
+
+	authenticate_opaque_token(
+		database,
+		redis,
+		config,
+		client_ip,
+		token,
+		accepted_client_types,
+	)
+	.await
 }
 
 /// Authenticate a JWT. Today every JWT is a web dashboard session; an OAuth
@@ -212,6 +218,7 @@ async fn authenticate_opaque_token(
 	config: &AppConfig,
 	client_ip: IpAddr,
 	token: &str,
+	accepted_client_types: &[ActorClientType],
 ) -> Result<RequestActorData, ErrorType> {
 	trace!("Parsing authentication header as an API token");
 
@@ -275,8 +282,9 @@ async fn authenticate_opaque_token(
 		entry
 	};
 
-	// Checked on every request, cache hit or not: the presented secret, and
-	// for API tokens the client's IP.
+	// Checked on every request, cache hit or not: that this route takes this
+	// kind of client, the presented secret, and for API tokens the client's
+	// IP.
 	let (actor, created) = match entry.kind {
 		ActorAuthDataCacheKind::ApiToken {
 			email,
@@ -286,6 +294,11 @@ async fn authenticate_opaque_token(
 			allowed_ips,
 			token_hash,
 		} => {
+			if !accepted_client_types.contains(&ActorClientType::ApiToken) {
+				warn!("Login `{login_id}` is an API token, which this route doesn't accept");
+				return Err(ErrorType::Unauthorized);
+			}
+
 			// Verify that the token presented is valid
 			let Ok(password_hash) = PasswordHash::new(&token_hash) else {
 				error!("Unable to parse password hash: {}", token_hash);
@@ -332,6 +345,11 @@ async fn authenticate_opaque_token(
 			created,
 			token_hash,
 		} => {
+			if !accepted_client_types.contains(&ActorClientType::ServiceAccount) {
+				warn!("Login `{login_id}` is a service account, which this route doesn't accept");
+				return Err(ErrorType::Unauthorized);
+			}
+
 			// Verify that the token presented is valid
 			let Ok(password_hash) = PasswordHash::new(&token_hash) else {
 				error!("Unable to parse password hash: {}", token_hash);
