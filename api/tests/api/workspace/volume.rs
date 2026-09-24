@@ -269,7 +269,7 @@ async fn create_volume_name_too_short() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateVolumeRequest {
-					name: "abc".to_string(),
+					name: "a".to_string(),
 					size: 1,
 				})
 				.build(),
@@ -278,7 +278,7 @@ async fn create_volume_name_too_short() {
 
 	assert!(
 		response.status_code().is_client_error(),
-		"volume name shorter than 4 chars should be rejected"
+		"volume name shorter than 2 chars should be rejected"
 	);
 }
 

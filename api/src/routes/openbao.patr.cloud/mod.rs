@@ -11,7 +11,7 @@ use axum_extra::routing::RouterExt;
 
 use crate::prelude::*;
 
-/// Sets up the routes for secrets.patr.cloud
+/// Sets up the routes for openbao.patr.cloud
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState) -> Router {
 	Router::new()

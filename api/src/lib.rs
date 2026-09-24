@@ -120,28 +120,6 @@ pub async fn build_state(config: AppConfig) -> AppState {
 
 	let worker = worker::setup(&database);
 
-	// Verify connectivity to OpenBao at startup so a misconfigured secret store
-	// surfaces in the logs immediately rather than on the first secret request.
-	// `lookup-self` covers both: it needs the server to be reachable and
-	// unsealed, and 403s a token OpenBao won't accept.
-	match reqwest::Client::new()
-		.get(format!(
-			"{}/v1/auth/token/lookup-self",
-			config.open_bao.endpoint.trim_end_matches('/')
-		))
-		.header("X-Vault-Token", &config.open_bao.token)
-		.send()
-		.await
-	{
-		Ok(response) if response.status().is_success() => {
-			tracing::info!("OpenBao reachable, token accepted")
-		}
-		Ok(response) => {
-			tracing::warn!(status = %response.status(), "OpenBao rejected the configured token")
-		}
-		Err(error) => tracing::warn!(%error, "OpenBao health check failed"),
-	}
-
 	AppState {
 		database,
 		redis,

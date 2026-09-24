@@ -12,6 +12,8 @@ pub mod config;
 pub mod ext_traits;
 /// OTLP observability setup for managed-mode runners.
 pub mod observability;
+/// Reading secret values from the Patr-hosted OpenBao proxy.
+pub mod secrets;
 
 /// Contains the [`layer`][1]s that will be used with [`tower`] mounted on the
 /// axum [`Router`][2]

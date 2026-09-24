@@ -85,7 +85,7 @@ async fn create_workspace_name_too_short() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateWorkspaceRequest {
-					name: "abc".to_string(),
+					name: "a".to_string(),
 				})
 				.build(),
 		)
@@ -93,7 +93,7 @@ async fn create_workspace_name_too_short() {
 
 	assert!(
 		response.status_code().is_client_error(),
-		"workspace name shorter than 4 chars should be rejected"
+		"workspace name shorter than 2 chars should be rejected"
 	);
 }
 
@@ -526,9 +526,9 @@ async fn is_name_available_rejects_malformed_name() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 
-	// `!!!` fails RESOURCE_NAME_REGEX (special chars + under the 4-char min),
-	// so the query preprocessor should reject it rather than reporting
-	// availability for a name that could never be created.
+	// `!!!` fails RESOURCE_NAME_REGEX on its special characters, so the query
+	// preprocessor should reject it rather than reporting availability for a
+	// name that could never be created.
 	let response = setup
 		.make_web_dashboard_call(
 			ApiRequest::<IsWorkspaceNameAvailableRequest>::builder()

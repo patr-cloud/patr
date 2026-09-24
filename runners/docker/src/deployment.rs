@@ -114,7 +114,7 @@ pub(crate) async fn upsert(
 		format!("{}:{}", image_path, image_tag)
 	};
 
-	// Resolve secret env vars through secrets.patr.cloud, which proxies OpenBao.
+	// Resolve secret env vars through openbao.patr.cloud, which proxies OpenBao.
 	// Values stay in memory only and are never logged.
 	let env = futures::stream::iter(environment_variables)
 		.then(|(key, value)| async move {
@@ -132,7 +132,7 @@ pub(crate) async fn upsert(
 							"Secret environment variable encountered in self-hosted mode",
 						)));
 					};
-					client::get_secret_value(*runner_id, api_token, *workspace_id, from_secret)
+					secrets::get_secret_value(*runner_id, api_token, *workspace_id, from_secret)
 						.await?
 				}
 			};

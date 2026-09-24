@@ -21,6 +21,7 @@ pub mod extractors;
 /// [1]: tower::Layer
 /// [2]: axum::Router
 pub mod layers;
+
 /// Contains the extension traits that will be used to add functionality to
 /// existing types.
 mod extensions;

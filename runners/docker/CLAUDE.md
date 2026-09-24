@@ -7,7 +7,7 @@ The live runner: implements `RunnerExecutor` over **Docker Swarm** via `bollard`
 - A deployment → a Swarm **service** `patr-{deployment_id}` (replicas = `min_horizontal_scale`).
 - Config mounts, ingress routing, tunnel tokens, alloy config → Swarm **configs** (Swarm's "file into a container" mechanism).
 - Image resolution: Patr-registry deployments carry only a `repository_id`, so it calls the API (`GetContainerRepositoryInfo`) to resolve the name; digest-pinned when a live digest is set. Patr-registry pulls use `patr` / api-token creds; external registries pull anonymously.
-- Secret env vars: each `EnvironmentVariableValue::Secret` is resolved at reconcile via `client::get_secret_value` → `secrets.patr.cloud` (OpenBao's KV v2 API behind Basic `{runner_id}:{api_token}` auth), then baked into the service env. Managed mode only. Values are never logged or stored in SQLite. A rotated secret only reaches a service on redeploy.
+- Secret env vars: each `EnvironmentVariableValue::Secret` is resolved at reconcile via `secrets::get_secret_value` → `openbao.patr.cloud` (OpenBao's KV v2 API behind Basic `{runner_id}:{api_token}` auth), then baked into the service env. Managed mode only. Values are never logged or stored in SQLite. A rotated secret only reaches a service on redeploy.
 
 ## Two non-obvious patterns
 

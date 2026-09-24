@@ -1821,8 +1821,8 @@ async fn create_deployment_name_length_bounds() {
 	let mt = first_machine_type(&setup, workspace.id).await;
 
 	for (name, expect_ok) in [
-		("abc".to_string(), false),
-		("abcd".to_string(), true),
+		("a".to_string(), false),
+		("ab".to_string(), true),
 		("a".repeat(255), true),
 		("a".repeat(256), false),
 	] {

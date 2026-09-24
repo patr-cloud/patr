@@ -1694,7 +1694,7 @@ async fn create_role_name_too_short() {
 				})
 				.body(CreateNewRoleRequest {
 					role: Role {
-						name: "ab".to_string(),
+						name: "a".to_string(),
 						description: "too short".to_string(),
 						is_immutable: false,
 					},
@@ -1705,7 +1705,7 @@ async fn create_role_name_too_short() {
 		.await;
 	assert!(
 		response.status_code().is_client_error(),
-		"a role name shorter than 4 chars should be rejected, got {}",
+		"a role name shorter than 2 chars should be rejected, got {}",
 		response.status_code()
 	);
 }

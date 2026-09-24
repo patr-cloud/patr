@@ -45,7 +45,7 @@ async fn read_secret_no_auth_returns_401() {
 		.await;
 
 	let response = setup
-		.make_secrets_call(
+		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
 			vec![],
@@ -72,7 +72,7 @@ async fn read_secret_invalid_token_returns_401() {
 		.await;
 
 	let response = setup
-		.make_secrets_call(
+		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
 			vec![(
@@ -103,7 +103,7 @@ async fn read_secret_returns_openbao_shaped_value() {
 	let token = runner_token(&setup, &user, workspace.id, runner.id).await;
 
 	let response = setup
-		.make_secrets_call(
+		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
 			vec![(
@@ -155,7 +155,7 @@ async fn read_secret_without_execute_is_denied() {
 		.token;
 
 	let response = setup
-		.make_secrets_call(
+		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
 			vec![(
@@ -188,7 +188,7 @@ async fn read_secret_from_another_workspace_is_denied() {
 
 	// The secret exists, but in a workspace this runner has nothing to do with.
 	let response = setup
-		.make_secrets_call(
+		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&other_workspace.id, &other_secret.id),
 			vec![(
@@ -226,7 +226,7 @@ async fn read_deleted_secret_returns_404() {
 		.await;
 
 	let response = setup
-		.make_secrets_call(
+		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
 			vec![(
@@ -260,7 +260,7 @@ async fn read_secret_missing_in_openbao_passes_through_404() {
 	setup.delete_openbao_secret(workspace.id, secret.id).await;
 
 	let response = setup
-		.make_secrets_call(
+		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
 			vec![(
@@ -293,7 +293,7 @@ async fn read_secret_with_runner_from_another_workspace_is_denied() {
 
 	// The runner is real and the token is valid, but it belongs elsewhere.
 	let response = setup
-		.make_secrets_call(
+		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
 			vec![(

@@ -8,8 +8,8 @@ use api::{
 	routes::{
 		api_patr_cloud,
 		loki_patr_cloud,
+		openbao_patr_cloud,
 		registry_patr_cloud,
-		secrets_patr_cloud,
 		registry_patr_cloud::{endpoint::RegistryEndpoint, request::RegistryUnprocessedApiRequest},
 	},
 	utils::config::{
@@ -57,7 +57,7 @@ pub struct TestSetup {
 	api: TestServer,
 	registry: TestServer,
 	loki: TestServer,
-	secrets: TestServer,
+	openbao: TestServer,
 	state: AppState,
 	cloudflare_mock: MockServer,
 	permission_ids: BTreeMap<String, Uuid>,
@@ -277,17 +277,17 @@ impl TestSetup {
 		}
 	}
 
-	/// Make a raw HTTP call to the secrets TestServer.
+	/// Make a raw HTTP call to the openbao TestServer.
 	///
 	/// Mirrors [`make_loki_call`] for the OpenBao read proxy, which speaks
 	/// OpenBao's own API rather than a typed Patr endpoint.
-	pub async fn make_secrets_call(
+	pub async fn make_openbao_call(
 		&self,
 		method: http::Method,
 		path: &str,
 		headers: Vec<(http::HeaderName, &str)>,
 	) -> TestResponse {
-		let mut req = self.secrets.method(method, path);
+		let mut req = self.openbao.method(method, path);
 		for (name, value) in headers {
 			req = req.add_header(name, value);
 		}
@@ -458,7 +458,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	let web_listener = TcpListener::bind("127.0.0.1:0").await?;
 	let registry_listener = TcpListener::bind("127.0.0.1:0").await?;
 	let loki_listener = TcpListener::bind("127.0.0.1:0").await?;
-	let secrets_listener = TcpListener::bind("127.0.0.1:0").await?;
+	let openbao_listener = TcpListener::bind("127.0.0.1:0").await?;
 
 	let web_bind_address = web_listener.local_addr()?;
 
@@ -720,9 +720,9 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 			.into_make_service_with_connect_info::<SocketAddr>(),
 	));
 
-	let secrets = TestServer::builder().build(axum::serve(
-		secrets_listener,
-		secrets_patr_cloud::setup_routes(&state)
+	let openbao = TestServer::builder().build(axum::serve(
+		openbao_listener,
+		openbao_patr_cloud::setup_routes(&state)
 			.await
 			.into_make_service_with_connect_info::<SocketAddr>(),
 	));
@@ -747,7 +747,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		api,
 		registry,
 		loki,
-		secrets,
+		openbao,
 		state,
 		cloudflare_mock,
 		permission_ids,

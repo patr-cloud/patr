@@ -170,10 +170,10 @@ test.describe('workspace setup > validation', () => {
 		});
 	});
 
-	test('rejects a name shorter than 4 characters', async ({ browser, api }) => {
+	test('rejects a name shorter than 2 characters', async ({ browser, api }) => {
 		await using user = await createUserAccount(api);
 		await onFirstWorkspaceScreen(browser, user, async (page) => {
-			await fillWorkspaceName(page, 'abc');
+			await fillWorkspaceName(page, 'a');
 			await expectServerRejectionInline(page);
 		});
 	});

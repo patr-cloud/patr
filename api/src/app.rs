@@ -87,7 +87,7 @@ pub async fn serve(state: &AppState) {
 				mimir_listener.local_addr().unwrap()
 			);
 
-			let secrets_listener = TcpListener::bind(SocketAddr::from((
+			let openbao_listener = TcpListener::bind(SocketAddr::from((
 				state.config.server.bind_address.ip(),
 				state.config.server.bind_address.port() + 6,
 			)))
@@ -95,8 +95,8 @@ pub async fn serve(state: &AppState) {
 			.unwrap();
 
 			info!(
-				"Secrets server running on http://{}",
-				secrets_listener.local_addr().unwrap()
+				"OpenBao server running on http://{}",
+				openbao_listener.local_addr().unwrap()
 			);
 
 			futures::future::join_all([
@@ -174,8 +174,8 @@ pub async fn serve(state: &AppState) {
 				.boxed(),
 				async {
 					axum::serve(
-						secrets_listener,
-						crate::routes::secrets_patr_cloud::setup_routes(state)
+						openbao_listener,
+						crate::routes::openbao_patr_cloud::setup_routes(state)
 							.await
 							.into_make_service_with_connect_info::<SocketAddr>(),
 					)
