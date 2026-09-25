@@ -655,7 +655,7 @@ async fn list_domains_pagination() {
 			.await;
 	}
 
-	let page0 = setup
+	let page0_response = setup
 		.make_web_dashboard_call(
 			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
 				.path(ListDomainsInWorkspacePath {
@@ -674,15 +674,16 @@ async fn list_domains_pagination() {
 				})
 				.build(),
 		)
-		.await
-		.json::<ApiSuccessResponseBody<ListDomainsInWorkspaceResponse>>();
+		.await;
+	assert_eq!("5", page0_response.header("x-total-count"));
+	let page0 = page0_response.json::<ApiSuccessResponseBody<ListDomainsInWorkspaceResponse>>();
 	assert_eq!(
 		2,
 		page0.response.domains.len(),
 		"page 0 should have 2 domains"
 	);
 
-	let page1 = setup
+	let page1_response = setup
 		.make_web_dashboard_call(
 			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
 				.path(ListDomainsInWorkspacePath {
@@ -701,8 +702,9 @@ async fn list_domains_pagination() {
 				})
 				.build(),
 		)
-		.await
-		.json::<ApiSuccessResponseBody<ListDomainsInWorkspaceResponse>>();
+		.await;
+	assert_eq!("5", page1_response.header("x-total-count"));
+	let page1 = page1_response.json::<ApiSuccessResponseBody<ListDomainsInWorkspaceResponse>>();
 	assert!(
 		!page1.response.domains.is_empty(),
 		"page 1 should have remaining domains"
@@ -716,6 +718,87 @@ async fn list_domains_pagination() {
 		page0_ids.is_disjoint(&page1_ids),
 		"pages should not overlap"
 	);
+}
+
+/// A non-zero page past the end of the result set is rejected as out of bounds
+/// (PageOutOfBounds → 400) rather than returning an empty page.
+#[tokio::test]
+async fn list_domains_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	setup
+		.create_test_domain(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
+				.path(ListDomainsInWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListDomainsInWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
+	);
+}
+
+/// The total count only covers the domains that match the search.
+#[tokio::test]
+async fn list_domains_search_counts_only_matches() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let domain1 = setup
+		.create_test_domain(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_domain(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
+				.path(ListDomainsInWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: WorkspaceDomainSearchParams {
+						name: Some(domain1.domain.trim_end_matches(".com").to_string()),
+						..Default::default()
+					},
+					count: 10,
+					page: 0,
+					additional_query: (),
+				})
+				.headers(ListDomainsInWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListDomainsInWorkspaceResponse>>();
+	assert_eq!(1, body.response.domains.len());
+	assert_eq!(domain1.id, body.response.domains[0].id);
 }
 
 /// is-domain-valid: an already-added domain is reported as a conflict (409).

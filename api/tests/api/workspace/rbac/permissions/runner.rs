@@ -281,6 +281,54 @@ async fn runner_no_permission_list_returns_empty() {
 	);
 }
 
+/// The total count only covers the runners the member can view.
+#[tokio::test]
+async fn runner_view_include_list_counts_only_listed_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner1 = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Runner(RunnerPermission::View))],
+		)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_grants(
+			&admin.access_token,
+			workspace.id,
+			grants(role.id, &[runner1.id]),
+		)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+				.path(ListRunnersForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListRunnersForWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>();
+	assert_eq!(1, body.response.runners.len());
+	assert_eq!(runner1.id, body.response.runners[0].id);
+}
+
 /// The ingress-token endpoint requires Execute: a View-only member is denied.
 #[tokio::test]
 async fn runner_ingress_token_requires_execute() {

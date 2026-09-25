@@ -107,6 +107,73 @@ async fn list_deploy_history_after_multiple_deploys() {
 	assert_eq!(digests, vec![newest, middle, oldest]);
 }
 
+/// page/count slice the deploy history, pages don't overlap, and every page
+/// reports the full total.
+#[tokio::test]
+async fn list_deploy_history_pagination() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	for i in 1..=5 {
+		seed_deploy_history(
+			&setup,
+			deployment.id,
+			repo.id,
+			&format!("sha256:{}", i.to_string().repeat(64)),
+			&format!("{i} hours"),
+		)
+		.await;
+	}
+
+	let mut pages = Vec::new();
+	for page in 0..3usize {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListDeploymentDeployHistoryRequest>::builder()
+					.path(ListDeploymentDeployHistoryPath {
+						workspace_id: workspace.id,
+						deployment_id: deployment.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListDeploymentDeployHistoryRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!("5", response.header("x-total-count"));
+		pages.push(response.json::<ApiSuccessResponseBody<ListDeploymentDeployHistoryResponse>>());
+	}
+	assert_eq!(2, pages[0].response.deploys.len());
+	assert_eq!(2, pages[1].response.deploys.len());
+	assert_eq!(1, pages[2].response.deploys.len());
+	let digests = pages
+		.iter()
+		.flat_map(|page| page.response.deploys.iter().map(|d| d.image_digest.clone()))
+		.collect::<std::collections::BTreeSet<_>>();
+	assert_eq!(
+		5,
+		digests.len(),
+		"the three pages should cover 5 distinct deploys"
+	);
+}
+
 #[tokio::test]
 async fn delete_deploy_history_works() {
 	let setup = setup().await.expect("failed to setup test server");

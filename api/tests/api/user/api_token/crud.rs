@@ -483,7 +483,7 @@ async fn list_api_tokens_pagination() {
 			.await;
 	}
 
-	let page0 = setup
+	let page0_response = setup
 		.make_web_dashboard_call(
 			ApiRequest::<ListApiTokensRequest>::builder()
 				.query(ListResourceQuery {
@@ -499,15 +499,16 @@ async fn list_api_tokens_pagination() {
 				})
 				.build(),
 		)
-		.await
-		.json::<ApiSuccessResponseBody<ListApiTokensResponse>>();
+		.await;
+	assert_eq!("3", page0_response.header("x-total-count"));
+	let page0 = page0_response.json::<ApiSuccessResponseBody<ListApiTokensResponse>>();
 	assert_eq!(
 		page0.response.tokens.len(),
 		2,
 		"page 0 should have 2 tokens"
 	);
 
-	let page1 = setup
+	let page1_response = setup
 		.make_web_dashboard_call(
 			ApiRequest::<ListApiTokensRequest>::builder()
 				.query(ListResourceQuery {
@@ -523,8 +524,9 @@ async fn list_api_tokens_pagination() {
 				})
 				.build(),
 		)
-		.await
-		.json::<ApiSuccessResponseBody<ListApiTokensResponse>>();
+		.await;
+	assert_eq!("3", page1_response.header("x-total-count"));
+	let page1 = page1_response.json::<ApiSuccessResponseBody<ListApiTokensResponse>>();
 	assert!(
 		page1.response.tokens.len() >= 1,
 		"page 1 should have remaining token(s)"
@@ -536,5 +538,43 @@ async fn list_api_tokens_pagination() {
 	assert!(
 		page0_ids.is_disjoint(&page1_ids),
 		"pages should not contain overlapping tokens"
+	);
+}
+
+/// A non-zero page past the end of the API token list is rejected as out of
+/// bounds.
+#[tokio::test]
+async fn list_api_tokens_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListApiTokensRequest>::builder()
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListApiTokensRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
 	);
 }

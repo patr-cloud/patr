@@ -585,29 +585,28 @@ async fn list_runners_pagination() {
 
 	let mut pages = Vec::new();
 	for page in 0..2usize {
-		pages.push(
-			setup
-				.make_web_dashboard_call(
-					ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
-						.path(ListRunnersForWorkspacePath {
-							workspace_id: workspace.id,
-						})
-						.query(ListResourceQuery {
-							sort: None,
-							search: Default::default(),
-							count: 2,
-							page,
-							additional_query: (),
-						})
-						.headers(ListRunnersForWorkspaceRequestHeaders {
-							authorization: user.access_token.clone(),
-							user_agent: TEST_USER_AGENT,
-						})
-						.build(),
-				)
-				.await
-				.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>(),
-		);
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+					.path(ListRunnersForWorkspacePath {
+						workspace_id: workspace.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListRunnersForWorkspaceRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!("5", response.header("x-total-count"));
+		pages.push(response.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>());
 	}
 	assert_eq!(2, pages[0].response.runners.len());
 	assert_eq!(2, pages[1].response.runners.len());
@@ -620,6 +619,87 @@ async fn list_runners_pagination() {
 		.map(|r| r.id)
 		.collect();
 	assert_eq!(4, ids.len(), "the two pages should not overlap");
+}
+
+/// A non-zero page past the end of the result set is rejected as out of bounds
+/// (PageOutOfBounds → 400) rather than returning an empty page.
+#[tokio::test]
+async fn list_runners_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+				.path(ListRunnersForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListRunnersForWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
+	);
+}
+
+/// The total count only covers the runners that match the search.
+#[tokio::test]
+async fn list_runners_search_counts_only_matches() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner1 = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+				.path(ListRunnersForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: RunnerSearchParams {
+						name: Some(runner1.name.clone()),
+						..Default::default()
+					},
+					count: 10,
+					page: 0,
+					additional_query: (),
+				})
+				.headers(ListRunnersForWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>();
+	assert_eq!(1, body.response.runners.len());
+	assert_eq!(runner1.id, body.response.runners[0].id);
 }
 
 /// Deleting an already-deleted runner hits the soft-deleted resource and is

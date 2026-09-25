@@ -497,6 +497,54 @@ async fn domain_no_permission_list_returns_empty() {
 	);
 }
 
+/// The total count only covers the domains the member can view.
+#[tokio::test]
+async fn domain_view_include_list_counts_only_listed_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain1 = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Domain(DomainPermission::View))],
+		)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_grants(
+			&admin.access_token,
+			workspace.id,
+			grants(role.id, &[domain1.id]),
+		)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
+				.path(ListDomainsInWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListDomainsInWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListDomainsInWorkspaceResponse>>();
+	assert_eq!(1, body.response.domains.len());
+	assert_eq!(domain1.id, body.response.domains[0].id);
+}
+
 /// A non-member cannot reach another workspace's domains at all.
 #[tokio::test]
 async fn domain_non_member_denied() {

@@ -16,12 +16,23 @@ use models::{
 			LeaveWorkspaceRequest,
 			LeaveWorkspaceRequestHeaders,
 			LeaveWorkspaceResponse,
+			container_registry::*,
 			deployment::*,
+			domain::*,
+			managed_url::*,
 			rbac::{role::*, user::*},
 			runner::*,
 		},
 	},
-	rbac::{DeploymentPermission, Permission, RunnerPermission, WorkspacePermission},
+	rbac::{
+		ContainerRegistryRepositoryPermission,
+		DeploymentPermission,
+		DomainPermission,
+		ManagedURLPermission,
+		Permission,
+		RunnerPermission,
+		WorkspacePermission,
+	},
 };
 
 use super::{mint_token_raw, probe_modify_roles};
@@ -789,6 +800,250 @@ async fn api_token_with_scoped_permissions_denies_other_resource() {
 		"non-included deployment should be denied, got {}",
 		response.status_code()
 	);
+}
+
+/// A token scoped to one repository lists and counts only that repository.
+#[tokio::test]
+async fn api_token_scoped_view_lists_only_listed_repository() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo1 = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+
+	let view_perm = setup.get_permission_id(Permission::ContainerRegistryRepository(
+		ContainerRegistryRepositoryPermission::View,
+	));
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(view_perm, BTreeSet::from([repo1.id]))]),
+				},
+			)]),
+		)
+		.await;
+	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListContainerRepositoriesRequest>::builder()
+				.path(ListContainerRepositoriesPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListContainerRepositoriesRequestHeaders {
+					authorization: token_bearer,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListContainerRepositoriesResponse>>();
+	assert_eq!(1, body.response.repositories.len());
+	assert_eq!(repo1.id, body.response.repositories[0].id);
+}
+
+/// A token scoped to one deployment lists and counts only that deployment.
+#[tokio::test]
+async fn api_token_scoped_view_lists_only_listed_deployment() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment1 = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let view_perm = setup.get_permission_id(Permission::Deployment(DeploymentPermission::View));
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(view_perm, BTreeSet::from([deployment1.id]))]),
+				},
+			)]),
+		)
+		.await;
+	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: token_bearer,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListDeploymentResponse>>();
+	assert_eq!(1, body.response.deployments.len());
+	assert_eq!(deployment1.id, body.response.deployments[0].id);
+}
+
+/// A token scoped to one runner lists and counts only that runner.
+#[tokio::test]
+async fn api_token_scoped_view_lists_only_listed_runner() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner1 = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let view_perm = setup.get_permission_id(Permission::Runner(RunnerPermission::View));
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(view_perm, BTreeSet::from([runner1.id]))]),
+				},
+			)]),
+		)
+		.await;
+	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+				.path(ListRunnersForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListRunnersForWorkspaceRequestHeaders {
+					authorization: token_bearer,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>();
+	assert_eq!(1, body.response.runners.len());
+	assert_eq!(runner1.id, body.response.runners[0].id);
+}
+
+/// A token scoped to one domain lists and counts only that domain.
+#[tokio::test]
+async fn api_token_scoped_view_lists_only_listed_domain() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let domain1 = setup
+		.create_test_domain(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_domain(&user.access_token, workspace.id)
+		.await;
+
+	let view_perm = setup.get_permission_id(Permission::Domain(DomainPermission::View));
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(view_perm, BTreeSet::from([domain1.id]))]),
+				},
+			)]),
+		)
+		.await;
+	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
+				.path(ListDomainsInWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListDomainsInWorkspaceRequestHeaders {
+					authorization: token_bearer,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListDomainsInWorkspaceResponse>>();
+	assert_eq!(1, body.response.domains.len());
+	assert_eq!(domain1.id, body.response.domains[0].id);
+}
+
+/// A token scoped to one managed URL lists and counts only that managed URL.
+#[tokio::test]
+async fn api_token_scoped_view_lists_only_listed_managed_url() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let domain = setup
+		.create_test_domain(&user.access_token, workspace.id)
+		.await;
+	setup.mark_test_domain_verified(domain.id).await;
+	let url1 = setup
+		.create_test_managed_url(&user.access_token, workspace.id, domain.id)
+		.await;
+	setup
+		.create_test_managed_url(&user.access_token, workspace.id, domain.id)
+		.await;
+
+	let view_perm = setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::View));
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(view_perm, BTreeSet::from([url1]))]),
+				},
+			)]),
+		)
+		.await;
+	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListManagedURLRequest>::builder()
+				.path(ListManagedURLPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListManagedURLRequestHeaders {
+					authorization: token_bearer,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListManagedURLResponse>>();
+	assert_eq!(1, body.response.urls.len());
+	assert_eq!(url1, body.response.urls[0].id);
 }
 
 #[tokio::test]
