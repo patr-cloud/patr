@@ -360,7 +360,8 @@ impl TryFrom<Vec<String>> for IaacDeploymentEnvVars {
 	fn try_from(value: Vec<String>) -> Result<Self, Self::Error> {
 		fn parse_one_env(
 			env: String,
-		) -> Result<(String, MaybeExternallySourced<EnvironmentVariableValue>), &'static str> {
+		) -> Result<(String, MaybeExternallySourced<EnvironmentVariableValue>), &'static str>
+		{
 			if let Some((key, value)) = env.split_once('=') {
 				return Ok((
 					key.trim().to_string(),

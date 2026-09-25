@@ -15,8 +15,8 @@ export PATR__EMAIL__PASSWORD                   := "password"
 export PATR__S3__ENDPOINT                      := "http://127.0.0.1:19000"
 export PATR__S3__REGION                        := "us-east-1"
 export PATR__S3__BUCKET                        := "patr-e2e"
-export PATR__S3__KEY                           := "minioadmin"
-export PATR__S3__SECRET                        := "minioadmin"
+export PATR__S3__KEY                           := "rustfsadmin"
+export PATR__S3__SECRET                        := "rustfsadmin"
 export PATR__S3__FORCE_PATH_STYLE              := "true"
 export PATR__DATABASE__HOST                    := "127.0.0.1"
 export PATR__DATABASE__PORT                    := "15432"
@@ -74,7 +74,7 @@ install:
 
 up:
     docker compose -f docker-compose.yml up -d --wait
-    docker run --rm --network e2e_default --entrypoint sh quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z -c 'mc alias set local http://minio:9000 minioadmin minioadmin && mc mb --ignore-existing local/patr-e2e'
+    docker compose -f docker-compose.yml exec -T rustfs curl -sf --aws-sigv4 aws:amz:us-east-1:s3 --user rustfsadmin:rustfsadmin -X PUT http://127.0.0.1:9000/patr-e2e
     for v in $(echo "${DOCKER_VERSIONS:-}" | tr ',' ' '); do docker pull "docker:$v-dind"; done
 
 test *args:

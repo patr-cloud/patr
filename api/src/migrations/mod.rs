@@ -27,7 +27,8 @@ pub struct Migration {
 	/// The migration function
 	pub migrate: for<'a> fn(
 		&'a mut DatabaseConnection,
-	) -> Pin<Box<dyn Future<Output = Result<(), ErrorType>> + Send + 'a>>,
+	)
+		-> Pin<Box<dyn Future<Output = Result<(), ErrorType>> + Send + 'a>>,
 }
 
 inventory::collect!(Migration);

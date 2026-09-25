@@ -446,7 +446,6 @@ async fn head_blob_with_push_only_token_is_allowed() {
 			query: (),
 			headers: HeadBlobRequestHeaders {
 				authorization: BearerToken::from_str(&push_only.token).unwrap(),
-				range: OptionalHeader::new(None),
 			},
 			body: Body::empty(),
 		})

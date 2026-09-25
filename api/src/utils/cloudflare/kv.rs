@@ -71,37 +71,36 @@ pub async fn sync_ingress_kv_for_fqdn(
 			row.path,
 			match row.url_type {
 				ManagedUrlTypeDiscriminant::ProxyDeployment => ProxyDeployment {
-					deployment_id: row.deployment_id.ok_or(ErrorType::server_error(
-						"deployment_id is NULL when it's a proxy deployment",
-					))?,
-					port: row
-						.port
-						.map(|port| port as u16)
-						.ok_or(ErrorType::server_error(
-							"port is NULL when it's a proxy deployment",
-						))?,
+					deployment_id: row.deployment_id.ok_or_else(|| {
+						ErrorType::server_error(
+							"deployment_id is NULL when it's a proxy deployment",
+						)
+					})?,
+					port: row.port.map(|port| port as u16).ok_or_else(|| {
+						ErrorType::server_error("port is NULL when it's a proxy deployment")
+					})?,
 					runner_id: row
 						.runner
-						.ok_or(ErrorType::server_error("Cannot find runner_id"))?,
+						.ok_or_else(|| ErrorType::server_error("Cannot find runner_id"))?,
 				},
 				ManagedUrlTypeDiscriminant::ProxyUrl => ProxyUrl {
-					url: row
-						.url
-						.ok_or(ErrorType::server_error("url is NULL when it's a proxy url"))?,
-					http_only: row.http_only.ok_or(ErrorType::server_error(
-						"http_only is NULL when it's a proxy url",
-					))?,
+					url: row.url.ok_or_else(|| {
+						ErrorType::server_error("url is NULL when it's a proxy url")
+					})?,
+					http_only: row.http_only.ok_or_else(|| {
+						ErrorType::server_error("http_only is NULL when it's a proxy url")
+					})?,
 				},
 				ManagedUrlTypeDiscriminant::Redirect => Redirect {
-					url: row
-						.url
-						.ok_or(ErrorType::server_error("url is NULL when it's a redirect"))?,
-					permanent_redirect: row.permanent_redirect.ok_or(ErrorType::server_error(
-						"permanent_redirect is NULL when it's a redirect",
-					))?,
-					http_only: row.http_only.ok_or(ErrorType::server_error(
-						"http_only is NULL when it's a redirect",
-					))?,
+					url: row.url.ok_or_else(|| {
+						ErrorType::server_error("url is NULL when it's a redirect")
+					})?,
+					permanent_redirect: row.permanent_redirect.ok_or_else(|| {
+						ErrorType::server_error("permanent_redirect is NULL when it's a redirect")
+					})?,
+					http_only: row.http_only.ok_or_else(|| {
+						ErrorType::server_error("http_only is NULL when it's a redirect")
+					})?,
 				},
 			},
 		))

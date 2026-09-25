@@ -7,7 +7,10 @@ use models::{
 	utils::{ListResourceQuery, Uuid},
 };
 
-use crate::{prelude::*, registry::helpers::build_minimal_oci_image_with_ports};
+use crate::{
+	prelude::*,
+	registry::helpers::{build_minimal_oci_image_with_ports, build_unique_oci_image},
+};
 
 #[tokio::test]
 async fn create_repository_works() {
@@ -230,6 +233,143 @@ async fn list_manifests_empty() {
 	assert!(response.response.manifests.is_empty());
 }
 
+/// page/count slice the manifest list, pages don't overlap, and every page
+/// reports the full total.
+#[tokio::test]
+async fn list_manifests_pagination() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	for i in 0..5 {
+		let image = build_unique_oci_image(format!("{}-{i}", repo.name).as_bytes());
+		setup
+			.push_blob(
+				&api_token.token,
+				&workspace.id,
+				&repo.name,
+				&image.config_digest,
+				&image.config_bytes,
+			)
+			.await;
+		setup
+			.push_blob(
+				&api_token.token,
+				&workspace.id,
+				&repo.name,
+				&image.layer_digest,
+				&image.layer_bytes,
+			)
+			.await;
+		setup
+			.push_manifest(
+				&api_token.token,
+				&workspace.id,
+				&repo.name,
+				&format!("v{i}"),
+				&image.manifest_bytes,
+			)
+			.await;
+	}
+
+	let mut pages = Vec::new();
+	for page in 0..3usize {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListContainerRepositoryManifestsRequest>::builder()
+					.path(ListContainerRepositoryManifestsPath {
+						workspace_id: workspace.id,
+						repository_id: repo.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListContainerRepositoryManifestsRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!("5", response.header("x-total-count"));
+		pages.push(
+			response.json::<ApiSuccessResponseBody<ListContainerRepositoryManifestsResponse>>(),
+		);
+	}
+	assert_eq!(2, pages[0].response.manifests.len());
+	assert_eq!(2, pages[1].response.manifests.len());
+	assert_eq!(1, pages[2].response.manifests.len());
+	let digests = pages
+		.iter()
+		.flat_map(|page| page.response.manifests.iter().map(|m| m.digest.clone()))
+		.collect::<std::collections::BTreeSet<_>>();
+	assert_eq!(
+		5,
+		digests.len(),
+		"the three pages should cover 5 distinct manifests"
+	);
+}
+
+/// A non-zero page past the end of the manifest list is rejected as out of
+/// bounds.
+#[tokio::test]
+async fn list_manifests_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v0")
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListContainerRepositoryManifestsRequest>::builder()
+				.path(ListContainerRepositoryManifestsPath {
+					workspace_id: workspace.id,
+					repository_id: repo.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListContainerRepositoryManifestsRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
+	);
+}
+
 #[tokio::test]
 async fn list_tags_empty() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -256,6 +396,124 @@ async fn list_tags_empty() {
 		.json::<ApiSuccessResponseBody<ListContainerRepositoryTagsResponse>>();
 
 	assert!(response.response.tags.is_empty());
+}
+
+/// page/count slice the tag list, pages don't overlap, and every page reports
+/// the full total.
+#[tokio::test]
+async fn list_tags_pagination() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	let image = setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v0")
+		.await;
+	for i in 1..5 {
+		setup
+			.push_manifest(
+				&api_token.token,
+				&workspace.id,
+				&repo.name,
+				&format!("v{i}"),
+				&image.manifest_bytes,
+			)
+			.await;
+	}
+
+	let mut pages = Vec::new();
+	for page in 0..3usize {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListContainerRepositoryTagsRequest>::builder()
+					.path(ListContainerRepositoryTagsPath {
+						workspace_id: workspace.id,
+						repository_id: repo.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListContainerRepositoryTagsRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!("5", response.header("x-total-count"));
+		pages.push(response.json::<ApiSuccessResponseBody<ListContainerRepositoryTagsResponse>>());
+	}
+	assert_eq!(2, pages[0].response.tags.len());
+	assert_eq!(2, pages[1].response.tags.len());
+	assert_eq!(1, pages[2].response.tags.len());
+	let tags = pages
+		.iter()
+		.flat_map(|page| page.response.tags.iter().map(|t| t.tag.clone()))
+		.collect::<std::collections::BTreeSet<_>>();
+	assert_eq!(
+		5,
+		tags.len(),
+		"the three pages should cover 5 distinct tags"
+	);
+}
+
+/// A non-zero page past the end of the tag list is rejected as out of bounds.
+#[tokio::test]
+async fn list_tags_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v0")
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListContainerRepositoryTagsRequest>::builder()
+				.path(ListContainerRepositoryTagsPath {
+					workspace_id: workspace.id,
+					repository_id: repo.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListContainerRepositoryTagsRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
+	);
 }
 
 #[tokio::test]
@@ -1003,29 +1261,28 @@ async fn list_repositories_pagination() {
 
 	let mut pages = Vec::new();
 	for page in 0..3usize {
-		pages.push(
-			setup
-				.make_web_dashboard_call(
-					ApiRequest::<ListContainerRepositoriesRequest>::builder()
-						.path(ListContainerRepositoriesPath {
-							workspace_id: workspace.id,
-						})
-						.query(ListResourceQuery {
-							sort: None,
-							search: Default::default(),
-							count: 2,
-							page,
-							additional_query: (),
-						})
-						.headers(ListContainerRepositoriesRequestHeaders {
-							authorization: user.access_token.clone(),
-							user_agent: TEST_USER_AGENT,
-						})
-						.build(),
-				)
-				.await
-				.json::<ApiSuccessResponseBody<ListContainerRepositoriesResponse>>(),
-		);
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListContainerRepositoriesRequest>::builder()
+					.path(ListContainerRepositoriesPath {
+						workspace_id: workspace.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListContainerRepositoriesRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!("5", response.header("x-total-count"));
+		pages.push(response.json::<ApiSuccessResponseBody<ListContainerRepositoriesResponse>>());
 	}
 	let page0 = &pages[0];
 	let page1 = &pages[1];
@@ -1086,6 +1343,49 @@ async fn list_repositories_page_out_of_bounds() {
 		response.status_code().as_u16(),
 		"a page past the end should be PageOutOfBounds (400)"
 	);
+}
+
+/// The total count only covers the repositories that match the search.
+#[tokio::test]
+async fn list_repositories_search_counts_only_matches() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo1 = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListContainerRepositoriesRequest>::builder()
+				.path(ListContainerRepositoriesPath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: ContainerRepositorySearchParams {
+						name: Some(repo1.name.clone()),
+						..Default::default()
+					},
+					count: 10,
+					page: 0,
+					additional_query: (),
+				})
+				.headers(ListContainerRepositoriesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListContainerRepositoriesResponse>>();
+	assert_eq!(1, body.response.repositories.len());
+	assert_eq!(repo1.id, body.response.repositories[0].id);
 }
 
 #[tokio::test]

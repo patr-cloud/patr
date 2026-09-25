@@ -101,6 +101,10 @@ pub async fn list_api_tokens(
 	})
 	.collect();
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListApiTokensResponse { tokens })
 		.headers(ListApiTokensResponseHeaders {

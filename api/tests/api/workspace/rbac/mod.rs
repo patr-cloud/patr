@@ -4,6 +4,7 @@ use models::{
 	ApiSuccessResponseBody,
 	api::workspace::rbac::{role::*, user::*, *},
 	rbac::Permission,
+	utils::ListResourceQuery,
 };
 
 use crate::prelude::*;
@@ -129,6 +130,100 @@ async fn list_roles_works() {
 		.json::<ApiSuccessResponseBody<ListAllRolesResponse>>();
 
 	assert!(!response.response.roles.is_empty());
+}
+
+/// Paging through the role list covers every role exactly once, and every page
+/// reports the same total.
+#[tokio::test]
+async fn list_roles_pagination() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	for _ in 0..3 {
+		setup
+			.create_test_role(&user.access_token, workspace.id)
+			.await;
+	}
+
+	let mut totals = BTreeSet::new();
+	let mut ids = BTreeSet::new();
+	let mut listed = 0;
+	for page in 0usize.. {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListAllRolesRequest>::builder()
+					.path(ListAllRolesPath {
+						workspace_id: workspace.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListAllRolesRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		let total = response
+			.header("x-total-count")
+			.to_str()
+			.unwrap()
+			.parse::<usize>()
+			.unwrap();
+		totals.insert(total);
+		let roles = response
+			.json::<ApiSuccessResponseBody<ListAllRolesResponse>>()
+			.response
+			.roles;
+		listed += roles.len();
+		ids.extend(roles.into_iter().map(|role| role.id));
+		if listed >= total {
+			break;
+		}
+	}
+	assert_eq!(1, totals.len(), "every page should report the same total");
+	assert_eq!(totals.first(), Some(&ids.len()));
+	assert_eq!(listed, ids.len(), "pages should not overlap");
+}
+
+/// A non-zero page past the end of the role list is rejected as out of
+/// bounds.
+#[tokio::test]
+async fn list_roles_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListAllRolesRequest>::builder()
+				.path(ListAllRolesPath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListAllRolesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
+	);
 }
 
 #[tokio::test]
@@ -299,6 +394,104 @@ async fn list_users_for_role_filters_by_role() {
 	assert!(!user_ids.contains(&user_b.user_id));
 }
 
+/// page/count slice a role's user list, pages don't overlap, and every page
+/// reports the full total.
+#[tokio::test]
+async fn list_users_for_role_pagination() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let role = setup
+		.create_test_role(&user.access_token, workspace.id)
+		.await;
+	for _ in 0..5 {
+		setup
+			.add_user_to_workspace_with_role(&user.access_token, workspace.id, role.id)
+			.await;
+	}
+
+	let mut pages = Vec::new();
+	for page in 0..3usize {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListUsersForRoleRequest>::builder()
+					.path(ListUsersForRolePath {
+						workspace_id: workspace.id,
+						role_id: role.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListUsersForRoleRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!("5", response.header("x-total-count"));
+		pages.push(response.json::<ApiSuccessResponseBody<ListUsersForRoleResponse>>());
+	}
+	assert_eq!(2, pages[0].response.users.len());
+	assert_eq!(2, pages[1].response.users.len());
+	assert_eq!(1, pages[2].response.users.len());
+	let ids = pages
+		.iter()
+		.flat_map(|page| page.response.users.iter().map(|u| u.id))
+		.collect::<BTreeSet<_>>();
+	assert_eq!(
+		5,
+		ids.len(),
+		"the three pages should cover 5 distinct users"
+	);
+}
+
+/// A non-zero page past the end of the role's user list is rejected as out of
+/// bounds.
+#[tokio::test]
+async fn list_users_for_role_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let role = setup
+		.create_test_role(&user.access_token, workspace.id)
+		.await;
+	setup
+		.add_user_to_workspace_with_role(&user.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListUsersForRoleRequest>::builder()
+				.path(ListUsersForRolePath {
+					workspace_id: workspace.id,
+					role_id: role.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListUsersForRoleRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
+	);
+}
+
 #[tokio::test]
 async fn list_users_in_workspace_works() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -332,6 +525,96 @@ async fn list_users_in_workspace_works() {
 	assert!(
 		owner.role_bindings.is_empty(),
 		"the owner's access doesn't come from a role"
+	);
+}
+
+/// page/count slice the member list, pages don't overlap, and every page
+/// reports the full total.
+#[tokio::test]
+async fn list_users_in_workspace_pagination() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let role = setup
+		.create_test_role(&user.access_token, workspace.id)
+		.await;
+	for _ in 0..4 {
+		setup
+			.add_user_to_workspace_with_role(&user.access_token, workspace.id, role.id)
+			.await;
+	}
+
+	let mut pages = Vec::new();
+	for page in 0..3usize {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListUsersInWorkspaceRequest>::builder()
+					.path(ListUsersInWorkspacePath {
+						workspace_id: workspace.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListUsersInWorkspaceRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!("5", response.header("x-total-count"));
+		pages.push(response.json::<ApiSuccessResponseBody<ListUsersInWorkspaceResponse>>());
+	}
+	assert_eq!(2, pages[0].response.users.len());
+	assert_eq!(2, pages[1].response.users.len());
+	assert_eq!(1, pages[2].response.users.len());
+	let ids = pages
+		.iter()
+		.flat_map(|page| page.response.users.iter().map(|u| u.user.id))
+		.collect::<BTreeSet<_>>();
+	assert_eq!(
+		5,
+		ids.len(),
+		"the three pages should cover 5 distinct members"
+	);
+}
+
+/// A non-zero page past the end of the member list is rejected as out of
+/// bounds.
+#[tokio::test]
+async fn list_users_in_workspace_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListUsersInWorkspaceRequest>::builder()
+				.path(ListUsersInWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 10,
+					page: 50,
+					additional_query: (),
+				})
+				.headers(ListUsersInWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(
+		400,
+		response.status_code().as_u16(),
+		"a page past the end should be PageOutOfBounds (400)"
 	);
 }
 

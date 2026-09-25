@@ -18,7 +18,7 @@ import {
 } from "~/components";
 import { Color } from "~/utils/color";
 import { useNavigate } from "@tanstack/solid-router";
-import { useAuthState, createPaginationState, useIsAllowed } from "~/hooks";
+import { useAuthState, createPaginationState, useIsAllowed, recoverFromOutOfBounds } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { WithId, Role } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
@@ -151,6 +151,12 @@ const ManageRoles = () => {
 			pagination.setTotalCount(totalCount);
 		}
 	});
+
+	recoverFromOutOfBounds(
+		() => rolesQuery.isError,
+		() => rolesQuery.error?.message,
+		pagination
+	);
 
 	const refetchRoles = () => {
 		const wsId = workspaceId();

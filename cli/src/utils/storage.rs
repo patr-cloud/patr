@@ -129,18 +129,15 @@ impl AppState {
 	/// Save the state to the config file. If the config file does not exist, it
 	/// will be created.
 	pub fn save(self) -> Result<(), AppError> {
-		let config_dir = PathBuf::from_str(
-			std::env::var("CONFIG_PATH").ok().as_deref().unwrap_or(
-				if cfg!(debug_assertions) {
-					concat!(env!("CARGO_MANIFEST_DIR"), "/../config/cli.json").to_string()
-				} else {
-					crate::utils::config_local_dir()
-						.to_string_lossy()
-						.to_string()
-				}
-				.as_str(),
-			),
-		)
+		let config_dir = PathBuf::from_str(&std::env::var("CONFIG_PATH").unwrap_or_else(|_| {
+			if cfg!(debug_assertions) {
+				concat!(env!("CARGO_MANIFEST_DIR"), "/../config/cli.json").to_string()
+			} else {
+				crate::utils::config_local_dir()
+					.to_string_lossy()
+					.to_string()
+			}
+		}))
 		.unwrap();
 		std::fs::create_dir_all(config_dir.parent().expect("Failed to get parent directory"))
 			.map_err(|err| AppError::ConfigWriteError(ConfigError::Message(err.to_string())))?;

@@ -414,8 +414,8 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		),
 		region: "us-east-1".to_string(),
 		bucket: "test-bucket".to_string(),
-		key: "minioadmin".to_string(),
-		secret: "minioadmin".to_string(),
+		key: "rustfsadmin".to_string(),
+		secret: "rustfsadmin".to_string(),
 		force_path_style: true,
 	};
 
@@ -589,7 +589,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	.map_err(|e| anyhow::anyhow!("error seeding machine types: {e}"))?;
 
 	// Create S3 bucket for registry blob/manifest storage.
-	// Must use force_path_style(true) for MinIO in testcontainers.
+	// Must use force_path_style(true) for RustFS in testcontainers.
 	let s3_client = S3Client::from_conf(
 		aws_sdk_s3::Config::builder()
 			.behavior_version_latest()

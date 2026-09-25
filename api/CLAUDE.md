@@ -39,7 +39,7 @@ The OCI registry has its **own parallel stack** (`RegistryEndpoint` trait, `Regi
 
 ## Bindings
 
-After renaming or changing any request/response type (in `models`), run `cargo bindings` or CI fails on stale `frontend/src/bindings`.
+After renaming or changing any request/response type (in `models`), run `just bindings` or CI fails on stale `frontend/src/bindings`. Not bare `cargo bindings` — that skips the `index.ts` barrel rebuild.
 
 ## Background jobs
 
@@ -47,6 +47,6 @@ apalis job queue in `src/worker/` (`WorkerTaskType` enum, Postgres-backed). Cron
 
 ## Tests (run from repo root)
 
-- Integration: `just api test [filter]` — boots docker-compose (pg/redis/minio/loki/mimir), copies config, runs `--migrate`, then `cargo nextest run -p api --test integration-tests`.
+- Integration: `just api test [filter]` — boots docker-compose (pg/redis/rustfs/loki/mimir), copies config, runs `--migrate`, then `cargo nextest run -p api --test integration-tests`.
 - OCI conformance: `just api conformance`.
 - (These recipes live in `api/tests/Justfile`, wired into the root `Justfile` as `mod api`.)

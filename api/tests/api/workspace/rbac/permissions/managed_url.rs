@@ -388,6 +388,58 @@ async fn managed_url_no_permission_list_returns_empty() {
 	);
 }
 
+/// The total count only covers the managed URLs the member can view.
+#[tokio::test]
+async fn managed_url_view_include_list_counts_only_listed_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	setup.mark_test_domain_verified(domain.id).await;
+	let url1 = setup
+		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
+		.await;
+	setup
+		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
+		.await;
+
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::View))],
+		)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_grants(
+			&admin.access_token,
+			workspace.id,
+			grants(role.id, &[url1]),
+		)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListManagedURLRequest>::builder()
+				.path(ListManagedURLPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListManagedURLRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListManagedURLResponse>>();
+	assert_eq!(1, body.response.urls.len());
+	assert_eq!(url1, body.response.urls[0].id);
+}
+
 /// A non-member cannot reach another workspace's managed URLs at all.
 #[tokio::test]
 async fn managed_url_non_member_denied() {

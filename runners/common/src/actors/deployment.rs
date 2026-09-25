@@ -158,8 +158,8 @@ where
 				) = state
 					.executor
 					.get_deployment_status(state.deployment_id)
-					.await && let Err(err) =
-					state.executor.delete_deployment(state.deployment_id).await
+					.await &&
+					let Err(err) = state.executor.delete_deployment(state.deployment_id).await
 				{
 					warn!(
 						deployment_id = %state.deployment_id,

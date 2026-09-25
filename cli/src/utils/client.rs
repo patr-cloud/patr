@@ -86,27 +86,34 @@ where
 	};
 
 	let status_code = response.status();
-	let Ok(headers) = E::ResponseHeaders::from_header_map(response.headers().clone()) else {
-		return Err(ApiErrorResponse {
-			status_code: http::StatusCode::INTERNAL_SERVER_ERROR,
-			body: ApiErrorResponseBody {
-				success: False,
-				error: ErrorType::server_error("invalid headers"),
-				message: "invalid headers".to_string(),
-			},
-		});
-	};
+	// Capture the raw headers before the body is consumed. The typed response
+	// headers (e.g. x-total-count) are decoded only for a successful response —
+	// error responses like PageOutOfBounds legitimately omit them, and decoding
+	// them unconditionally would mask the real API error as "invalid headers".
+	let header_map = response.headers().clone();
 
 	match response.json::<ApiResponseBody<E::ResponseBody>>().await {
 		Ok(ApiResponseBody::Success(ApiSuccessResponseBody {
 			success: _,
 			response: body,
-		})) => Ok(AppResponse {
-			status_code: http::StatusCode::from_u16(status_code.as_u16())
-				.expect("Status code is not valid"),
-			headers,
-			body,
-		}),
+		})) => {
+			let Ok(headers) = E::ResponseHeaders::from_header_map(header_map) else {
+				return Err(ApiErrorResponse {
+					status_code: http::StatusCode::INTERNAL_SERVER_ERROR,
+					body: ApiErrorResponseBody {
+						success: False,
+						error: ErrorType::server_error("invalid headers"),
+						message: "invalid headers".to_string(),
+					},
+				});
+			};
+			Ok(AppResponse {
+				status_code: http::StatusCode::from_u16(status_code.as_u16())
+					.expect("Status code is not valid"),
+				headers,
+				body,
+			})
+		}
 		Ok(ApiResponseBody::Error(error)) => Err(ApiErrorResponse {
 			status_code: http::StatusCode::from_u16(status_code.as_u16())
 				.expect("Status code is not valid"),

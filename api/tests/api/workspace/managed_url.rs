@@ -1467,6 +1467,110 @@ async fn list_managed_urls_page_out_of_bounds() {
 	);
 }
 
+/// page/count slice the managed URL list, pages don't overlap, and every page
+/// reports the full total.
+#[tokio::test]
+async fn list_managed_urls_pagination() {
+	let setup = setup().await.expect("failed to setup test server");
+	let f = mu_fixture(&setup).await;
+	for _ in 0..5 {
+		send_create_mu(
+			&setup,
+			&f.user.access_token,
+			f.ws,
+			proxy_body(f.domain, f.deployment, 80, rand_subdomain(), "/"),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>();
+	}
+
+	let mut pages = Vec::new();
+	for page in 0..3usize {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListManagedURLRequest>::builder()
+					.path(ListManagedURLPath { workspace_id: f.ws })
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListManagedURLRequestHeaders {
+						authorization: f.user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!("5", response.header("x-total-count"));
+		pages.push(response.json::<ApiSuccessResponseBody<ListManagedURLResponse>>());
+	}
+	assert_eq!(2, pages[0].response.urls.len());
+	assert_eq!(2, pages[1].response.urls.len());
+	assert_eq!(1, pages[2].response.urls.len());
+	let ids = pages
+		.iter()
+		.flat_map(|page| page.response.urls.iter().map(|u| u.id))
+		.collect::<std::collections::BTreeSet<_>>();
+	assert_eq!(5, ids.len(), "the three pages should cover 5 distinct URLs");
+}
+
+/// The total count only covers the managed URLs that match the search.
+#[tokio::test]
+async fn list_managed_urls_search_counts_only_matches() {
+	let setup = setup().await.expect("failed to setup test server");
+	let f = mu_fixture(&setup).await;
+	let sub_domain = rand_subdomain();
+	let url1 = send_create_mu(
+		&setup,
+		&f.user.access_token,
+		f.ws,
+		proxy_body(f.domain, f.deployment, 80, sub_domain.clone(), "/"),
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>()
+	.response
+	.id
+	.id;
+	send_create_mu(
+		&setup,
+		&f.user.access_token,
+		f.ws,
+		proxy_body(f.domain, f.deployment, 80, rand_subdomain(), "/"),
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>();
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListManagedURLRequest>::builder()
+				.path(ListManagedURLPath { workspace_id: f.ws })
+				.query(ListResourceQuery {
+					sort: None,
+					search: ManagedUrlSearchParams {
+						sub_domain: Some(sub_domain),
+						..Default::default()
+					},
+					count: 10,
+					page: 0,
+					additional_query: (),
+				})
+				.headers(ListManagedURLRequestHeaders {
+					authorization: f.user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListManagedURLResponse>>();
+	assert_eq!(1, body.response.urls.len());
+	assert_eq!(url1, body.response.urls[0].id);
+}
+
 #[tokio::test]
 async fn managed_url_unauthorized() {
 	let setup = setup().await.expect("failed to setup test server");

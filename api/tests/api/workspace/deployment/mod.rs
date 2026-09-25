@@ -2193,29 +2193,28 @@ async fn list_deployments_pagination() {
 
 	let mut pages = Vec::new();
 	for page in 0..2usize {
-		pages.push(
-			setup
-				.make_web_dashboard_call(
-					ApiRequest::<ListDeploymentRequest>::builder()
-						.path(ListDeploymentPath {
-							workspace_id: workspace.id,
-						})
-						.query(ListResourceQuery {
-							sort: None,
-							search: Default::default(),
-							count: 2,
-							page,
-							additional_query: (),
-						})
-						.headers(ListDeploymentRequestHeaders {
-							authorization: user.access_token.clone(),
-							user_agent: TEST_USER_AGENT,
-						})
-						.build(),
-				)
-				.await
-				.json::<ApiSuccessResponseBody<ListDeploymentResponse>>(),
-		);
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListDeploymentRequest>::builder()
+					.path(ListDeploymentPath {
+						workspace_id: workspace.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 2,
+						page,
+						additional_query: (),
+					})
+					.headers(ListDeploymentRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!("5", response.header("x-total-count"));
+		pages.push(response.json::<ApiSuccessResponseBody<ListDeploymentResponse>>());
 	}
 	assert_eq!(2, pages[0].response.deployments.len());
 	assert_eq!(2, pages[1].response.deployments.len());
@@ -2266,6 +2265,52 @@ async fn list_deployments_page_out_of_bounds() {
 		response.status_code().as_u16(),
 		"a page past the end should be PageOutOfBounds (400)"
 	);
+}
+
+/// The total count only covers the deployments that match the search.
+#[tokio::test]
+async fn list_deployments_search_counts_only_matches() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment1 = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: DeploymentSearchParams {
+						name: Some(deployment1.name.clone()),
+						..Default::default()
+					},
+					count: 10,
+					page: 0,
+					additional_query: (),
+				})
+				.headers(ListDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListDeploymentResponse>>();
+	assert_eq!(1, body.response.deployments.len());
+	assert_eq!(deployment1.id, body.response.deployments[0].id);
 }
 
 #[tokio::test]

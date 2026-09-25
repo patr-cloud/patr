@@ -415,6 +415,58 @@ async fn container_registry_no_permission_list_returns_empty() {
 	);
 }
 
+/// The total count only covers the repositories the member can view.
+#[tokio::test]
+async fn container_registry_view_include_list_counts_only_listed_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let repo1 = setup
+		.create_test_container_repo(&admin.access_token, workspace.id)
+		.await;
+	let _repo2 = setup
+		.create_test_container_repo(&admin.access_token, workspace.id)
+		.await;
+
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![
+				setup.get_permission_id(Permission::ContainerRegistryRepository(
+					ContainerRegistryRepositoryPermission::View,
+				)),
+			],
+		)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_grants(
+			&admin.access_token,
+			workspace.id,
+			grants(role.id, &[repo1.id]),
+		)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListContainerRepositoriesRequest>::builder()
+				.path(ListContainerRepositoriesPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListContainerRepositoriesRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListContainerRepositoriesResponse>>();
+	assert_eq!(1, body.response.repositories.len());
+	assert_eq!(repo1.id, body.response.repositories[0].id);
+}
+
 /// A non-member cannot reach another workspace's registry at all.
 #[tokio::test]
 async fn container_registry_non_member_denied() {

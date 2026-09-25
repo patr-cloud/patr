@@ -80,6 +80,10 @@ pub async fn list_all_roles(
 	})
 	.collect();
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListAllRolesResponse { roles })
 		.headers(ListAllRolesResponseHeaders {
