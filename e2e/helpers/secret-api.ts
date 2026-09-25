@@ -55,3 +55,47 @@ export async function findSecretByName(
 	const secrets = await listSecretsAPI(api, user, workspaceId);
 	return secrets.find((secret) => secret.name === name);
 }
+
+export async function getSecretAPI(
+	api: ApiClient,
+	user: Creds,
+	workspaceId: string,
+	secretId: string,
+): Promise<Secret> {
+	const response = await api.request<{ secret: Secret }>(
+		'GET',
+		`${base(workspaceId)}/${secretId}`,
+		{
+			token: user.accessToken,
+			clientIp: user.clientIp,
+		},
+	);
+	return response.secret;
+}
+
+export async function deleteSecretAPI(
+	api: ApiClient,
+	user: Creds,
+	workspaceId: string,
+	secretId: string,
+): Promise<void> {
+	await api.request('DELETE', `${base(workspaceId)}/${secretId}`, {
+		token: user.accessToken,
+		clientIp: user.clientIp,
+	});
+}
+
+/** Rename a secret, and rotate its value when one is given. */
+export async function updateSecretAPI(
+	api: ApiClient,
+	user: Creds,
+	workspaceId: string,
+	secretId: string,
+	body: { name: string; value?: string },
+): Promise<void> {
+	await api.request('PATCH', `${base(workspaceId)}/${secretId}`, {
+		token: user.accessToken,
+		clientIp: user.clientIp,
+		body,
+	});
+}

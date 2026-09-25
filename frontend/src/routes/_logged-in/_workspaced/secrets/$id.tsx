@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, ErrorBoundary, Show, Suspense } from "solid-js";
 import {
 	Alert,
+	DeleteModal,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
@@ -16,10 +17,10 @@ import {
 	Label,
 	LoadingSpinner,
 } from "~/components";
-import { createFormAction } from "~/hooks";
+import { createAuthenticatedAction, createFormAction, useIsAllowed } from "~/hooks";
 import { useSecretInfoQuery } from "~/hooks/fetch";
 import { secretKeys } from "~/hooks/query-keys";
-import { UpdateSecretRequest, UpdateSecretResponse } from "~/bindings";
+import { DeleteSecretResponse, UpdateSecretRequest, UpdateSecretResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { formatRelativeTime } from "~/utils/func";
 
@@ -30,6 +31,7 @@ const SecretDetailPage = () => {
 	const queryClient = useQueryClient();
 
 	const secretInfoQuery = useSecretInfoQuery(() => params().id);
+	const isDeleteAllowed = useIsAllowed("secret", "delete", () => params().id);
 
 	const [name, setName] = createSignal("");
 	const [value, setValue] = createSignal("");
@@ -76,6 +78,29 @@ const SecretDetailPage = () => {
 		navigate({ to: "/secrets" });
 	});
 
+	const { execute: onClickDelete, isLoading: deleteLoading } = createAuthenticatedAction(
+		async ({ workspaceId: wsId }) => {
+			const response = await httpRequest<DeleteSecretResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/secret/${params().id}`,
+				{ method: "DELETE" }
+			);
+
+			if (!response.ok) {
+				console.error("Failed to delete secret:", response.data.error);
+				if (response.data.error === "resourceInUse") {
+					toast("Cannot delete secret: Secret is in use by deployment(s)", "error");
+					return;
+				}
+				toast("Failed to delete secret", "error");
+				return;
+			}
+
+			queryClient.invalidateQueries({ queryKey: secretKeys.all(wsId) });
+			toast("Secret deleted successfully", "success");
+			navigate({ to: "/secrets" });
+		}
+	);
+
 	return (
 		<>
 			<Title>Secret | Patr</Title>
@@ -91,6 +116,19 @@ const SecretDetailPage = () => {
 						},
 					]}
 					subText="View and update this secret."
+					actions={() => (
+						<Show when={isDeleteAllowed() && secretInfoQuery.data?.secret.name}>
+							<DeleteModal
+								isLoading={deleteLoading()}
+								title="Delete Secret"
+								onClickDelete={(e) => {
+									e.preventDefault();
+									onClickDelete();
+								}}
+								resourceName={secretInfoQuery.data?.secret.name ?? ""}
+							/>
+						</Show>
+					)}
 				/>
 				<PageContainerBody class="flex flex-col">
 					<ErrorBoundary
