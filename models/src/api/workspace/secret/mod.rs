@@ -34,7 +34,7 @@ pub struct Secret {
 	/// The time the secret was created
 	#[ts(type = "Date")]
 	pub created: OffsetDateTime,
-	/// The time the secret was last updated
+	/// The time the secret's value last changed. A rename leaves it alone.
 	#[ts(type = "Date")]
 	pub last_updated: OffsetDateTime,
 }

@@ -1,6 +1,12 @@
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	str::FromStr,
+};
+
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::secret::*,
+	rbac::{Permission, RunnerPermission, WorkspacePermission},
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -260,6 +266,68 @@ async fn list_secrets_filters_by_name() {
 	);
 }
 
+/// A runner lists secrets during its full resync to catch rotations it
+/// missed, using a token scoped to nothing but `Runner::Execute`.
+#[tokio::test]
+async fn list_secrets_works_with_runner_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+	let token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::Runner(RunnerPermission::Execute)),
+						BTreeSet::from([runner.id]),
+					)]),
+				},
+			)]),
+		)
+		.await
+		.token;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListSecretsForWorkspaceRequest>::builder()
+				.path(ListSecretsForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListSecretsForWorkspaceRequestHeaders {
+					authorization: BearerToken::from_str(&token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 100,
+					page: 0,
+					additional_query: (),
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(response.status_code(), StatusCode::OK);
+	assert!(
+		response
+			.json::<ApiSuccessResponseBody<ListSecretsForWorkspaceResponse>>()
+			.response
+			.secrets
+			.iter()
+			.any(|listed| listed.id == secret.id),
+		"a runner token should list the workspace's secrets"
+	);
+}
+
 #[tokio::test]
 async fn update_secret_name_only_keeps_value() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -269,6 +337,23 @@ async fn update_secret_name_only_keeps_value() {
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
 	let new_name = random_name(8).to_uppercase();
+	let before = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetSecretInfoRequest>::builder()
+				.path(GetSecretInfoPath {
+					workspace_id: workspace.id,
+					secret_id: secret.id,
+				})
+				.headers(GetSecretInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetSecretInfoResponse>>()
+		.response
+		.secret;
 
 	setup
 		.make_web_dashboard_call(
@@ -314,6 +399,12 @@ async fn update_secret_name_only_keeps_value() {
 		.json::<ApiSuccessResponseBody<GetSecretInfoResponse>>();
 
 	assert_eq!(info.response.secret.name, new_name);
+	// `last_updated` tracks the value, so a rename alone must not bump it —
+	// otherwise every deployment using the secret restarts for nothing.
+	assert_eq!(
+		info.response.secret.last_updated, before.last_updated,
+		"renaming a secret must not bump last_updated"
+	);
 }
 
 #[tokio::test]
@@ -325,6 +416,23 @@ async fn update_secret_rotates_value() {
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
 	let new_value = random_name(16);
+	let before = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetSecretInfoRequest>::builder()
+				.path(GetSecretInfoPath {
+					workspace_id: workspace.id,
+					secret_id: secret.id,
+				})
+				.headers(GetSecretInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetSecretInfoResponse>>()
+		.response
+		.secret;
 
 	setup
 		.make_web_dashboard_call(
@@ -349,6 +457,28 @@ async fn update_secret_rotates_value() {
 		setup.read_openbao_secret(workspace.id, secret.id).await,
 		Some(new_value),
 		"a supplied value should overwrite the one in OpenBao"
+	);
+	let after = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetSecretInfoRequest>::builder()
+				.path(GetSecretInfoPath {
+					workspace_id: workspace.id,
+					secret_id: secret.id,
+				})
+				.headers(GetSecretInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetSecretInfoResponse>>()
+		.response
+		.secret;
+
+	assert!(
+		after.last_updated > before.last_updated,
+		"rotating a secret must bump last_updated"
 	);
 }
 

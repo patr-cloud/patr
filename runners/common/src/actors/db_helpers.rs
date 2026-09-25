@@ -4,6 +4,7 @@
 //! These are pure database functions — no API calls, no runner config needed.
 
 use models::api::workspace::deployment::*;
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -368,6 +369,32 @@ pub async fn delete_all_managed_urls_in_database(
 			managed_url;
 		"#,
 	)
+	.execute(&mut *connection)
+	.await?;
+
+	Ok(())
+}
+
+/// Insert or update when a secret's value last changed.
+#[instrument(skip(connection))]
+pub async fn upsert_secret_in_database(
+	connection: &mut DatabaseConnection,
+	secret_id: Uuid,
+	last_updated: OffsetDateTime,
+) -> Result<(), RunnerError> {
+	query(
+		r#"
+		INSERT INTO secret(
+			id,
+			last_updated
+		)
+		VALUES ($1, $2)
+		ON CONFLICT(id) DO UPDATE SET
+			last_updated = excluded.last_updated;
+		"#,
+	)
+	.bind(secret_id)
+	.bind(last_updated)
 	.execute(&mut *connection)
 	.await?;
 

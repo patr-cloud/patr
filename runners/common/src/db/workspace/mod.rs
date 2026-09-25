@@ -4,6 +4,8 @@ use crate::prelude::*;
 mod deployment;
 /// The list of managed URLs that are present in a workspace
 mod managed_url;
+/// When each secret in a workspace last changed
+mod secret;
 /// The list of volumes that are present in a workspace
 mod volume;
 
@@ -17,6 +19,7 @@ pub async fn initialize_workspace_tables(
 	deployment::initialize_deployment_tables(connection).await?;
 	volume::initialize_volume_tables(connection).await?;
 	managed_url::initialize_managed_url_tables(connection).await?;
+	secret::initialize_secret_tables(connection).await?;
 
 	Ok(())
 }

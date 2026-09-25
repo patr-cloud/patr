@@ -20,6 +20,11 @@ use models::api::workspace::{
 		ManagedUrlType,
 	},
 	runner::*,
+	secret::{
+		ListSecretsForWorkspacePath,
+		ListSecretsForWorkspaceRequest,
+		ListSecretsForWorkspaceRequestHeaders,
+	},
 };
 use ractor::{Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
 use ractor_actors::streams::spawn_stream_pump;
@@ -469,6 +474,38 @@ where
 					resource_type: ResourceType::ManagedURL,
 				});
 		}
+		SecretUpdated { id, last_updated } => {
+			let mut transaction = state.database.begin().await?;
+			db_helpers::upsert_secret_in_database(&mut transaction, id, last_updated).await?;
+			let deployment_ids = query(
+				r#"
+				SELECT DISTINCT
+					deployment_id
+				FROM
+					deployment_environment_variable
+				WHERE
+					secret_id = $1;
+				"#,
+			)
+			.bind(id)
+			.fetch_all(&mut *transaction)
+			.await?
+			.into_iter()
+			.map(|row| row.try_get::<Uuid, _>("deployment_id"))
+			.collect::<Result<Vec<_>, _>>()?;
+			transaction.commit().await?;
+			// Each deployment compares the secret's version against the one it
+			// last applied, and re-applies itself if it's behind.
+			for deployment_id in deployment_ids {
+				let _ =
+					state
+						.supervisor_ref
+						.send_message(ResourceSupervisorMessage::UpsertResource {
+							resource_id: deployment_id,
+							resource_type: ResourceType::Deployment,
+						});
+			}
+		}
 		ExposureTypeRequired => {
 			warn!("Server requested exposure type to be set again");
 		}
@@ -521,6 +558,9 @@ where
 		.execute(&mut *transaction)
 		.await?;
 	query("DELETE FROM deployment;")
+		.execute(&mut *transaction)
+		.await?;
+	query("DELETE FROM secret;")
 		.execute(&mut *transaction)
 		.await?;
 
@@ -702,6 +742,48 @@ where
 			break;
 		}
 		managed_url_page += 1;
+	}
+
+	// Refill when each secret last changed, so a rotation missed while
+	// disconnected still re-applies the deployments using it.
+	let mut secret_page: usize = 0;
+
+	loop {
+		let response = client::make_request(
+			ApiRequest::<ListSecretsForWorkspaceRequest>::builder()
+				.path(ListSecretsForWorkspacePath { workspace_id })
+				.query(ListResourceQuery {
+					sort: Default::default(),
+					search: Default::default(),
+					count: ListResourceQuery::DEFAULT_PAGE_SIZE,
+					page: secret_page,
+					additional_query: (),
+				})
+				.headers(ListSecretsForWorkspaceRequestHeaders {
+					authorization: api_token.clone(),
+					user_agent: user_agent.clone(),
+				})
+				.body(ListSecretsForWorkspaceRequest)
+				.build(),
+		)
+		.await
+		.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?;
+
+		for secret in response.body.secrets {
+			db_helpers::upsert_secret_in_database(
+				&mut transaction,
+				secret.id,
+				secret.data.last_updated,
+			)
+			.await?;
+		}
+
+		if (secret_page + 1) * ListResourceQuery::DEFAULT_PAGE_SIZE >=
+			response.headers.total_count.0 as usize
+		{
+			break;
+		}
+		secret_page += 1;
 	}
 
 	transaction.commit().await?;
