@@ -384,11 +384,13 @@ pub async fn upsert_secret_in_database(
 ) -> Result<(), RunnerError> {
 	query(
 		r#"
-		INSERT INTO secret(
-			id,
-			last_updated
-		)
-		VALUES ($1, $2)
+		INSERT INTO
+			secret(
+				id,
+				last_updated
+			)
+		VALUES
+			($1, $2)
 		ON CONFLICT(id) DO UPDATE SET
 			last_updated = excluded.last_updated;
 		"#,

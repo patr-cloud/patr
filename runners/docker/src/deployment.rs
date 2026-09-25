@@ -241,8 +241,6 @@ pub(crate) async fn upsert(
 			container_spec: Some(TaskSpecContainerSpec {
 				image: Some(image.clone()),
 				hostname: Some(format!("{}.onpatr.cloud", id)),
-				// Resolve secret env vars through openbao.patr.cloud, which proxies OpenBao.
-				// Values stay in memory only and are never logged.
 				env: Some(
 					futures::stream::iter(environment_variables)
 						.then(|(key, value)| async move {

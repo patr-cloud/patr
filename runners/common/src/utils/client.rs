@@ -21,7 +21,7 @@ use crate::prelude::*;
 
 /// A reqwest client that can be used to make requests to the API
 #[doc(hidden)]
-pub(crate) static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
+static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
 
 /// Make an API request to an endpoint
 #[instrument(skip_all, fields(route = format!("{} {}", E::METHOD, path)))]
@@ -287,7 +287,7 @@ where
 
 /// Initialize a reqwest client that can be used across the application to make
 /// requests
-pub(crate) fn initialize_client() -> Client {
+fn initialize_client() -> Client {
 	Client::builder()
 		.build()
 		.expect("failed to initialize client")

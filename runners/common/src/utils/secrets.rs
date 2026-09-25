@@ -1,9 +1,9 @@
-use models::utils::constants;
+use std::sync::OnceLock;
 
-use crate::{
-	prelude::*,
-	utils::client::{REQUEST_CLIENT, initialize_client},
-};
+use models::utils::constants;
+use reqwest::Client;
+
+use crate::prelude::*;
 
 /// The subset of OpenBao's KV v2 read response that we care about: the value
 /// sits at `data.data.value`.
@@ -26,6 +26,10 @@ struct ReadSecretResponseValue {
 	/// The secret value itself.
 	value: String,
 }
+
+/// A reqwest client that can be used to make requests to OpenBao
+#[doc(hidden)]
+static REQUEST_CLIENT: OnceLock<Client> = OnceLock::new();
 
 /// Read a secret's value from `openbao.patr.cloud`, which proxies OpenBao.
 ///
@@ -54,7 +58,7 @@ pub async fn get_secret_value(
 
 	if !response.status().is_success() {
 		return Err(ErrorType::server_error(format!(
-			"secrets returned {} for secret `{}`",
+			"openbao returned {} for secret `{}`",
 			response.status(),
 			secret_id
 		)));
@@ -67,4 +71,12 @@ pub async fn get_secret_value(
 		.data
 		.data
 		.value)
+}
+
+/// Initialize a reqwest client that can be used across the application to make
+/// requests
+fn initialize_client() -> Client {
+	Client::builder()
+		.build()
+		.expect("failed to initialize client")
 }
