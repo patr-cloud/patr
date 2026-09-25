@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use axum::http::StatusCode;
 #[cfg(feature = "cloud")]
 use cloudflare::{
@@ -16,7 +14,7 @@ use models::cloudflare::kv::*;
 use rustis::commands::PubSubCommands;
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 /// The handler to create a deployment in the workspace. This will create a new
 /// deployment in the workspace, and return the ID of the deployment.
@@ -56,7 +54,7 @@ pub async fn create_deployment(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		user_data,
 		state,
 	}: AuthenticatedAppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
@@ -235,37 +233,18 @@ pub async fn create_deployment(
 
 	trace!("Set constraints to immediate");
 
-	// A deployment may only reference secrets of its own workspace. The FK on
-	// `secret_id` only proves the secret exists, so check the workspace here.
-	// Missing, deleted and foreign secrets all read the same, so this never
-	// reveals that someone else's secret exists.
-	let referenced_secrets = environment_variables
+	// Referencing a secret hands its value to the deployment, so it takes
+	// `Secret::View` on every secret referenced. The FK on the insert below
+	// keeps the secret in this workspace.
+	let view_secret_permission =
+		permissions::get_permission_id(database, Permission::Secret(SecretPermission::View)).await;
+	if environment_variables
 		.values()
-		.filter_map(|value| value.secret_id().map(sqlx::types::Uuid::from))
-		.collect::<BTreeSet<_>>();
-
-	if !referenced_secrets.is_empty() {
-		let valid_secrets = query!(
-			r#"
-			SELECT
-				COUNT(*) AS "count!"
-			FROM
-				secret
-			WHERE
-				id = ANY($1) AND
-				workspace_id = $2 AND
-				deleted IS NULL;
-			"#,
-			&referenced_secrets.iter().copied().collect::<Vec<_>>(),
-			workspace_id as _,
-		)
-		.fetch_one(&mut **database)
-		.await?
-		.count;
-
-		if valid_secrets != referenced_secrets.len() as i64 {
-			return Err(ErrorType::ResourceDoesNotExist);
-		}
+		.filter_map(EnvironmentVariableValue::secret_id)
+		.any(|secret_id| {
+			!user_data.has_permission_on_resource(workspace_id, secret_id, view_secret_permission)
+		}) {
+		return Err(ErrorType::Unauthorized);
 	}
 
 	query!(
@@ -273,6 +252,7 @@ pub async fn create_deployment(
 		INSERT INTO
 			deployment_environment_variable(
 				deployment_id,
+				workspace_id,
 				name,
 				value,
 				secret_id
@@ -282,14 +262,19 @@ pub async fn create_deployment(
 		FROM
 			UNNEST(
 				$1::UUID[],
-				$2::TEXT[],
+				$2::UUID[],
 				$3::TEXT[],
-				$4::UUID[]
+				$4::TEXT[],
+				$5::UUID[]
 			);
 		"#,
 		&environment_variables
 			.iter()
 			.map(|_| deployment_id.into())
+			.collect::<Vec<_>>(),
+		&environment_variables
+			.iter()
+			.map(|_| workspace_id.into())
 			.collect::<Vec<_>>(),
 		&environment_variables
 			.iter()
@@ -305,7 +290,16 @@ pub async fn create_deployment(
 			.collect::<Vec<Option<sqlx::types::Uuid>>>() as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err)
+			if err.constraint() ==
+				Some("deployment_environment_variable_fk_secret_id_workspace_id") =>
+		{
+			ErrorType::ResourceDoesNotExist
+		}
+		err => ErrorType::server_error(err),
+	})?;
 
 	trace!("Inserted environment variables for deployment");
 

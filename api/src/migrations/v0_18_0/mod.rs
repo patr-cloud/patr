@@ -25,3 +25,4 @@ mod m022_token_ceiling_evaluation;
 mod m023_drop_legacy_permission_tables;
 mod m024_revise_default_role_ladder;
 mod m025_secret_last_updated;
+mod m026_deployment_env_var_workspace_id;

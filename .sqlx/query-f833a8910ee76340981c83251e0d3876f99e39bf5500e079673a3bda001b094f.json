@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE secret ADD CONSTRAINT secret_pk PRIMARY KEY(id), ADD CONSTRAINT secret_uq_id_workspace_id UNIQUE(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "f833a8910ee76340981c83251e0d3876f99e39bf5500e079673a3bda001b094f"
+}

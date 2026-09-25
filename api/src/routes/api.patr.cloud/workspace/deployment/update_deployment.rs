@@ -19,7 +19,7 @@ use models::{
 use rustis::commands::PubSubCommands;
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 /// Update deployment details. This endpoint is used to update the deployment
 /// details. The deployment details that can be updated are the name, machine
@@ -63,7 +63,7 @@ pub async fn update_deployment(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		user_data,
 		state,
 	}: AuthenticatedAppRequest<'_, UpdateDeploymentRequest>,
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
@@ -297,37 +297,38 @@ pub async fn update_deployment(
 		.await?;
 	}
 
-	// A deployment may only reference secrets of its own workspace. The FK on
-	// `secret_id` only proves the secret exists, so check the workspace here —
-	// before the delete below, so a bad reference can't wipe the existing env
-	// vars. Missing, deleted and foreign secrets all read the same.
-	let referenced_secrets = environment_variables
+	// Referencing a secret hands its value to the deployment, so a newly
+	// referenced secret takes `Secret::View`. Secrets the deployment already
+	// references are left alone, so an edit to something else isn't refused.
+	// The FK on the insert below keeps the secret in this workspace.
+	let existing_secrets = query!(
+		r#"
+		SELECT
+			secret_id AS "secret_id!: Uuid"
+		FROM
+			deployment_environment_variable
+		WHERE
+			deployment_id = $1 AND
+			secret_id IS NOT NULL;
+		"#,
+		deployment_id as _,
+	)
+	.fetch_all(&mut **database)
+	.await?
+	.into_iter()
+	.map(|row| row.secret_id)
+	.collect::<BTreeSet<_>>();
+
+	let view_secret_permission =
+		permissions::get_permission_id(database, Permission::Secret(SecretPermission::View)).await;
+	if environment_variables
 		.values()
-		.filter_map(|value| value.secret_id().map(sqlx::types::Uuid::from))
-		.collect::<BTreeSet<_>>();
-
-	if !referenced_secrets.is_empty() {
-		let valid_secrets = query!(
-			r#"
-			SELECT
-				COUNT(*) AS "count!"
-			FROM
-				secret
-			WHERE
-				id = ANY($1) AND
-				workspace_id = $2 AND
-				deleted IS NULL;
-			"#,
-			&referenced_secrets.iter().copied().collect::<Vec<_>>(),
-			workspace_id as _,
-		)
-		.fetch_one(&mut **database)
-		.await?
-		.count;
-
-		if valid_secrets != referenced_secrets.len() as i64 {
-			return Err(ErrorType::ResourceDoesNotExist);
-		}
+		.filter_map(EnvironmentVariableValue::secret_id)
+		.filter(|secret_id| !existing_secrets.contains(secret_id))
+		.any(|secret_id| {
+			!user_data.has_permission_on_resource(workspace_id, secret_id, view_secret_permission)
+		}) {
+		return Err(ErrorType::Unauthorized);
 	}
 
 	query!(
@@ -347,6 +348,7 @@ pub async fn update_deployment(
 		INSERT INTO
 			deployment_environment_variable(
 				deployment_id,
+				workspace_id,
 				name,
 				value,
 				secret_id
@@ -356,14 +358,19 @@ pub async fn update_deployment(
 		FROM
 			UNNEST(
 				$1::UUID[],
-				$2::TEXT[],
+				$2::UUID[],
 				$3::TEXT[],
-				$4::UUID[]
+				$4::TEXT[],
+				$5::UUID[]
 			);
 		"#,
 		&environment_variables
 			.iter()
 			.map(|_| deployment_id.into())
+			.collect::<Vec<sqlx::types::Uuid>>(),
+		&environment_variables
+			.iter()
+			.map(|_| workspace_id.into())
 			.collect::<Vec<sqlx::types::Uuid>>(),
 		&environment_variables
 			.iter()
@@ -379,7 +386,16 @@ pub async fn update_deployment(
 			.collect::<Vec<Option<sqlx::types::Uuid>>>() as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err)
+			if err.constraint() ==
+				Some("deployment_environment_variable_fk_secret_id_workspace_id") =>
+		{
+			ErrorType::ResourceDoesNotExist
+		}
+		err => ErrorType::server_error(err),
+	})?;
 
 	query!(
 		r#"

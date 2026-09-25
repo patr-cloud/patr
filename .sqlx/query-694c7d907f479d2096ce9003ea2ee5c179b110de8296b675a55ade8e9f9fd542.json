@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE deployment_environment_variable ADD CONSTRAINT deployment_environment_variable_fk_deployment_id_workspace_id FOREIGN KEY(deployment_id, workspace_id) REFERENCES deployment(id, workspace_id), ADD CONSTRAINT deployment_environment_variable_fk_secret_id_workspace_id FOREIGN KEY(secret_id, workspace_id) REFERENCES secret(id, workspace_id), ADD CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null CHECK((value IS NOT NULL AND secret_id IS NULL) OR (value IS NULL AND secret_id IS NOT NULL));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "694c7d907f479d2096ce9003ea2ee5c179b110de8296b675a55ade8e9f9fd542"
+}

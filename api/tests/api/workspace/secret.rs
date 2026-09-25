@@ -371,9 +371,9 @@ async fn delete_secret_in_use_by_deployment_is_refused() {
 	// way to pass environment variables.
 	setup
 		.execute_sql(&format!(
-			"INSERT INTO deployment_environment_variable(deployment_id, name, value, secret_id) \
-			 VALUES ('{}', 'API_KEY', NULL, '{}');",
-			deployment.id, secret.id
+			"INSERT INTO deployment_environment_variable(deployment_id, workspace_id, name, value, \
+			 secret_id) VALUES ('{}', '{}', 'API_KEY', NULL, '{}');",
+			deployment.id, workspace.id, secret.id
 		))
 		.await;
 

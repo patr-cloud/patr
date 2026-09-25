@@ -32,8 +32,9 @@ pub async fn initialize_secret_indices(
 	query!(
 		r#"
 		ALTER TABLE secret
-		ADD CONSTRAINT secret_pk
-		PRIMARY KEY(id);
+			ADD CONSTRAINT secret_pk PRIMARY KEY(id),
+			ADD CONSTRAINT secret_uq_id_workspace_id
+				UNIQUE(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)

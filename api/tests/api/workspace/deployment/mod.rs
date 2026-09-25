@@ -3147,8 +3147,8 @@ async fn update_deployment_with_foreign_secret_is_refused() {
 		response.status_code()
 	);
 
-	// The check runs before the delete-and-reinsert, so the refusal must leave
-	// the existing environment variables untouched rather than wiping them.
+	// The refusal rolls back the delete-and-reinsert, so the existing
+	// environment variables must be left untouched rather than wiped.
 	let info = get_info(&setup, &user.access_token, workspace.id, deployment).await;
 	assert_eq!(
 		info.running_details.environment_variables.get("FOO"),
