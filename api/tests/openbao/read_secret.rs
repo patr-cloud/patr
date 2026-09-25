@@ -194,6 +194,46 @@ async fn read_secret_from_another_workspace_is_denied() {
 	);
 }
 
+/// A runner authorized in its own workspace gets the same refusal for another
+/// workspace's real secret, a made-up secret id, and an unknown runner — so it
+/// can't learn whether a secret exists anywhere it can't read.
+#[tokio::test]
+async fn read_secret_refusals_do_not_reveal_existence() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let other_workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let other_secret = setup
+		.create_test_secret(&user.access_token, other_workspace.id)
+		.await;
+	let token = runner_token(&setup, &user, workspace.id, runner.id).await;
+
+	let mut responses = Vec::new();
+	for (runner_id, secret_id) in [
+		(runner.id, other_secret.id),
+		(runner.id, Uuid::new_v4()),
+		(Uuid::new_v4(), other_secret.id),
+	] {
+		let response = setup
+			.make_openbao_call(
+				http::Method::GET,
+				&secret_path(&other_workspace.id, &secret_id),
+				vec![(http::header::AUTHORIZATION, &basic_auth(&runner_id, &token))],
+			)
+			.await;
+		responses.push((response.status_code(), response.text()));
+	}
+
+	assert_eq!(responses[0].0, StatusCode::FORBIDDEN);
+	assert!(
+		responses.iter().all(|response| *response == responses[0]),
+		"every refusal must look the same, got {responses:?}"
+	);
+}
+
 #[tokio::test]
 async fn read_deleted_secret_returns_404() {
 	let setup = setup().await.expect("failed to setup test server");

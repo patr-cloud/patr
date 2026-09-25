@@ -67,10 +67,12 @@ pub(super) async fn authenticate_and_authorize(
 					.unwrap()
 			})?
 			.ok_or_else(|| {
+				// Refused exactly like a missing permission below, so a token
+				// can't be used to probe which runner ids exist.
 				warn!("Runner {} not found or deleted", runner_id);
 				Response::builder()
-					.status(StatusCode::UNAUTHORIZED)
-					.body(Body::from("Runner not found"))
+					.status(StatusCode::FORBIDDEN)
+					.body(Body::from("Access denied"))
 					.unwrap()
 			})?;
 
@@ -88,9 +90,7 @@ pub(super) async fn authenticate_and_authorize(
 		);
 		return Err(Response::builder()
 			.status(StatusCode::FORBIDDEN)
-			.body(Body::from(
-				"Access denied: missing Runner::Execute permission",
-			))
+			.body(Body::from("Access denied"))
 			.unwrap());
 	}
 

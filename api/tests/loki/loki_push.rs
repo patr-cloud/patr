@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use models::rbac::{Permission, WorkspacePermission};
+use models::rbac::{Permission, RunnerPermission, WorkspacePermission};
 
 use super::helpers::*;
 use crate::prelude::*;
@@ -104,6 +104,62 @@ async fn loki_push_no_execute_permission_returns_403() {
 		response.status_code(),
 		StatusCode::FORBIDDEN,
 		"expected 403 without Runner::Execute permission"
+	);
+}
+
+/// An unknown runner id is refused exactly like a runner the token can't
+/// execute, so a valid token can't be used to probe which runner ids exist.
+#[tokio::test]
+async fn loki_push_unknown_runner_matches_missing_permission() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+	let other_runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+
+	// Runner::Execute on `runner` only, so `other_runner` exists but is denied.
+	let api_token = setup
+		.create_test_api_token(
+			&admin.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(
+						setup.get_permission_id(Permission::Runner(RunnerPermission::Execute)),
+						BTreeSet::from([runner.id]),
+					)]),
+				},
+			)]),
+		)
+		.await;
+
+	let mut responses = Vec::new();
+	for runner_id in [other_runner.id, Uuid::new_v4()] {
+		let response = setup
+			.make_loki_call(
+				http::Method::POST,
+				"/loki/api/v1/push",
+				vec![
+					(http::header::CONTENT_TYPE, "application/x-protobuf"),
+					(
+						http::header::AUTHORIZATION,
+						&basic_auth(&runner_id, &api_token.token),
+					),
+				],
+				make_loki_push_body(r#"{job="test"}"#, &["hello"]),
+			)
+			.await;
+		responses.push((response.status_code(), response.text()));
+	}
+
+	assert_eq!(responses[0].0, StatusCode::FORBIDDEN);
+	assert_eq!(
+		responses[0], responses[1],
+		"an unknown runner must be refused exactly like a denied one"
 	);
 }
 
