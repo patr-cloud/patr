@@ -17,7 +17,6 @@ import {
 import { createFormAction } from "~/hooks";
 import { CreateSecretRequest, CreateSecretResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
-import { cloudOnly } from "~/utils/env";
 
 const CreateSecretPage = () => {
 	const [name, setName] = createSignal("");
@@ -135,8 +134,6 @@ const CreateSecretPage = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/secrets/new")(
-	cloudOnly({
-		component: CreateSecretPage,
-	})
-);
+export const Route = createFileRoute("/_logged-in/_workspaced/secrets/new")({
+	component: CreateSecretPage,
+});

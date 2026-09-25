@@ -118,15 +118,11 @@ const Sidebar: Component = () => {
 			icon: FiGlobe,
 			href: "/domains",
 		},
-		...(IS_CLOUD
-			? [
-					{
-						label: "Secrets",
-						icon: FiLock,
-						href: "/secrets",
-					},
-				]
-			: []),
+		{
+			label: "Secrets",
+			icon: FiLock,
+			href: "/secrets",
+		},
 		{
 			label: "Workspace Settings",
 			href: "/workspace",

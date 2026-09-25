@@ -21,7 +21,6 @@ import { useSecretInfoQuery } from "~/hooks/fetch";
 import { secretKeys } from "~/hooks/query-keys";
 import { UpdateSecretRequest, UpdateSecretResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
-import { cloudOnly } from "~/utils/env";
 import { formatRelativeTime } from "~/utils/func";
 
 const SecretDetailPage = () => {
@@ -193,8 +192,6 @@ const SecretDetailPage = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/secrets/$id")(
-	cloudOnly({
-		component: SecretDetailPage,
-	})
-);
+export const Route = createFileRoute("/_logged-in/_workspaced/secrets/$id")({
+	component: SecretDetailPage,
+});

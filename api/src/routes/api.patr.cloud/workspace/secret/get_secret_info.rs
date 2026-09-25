@@ -55,7 +55,6 @@ pub async fn get_secret_info(
 			row.id,
 			Secret {
 				name: row.name,
-				deployment_id: None,
 				created: row.created,
 				last_updated: row.last_updated,
 			},

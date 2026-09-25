@@ -31,10 +31,6 @@ pub use self::{
 pub struct Secret {
 	/// The name of the secret
 	pub name: String,
-	/// The deployment the secret is attached to
-	#[serde(skip_serializing_if = "Option::is_none")]
-	#[search(ty = "resource", resource = "Deployment")]
-	pub deployment_id: Option<Uuid>,
 	/// The time the secret was created
 	#[ts(type = "Date")]
 	pub created: OffsetDateTime,

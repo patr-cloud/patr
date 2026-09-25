@@ -14,7 +14,12 @@ pub async fn list_secrets_for_workspace(
 				query:
 					ListResourceQueryProcessed {
 						sort: _,
-						search: _,
+						search:
+							SecretSearchParams {
+								name: name_filter,
+								created: created_filter,
+								last_updated: last_updated_filter,
+							},
 						count,
 						page,
 						additional_query: (),
@@ -48,13 +53,27 @@ pub async fn list_secrets_for_workspace(
 			secret.id = resource.id
 		WHERE
 			secret.workspace_id = $1 AND
-			secret.deleted IS NULL
+			secret.deleted IS NULL AND
+			($2::TEXT IS NULL OR secret.name ILIKE '%' || $2 || '%') AND
+			($3::TIMESTAMPTZ IS NULL OR resource.created >= $3) AND
+			($4::TIMESTAMPTZ IS NULL OR resource.created <= $4) AND
+			($5::TIMESTAMPTZ IS NULL OR secret.last_updated >= $5) AND
+			($6::TIMESTAMPTZ IS NULL OR secret.last_updated <= $6)
 		ORDER BY
 			resource.created DESC
-		LIMIT $2
-		OFFSET $3;
+		LIMIT $7
+		OFFSET $8;
 		"#,
 		workspace_id as _,
+		name_filter,
+		created_filter.as_ref().map(|created| created.start()) as _,
+		created_filter.as_ref().map(|created| created.end()) as _,
+		last_updated_filter
+			.as_ref()
+			.map(|last_updated| last_updated.start()) as _,
+		last_updated_filter
+			.as_ref()
+			.map(|last_updated| last_updated.end()) as _,
 		count as i32,
 		(page * count) as i32,
 	)
@@ -67,7 +86,6 @@ pub async fn list_secrets_for_workspace(
 			row.id,
 			Secret {
 				name: row.name,
-				deployment_id: None,
 				created: row.created,
 				last_updated: row.last_updated,
 			},

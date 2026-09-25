@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use models::{
+	api::workspace::secret::*,
 	rbac::{Permission, RunnerPermission, SecretPermission, WorkspacePermission},
 	utils::Uuid,
 };
@@ -24,10 +25,7 @@ async fn runner_token(
 			BTreeMap::from([(
 				workspace_id,
 				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(
-						permission_id,
-						BTreeSet::from([runner_id]),
-					)]),
+					permissions: BTreeMap::from([(permission_id, BTreeSet::from([runner_id]))]),
 				},
 			)]),
 		)
@@ -106,10 +104,7 @@ async fn read_secret_returns_openbao_shaped_value() {
 		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
-			vec![(
-				http::header::AUTHORIZATION,
-				&basic_auth(&runner.id, &token),
-			)],
+			vec![(http::header::AUTHORIZATION, &basic_auth(&runner.id, &token))],
 		)
 		.await;
 
@@ -158,10 +153,7 @@ async fn read_secret_without_execute_is_denied() {
 		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
-			vec![(
-				http::header::AUTHORIZATION,
-				&basic_auth(&runner.id, &token),
-			)],
+			vec![(http::header::AUTHORIZATION, &basic_auth(&runner.id, &token))],
 		)
 		.await;
 
@@ -191,10 +183,7 @@ async fn read_secret_from_another_workspace_is_denied() {
 		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&other_workspace.id, &other_secret.id),
-			vec![(
-				http::header::AUTHORIZATION,
-				&basic_auth(&runner.id, &token),
-			)],
+			vec![(http::header::AUTHORIZATION, &basic_auth(&runner.id, &token))],
 		)
 		.await;
 
@@ -219,20 +208,25 @@ async fn read_deleted_secret_returns_404() {
 	let token = runner_token(&setup, &user, workspace.id, runner.id).await;
 
 	setup
-		.execute_sql(&format!(
-			"UPDATE secret SET deleted = NOW() WHERE id = '{}';",
-			secret.id
-		))
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteSecretRequest>::builder()
+				.path(DeleteSecretPath {
+					workspace_id: workspace.id,
+					secret_id: secret.id,
+				})
+				.headers(DeleteSecretRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
 		.await;
 
 	let response = setup
 		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
-			vec![(
-				http::header::AUTHORIZATION,
-				&basic_auth(&runner.id, &token),
-			)],
+			vec![(http::header::AUTHORIZATION, &basic_auth(&runner.id, &token))],
 		)
 		.await;
 
@@ -263,10 +257,7 @@ async fn read_secret_missing_in_openbao_passes_through_404() {
 		.make_openbao_call(
 			http::Method::GET,
 			&secret_path(&workspace.id, &secret.id),
-			vec![(
-				http::header::AUTHORIZATION,
-				&basic_auth(&runner.id, &token),
-			)],
+			vec![(http::header::AUTHORIZATION, &basic_auth(&runner.id, &token))],
 		)
 		.await;
 

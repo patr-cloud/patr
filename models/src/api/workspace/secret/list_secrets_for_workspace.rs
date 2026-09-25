@@ -25,9 +25,7 @@ macros::declare_api_endpoint!(
 		pub total_count: TotalCountHeader,
 	},
 	response = {
-		/// The list of secrets that contains:
-		///     name - The secret name
-		///     deployment_id - The deployment this secret is attached to
+		/// The list of secrets in the workspace, metadata only
 		pub secrets: Vec<WithId<Secret>>
 	},
 	audit_log = NoAuditLogger,

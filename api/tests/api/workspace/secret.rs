@@ -156,7 +156,10 @@ async fn list_secrets_returns_workspace_secrets() {
 		.map(|secret| secret.id)
 		.collect::<Vec<_>>();
 
-	assert!(ids.contains(&first.id), "list should contain the first secret");
+	assert!(
+		ids.contains(&first.id),
+		"list should contain the first secret"
+	);
 	assert!(
 		ids.contains(&second.id),
 		"list should contain the second secret"
@@ -202,6 +205,58 @@ async fn list_secrets_excludes_other_workspaces() {
 			.iter()
 			.any(|secret| secret.id == other_secret.id),
 		"a secret from another workspace must not be listed"
+	);
+}
+
+#[tokio::test]
+async fn list_secrets_filters_by_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let wanted = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+	let other = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListSecretsForWorkspaceRequest>::builder()
+				.path(ListSecretsForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListSecretsForWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: SecretSearchParams {
+						name: Some(wanted.name.to_lowercase()),
+						..Default::default()
+					},
+					count: 100,
+					page: 0,
+					additional_query: (),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListSecretsForWorkspaceResponse>>();
+
+	let ids = response
+		.response
+		.secrets
+		.iter()
+		.map(|secret| secret.id)
+		.collect::<Vec<_>>();
+
+	assert_eq!(
+		ids,
+		vec![wanted.id],
+		"a name filter should match case-insensitively and exclude {}",
+		other.name
 	);
 }
 

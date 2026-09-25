@@ -114,34 +114,6 @@ pub(crate) async fn upsert(
 		format!("{}:{}", image_path, image_tag)
 	};
 
-	// Resolve secret env vars through openbao.patr.cloud, which proxies OpenBao.
-	// Values stay in memory only and are never logged.
-	let env = futures::stream::iter(environment_variables)
-		.then(|(key, value)| async move {
-			let value = match value {
-				EnvironmentVariableValue::String(value) => value,
-				EnvironmentVariableValue::Secret { from_secret } => {
-					let RunnerMode::Managed {
-						workspace_id,
-						runner_id,
-						api_token,
-						user_agent: _,
-					} = &settings.mode
-					else {
-						return Err(RunnerError::UpstreamServerError(ErrorType::server_error(
-							"Secret environment variable encountered in self-hosted mode",
-						)));
-					};
-					secrets::get_secret_value(*runner_id, api_token, *workspace_id, from_secret)
-						.await?
-				}
-			};
-
-			Ok(format!("{}={}", key, value))
-		})
-		.try_collect::<Vec<_>>()
-		.await?;
-
 	// Build registry credentials for both image pull and Swarm task scheduling.
 	// Patr registry images need managed-mode auth; external registries are
 	// pulled anonymously here.
@@ -269,7 +241,42 @@ pub(crate) async fn upsert(
 			container_spec: Some(TaskSpecContainerSpec {
 				image: Some(image.clone()),
 				hostname: Some(format!("{}.onpatr.cloud", id)),
-				env: Some(env),
+				// Resolve secret env vars through openbao.patr.cloud, which proxies OpenBao.
+				// Values stay in memory only and are never logged.
+				env: Some(
+					futures::stream::iter(environment_variables)
+						.then(|(key, value)| async move {
+							let value = match value {
+								EnvironmentVariableValue::String(value) => value,
+								EnvironmentVariableValue::Secret { from_secret } => {
+									let RunnerMode::Managed {
+										workspace_id,
+										runner_id,
+										api_token,
+										user_agent: _,
+									} = &settings.mode
+									else {
+										return Err(RunnerError::UpstreamServerError(
+											ErrorType::server_error(
+												"Secret environment variable encountered in self-hosted mode",
+											),
+										));
+									};
+									secrets::get_secret_value(
+										*runner_id,
+										api_token,
+										*workspace_id,
+										from_secret,
+									)
+									.await?
+								}
+							};
+
+							Ok(format!("{}={}", key, value))
+						})
+						.try_collect::<Vec<_>>()
+						.await?,
+				),
 				labels: Some(HashMap::from([
 					(String::from("managed-by"), String::from("patr")),
 					(

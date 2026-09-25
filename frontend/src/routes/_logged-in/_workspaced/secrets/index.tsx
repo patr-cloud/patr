@@ -15,7 +15,6 @@ import {
 } from "~/components";
 import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
 import { useSecretsQuery } from "~/hooks/fetch";
-import { cloudOnly } from "~/utils/env";
 import { formatRelativeTime } from "~/utils/func";
 
 const ListSecretsPage = () => {
@@ -199,12 +198,10 @@ const ListSecretsPage = () => {
 	);
 };
 
-export const Route = createFileRoute("/_logged-in/_workspaced/secrets/")(
-	cloudOnly({
-		validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-			page: (search.page as string) || undefined,
-			count: (search.count as string) || undefined,
-		}),
-		component: ListSecretsPage,
-	})
-);
+export const Route = createFileRoute("/_logged-in/_workspaced/secrets/")({
+	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
+		page: (search.page as string) || undefined,
+		count: (search.count as string) || undefined,
+	}),
+	component: ListSecretsPage,
+});

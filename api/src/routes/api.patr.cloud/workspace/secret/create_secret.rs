@@ -83,7 +83,11 @@ pub async fn create_secret(
 		now as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|e| match e {
+		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		other => other.into(),
+	})?;
 
 	// Write the value to OpenBao last, so a failure rolls back the DB inserts.
 	// Zeroize the plaintext regardless of the outcome.

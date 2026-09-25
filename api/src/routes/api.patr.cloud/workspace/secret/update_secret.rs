@@ -42,7 +42,11 @@ pub async fn update_secret(
 		secret_id as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|e| match e {
+		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		other => other.into(),
+	})?;
 
 	// Only touch OpenBao when a new value was supplied; otherwise the existing
 	// value is kept. Zeroize the plaintext regardless of the outcome.

@@ -98,7 +98,10 @@ pub(super) async fn authenticate_and_authorize(
 
 	// The secret has to live in the workspace the request names
 	if resolved.secret_workspace_id != workspace_id {
-		warn!("Secret {} not found in workspace {}", secret_id, workspace_id);
+		warn!(
+			"Secret {} not found in workspace {}",
+			secret_id, workspace_id
+		);
 		return Err(Response::builder()
 			.status(StatusCode::NOT_FOUND)
 			.body(Body::from("Secret not found"))
