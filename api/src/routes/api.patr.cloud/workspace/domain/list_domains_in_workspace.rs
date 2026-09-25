@@ -94,6 +94,10 @@ pub async fn list_domains_in_workspace(
 	})
 	.collect();
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListDomainsInWorkspaceResponse { domains })
 		.headers(ListDomainsInWorkspaceResponseHeaders {

@@ -164,6 +164,10 @@ pub async fn list_users_in_workspace(
 		})
 		.collect::<Vec<_>>();
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListUsersInWorkspaceResponse { users })
 		.headers(ListUsersInWorkspaceResponseHeaders {

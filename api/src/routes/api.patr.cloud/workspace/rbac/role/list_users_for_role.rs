@@ -112,6 +112,10 @@ pub async fn list_users_for_role(
 	})
 	.collect();
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListUsersForRoleResponse { users })
 		.headers(ListUsersForRoleResponseHeaders {

@@ -14,7 +14,7 @@ import {
 	Pagination,
 	Table,
 } from "~/components";
-import { createPaginationState } from "~/hooks";
+import { createPaginationState, recoverFromOutOfBounds } from "~/hooks";
 import { useApiTokensQuery } from "~/hooks/fetch";
 import { formatRelativeTime } from "~/utils/func";
 
@@ -37,6 +37,12 @@ const ListApiTokens = () => {
 			pagination.setTotalCount(totalCount);
 		}
 	});
+
+	recoverFromOutOfBounds(
+		() => apiTokensQuery.isError,
+		() => apiTokensQuery.error?.message,
+		pagination
+	);
 
 	return (
 		<>

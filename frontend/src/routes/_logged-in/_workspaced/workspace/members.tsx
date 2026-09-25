@@ -15,7 +15,7 @@ import {
 import type { Binding } from "~/components/binding-rows";
 import { FiCheck, FiCopy, FiEdit2, FiMail, FiTrash, FiX } from "solid-icons/fi";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
-import { createAuthenticatedAction, createPaginationState, useIsAllowed } from "~/hooks";
+import { createAuthenticatedAction, createPaginationState, useIsAllowed, recoverFromOutOfBounds } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
 import { RemoveUserFromWorkspaceResponse } from "~/bindings/RemoveUserFromWorkspaceResponse";
@@ -164,6 +164,12 @@ const ManageWorkspace = () => {
 			pagination.setTotalCount(totalCount);
 		}
 	});
+
+	recoverFromOutOfBounds(
+		() => membersQuery.isError,
+		() => membersQuery.error?.message,
+		pagination
+	);
 
 	const refetchMembers = () => {
 		const wsId = workspaceId();
