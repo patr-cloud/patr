@@ -7,7 +7,7 @@ Playwright end-to-end suite. A **standalone pnpm project**, not part of the fron
 Lifecycle is driven by `just` (from `e2e/`): `just` = `install → up → test → down`.
 
 - `just install` — pnpm install + `playwright install chromium`, **and builds the production frontend**. Tests run against the built frontend, served via Caddy on `:3001`.
-- `just up` — `docker compose up -d --wait` (services on **offset ports**: postgres `:15432`, redis `:16379`, minio `:19000`, loki `:13100`, mimir `:18080` — nothing on default ports, to avoid clashing with a dev stack).
+- `just up` — `docker compose up -d --wait` (services on **offset ports**: postgres `:15432`, redis `:16379`, rustfs `:19000`, loki `:13100`, mimir `:18080` — nothing on default ports, to avoid clashing with a dev stack).
 - `just test [args]` — starts node mocks + API (`:3000`) + frontend (`:13030`), then runs Playwright in two passes (`@racy` tests run last, serial).
 - `just serve` / `just stop` — bring the stack up with the frontend in **dev** mode for interactive work.
 - `DOCKER_VERSIONS=27 just up test`, `TEST_THREADS=4 just test`, `API_BIN=/path just test` — version matrix / parallelism / reuse a prebuilt API.

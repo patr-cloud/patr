@@ -6,7 +6,7 @@
 //! blocks forever serving requests. Run it explicitly:
 //!
 //! ```sh
-//! # infra must be up (pg/redis/minio) and PATR_TEST_* exported — see
+//! # infra must be up (pg/redis/rustfs) and PATR_TEST_* exported — see
 //! # api/tests/registry/CONFORMANCE.md
 //! cargo test -p api --test integration-tests -- \
 //!     --ignored --nocapture registry::conformance_harness::conformance_harness

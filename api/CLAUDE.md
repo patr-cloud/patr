@@ -47,6 +47,6 @@ apalis job queue in `src/worker/` (`WorkerTaskType` enum, Postgres-backed). Cron
 
 ## Tests (run from repo root)
 
-- Integration: `just api test [filter]` — boots docker-compose (pg/redis/minio/loki/mimir), copies config, runs `--migrate`, then `cargo nextest run -p api --test integration-tests`.
+- Integration: `just api test [filter]` — boots docker-compose (pg/redis/rustfs/loki/mimir), copies config, runs `--migrate`, then `cargo nextest run -p api --test integration-tests`.
 - OCI conformance: `just api conformance`.
 - (These recipes live in `api/tests/Justfile`, wired into the root `Justfile` as `mod api`.)
