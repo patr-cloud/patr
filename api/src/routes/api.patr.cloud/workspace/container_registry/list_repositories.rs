@@ -131,8 +131,7 @@ pub async fn list_repositories(
 							repository_id = container_registry_repository.id
 					)
 				) AS "last_updated",
-				resource.created,
-				COUNT(*) OVER () AS "count"
+				resource.created
 			FROM
 				container_registry_repository
 			INNER JOIN
@@ -149,7 +148,7 @@ pub async fn list_repositories(
 			repos.size AS "size!",
 			repos.last_updated AS "last_updated!",
 			repos.created,
-			repos.count AS "count!"
+			COUNT(*) OVER () AS "count!"
 		FROM
 			repos
 		INNER JOIN
