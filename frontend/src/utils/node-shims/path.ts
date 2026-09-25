@@ -10,7 +10,7 @@
  *
  * ---
  *
- * **Both secretlint packages are pinned to an exact version on purpose.**
+ * **The secretlint packages are pinned to an exact version on purpose.**
  *
  * `preset-recommend` ships ~880 KB of *bundled* third-party rule code with no
  * runtime dependencies of its own, so a version bump swaps out a large body of

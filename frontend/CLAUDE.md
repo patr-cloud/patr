@@ -10,7 +10,7 @@ SolidJS 1.9, SolidStart/vinxi (Vite), TanStack Solid Router (file-based routing)
 
 Every value a user types into the deployment environment-variable editor runs through `@secretlint/core` + `@secretlint/secretlint-rule-preset-recommend` in their browser (`src/utils/secret-lint.ts`). A compromised release would see every secret our users ever enter, so:
 
-- Both are pinned to an **exact** version (`13.0.5` — no `^`/`~`). Keep it that way.
+- Both are pinned to an **exact** version (`13.0.5` — no `^`/`~`). Keep it that way. So is `@secretlint/profiler`, a direct dependency only so `secret-lint.ts` can switch its default-on timing off; bump it in lockstep with core.
 - The rest of the tree is pinned too: `@secretlint/core` pins `@secretlint/profiler` and `@secretlint/types` exactly itself, and scoped `overrides` in `pnpm-workspace.yaml` pin `debug`, `ms`, `structured-source` and `boundary`, which core only declares by range. After editing those overrides, run `pnpm install --lockfile-only --config.optimistic-repeat-install=false` — the repeat-install fast path skips override changes and leaves them out of the lockfile.
 - **No version change to any package in that tree, ever, without an explicit audit** of the new version's published source — all of it, including the whole bundled preset — plus its whole dependency tree, a check that the tarball matches the lockfile integrity, and the `node:*` import constraints in `src/utils/node-shims/path.ts`. That applies to automated bumps and to anything that pulls a new version in transitively.
 

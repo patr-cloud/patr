@@ -14,6 +14,7 @@
 	},
 	"dependencies": {
 		"@secretlint/core": "13.0.5",
+		"@secretlint/profiler": "13.0.5",
 		"@secretlint/secretlint-rule-preset-recommend": "13.0.5",
 		"@solid-primitives/cookies": "^0.0.3",
 		"@solid-primitives/storage": "^4.4.0",

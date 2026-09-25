@@ -6,7 +6,7 @@
  * current. It deliberately has no generic heuristics, so callers pair it with
  * their own — see `looksLikeSecret` in the deployments env list.
  *
- * Both secretlint packages are pinned to an exact version; the reason, and what
+ * The secretlint packages are pinned to an exact version; the reason, and what
  * to check before bumping them, is in `./node-shims/path.ts`.
  */
 
@@ -14,10 +14,17 @@
 let linter: Promise<(key: string, value: string) => Promise<string[]>> | null = null;
 
 const loadLinter = async () => {
-	const [{ lintSource }, preset] = await Promise.all([
+	const [{ lintSource }, preset, { secretLintProfiler }] = await Promise.all([
 		import("@secretlint/core"),
 		import("@secretlint/secretlint-rule-preset-recommend"),
+		import("@secretlint/profiler"),
 	]);
+
+	// Core times every rule into the page's performance timeline by default and
+	// never clears it. Nothing reads those timings, and the env list re-lints on
+	// every pause in typing, so they would pile up for the life of the page. This
+	// is the same instance core imports, so switching it off here covers core.
+	secretLintProfiler.setEnabled(false);
 
 	const config = {
 		rules: [
