@@ -203,9 +203,9 @@ where
 			Err(err) => return Err(err.into()),
 		};
 
-	// Read the secret versions before the executor reads their values, so a
-	// rotation racing this apply can only cause an extra upsert, never a
-	// missed one.
+	// Snapshot the versions before applying, and record this snapshot (not a
+	// re-read) once it succeeds. A rotation that lands mid-apply then still looks
+	// new to the `ConfigUpdated` it queued, so it's applied rather than skipped.
 	let desired_secrets = query(
 		r#"
 		SELECT
