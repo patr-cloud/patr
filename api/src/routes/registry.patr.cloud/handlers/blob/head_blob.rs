@@ -32,15 +32,13 @@ macros::declare_registry_endpoint!(
 	request_headers = {
 		/// The Authorization header
 		pub authorization: BearerToken,
-		/// Optional Range header for partial downloads
-		pub range: OptionalHeader<Range>,
 	},
 	response_headers = {
 		/// The content type of the blob
 		pub content_type: ContentType,
 		/// The digest of the blob
 		pub docker_content_digest: DockerContentDigest,
-		/// The size of the blob in bytes (or range size)
+		/// The size of the blob in bytes
 		pub content_length: ContentLength,
 		/// Accept-Ranges header to indicate range support
 		pub accept_ranges: AcceptRanges,
@@ -63,10 +61,7 @@ pub async fn head_blob(
 					digest,
 				},
 				query: (),
-				headers: HeadBlobRequestHeaders {
-					authorization: _,
-					range,
-				},
+				headers: HeadBlobRequestHeaders { authorization: _ },
 				body: _,
 			},
 		database,
@@ -240,7 +235,6 @@ pub async fn head_blob(
 		.head_object()
 		.bucket(&config.s3.bucket)
 		.key(format!("registry/blobs/{digest}"))
-		.set_range(range.into_option().map(|range| range.to_string()))
 		.send()
 		.await?;
 

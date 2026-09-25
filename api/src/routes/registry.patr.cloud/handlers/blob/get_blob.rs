@@ -233,8 +233,27 @@ pub async fn get_blob(
 
 	// Forward the client's Range to S3/MinIO, which does the range math and
 	// returns the partial slice + a Content-Range. `object.content_length` is
-	// already the slice length when a range is honored.
-	let range = range.into_option();
+	// already the slice length when a range is honored. A malformed range
+	// (`bytes=500-0`) is dropped instead: RFC 9110 has it ignored, and stores
+	// disagree on how to reject one (MinIO answers 416, RustFS 400).
+	let range = range.into_option().filter(|range| {
+		range
+			.to_string()
+			.strip_prefix("bytes=")
+			.is_some_and(|specs| {
+				specs
+					.split(',')
+					.all(|spec| match spec.trim().split_once('-') {
+						Some(("", last)) => last.parse::<u64>().is_ok(),
+						Some((first, "")) => first.parse::<u64>().is_ok(),
+						Some((first, last)) => matches!(
+							(first.parse::<u64>(), last.parse::<u64>()),
+							(Ok(first), Ok(last)) if first <= last
+						),
+						None => false,
+					})
+			})
+	});
 	let object = s3
 		.get_object()
 		.bucket(&config.s3.bucket)

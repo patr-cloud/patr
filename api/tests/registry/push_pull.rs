@@ -1,10 +1,13 @@
 use std::collections::BTreeMap;
 
-use api::routes::registry_patr_cloud::handlers::manifest::*;
+use api::routes::registry_patr_cloud::handlers::{blob::*, manifest::*};
+use headers::Header;
+use http::HeaderValue;
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::container_registry::*,
 	rbac::WorkspacePermission,
+	utils::Range,
 };
 
 use super::helpers::*;
@@ -61,6 +64,51 @@ async fn push_image_shows_in_api_manifests() {
 		"pushed manifest digest {} not found in API list",
 		image.manifest_digest
 	);
+}
+
+/// A malformed range (end before start) is ignored and the whole blob is
+/// served, whatever the S3 store would have answered for it.
+#[tokio::test]
+async fn get_blob_ignores_malformed_range() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	let image = setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
+		.await;
+
+	let response = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<GetBlobPath> {
+			path: GetBlobPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+				digest: image.layer_digest.clone(),
+			},
+			query: (),
+			headers: GetBlobRequestHeaders {
+				authorization: BearerToken::from_str(&api_token.token).unwrap(),
+				range: OptionalHeader::new(Some(
+					Range::decode(&mut std::iter::once(&HeaderValue::from_static(
+						"bytes=500-0",
+					)))
+					.unwrap(),
+				)),
+			},
+			body: Body::empty(),
+		})
+		.await;
+
+	assert_eq!(StatusCode::OK, response.status_code());
+	assert_eq!(image.layer_bytes, response.into_bytes().to_vec());
 }
 
 #[tokio::test]
