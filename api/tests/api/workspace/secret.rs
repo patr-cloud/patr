@@ -402,3 +402,57 @@ async fn delete_secret_removes_metadata_and_value() {
 		info.status_code()
 	);
 }
+
+// ---------- create: name length bounds ----------
+
+/// Secret names share `RESOURCE_NAME_REGEX`, whose floor is two characters
+/// rather than four — plenty of real environment keys are shorter than four
+/// (`ID`, `DB`, `PAT`).
+#[tokio::test]
+async fn create_secret_name_length_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	for (name, expect_ok) in [
+		("A".to_string(), false),
+		("HI".to_string(), true),
+		("PAT".to_string(), true),
+		("A".repeat(255), true),
+		("A".repeat(256), false),
+	] {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<CreateSecretRequest>::builder()
+					.path(CreateSecretPath {
+						workspace_id: workspace.id,
+					})
+					.headers(CreateSecretRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(CreateSecretRequest {
+						name: name.clone(),
+						value: random_name(16),
+					})
+					.build(),
+			)
+			.await;
+
+		if expect_ok {
+			assert!(
+				response.status_code().is_success(),
+				"a {}-char secret name should be accepted, got {}",
+				name.len(),
+				response.status_code()
+			);
+		} else {
+			assert!(
+				response.status_code().is_client_error(),
+				"a {}-char secret name should be rejected, got {}",
+				name.len(),
+				response.status_code()
+			);
+		}
+	}
+}

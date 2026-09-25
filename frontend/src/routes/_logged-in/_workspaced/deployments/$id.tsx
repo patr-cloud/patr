@@ -23,6 +23,7 @@ import { useDeploymentInfoQuery } from "~/hooks/fetch";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
+import DeploymentEnvironment from "./-components/environment";
 import DeploymentInfoUpdate from "./-components/info";
 import DeploymentLogs from "./-components/logs";
 import DeploymentMetrics from "./-components/metrics";
@@ -268,6 +269,16 @@ const DeploymentInfo = () => {
 													}),
 											},
 											{
+												label: "Environment Deets",
+												value: "environment",
+												onClick: (value) =>
+													navigate({
+														to: "/deployments/$id",
+														params: { id: params().id },
+														search: { tab: value },
+													}),
+											},
+											{
 												label: "Logs",
 												value: "logs",
 												onClick: (value) =>
@@ -291,6 +302,9 @@ const DeploymentInfo = () => {
 									</Match>
 									<Match when={tab() === "info"}>
 										<DeploymentInfoUpdate deploymentId={params().id} />
+									</Match>
+									<Match when={tab() === "environment"}>
+										<DeploymentEnvironment deploymentId={params().id} />
 									</Match>
 									<Match when={tab() === "logs"}>
 										<Show when={deploymentData()?.id}>

@@ -15,7 +15,7 @@ import {
 	RangeSlider,
 	useToast,
 } from "~/components";
-import EnvInput from "./-components/env-input";
+import EnvList from "./-components/env-list";
 import {
 	Base64String,
 	CreateDeploymentRequest,
@@ -282,7 +282,7 @@ const CreateDeploymentPage = () => {
 							{/* Divider */}
 							<div class="border-t border-border-color mt-2" />
 
-							<EnvInput value={() => ({})} onChange={setEnvVars} onValidityChange={setEnvValid} />
+							<EnvList value={() => ({})} onChange={setEnvVars} onValidityChange={setEnvValid} />
 
 							<PortInput value={() => ({})} onChange={setPortList} onValidityChange={setPortsValid} />
 
