@@ -165,7 +165,7 @@ const EnvInput = (props: EnvInputProps) => {
 					<span class="flex-5 ml-0.75">Key</span>
 					<span class="flex-7 ml-0.75">Value</span>
 					<div class="invisible flex" aria-hidden="true">
-						<ValueTypeToggle value={() => "string"} onChange={() => { }} />
+						<ValueTypeToggle value={() => "string"} onChange={() => {}} />
 					</div>
 					<Button
 						type="button"
@@ -274,7 +274,7 @@ const EnvInput = (props: EnvInputProps) => {
 											<span class="flex-7">{valueErr()}</span>
 										</Show>
 										<div class="invisible flex" aria-hidden="true">
-											<ValueTypeToggle value={() => "string"} onChange={() => { }} />
+											<ValueTypeToggle value={() => "string"} onChange={() => {}} />
 										</div>
 										<Button
 											type="button"
