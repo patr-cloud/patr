@@ -862,10 +862,9 @@ async fn auto_deploy_on_push(
 		let volumes = query!(
 			r#"
 			SELECT
-				volume_id AS "volume_id: Uuid",
-				volume_mount_path
+				path
 			FROM
-				deployment_volume_mount
+				deployment_volume
 			WHERE
 				deployment_id = $1;
 			"#,
@@ -874,7 +873,7 @@ async fn auto_deploy_on_push(
 		.fetch_all(&mut **database)
 		.await?
 		.into_iter()
-		.map(|row| (row.volume_id, row.volume_mount_path))
+		.map(|row| (row.path, VolumeConfig {}))
 		.collect::<BTreeMap<_, _>>();
 
 		let startup_probe = deployment

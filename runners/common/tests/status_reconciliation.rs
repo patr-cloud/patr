@@ -95,16 +95,24 @@ async fn stopped_from_executor_running_in_db_calls_upsert() {
 }
 
 #[tokio::test]
-async fn running_from_executor_stopped_in_db_calls_delete() {
+async fn running_from_executor_stopped_in_db_calls_stop_not_delete() {
 	let (setup, id) =
 		setup_with_statuses(DeploymentStatus::Stopped, DeploymentStatus::Running).await;
 
 	let mock = setup.mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Delete(i) if *i == id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Stop(i) if *i == id)),
 		Duration::from_secs(5),
 	)
 	.await;
+
+	// A user pressing Stop must never reclaim the deployment's volumes.
+	assert!(
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
+		"stop must route through stop_deployment, not delete_deployment"
+	);
 }
 
 // NOTE: Unreachable is not a valid DB status (CHECK constraint rejects it),

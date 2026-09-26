@@ -21,8 +21,6 @@ pub mod rbac;
 /// This module contains all the models that corresponds to a runner of a Patr
 /// workspace
 pub mod runner;
-/// This module contains all the models that corresponds to a deployment volume
-pub mod volume;
 
 /// This module contains all the models that corresponds to Patr secrets
 pub mod secret;

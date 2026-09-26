@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 import {
 	PageContainer,
 	PageContainerBody,
@@ -23,6 +23,7 @@ import {
 	DeploymentProbe,
 	EnvironmentVariableValue,
 	ExposedPortType,
+	VolumeConfig,
 } from "~/bindings";
 import PortInput from "./-components/port";
 import { createFormAction } from "~/hooks";
@@ -32,6 +33,7 @@ import { REGISTRY_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import ProbeInput from "./-components/probe-input";
 import ConfigMount from "./-components/config-mount";
+import VolumeMount from "./-components/volume-mount";
 import { useNavigate } from "@tanstack/solid-router";
 
 const CreateDeploymentPage = () => {
@@ -51,6 +53,7 @@ const CreateDeploymentPage = () => {
 	const [tagFilter, setTagFilter] = createSignal<string>("");
 	const [repositoryId, setRepositoryId] = createSignal<string>("");
 	const [configFiles, setConfigFiles] = createSignal<Record<string, Base64String>>({});
+	const [volumes, setVolumes] = createSignal<Record<string, VolumeConfig>>({});
 	const [startupProbe, setStartupProbe] = createSignal<DeploymentProbe | undefined>(undefined);
 	const [minScale, setMinScale] = createSignal(1);
 	const [maxScale, setMaxScale] = createSignal(2);
@@ -64,6 +67,16 @@ const CreateDeploymentPage = () => {
 	const [portList, setPortList] = createSignal<Record<string, ExposedPortType>>({});
 	const [portsValid, setPortsValid] = createSignal(true);
 	const [configMountsValid, setConfigMountsValid] = createSignal(true);
+	const [volumesValid, setVolumesValid] = createSignal(true);
+
+	// Volumes are node-local, so a deployment with any runs a single replica.
+	const hasVolumes = () => Object.keys(volumes()).length > 0;
+	createEffect(() => {
+		if (hasVolumes()) {
+			setMinScale(1);
+			setMaxScale(1);
+		}
+	});
 
 	const isPatrRegistry = () => REGISTRY_DOMAIN !== undefined && registry() === REGISTRY_DOMAIN;
 
@@ -85,7 +98,7 @@ const CreateDeploymentPage = () => {
 		repositoriesQuery.data?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
-		if (!envValid() || !portsValid() || !configMountsValid()) {
+		if (!envValid() || !portsValid() || !configMountsValid() || !volumesValid()) {
 			toast("Please fix the highlighted errors before submitting", "error");
 			return;
 		}
@@ -103,6 +116,7 @@ const CreateDeploymentPage = () => {
 			deployOnCreate: deployOnCreate(),
 			deployOnPush: isPatrRegistry() ? deployOnPush() : false,
 			configMounts: configFiles(),
+			volumes: volumes(),
 		};
 
 		const requestBody = (
@@ -265,7 +279,11 @@ const CreateDeploymentPage = () => {
 								<Label
 									parentClass="flex-2"
 									label="Horizontal Scale"
-									comments="Min & max replica count"
+									comments={
+										hasVolumes()
+											? "Deployments with volumes run a single replica"
+											: "Min & max replica count"
+									}
 								/>
 								<div class="flex-10">
 									<RangeSlider
@@ -273,6 +291,7 @@ const CreateDeploymentPage = () => {
 										max={10}
 										valueLow={minScale}
 										valueHigh={maxScale}
+										disabled={hasVolumes()}
 										onChangeLow={setMinScale}
 										onChangeHigh={setMaxScale}
 									/>
@@ -295,6 +314,13 @@ const CreateDeploymentPage = () => {
 								value={() => ({})}
 								onChange={setConfigFiles}
 								onValidityChange={setConfigMountsValid}
+							/>
+
+							<VolumeMount
+								value={() => ({})}
+								configMountPaths={() => Object.keys(configFiles())}
+								onChange={setVolumes}
+								onValidityChange={setVolumesValid}
 							/>
 
 							{/* Divider */}
@@ -330,7 +356,7 @@ const CreateDeploymentPage = () => {
 								loading={isLoading}
 								loadingContent={() => <span>Creating Deployment...</span>}
 								type="submit"
-								disabled={!envValid() || !portsValid() || !configMountsValid()}
+								disabled={!envValid() || !portsValid() || !configMountsValid() || !volumesValid()}
 								variant={ButtonVariant.Contained}
 							>
 								Create

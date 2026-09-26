@@ -11,7 +11,6 @@ use models::{
 		Permission,
 		RunnerPermission,
 		SecretPermission,
-		VolumePermission,
 	},
 };
 use time::OffsetDateTime;
@@ -247,36 +246,6 @@ fn default_roles() -> Vec<DefaultRole> {
 		name: "Deployment: Admin",
 		description: "Default role: full control over deployments, including create and delete.",
 		permissions: admin_deployment,
-	});
-
-	let view_volume = vec![Volume(VolumePermission::View)];
-	let edit_volume = {
-		let mut p = view_volume.clone();
-		p.extend([
-			Volume(VolumePermission::Create),
-			Volume(VolumePermission::Edit),
-		]);
-		p
-	};
-	let admin_volume = {
-		let mut p = edit_volume.clone();
-		p.push(Volume(VolumePermission::Delete));
-		p
-	};
-	roles.push(DefaultRole {
-		name: "Volume: Viewer",
-		description: "Default role: read-only access to volumes.",
-		permissions: view_volume,
-	});
-	roles.push(DefaultRole {
-		name: "Volume: Editor",
-		description: "Default role: create and edit volumes.",
-		permissions: edit_volume,
-	});
-	roles.push(DefaultRole {
-		name: "Volume: Admin",
-		description: "Default role: full control over volumes, including delete.",
-		permissions: admin_volume,
 	});
 
 	let view_secret = vec![Secret(SecretPermission::View)];

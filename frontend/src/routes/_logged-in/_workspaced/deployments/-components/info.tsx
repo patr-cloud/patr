@@ -25,6 +25,7 @@ import { EventT } from "~/utils/types";
 import PortInput from "./port";
 import ConfigMount from "./config-mount";
 import { toUpdateRequest } from "./utils";
+import VolumeMount from "./volume-mount";
 
 interface DeploymentInfoProps {
 	deploymentId: string;
@@ -54,12 +55,22 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [isUpdating, setIsUpdating] = createSignal(false);
 	const [portsValid, setPortsValid] = createSignal(true);
 	const [configMountsValid, setConfigMountsValid] = createSignal(true);
+	const [volumesValid, setVolumesValid] = createSignal(true);
 
 	type DeployInfo = GetDeploymentInfoResponse | undefined;
 	const updateLocal = (fn: (prev: DeployInfo) => DeployInfo) => {
 		setHasUpdated(true);
 		setLocalInfo(fn);
 	};
+
+	// Volumes are node-local, so a deployment with any runs a single replica.
+	const hasVolumes = () => Object.keys(localInfo()?.volumes ?? {}).length > 0;
+	createEffect(() => {
+		const info = localInfo();
+		if (hasVolumes() && info && (info.minHorizontalScale > 1 || info.maxHorizontalScale > 1)) {
+			updateLocal((prev) => (prev ? { ...prev, minHorizontalScale: 1, maxHorizontalScale: 1 } : undefined));
+		}
+	});
 
 	const isPatrRegistry = () => {
 		const info = localInfo();
@@ -85,7 +96,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		// The Update button is disabled when env/ports are invalid, but form
 		// submission can still be triggered via Enter on another input or
 		// programmatically. Block invalid payloads defensively.
-		if (!portsValid() || !configMountsValid()) {
+		if (!portsValid() || !configMountsValid() || !volumesValid()) {
 			toast("Please fix the highlighted errors before saving", "error");
 			return;
 		}
@@ -242,14 +253,20 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				<div class="border-t border-border-color w-full mt-2" />
 
 				<div class="flex gap-8 items-center w-full">
-					<Label parentClass="flex-2" label="Horizontal Scale" comments="Min & max replica count" />
+					<Label
+						parentClass="flex-2"
+						label="Horizontal Scale"
+						comments={
+							hasVolumes() ? "Deployments with volumes run a single replica" : "Min & max replica count"
+						}
+					/>
 					<div class="flex-10">
 						<RangeSlider
 							min={1}
 							max={10}
 							valueLow={() => localInfo()?.minHorizontalScale ?? 1}
 							valueHigh={() => localInfo()?.maxHorizontalScale ?? 2}
-							disabled={!deploymentPermissions().edit}
+							disabled={!deploymentPermissions().edit || hasVolumes()}
 							onChangeLow={(val) => {
 								updateLocal((prev) => (prev ? { ...prev, minHorizontalScale: val } : undefined));
 							}}
@@ -298,13 +315,25 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					onChange={(next) => updateLocal((prev) => (prev ? { ...prev, configMounts: next } : undefined))}
 					onValidityChange={setConfigMountsValid}
 				/>
+
+				<VolumeMount
+					disabled={() => !deploymentPermissions().edit}
+					value={() => deploymentQuery.data?.volumes ?? {}}
+					configMountPaths={() => Object.keys(localInfo()?.configMounts ?? {})}
+					onChange={(next) => updateLocal((prev) => (prev ? { ...prev, volumes: next } : undefined))}
+					onValidityChange={setVolumesValid}
+				/>
 			</div>
 
 			<Show when={deploymentPermissions().edit}>
 				<div class="w-full flex justify-end items-center">
 					<Button
 						disabled={
-							!deploymentPermissions().edit || isUpdating() || !portsValid() || !configMountsValid()
+							!deploymentPermissions().edit ||
+							isUpdating() ||
+							!portsValid() ||
+							!configMountsValid() ||
+							!volumesValid()
 						}
 						loading={isUpdating()}
 						loadingContent={() => <span>Updating...</span>}

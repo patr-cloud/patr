@@ -78,12 +78,8 @@ pub enum ErrorType {
 	WorkspaceNameAlreadyExists,
 	/// Tried to delete a workspace that has resources in it
 	WorkspaceNotEmpty,
-	/// Volume of a deployment cannot be reduced
-	CannotReduceVolumeSize,
-	/// Cannot add new volume
-	CannotAddNewVolume,
-	/// Cannot remove volume
-	CannotRemoveVolume,
+	/// A deployment with volumes attached cannot run more than one replica
+	VolumesRequireSingleReplica,
 	/// An internal server error occurred. This should not happen unless there
 	/// is a bug in the server
 	InternalServerError,
@@ -176,9 +172,7 @@ impl ErrorType {
 			Self::ResourceInUse => StatusCode::UNPROCESSABLE_ENTITY,
 			Self::WorkspaceNameAlreadyExists => StatusCode::CONFLICT,
 			Self::WorkspaceNotEmpty => StatusCode::FAILED_DEPENDENCY,
-			Self::CannotReduceVolumeSize => StatusCode::BAD_REQUEST,
-			Self::CannotAddNewVolume => StatusCode::BAD_REQUEST,
-			Self::CannotRemoveVolume => StatusCode::BAD_REQUEST,
+			Self::VolumesRequireSingleReplica => StatusCode::BAD_REQUEST,
 			Self::InternalServerError => StatusCode::INTERNAL_SERVER_ERROR,
 			Self::RoleAlreadyExists => StatusCode::CONFLICT,
 			Self::RoleDoesNotExist => StatusCode::NOT_FOUND,
@@ -244,9 +238,9 @@ impl ErrorType {
 					"all the resources in the workspaces have been deleted"
 				)
 			}
-			Self::CannotReduceVolumeSize => "The deployment volume size cannot be reduced",
-			Self::CannotAddNewVolume => "New volume cannot be added",
-			Self::CannotRemoveVolume => "The volume cannot be removed",
+			Self::VolumesRequireSingleReplica => {
+				"A deployment with volumes cannot run more than one replica"
+			}
 			Self::InternalServerError => "An internal server error has occured",
 			Self::RoleAlreadyExists => "A role with that name already exists",
 			Self::RoleDoesNotExist => "A role with that ID does not exist",

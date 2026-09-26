@@ -13,7 +13,6 @@ use models::{
 			rbac::{role::*, user::*},
 			runner::*,
 			secret::*,
-			volume::*,
 			*,
 		},
 	},
@@ -66,12 +65,6 @@ pub struct TestDeployment {
 pub struct TestDomain {
 	pub id: Uuid,
 	pub domain: String,
-}
-
-/// A test volume.
-pub struct TestVolume {
-	pub id: Uuid,
-	pub name: String,
 }
 
 /// A test secret, along with the plaintext value it was created with.
@@ -386,34 +379,6 @@ impl TestSetup {
 		TestDomain {
 			id: response.id.id,
 			domain,
-		}
-	}
-
-	/// Create a volume in a workspace, returning its ID and name.
-	pub async fn create_test_volume(&self, token: &BearerToken, workspace_id: Uuid) -> TestVolume {
-		let name = random_name(8);
-
-		let response = self
-			.make_web_dashboard_call(
-				ApiRequest::<CreateVolumeRequest>::builder()
-					.path(CreateVolumePath { workspace_id })
-					.headers(CreateVolumeRequestHeaders {
-						authorization: token.clone(),
-						user_agent: TEST_USER_AGENT,
-					})
-					.body(CreateVolumeRequest {
-						name: name.clone(),
-						size: 1,
-					})
-					.build(),
-			)
-			.await
-			.json::<ApiSuccessResponseBody<CreateVolumeResponse>>()
-			.response;
-
-		TestVolume {
-			id: response.id.id,
-			name,
 		}
 	}
 
