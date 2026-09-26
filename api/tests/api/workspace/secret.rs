@@ -329,6 +329,86 @@ async fn list_secrets_works_with_runner_token() {
 }
 
 #[tokio::test]
+async fn list_secrets_page_out_of_bounds() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let mut responses = Vec::new();
+	for page in [5, usize::MAX] {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListSecretsForWorkspaceRequest>::builder()
+					.path(ListSecretsForWorkspacePath {
+						workspace_id: workspace.id,
+					})
+					.headers(ListSecretsForWorkspaceRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: Default::default(),
+						count: 100,
+						page,
+						additional_query: (),
+					})
+					.build(),
+			)
+			.await;
+		responses.push(response.status_code());
+	}
+
+	// Past the last page is PageOutOfBounds so the dashboard can recover; a page
+	// so large its offset would overflow is refused before the query runs.
+	assert_eq!(
+		responses,
+		vec![StatusCode::BAD_REQUEST, StatusCode::BAD_REQUEST],
+		"out-of-range pages must be rejected, not answered with an empty list"
+	);
+}
+
+/// OpenBao keeps every version of a value unless told otherwise, so a rotated
+/// secret would stay readable in its history. Only the latest may survive.
+#[tokio::test]
+async fn rotating_a_secret_keeps_only_the_latest_version() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+
+	for _ in 0..2 {
+		setup
+			.make_web_dashboard_call(
+				ApiRequest::<UpdateSecretRequest>::builder()
+					.path(UpdateSecretPath {
+						workspace_id: workspace.id,
+						secret_id: secret.id,
+					})
+					.headers(UpdateSecretRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(UpdateSecretRequest {
+						name: secret.name.clone(),
+						value: Some(random_name(16)),
+					})
+					.build(),
+			)
+			.await
+			.assert_status(StatusCode::ACCEPTED);
+	}
+
+	assert_eq!(
+		setup.read_openbao_versions(workspace.id, secret.id).await,
+		vec!["3".to_string()],
+		"only the latest version may be kept after rotating"
+	);
+}
+
+#[tokio::test]
 async fn update_secret_name_only_keeps_value() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;

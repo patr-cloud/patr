@@ -341,6 +341,35 @@ impl TestSetup {
 			.expect("failed to reach OpenBao");
 	}
 
+	/// The versions of a secret OpenBao still holds, straight from its KV v2
+	/// metadata, keyed by version number. Empty if the secret isn't there.
+	pub async fn read_openbao_versions(&self, workspace_id: Uuid, secret_id: Uuid) -> Vec<String> {
+		let response = reqwest::Client::new()
+			.get(format!(
+				"{}/v1/secret/metadata/{}/{}",
+				self.state.config.open_bao.endpoint.trim_end_matches('/'),
+				workspace_id,
+				secret_id
+			))
+			.header("X-Vault-Token", &self.state.config.open_bao.token)
+			.send()
+			.await
+			.expect("failed to reach OpenBao");
+
+		if !response.status().is_success() {
+			return Vec::new();
+		}
+
+		response
+			.json::<serde_json::Value>()
+			.await
+			.expect("invalid JSON from OpenBao")
+			.pointer("/data/versions")
+			.and_then(|versions| versions.as_object())
+			.map(|versions| versions.keys().cloned().collect())
+			.unwrap_or_default()
+	}
+
 	/// Make a raw HTTP call to the registry TestServer (no typed endpoint).
 	///
 	/// Mirrors [`make_loki_call`] for the registry server. Used for raw-OCI

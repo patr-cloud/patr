@@ -93,6 +93,10 @@ pub async fn list_secrets_for_workspace(
 	})
 	.collect::<Vec<_>>();
 
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
+
 	AppResponse::builder()
 		.body(ListSecretsForWorkspaceResponse { secrets })
 		.headers(ListSecretsForWorkspaceResponseHeaders {

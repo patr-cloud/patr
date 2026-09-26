@@ -89,6 +89,23 @@ pub async fn create_secret(
 		other => other.into(),
 	})?;
 
+	// Keep only the latest version, so rotating a secret destroys the value it
+	// replaces instead of leaving it readable in OpenBao's version history. This
+	// goes first so a failure here leaves no value behind.
+	reqwest::Client::new()
+		.post(format!(
+			"{}/v1/secret/metadata/{}/{}",
+			state.config.open_bao.endpoint.trim_end_matches('/'),
+			workspace_id,
+			secret_id
+		))
+		.header("X-Vault-Token", &state.config.open_bao.token)
+		.json(&serde_json::json!({ "max_versions": 1 }))
+		.send()
+		.await
+		.and_then(|response| response.error_for_status())
+		.map_err(|err| ErrorType::server_error(err))?;
+
 	// Write the value to OpenBao last, so a failure rolls back the DB inserts.
 	// Zeroize the plaintext regardless of the outcome.
 	let write = reqwest::Client::new()
