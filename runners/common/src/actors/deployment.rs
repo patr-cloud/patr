@@ -203,35 +203,17 @@ where
 			Err(err) => return Err(err.into()),
 		};
 
+	// A stopped deployment has nothing to apply a config to — the status poll
+	// keeps it down, and starting it applies the latest config then.
+	if desired_deployment.status == DeploymentStatus::Stopped {
+		trace!("ConfigUpdated for a stopped deployment, skipping");
+		return Ok(());
+	}
+
 	// Snapshot the versions before applying, and record this snapshot (not a
 	// re-read) once it succeeds. A rotation that lands mid-apply then still looks
 	// new to the `ConfigUpdated` it queued, so it's applied rather than skipped.
-	let desired_secrets = query(
-		r#"
-		SELECT
-			secret.id,
-			secret.last_updated
-		FROM
-			deployment_environment_variable
-		INNER JOIN
-			secret
-		ON
-			secret.id = deployment_environment_variable.secret_id
-		WHERE
-			deployment_environment_variable.deployment_id = $1;
-		"#,
-	)
-	.bind(deployment_id)
-	.fetch_all(&state.database)
-	.await?
-	.into_iter()
-	.map(|row| {
-		Ok((
-			row.try_get::<Uuid, _>("id")?,
-			row.try_get::<OffsetDateTime, _>("last_updated")?,
-		))
-	})
-	.collect::<Result<BTreeMap<_, _>, sqlx::Error>>()?;
+	let desired_secrets = get_local_secret_versions(&state.database, deployment_id).await?;
 
 	// Compare with last applied config, ignoring the status field since
 	// status changes don't represent config changes that need an upsert.
@@ -413,6 +395,7 @@ where
 
 			let (deployment, running_details) =
 				get_local_deployment_info(&state.database, deployment_id).await?;
+			let secrets = get_local_secret_versions(&state.database, deployment_id).await?;
 
 			if let Err(err) = state
 				.executor
@@ -433,6 +416,7 @@ where
 				return Err(err.into());
 			}
 			state.last_applied = Some((deployment, running_details));
+			state.last_applied_secrets = secrets;
 		}
 	}
 
@@ -488,6 +472,41 @@ async fn get_local_deployment_status(
 
 	row.try_get::<DeploymentStatus, _>("status")
 		.map_err(Into::into)
+}
+
+/// Get when each secret the deployment references last changed, from the local
+/// database.
+async fn get_local_secret_versions(
+	database: &sqlx::Pool<DatabaseType>,
+	deployment_id: Uuid,
+) -> Result<BTreeMap<Uuid, OffsetDateTime>, RunnerError> {
+	query(
+		r#"
+		SELECT
+			secret.id,
+			secret.last_updated
+		FROM
+			deployment_environment_variable
+		INNER JOIN
+			secret
+		ON
+			secret.id = deployment_environment_variable.secret_id
+		WHERE
+			deployment_environment_variable.deployment_id = $1;
+		"#,
+	)
+	.bind(deployment_id)
+	.fetch_all(database)
+	.await?
+	.into_iter()
+	.map(|row| {
+		Ok((
+			row.try_get::<Uuid, _>("id")?,
+			row.try_get::<OffsetDateTime, _>("last_updated")?,
+		))
+	})
+	.collect::<Result<BTreeMap<_, _>, sqlx::Error>>()
+	.map_err(Into::into)
 }
 
 /// Get the deployment and its running details from the local database.

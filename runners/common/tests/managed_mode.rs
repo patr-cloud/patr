@@ -436,3 +436,34 @@ async fn full_resync_reapplies_deployment_after_missed_rotation() {
 		"full resync should record the secret's upstream version"
 	);
 }
+
+#[tokio::test]
+async fn stopped_deployment_is_not_started_by_rotation() {
+	let (server_state, mock_state, _db, _ws_id, runner_id, _tmp) = setup_managed().await;
+	let secret_id = Uuid::new_v4();
+	let (dep_id, mut deployment, details) = test_deployment_with_secret(runner_id, secret_id);
+	deployment.status = DeploymentStatus::Stopped;
+
+	server_state.send_to_runner(
+		runner_id,
+		&StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
+			deployment: WithId::new(dep_id, deployment),
+			running_details: details,
+		},
+	);
+	server_state.send_to_runner(
+		runner_id,
+		&StreamRunnerDataForWorkspaceServerMsg::SecretUpdated {
+			id: secret_id,
+			last_updated: time::OffsetDateTime::now_utc(),
+		},
+	);
+
+	// Long enough for the rotation to be handled and a status poll to run.
+	tokio::time::sleep(Duration::from_secs(7)).await;
+
+	assert!(
+		!mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		"a stopped deployment must not be started, not even briefly"
+	);
+}
