@@ -233,7 +233,7 @@ export function logsTab(page: Page) {
 
 // Environment variables moved off the info tab onto their own (environment.tsx).
 export function environmentTab(page: Page) {
-	return page.getByRole('button', { name: 'Environment Deets', exact: true });
+	return page.getByRole('button', { name: 'Configuration', exact: true });
 }
 
 // The Start (FiPlay) / Stop (FiPause) buttons are icon-only; locate them by

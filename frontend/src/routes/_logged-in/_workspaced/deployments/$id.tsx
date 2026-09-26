@@ -269,7 +269,7 @@ const DeploymentInfo = () => {
 													}),
 											},
 											{
-												label: "Environment Deets",
+												label: "Configuration",
 												value: "environment",
 												onClick: (value) =>
 													navigate({
