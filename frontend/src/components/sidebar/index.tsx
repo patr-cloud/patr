@@ -1,5 +1,15 @@
 import { Link, useLocation } from "@tanstack/solid-router";
-import { FiHome, FiBox, FiCpu, FiGlobe, FiSettings, FiChevronDown, FiChevronRight, FiPackage } from "solid-icons/fi";
+import {
+	FiHome,
+	FiBox,
+	FiCpu,
+	FiGlobe,
+	FiLock,
+	FiSettings,
+	FiChevronDown,
+	FiChevronRight,
+	FiPackage,
+} from "solid-icons/fi";
 import { Component, createSignal, For, lazy, Show } from "solid-js";
 import { useSidebar } from "./context";
 import { IS_CLOUD } from "~/utils/env";
@@ -107,6 +117,11 @@ const Sidebar: Component = () => {
 			label: "Domains",
 			icon: FiGlobe,
 			href: "/domains",
+		},
+		{
+			label: "Secrets",
+			icon: FiLock,
+			href: "/secrets",
 		},
 		{
 			label: "Workspace Settings",

@@ -50,6 +50,9 @@ export PATR__SOCIAL_LOGIN__GITHUB__CONNECT_CALLBACK_URL := "http://localhost:300
 # flow expects (the realm must be reachable from the docker client).
 export PATR__REGISTRY__SERVICE                  := "registry.patr.cloud"
 export PATR__REGISTRY__REALM                    := "http://localhost:3000/auth/docker-login"
+# Secret values live in OpenBao (dev mode: in-memory, KV v2 mounted at `secret/`).
+export PATR__OPEN_BAO__ENDPOINT                 := "http://127.0.0.1:18200"
+export PATR__OPEN_BAO__TOKEN                    := "e2e-root-token"
 
 export VINXI_PORT := "13030"
 export FRONTEND_URL := "http://localhost:13030"

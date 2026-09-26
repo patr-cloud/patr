@@ -5,7 +5,7 @@ use common::{
 	db,
 	prelude::*,
 };
-use models::api::workspace::{deployment::*, runner::*};
+use models::api::workspace::{deployment::*, runner::*, secret::Secret};
 use ractor::Actor;
 
 use crate::{
@@ -298,5 +298,172 @@ async fn full_resync_adds_missing_deployment() {
 	assert!(
 		row.is_some(),
 		"deployment should be in SQLite after full resync"
+	);
+}
+
+/// A deployment whose only env var reads `secret_id`.
+fn test_deployment_with_secret(
+	runner_id: Uuid,
+	secret_id: Uuid,
+) -> (Uuid, Deployment, DeploymentRunningDetails) {
+	let (id, deployment, mut details) = test_deployment(runner_id);
+	details.environment_variables.insert(
+		"API_KEY".to_string(),
+		EnvironmentVariableValue::Secret {
+			from_secret: secret_id,
+		},
+	);
+	(id, deployment, details)
+}
+
+#[tokio::test]
+async fn secret_updated_via_ws_reapplies_deployment() {
+	let (server_state, mock_state, _db, _ws_id, runner_id, _tmp) = setup_managed().await;
+	let secret_id = Uuid::new_v4();
+	let (dep_id, deployment, details) = test_deployment_with_secret(runner_id, secret_id);
+	let (other_id, other, other_details) = test_deployment(runner_id);
+
+	for (id, deployment, details) in [
+		(dep_id, deployment, details),
+		(other_id, other, other_details),
+	] {
+		server_state.send_to_runner(
+			runner_id,
+			&StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
+				deployment: WithId::new(id, deployment),
+				running_details: details,
+			},
+		);
+	}
+
+	let mock = mock_state.clone();
+	periodic_check(
+		move || {
+			mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)) &&
+				mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == other_id))
+		},
+		Duration::from_secs(10),
+	)
+	.await;
+
+	// Report both as running so the status poll doesn't re-apply them.
+	mock_state.statuses.lock().unwrap().extend([
+		(dep_id, DeploymentStatus::Running),
+		(other_id, DeploymentStatus::Running),
+	]);
+	mock_state.calls.lock().unwrap().clear();
+	server_state.send_to_runner(
+		runner_id,
+		&StreamRunnerDataForWorkspaceServerMsg::SecretUpdated {
+			id: secret_id,
+			last_updated: time::OffsetDateTime::now_utc(),
+		},
+	);
+
+	let mock = mock_state.clone();
+	periodic_check(
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		Duration::from_secs(10),
+	)
+	.await;
+
+	// Only the deployment that reads the secret is re-applied.
+	assert!(
+		!mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == other_id)),
+		"a deployment that doesn't use the secret must not be re-applied"
+	);
+}
+
+#[tokio::test]
+async fn full_resync_reapplies_deployment_after_missed_rotation() {
+	let (server_state, mock_state, database, _ws_id, runner_id, _tmp) = setup_managed().await;
+	let secret_id = Uuid::new_v4();
+	let (dep_id, deployment, details) = test_deployment_with_secret(runner_id, secret_id);
+
+	server_state.send_to_runner(
+		runner_id,
+		&StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
+			deployment: WithId::new(dep_id, deployment.clone()),
+			running_details: details.clone(),
+		},
+	);
+
+	let mock = mock_state.clone();
+	periodic_check(
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		Duration::from_secs(10),
+	)
+	.await;
+
+	// Report it as running so the status poll doesn't re-apply it.
+	mock_state
+		.statuses
+		.lock()
+		.unwrap()
+		.insert(dep_id, DeploymentStatus::Running);
+
+	// The secret rotates upstream without a `SecretUpdated` reaching the
+	// runner. The next full resync (30s in debug mode) should notice the new
+	// version and re-apply the deployment.
+	mock_state.calls.lock().unwrap().clear();
+	let last_updated = time::OffsetDateTime::now_utc();
+	server_state.add_deployment(WithId::new(dep_id, deployment), details);
+	server_state.add_secret(WithId::new(
+		secret_id,
+		Secret {
+			name: "API_KEY".to_string(),
+			created: last_updated,
+			last_updated,
+		},
+	));
+
+	let mock = mock_state.clone();
+	periodic_check(
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		Duration::from_secs(45),
+	)
+	.await;
+
+	let row = sqlx::query("SELECT last_updated FROM secret WHERE id = $1")
+		.bind(secret_id)
+		.fetch_one(&database)
+		.await
+		.unwrap();
+	assert_eq!(
+		row.try_get::<time::OffsetDateTime, _>("last_updated")
+			.unwrap(),
+		last_updated,
+		"full resync should record the secret's upstream version"
+	);
+}
+
+#[tokio::test]
+async fn stopped_deployment_is_not_started_by_rotation() {
+	let (server_state, mock_state, _db, _ws_id, runner_id, _tmp) = setup_managed().await;
+	let secret_id = Uuid::new_v4();
+	let (dep_id, mut deployment, details) = test_deployment_with_secret(runner_id, secret_id);
+	deployment.status = DeploymentStatus::Stopped;
+
+	server_state.send_to_runner(
+		runner_id,
+		&StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
+			deployment: WithId::new(dep_id, deployment),
+			running_details: details,
+		},
+	);
+	server_state.send_to_runner(
+		runner_id,
+		&StreamRunnerDataForWorkspaceServerMsg::SecretUpdated {
+			id: secret_id,
+			last_updated: time::OffsetDateTime::now_utc(),
+		},
+	);
+
+	// Long enough for the rotation to be handled and a status poll to run.
+	tokio::time::sleep(Duration::from_secs(7)).await;
+
+	assert!(
+		!mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		"a stopped deployment must not be started, not even briefly"
 	);
 }

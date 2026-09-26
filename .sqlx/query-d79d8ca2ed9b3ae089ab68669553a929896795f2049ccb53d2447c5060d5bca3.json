@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT secret.id AS \"id: Uuid\", secret.name AS \"name: String\", resource.created AS \"created: OffsetDateTime\", secret.last_updated AS \"last_updated: OffsetDateTime\", COUNT(*) OVER() AS \"total_count!\" FROM secret INNER JOIN resource ON secret.id = resource.id WHERE secret.workspace_id = $1 AND secret.deleted IS NULL AND ($2::TEXT IS NULL OR secret.name ILIKE '%' || $2 || '%') AND ($3::TIMESTAMPTZ IS NULL OR resource.created >= $3) AND ($4::TIMESTAMPTZ IS NULL OR resource.created <= $4) AND ($5::TIMESTAMPTZ IS NULL OR secret.last_updated >= $5) AND ($6::TIMESTAMPTZ IS NULL OR secret.last_updated <= $6) ORDER BY resource.created DESC LIMIT $7 OFFSET $8;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name: String",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created: OffsetDateTime",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_updated: OffsetDateTime",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "total_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "d79d8ca2ed9b3ae089ab68669553a929896795f2049ccb53d2447c5060d5bca3"
+}

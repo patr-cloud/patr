@@ -1,11 +1,11 @@
-import { FiTrash2, FiUpload } from "solid-icons/fi";
-import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
+import { FiTrash2 } from "solid-icons/fi";
+import { createEffect, createMemo, createSignal, createUniqueId, Index, JSX, Show } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
-import { Button, ButtonVariant, Input, InputType, Label } from "~/components";
+import { Button, ButtonVariant, Input, InputDropdown, InputType } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
-import EnvUploadModal from "./env-upload-modal";
+import ValueTypeToggle, { type ValueType } from "./value-type-toggle";
 
 interface EnvInputProps {
 	/** Current environment variables (source of truth). */
@@ -18,24 +18,45 @@ interface EnvInputProps {
 	disabled?: MaybeAccessor<boolean>;
 	/** Additional class for the root container. */
 	class?: MaybeAccessor<string>;
+	/**
+	 * Rendered at the end of each row, under the inputs and any validation
+	 * error. Lets a parent annotate a row without this component knowing what
+	 * the annotation means.
+	 */
+	rowHint?: (row: { key: string; value: EnvironmentVariableValue }) => JSX.Element;
+	/** Secrets a row can point at. Passed in so this stays query-free. */
+	secrets?: MaybeAccessor<Array<{ id: string; name: string }>>;
 }
 
 // Row value preserves the full EnvironmentVariableValue union so that
 // `fromSecret` references coming from the server round-trip untouched unless
 // the user actively replaces them.
-type Row = { id: string; key: string; value: EnvironmentVariableValue };
+//
+// `mode` is which editor is showing, and is deliberately *not* the same thing
+// as the shape of `value`: flipping the toggle swaps the editor without
+// touching the value, so nothing is converted until the user picks a secret or
+// types a literal.
+type Row = { id: string; key: string; value: EnvironmentVariableValue; mode: ValueType };
 
 const isSecretValue = (value: EnvironmentVariableValue): value is { fromSecret: string } =>
 	typeof value === "object" && value !== null && "fromSecret" in value;
 
 const valueIsEmpty = (value: EnvironmentVariableValue): boolean => typeof value === "string" && value === "";
 
+// The runner turns each variable into `KEY=value`, so a key can't hold `=` or
+// whitespace, and a value can't be blank. The API refuses both too.
+const VALID_KEY = /^[^\s=\0]+$/;
+
+const secretId = (value: EnvironmentVariableValue): string => (isSecretValue(value) ? value.fromSecret : "");
+
+const modeOf = (value: EnvironmentVariableValue): ValueType => (isSecretValue(value) ? "secret" : "string");
+
 // Stable string for comparing incoming vs last-seeded values (detects secret
 // vs secret, secret vs string, etc.).
 const valueKey = (value: EnvironmentVariableValue): string =>
 	typeof value === "string" ? `s:${value}` : `r:${value.fromSecret}`;
 
-const makeDraftRow = (): Row => ({ id: createUniqueId(), key: "", value: "" });
+const makeDraftRow = (): Row => ({ id: createUniqueId(), key: "", value: "", mode: "string" });
 
 const EnvInput = (props: EnvInputProps) => {
 	const [rows, setRows] = createSignal<Row[]>([makeDraftRow()]);
@@ -59,6 +80,7 @@ const EnvInput = (props: EnvInputProps) => {
 			id: createUniqueId(),
 			key,
 			value,
+			mode: modeOf(value),
 		}));
 		seeded.push(makeDraftRow());
 		setRows(seeded);
@@ -80,7 +102,14 @@ const EnvInput = (props: EnvInputProps) => {
 		const isEmpty = valueIsEmpty(row.value);
 		if (keyEmpty && isEmpty) return errs; // draft row
 		if (keyEmpty) errs.key = "Key required";
-		if (isEmpty) errs.value = "Value required";
+		else if (!VALID_KEY.test(row.key)) errs.key = "Key can't contain spaces or =";
+		// The editor showing has to match what would be saved: a row switched to
+		// Secret still holds its plain value until a secret is picked, and saving
+		// it would store that value as plaintext.
+		if (row.mode !== modeOf(row.value)) errs.value = row.mode === "secret" ? "Pick a secret" : "Value required";
+		else if (isEmpty) errs.value = "Value required";
+		else if (typeof row.value === "string" && (row.value.trim() === "" || row.value.includes("\0")))
+			errs.value = "Value can't be blank";
 		if (!keyEmpty && (keyCounts().get(row.key) ?? 0) > 1) errs.key = "Duplicate key";
 		return errs;
 	};
@@ -92,6 +121,7 @@ const EnvInput = (props: EnvInputProps) => {
 		const counts = keyCounts();
 		for (const row of rows()) {
 			if (row.key === "" || valueIsEmpty(row.value)) continue;
+			if (row.mode !== modeOf(row.value)) continue;
 			if ((counts.get(row.key) ?? 0) > 1) continue;
 			out[row.key] = row.value;
 		}
@@ -104,7 +134,7 @@ const EnvInput = (props: EnvInputProps) => {
 		props.onValidityChange?.(!hasAnyError());
 	});
 
-	const updateRow = (id: string, patch: Partial<Pick<Row, "key" | "value">>) => {
+	const updateRow = (id: string, patch: Partial<Pick<Row, "key" | "value" | "mode">>) => {
 		setRows((prev) => {
 			const next = prev.map((r) => (r.id === id ? { ...r, ...patch } : r));
 			// Ensure exactly one trailing empty draft row at the end.
@@ -127,45 +157,6 @@ const EnvInput = (props: EnvInputProps) => {
 		});
 	};
 
-	const [uploadOpen, setUploadOpen] = createSignal(false);
-
-	// Committed keys the upload modal validates against: a key already bound to a
-	// secret must not be silently replaced with a plain value from a .env file.
-	const existingKeys = createMemo(() => {
-		const m = new Map<string, boolean>();
-		for (const row of rows()) {
-			if (row.key === "") continue;
-			m.set(row.key, isSecretValue(row.value));
-		}
-		return m;
-	});
-
-	const applyUploadedEnvs = (entries: Array<{ key: string; value: string }>) => {
-		const pending = new Map(entries.map((e) => [e.key, e.value] as const));
-		setRows((prev) => {
-			const next: Row[] = [];
-			for (const row of prev) {
-				if (row.key !== "" && pending.has(row.key)) {
-					next.push({ ...row, value: pending.get(row.key)! });
-					pending.delete(row.key);
-				} else {
-					next.push(row);
-				}
-			}
-			// Drop any trailing draft row before appending the new entries.
-			while (next.length > 0) {
-				const last = next[next.length - 1];
-				if (last.key === "" && valueIsEmpty(last.value)) next.pop();
-				else break;
-			}
-			for (const [key, value] of pending) {
-				next.push({ id: createUniqueId(), key, value });
-			}
-			next.push(makeDraftRow());
-			return next;
-		});
-	};
-
 	const handleBlur = (id: string) => {
 		setRows((prev) => {
 			const row = prev.find((r) => r.id === id);
@@ -179,16 +170,30 @@ const EnvInput = (props: EnvInputProps) => {
 	};
 
 	return (
-		<div class={`flex gap-8 items-start w-full ${get(props.class) ?? ""}`}>
-			<Label parentClass="flex-2 pt-2.5" label="Environment Variables" />
-
+		<div class={`flex items-start w-full ${get(props.class) ?? ""}`}>
 			<div class="flex flex-col flex-10 gap-1 w-full">
+				{/* Column headings, mirroring the row's columns below. */}
+				<div class="flex items-center gap-4 w-full text-sm text-grey">
+					<span class="flex-5 ml-0.75">Key</span>
+					<span class="flex-7 ml-0.75">Value</span>
+					<div class="invisible flex" aria-hidden="true">
+						<ValueTypeToggle value={() => "string"} onChange={() => {}} />
+					</div>
+					<Button
+						type="button"
+						variant={ButtonVariant.Outlined}
+						class="flex-1 flex items-center gap-2 invisible"
+						color={Color.Error}
+					>
+						<FiTrash2 size={16} />
+					</Button>
+				</div>
+
 				<Index each={rows()}>
 					{(row) => {
 						const errs = () => rowError(row());
 						const keyErr = () => errs().key;
 						const valueErr = () => errs().value;
-						const isSecret = () => isSecretValue(row().value);
 						const displayValue = () => (typeof row().value === "string" ? (row().value as string) : "");
 						const isDraftTrailing = () =>
 							row().key === "" && valueIsEmpty(row().value) && rows()[rows().length - 1]?.id === row().id;
@@ -208,17 +213,40 @@ const EnvInput = (props: EnvInputProps) => {
 											if (e.key === "Enter") e.preventDefault();
 										}}
 									/>
-									<Input
-										class={`flex-7 ${valueErr() ? "border-error!" : ""}`}
+									<Show
+										when={row().mode === "secret"}
+										fallback={
+											<Input
+												class={`flex-7 ${valueErr() ? "border-error!" : ""}`}
+												disabled={get(props.disabled)}
+												placeholder="Enter Env Value"
+												type={InputType.Text}
+												value={displayValue()}
+												onInput={(e) => updateRow(row().id, { value: e.currentTarget.value })}
+												onBlur={() => handleBlur(row().id)}
+												onKeyDown={(e) => {
+													if (e.key === "Enter") e.preventDefault();
+												}}
+											/>
+										}
+									>
+										<InputDropdown
+											class={`flex-7 ${valueErr() ? "border-error!" : ""}`}
+											disabled={get(props.disabled)}
+											placeholder="Select a secret"
+											value={() => secretId(row().value) || undefined}
+											options={(get(props.secrets) ?? []).map((secret) => ({
+												value: secret.id,
+												label: secret.name,
+											}))}
+											onSelect={(value) => updateRow(row().id, { value: { fromSecret: value } })}
+										/>
+									</Show>
+
+									<ValueTypeToggle
+										value={() => row().mode}
 										disabled={get(props.disabled)}
-										placeholder={isSecret() ? "(secret — type to replace)" : "Enter Env Value"}
-										type={InputType.Text}
-										value={displayValue()}
-										onInput={(e) => updateRow(row().id, { value: e.currentTarget.value })}
-										onBlur={() => handleBlur(row().id)}
-										onKeyDown={(e) => {
-											if (e.key === "Enter") e.preventDefault();
-										}}
+										onChange={(mode) => updateRow(row().id, { mode })}
 									/>
 
 									<Show
@@ -257,31 +285,25 @@ const EnvInput = (props: EnvInputProps) => {
 										<Show when={valueErr()}>
 											<span class="flex-7">{valueErr()}</span>
 										</Show>
-										<span class="flex-1" />
+										<div class="invisible flex" aria-hidden="true">
+											<ValueTypeToggle value={() => "string"} onChange={() => {}} />
+										</div>
+										<Button
+											type="button"
+											variant={ButtonVariant.Outlined}
+											class="flex-1 flex items-center gap-2 invisible"
+											color={Color.Error}
+										>
+											<FiTrash2 size={16} />
+										</Button>
 									</div>
 								</Show>
+
+								{props.rowHint?.({ key: row().key, value: row().value })}
 							</div>
 						);
 					}}
 				</Index>
-
-				<Show when={!get(props.disabled)}>
-					<Button
-						type="button"
-						variant={ButtonVariant.Plain}
-						onClick={() => setUploadOpen(true)}
-						class="self-start flex items-center gap-2 text-sm cursor-pointer"
-					>
-						<FiUpload size={14} />
-						Upload your .env file
-					</Button>
-					<EnvUploadModal
-						isOpen={uploadOpen}
-						setIsOpen={setUploadOpen}
-						existingKeys={existingKeys}
-						onSubmit={applyUploadedEnvs}
-					/>
-				</Show>
 			</div>
 		</div>
 	);

@@ -7,3 +7,12 @@ ignoredBuiltDependencies:
 
 onlyBuiltDependencies:
   - esbuild
+
+# The secretlint tree sees every secret users type into the env editor, so
+# nothing in it may move without an audit — see CLAUDE.md. Core pins its own
+# @secretlint/* deps exactly; these hold the ones it only declares by range.
+overrides:
+  "@secretlint/core>debug": 4.4.3
+  "@secretlint/core>structured-source": 4.0.0
+  "structured-source>boundary": 2.0.0
+  "debug@4.4.3>ms": 2.1.3

@@ -1,11 +1,6 @@
 import { FiChevronDown } from "solid-icons/fi";
 import { createEffect, createSignal, Show } from "solid-js";
-import {
-	ExposedPortType,
-	GetDeploymentInfoResponse,
-	UpdateDeploymentRequest,
-	UpdateDeploymentResponse,
-} from "~/bindings";
+import { ExposedPortType, GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
 import {
 	Button,
 	CopyableField,
@@ -27,9 +22,9 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { REGISTRY_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
-import EnvInput from "./env-input";
 import PortInput from "./port";
 import ConfigMount from "./config-mount";
+import { toUpdateRequest } from "./utils";
 
 interface DeploymentInfoProps {
 	deploymentId: string;
@@ -57,7 +52,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 
 	const [_, setHasUpdated] = createSignal(false);
 	const [isUpdating, setIsUpdating] = createSignal(false);
-	const [envValid, setEnvValid] = createSignal(true);
 	const [portsValid, setPortsValid] = createSignal(true);
 	const [configMountsValid, setConfigMountsValid] = createSignal(true);
 
@@ -91,7 +85,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		// The Update button is disabled when env/ports are invalid, but form
 		// submission can still be triggered via Enter on another input or
 		// programmatically. Block invalid payloads defensively.
-		if (!envValid() || !portsValid() || !configMountsValid()) {
+		if (!portsValid() || !configMountsValid()) {
 			toast("Please fix the highlighted errors before saving", "error");
 			return;
 		}
@@ -102,25 +96,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			return;
 		}
 
-		// The full deployment object is sent on every update. `machineType` is
-		// immutable but required in the request shape, so we carry it over from
-		// the fetched info. The registry can't change after create, so it isn't
-		// part of the update request.
-		const body: UpdateDeploymentRequest = {
-			name: info.name,
-			imageTag: info.imageTag,
-			runner: info.runner,
-			machineType: info.machineType,
-			deployOnPush: info.deployOnPush,
-			minHorizontalScale: info.minHorizontalScale,
-			maxHorizontalScale: info.maxHorizontalScale,
-			ports: info.ports,
-			environmentVariables: info.environmentVariables,
-			startupProbe: info.startupProbe,
-			livenessProbe: info.livenessProbe,
-			configMounts: info.configMounts,
-			volumes: info.volumes,
-		};
+		const body = toUpdateRequest(info);
 
 		setIsUpdating(true);
 		try {
@@ -302,15 +278,6 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				{/* Divider */}
 				<div class="border-t border-border-color w-full mt-2" />
 
-				<EnvInput
-					disabled={() => !deploymentPermissions().edit}
-					value={() => deploymentQuery.data?.environmentVariables ?? {}}
-					onChange={(next) =>
-						updateLocal((prev) => (prev ? { ...prev, environmentVariables: next } : undefined))
-					}
-					onValidityChange={setEnvValid}
-				/>
-
 				<PortInput
 					disabled={() => !deploymentPermissions().edit}
 					value={() => (deploymentQuery.data?.ports ?? {}) as Record<string, ExposedPortType>}
@@ -337,11 +304,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				<div class="w-full flex justify-end items-center">
 					<Button
 						disabled={
-							!deploymentPermissions().edit ||
-							isUpdating() ||
-							!envValid() ||
-							!portsValid() ||
-							!configMountsValid()
+							!deploymentPermissions().edit || isUpdating() || !portsValid() || !configMountsValid()
 						}
 						loading={isUpdating()}
 						loadingContent={() => <span>Updating...</span>}

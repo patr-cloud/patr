@@ -14,7 +14,7 @@ use models::cloudflare::kv::*;
 use rustis::commands::PubSubCommands;
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 /// The handler to create a deployment in the workspace. This will create a new
 /// deployment in the workspace, and return the ID of the deployment.
@@ -54,7 +54,7 @@ pub async fn create_deployment(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		user_data,
 		state,
 	}: AuthenticatedAppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
@@ -233,11 +233,26 @@ pub async fn create_deployment(
 
 	trace!("Set constraints to immediate");
 
+	// Referencing a secret hands its value to the deployment, so it takes
+	// `Secret::View` on every secret referenced. The FK on the insert below
+	// keeps the secret in this workspace.
+	let view_secret_permission =
+		permissions::get_permission_id(database, Permission::Secret(SecretPermission::View)).await;
+	if environment_variables
+		.values()
+		.filter_map(EnvironmentVariableValue::secret_id)
+		.any(|secret_id| {
+			!user_data.has_permission_on_resource(workspace_id, secret_id, view_secret_permission)
+		}) {
+		return Err(ErrorType::Unauthorized);
+	}
+
 	query!(
 		r#"
-		INSERT INTO 
+		INSERT INTO
 			deployment_environment_variable(
 				deployment_id,
+				workspace_id,
 				name,
 				value,
 				secret_id
@@ -247,14 +262,19 @@ pub async fn create_deployment(
 		FROM
 			UNNEST(
 				$1::UUID[],
-				$2::TEXT[],
+				$2::UUID[],
 				$3::TEXT[],
-				$4::UUID[]
+				$4::TEXT[],
+				$5::UUID[]
 			);
 		"#,
 		&environment_variables
 			.iter()
 			.map(|_| deployment_id.into())
+			.collect::<Vec<_>>(),
+		&environment_variables
+			.iter()
+			.map(|_| workspace_id.into())
 			.collect::<Vec<_>>(),
 		&environment_variables
 			.iter()
@@ -270,7 +290,16 @@ pub async fn create_deployment(
 			.collect::<Vec<Option<sqlx::types::Uuid>>>() as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err)
+			if err.constraint() ==
+				Some("deployment_environment_variable_fk_secret_id_workspace_id") =>
+		{
+			ErrorType::ResourceDoesNotExist
+		}
+		err => ErrorType::server_error(err),
+	})?;
 
 	trace!("Inserted environment variables for deployment");
 

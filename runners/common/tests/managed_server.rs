@@ -1,6 +1,6 @@
 //! In-test server that impersonates the upstream Patr API for managed mode
 //! tests. Handles both WebSocket streams (runner data) and REST endpoints
-//! (ListDeployment, GetDeploymentInfo) on port 3000.
+//! (ListDeployment, GetDeploymentInfo, ListSecretsForWorkspace) on port 3000.
 //!
 //! Each runner connects with a unique `runner_id` in the WS path, so
 //! multiple tests can share the same server without interference.
@@ -28,7 +28,7 @@ use futures::{SinkExt, StreamExt};
 use http::StatusCode;
 use models::{
 	ApiErrorResponseBody,
-	api::workspace::{deployment::*, managed_url::*, runner::*},
+	api::workspace::{deployment::*, managed_url::*, runner::*, secret::*},
 	utils::False,
 };
 use tokio::sync::{OnceCell, broadcast};
@@ -50,6 +50,9 @@ pub struct ManagedServerState {
 	/// Deployments to return from ListDeployment/GetDeploymentInfo REST calls,
 	/// keyed by deployment_id.
 	pub deployments: Mutex<BTreeMap<Uuid, (WithId<Deployment>, DeploymentRunningDetails)>>,
+	/// Secrets to return from the ListSecretsForWorkspace REST call, keyed by
+	/// secret_id.
+	pub secrets: Mutex<BTreeMap<Uuid, WithId<Secret>>>,
 }
 
 impl ManagedServerState {
@@ -57,6 +60,7 @@ impl ManagedServerState {
 		Arc::new(Self {
 			runners: Mutex::new(BTreeMap::new()),
 			deployments: Mutex::new(BTreeMap::new()),
+			secrets: Mutex::new(BTreeMap::new()),
 		})
 	}
 
@@ -103,6 +107,11 @@ impl ManagedServerState {
 			.unwrap()
 			.insert(deployment.id, (deployment, details));
 	}
+
+	/// Add (or replace) a secret that the REST list endpoint will return.
+	pub fn add_secret(&self, secret: WithId<Secret>) {
+		self.secrets.lock().unwrap().insert(secret.id, secret);
+	}
 }
 
 /// Get or start the managed test server on port 3000. The server is shared
@@ -134,6 +143,10 @@ pub async fn get_managed_server() -> Arc<ManagedServerState> {
 				.route(
 					"/workspace/{workspace_id}/infrastructure/managed-url",
 					get(list_managed_urls_handler),
+				)
+				.route(
+					"/workspace/{workspace_id}/secret",
+					get(list_secrets_handler),
 				)
 				.with_state(state.clone());
 
@@ -263,6 +276,30 @@ async fn list_managed_urls_handler(
 		Json(ApiSuccessResponseBody::new(ListManagedURLResponse {
 			urls: Vec::new(),
 		})),
+	)
+}
+
+async fn list_secrets_handler(
+	Path(_workspace_id): Path<Uuid>,
+	Query(query): Query<ListResourceQuery<Secret, ()>>,
+	State(state): State<Arc<ManagedServerState>>,
+) -> impl IntoResponse {
+	let secrets = state.secrets.lock().unwrap();
+	let total_count = secrets.len();
+	let page_items = secrets
+		.values()
+		.skip(query.page * query.count)
+		.take(query.count)
+		.cloned()
+		.collect();
+
+	(
+		TypedHeader(TotalCountHeader(total_count)),
+		Json(ApiSuccessResponseBody::new(
+			ListSecretsForWorkspaceResponse {
+				secrets: page_items,
+			},
+		)),
 	)
 }
 

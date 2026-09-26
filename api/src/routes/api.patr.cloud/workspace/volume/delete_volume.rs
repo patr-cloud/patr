@@ -28,7 +28,7 @@ pub async fn delete_volume(
 ) -> Result<AppResponse<DeleteVolumeRequest>, ErrorType> {
 	trace!("Deleting volume ID: `{volume_id}`");
 
-	query!(
+	let rows_deleted = query!(
 		r#"
 		DELETE FROM
 			deployment_volume
@@ -42,7 +42,12 @@ pub async fn delete_volume(
 	.map_err(|err| match err {
 		sqlx::Error::Database(dbe) if dbe.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		_ => ErrorType::InternalServerError,
-	})?;
+	})?
+	.rows_affected();
+
+	if rows_deleted == 0 {
+		return Err(ErrorType::ResourceDoesNotExist);
+	}
 
 	// Mark the resource as deleted in the database
 	query!(

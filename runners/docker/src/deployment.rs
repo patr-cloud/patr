@@ -20,7 +20,7 @@ use bollard::{
 		UpdateServiceOptionsBuilder,
 	},
 };
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, TryStreamExt};
 use models::api::workspace::{container_registry::*, deployment::*};
 
 use crate::prelude::*;
@@ -242,19 +242,38 @@ pub(crate) async fn upsert(
 				image: Some(image.clone()),
 				hostname: Some(format!("{}.onpatr.cloud", id)),
 				env: Some(
-					environment_variables
-						.into_iter()
-						.map(|(key, value)| {
-							format!(
-								"{}={}",
-								key,
-								match value {
-									EnvironmentVariableValue::String(value) => value,
-									EnvironmentVariableValue::Secret { from_secret: _ } => todo!(),
+					futures::stream::iter(environment_variables)
+						.then(|(key, value)| async move {
+							let value = match value {
+								EnvironmentVariableValue::String(value) => value,
+								EnvironmentVariableValue::Secret { from_secret } => {
+									let RunnerMode::Managed {
+										workspace_id,
+										runner_id,
+										api_token,
+										user_agent: _,
+									} = &settings.mode
+									else {
+										return Err(RunnerError::UpstreamServerError(
+											ErrorType::server_error(
+												"Secret environment variable encountered in self-hosted mode",
+											),
+										));
+									};
+									secrets::get_secret_value(
+										*runner_id,
+										api_token,
+										*workspace_id,
+										from_secret,
+									)
+									.await?
 								}
-							)
+							};
+
+							Ok(format!("{}={}", key, value))
 						})
-						.collect(),
+						.try_collect::<Vec<_>>()
+						.await?,
 				),
 				labels: Some(HashMap::from([
 					(String::from("managed-by"), String::from("patr")),

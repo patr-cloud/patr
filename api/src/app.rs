@@ -87,6 +87,18 @@ pub async fn serve(state: &AppState) {
 				mimir_listener.local_addr().unwrap()
 			);
 
+			let openbao_listener = TcpListener::bind(SocketAddr::from((
+				state.config.server.bind_address.ip(),
+				state.config.server.bind_address.port() + 6,
+			)))
+			.await
+			.unwrap();
+
+			info!(
+				"OpenBao server running on http://{}",
+				openbao_listener.local_addr().unwrap()
+			);
+
 			futures::future::join_all([
 				async {
 					axum::serve(
@@ -152,6 +164,18 @@ pub async fn serve(state: &AppState) {
 					axum::serve(
 						mimir_listener,
 						crate::routes::mimir_patr_cloud::setup_routes(state)
+							.await
+							.into_make_service_with_connect_info::<SocketAddr>(),
+					)
+					.with_graceful_shutdown(crate::exit_signal())
+					.await
+					.unwrap();
+				}
+				.boxed(),
+				async {
+					axum::serve(
+						openbao_listener,
+						crate::routes::openbao_patr_cloud::setup_routes(state)
 							.await
 							.into_make_service_with_connect_info::<SocketAddr>(),
 					)

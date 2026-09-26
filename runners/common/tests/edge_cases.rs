@@ -9,20 +9,22 @@ async fn create_with_deploy_on_create_false_stays_stopped() {
 
 	setup.notify_upsert(id);
 
-	// Wait for the actor to process ConfigUpdated. It should still call
-	// upsert (actor always upserts on first run since last_applied is None),
-	// but the deployment's desired status is Stopped.
+	// A stopped deployment isn't applied at all — not even on the actor's
+	// first run — so wait for a status check instead. The executor reports
+	// Stopped (default mock behavior) and DB says Stopped, so that's a no-op.
 	let mock = setup.mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
-		Duration::from_secs(5),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::GetStatus(i) if *i == id)),
+		Duration::from_secs(10),
 	)
 	.await;
 
-	// After a status check, the executor reports Stopped (default mock
-	// behavior) and DB says Stopped — should be a no-op. Verify the DB
-	// status hasn't changed.
-	tokio::time::sleep(Duration::from_secs(6)).await;
+	assert!(
+		!setup
+			.mock_state
+			.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
+		"a stopped deployment must never be upserted"
+	);
 
 	let row = sqlx::query("SELECT status FROM deployment WHERE id = $1")
 		.bind(id)
@@ -174,20 +176,9 @@ async fn stop_already_stopped_is_noop() {
 		.create_test_deployment_with_status(DeploymentStatus::Stopped)
 		.await;
 
-	// Mock default is Stopped — matches DB.
+	// Mock default is Stopped — matches DB. A stopped deployment isn't
+	// applied on the actor's first run, so the status check is the first call.
 	setup.notify_upsert(id);
-
-	// Wait for initial upsert (actor always upserts on first ConfigUpdated
-	// since last_applied is None).
-	let mock = setup.mock_state.clone();
-	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
-		Duration::from_secs(5),
-	)
-	.await;
-
-	// Wait for a status check.
-	setup.mock_state.calls.lock().unwrap().clear();
 
 	let mock = setup.mock_state.clone();
 	periodic_check(

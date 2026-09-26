@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::deployment::*,
-	rbac::{DeploymentPermission, Permission},
+	rbac::{DeploymentPermission, Permission, SecretPermission},
+	utils::Uuid,
 };
 
 use super::{all, grants, setup_permission_test};
@@ -1164,5 +1165,230 @@ async fn deployment_start_does_not_grant_stop() {
 	assert!(
 		response.status_code().is_client_error(),
 		"start permission should not grant stop"
+	);
+}
+
+// ---------- secret references take Secret::View ----------
+
+/// An external-registry create body whose only env var references `secret_id`.
+async fn create_body_with_secret(
+	setup: &TestSetup,
+	workspace_id: Uuid,
+	runner_id: Uuid,
+	secret_id: Uuid,
+) -> CreateDeploymentRequest {
+	let machine_type = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
+				.path(ListAllDeploymentMachineTypePath { workspace_id })
+				.headers(ListAllDeploymentMachineTypeRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListAllDeploymentMachineTypeResponse>>()
+		.response
+		.machine_types[0]
+		.id;
+
+	CreateDeploymentRequest {
+		name: random_name(8),
+		registry: DeploymentRegistry::ExternalRegistry {
+			registry: "docker.io".to_string(),
+			image_name: "library/nginx".to_string(),
+		},
+		image_tag: "latest".to_string(),
+		runner: runner_id,
+		machine_type,
+		running_details: DeploymentRunningDetails {
+			deploy_on_push: false,
+			min_horizontal_scale: 1,
+			max_horizontal_scale: 1,
+			ports: BTreeMap::new(),
+			environment_variables: BTreeMap::from([(
+				"API_KEY".to_string(),
+				EnvironmentVariableValue::Secret {
+					from_secret: secret_id,
+				},
+			)]),
+			startup_probe: None,
+			liveness_probe: None,
+			config_mounts: BTreeMap::new(),
+			volumes: BTreeMap::new(),
+		},
+		deploy_on_create: false,
+	}
+}
+
+#[tokio::test]
+async fn deployment_create_with_secret_denied_without_secret_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, workspace_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(Permission::Deployment(DeploymentPermission::Create), all())],
+	)
+	.await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace_id)
+		.await;
+	let secret = setup
+		.create_test_secret(&admin.access_token, workspace_id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateDeploymentRequest>::builder()
+				.path(CreateDeploymentPath { workspace_id })
+				.headers(CreateDeploymentRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(create_body_with_secret(&setup, workspace_id, runner.id, secret.id).await)
+				.build(),
+		)
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::UNAUTHORIZED,
+		"deployment::create without secret::view must not reference a secret"
+	);
+}
+
+#[tokio::test]
+async fn deployment_create_with_secret_allowed_with_secret_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, workspace_id, user_b) = setup_permission_test(
+		&setup,
+		vec![
+			(Permission::Deployment(DeploymentPermission::Create), all()),
+			(Permission::Secret(SecretPermission::View), all()),
+		],
+	)
+	.await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace_id)
+		.await;
+	let secret = setup
+		.create_test_secret(&admin.access_token, workspace_id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateDeploymentRequest>::builder()
+				.path(CreateDeploymentPath { workspace_id })
+				.headers(CreateDeploymentRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(create_body_with_secret(&setup, workspace_id, runner.id, secret.id).await)
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_success(),
+		"deployment::create with secret::view should reference a secret, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn deployment_update_keeps_existing_secret_without_secret_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, workspace_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(Permission::Deployment(DeploymentPermission::Edit), all())],
+	)
+	.await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace_id)
+		.await;
+	let secret = setup
+		.create_test_secret(&admin.access_token, workspace_id)
+		.await;
+	let other_secret = setup
+		.create_test_secret(&admin.access_token, workspace_id)
+		.await;
+
+	// The admin wires the secret in; user B only ever edits the deployment.
+	let deployment_id = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateDeploymentRequest>::builder()
+				.path(CreateDeploymentPath { workspace_id })
+				.headers(CreateDeploymentRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(create_body_with_secret(&setup, workspace_id, runner.id, secret.id).await)
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response
+		.id
+		.id;
+
+	let info = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id,
+					deployment_id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>()
+		.response;
+	let mut body = UpdateDeploymentRequest {
+		name: random_name(8),
+		image_tag: info.deployment.image_tag.clone(),
+		runner: info.deployment.runner,
+		machine_type: info.deployment.machine_type,
+		running_details: info.running_details.clone(),
+	};
+
+	let send_update = |body: UpdateDeploymentRequest| {
+		setup.make_web_dashboard_call(
+			ApiRequest::<UpdateDeploymentRequest>::builder()
+				.path(UpdateDeploymentPath {
+					workspace_id,
+					deployment_id,
+				})
+				.headers(UpdateDeploymentRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(body)
+				.build(),
+		)
+	};
+
+	// Renaming leaves the existing reference untouched, so it needs no grant.
+	let rename = send_update(body.clone()).await;
+	assert!(
+		rename.status_code().is_success(),
+		"an edit that keeps an existing secret reference should be allowed, got {}",
+		rename.status_code()
+	);
+
+	// A newly added reference still needs secret::view.
+	body.running_details.environment_variables.insert(
+		"OTHER_KEY".to_string(),
+		EnvironmentVariableValue::Secret {
+			from_secret: other_secret.id,
+		},
+	);
+	let add = send_update(body).await;
+	assert_eq!(
+		add.status_code(),
+		StatusCode::UNAUTHORIZED,
+		"adding a secret reference without secret::view must be refused"
 	);
 }

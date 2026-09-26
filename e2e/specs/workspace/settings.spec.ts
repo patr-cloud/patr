@@ -211,11 +211,11 @@ test.describe('workspace settings > rename', () => {
 		});
 	});
 
-	test('rejects a rename shorter than 4 characters', async ({ browser, api }) => {
+	test('rejects a rename shorter than 2 characters', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		await withSettings(browser, user, async (page) => {
 			await waitForWorkspaceInfo(page);
-			await setWorkspaceName(page, 'abc');
+			await setWorkspaceName(page, 'a');
 			const respPromise = page.waitForResponse(
 				(r) =>
 					r.url().includes(`/api/workspace/${user.workspaceId}`) &&

@@ -1,19 +1,14 @@
-use axum::{
-	body::Body,
-	extract::{ConnectInfo, State},
-	http::Request,
-	response::Response,
-};
+use axum::{body::Body, extract::State, http::Request, response::Response};
 use http::StatusCode;
 use prost::Message;
 
 use super::models::PushRequest;
-use crate::prelude::*;
+use crate::{prelude::*, utils::extractors::ClientIP};
 
 /// Handler for Loki protobuf push requests (`/loki/api/v1/push`).
 pub(super) async fn handle_loki_push(
 	State(state): State<AppState>,
-	ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
+	ClientIP(ip): ClientIP,
 	req: Request<Body>,
 ) -> Response {
 	// Extract auth before any async work to avoid Send issues
@@ -28,7 +23,7 @@ pub(super) async fn handle_loki_push(
 	let method = req.method().clone();
 
 	let (runner_id, workspace_id) =
-		match super::auth::authenticate_and_authorize(&state, addr, runner_id, &api_token).await {
+		match super::auth::authenticate_and_authorize(&state, ip, runner_id, &api_token).await {
 			Ok(ids) => ids,
 			Err(resp) => return resp,
 		};

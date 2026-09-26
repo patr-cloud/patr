@@ -4,13 +4,15 @@ The backend binary. See the root `CLAUDE.md` for workspace-wide build/sqlx/style
 
 ## One app, many hostnames
 
-`api/` serves six logical hosts off a single axum app, dispatched by the `Host` header (`src/routes/mod.rs`): `api.` (REST API), `app.` (dashboard — `/api/*` re-mounts the API as `WebDashboard`, everything else reverse-proxies to `FRONTEND_URL`), `registry.` (OCI registry), `loki.` / `mimir.` (authenticated push proxies), `assets.`.
+`api/` serves seven logical hosts off a single axum app, dispatched by the `Host` header (`src/routes/mod.rs`): `api.` (REST API), `app.` (dashboard — `/api/*` re-mounts the API as `WebDashboard`, everything else reverse-proxies to `FRONTEND_URL`), `registry.` (OCI registry), `loki.` / `mimir.` (authenticated push proxies), `assets.`, `openbao.` (authenticated OpenBao read proxy — runners only, see below).
 
-**In debug builds each host gets its own port** (`src/app.rs`): base `bind_address` = api, +1 app, +2 registry, +3 loki, +4 assets, +5 mimir. Hit `localhost:<base+N>` locally, not vhosts. Release dispatches all on one port by Host header.
+**In debug builds each host gets its own port** (`src/app.rs`): base `bind_address` = api, +1 app, +2 registry, +3 loki, +4 assets, +5 mimir, +6 openbao. Hit `localhost:<base+N>` locally, not vhosts. Release dispatches all on one port by Host header.
 
 api/ does **not** embed the frontend — it reverse-proxies to `FRONTEND_URL` (default `http://localhost:3030`).
 
-The **self-hosted** build (`--no-default-features`) collapses the six-way `Host` fanout into a single base-domain path router (`/api`, `/mimir`, `/assets`, `/v2` for the registry, frontend fallback) — see the cloud/self-hosted section in root `CLAUDE.md`.
+**`openbao.` is the runner's read path for secret values.** It mirrors OpenBao's own KV v2 API (`GET /v1/secret/data/{workspace_id}/{secret_id}`) and streams OpenBao's response back untouched, so any OpenBao-compatible client can read it — point a client's address at the host (or at `{base}/openbao` self-hosted) and its own `/v1/...` paths line up. The official Go client and `bao` CLI join a path prefix onto the request path, so the self-hosted form works; `vaultrs` does not, and only works against the cloud host. Auth follows the loki/mimir proxies: Basic `{runner_id}:{api_token}`, `Runner::Execute` on that runner, and the secret must live in the runner's workspace. Everything else about secrets (create/update/delete, metadata reads) stays on `api.`, which talks to OpenBao server-side. `secret.last_updated` tracks the **value**: a rotation bumps it and publishes `SecretUpdated` to every runner with a deployment referencing the secret; a rename does neither.
+
+The **self-hosted** build (`--no-default-features`) collapses the seven-way `Host` fanout into a single base-domain path router (`/api`, `/mimir`, `/assets`, `/openbao`, `/v2` for the registry, frontend fallback) — see the cloud/self-hosted section in root `CLAUDE.md`.
 
 ## Endpoints: declared in `models`, handled here
 
@@ -20,6 +22,7 @@ An endpoint's shape — path, method, request/response DTOs, `authentication`, `
 - Handlers destructure `AuthenticatedAppRequest { request, database, redis, client_ip, user_data, state }` and return `Result<AppResponse<E>, ErrorType>`.
 - **The layer stack owns the DB transaction** (`DataStoreConnectionLayer`): it auto-commits on `Ok`, auto-rolls-back on `Err`. Handlers never begin/commit a tx — just return `Result`.
 - `mount_*` takes an `allowed_client_type`. If a client is `ApiToken` and the endpoint's `API_ALLOWED` is false, it's silently not mounted.
+- **Handlers must check the id is their kind of resource.** `ResourcePermissionAuthenticator` only proves the path id is *some* live resource in the workspace and that the caller holds the permission on it — not that it's a secret, a volume, etc. So a handler for a typed id must confirm its own row exists before doing anything else, above all before soft-deleting the shared `resource` row. Otherwise e.g. `DELETE /secret/{deployment_id}` soft-deletes the deployment. Check the typed `DELETE`'s `rows_affected()` (see `delete_secret`, `delete_role`) or `fetch_optional(…).ok_or(ErrorType::ResourceDoesNotExist)` on the typed `SELECT` (see `delete_deployment`). **Every new resource type's handlers need this**, and `api/tests/api/workspace/rbac/resource_type.rs` should get a wrong-type case for its delete route.
 
 ## Auth & caching
 

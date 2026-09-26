@@ -173,6 +173,35 @@ impl EnvironmentVariableValue {
 	}
 }
 
+/// Validates a deployment's running details. The runner hands the container
+/// each environment variable as a `KEY=value` string and refuses blank ones, so
+/// a key can't be empty or hold `=`, whitespace or NUL, and a value can't be
+/// blank or hold NUL.
+///
+/// # Errors
+/// Returns an error naming the first environment variable that breaks a rule.
+pub fn validate_running_details(
+	details: DeploymentRunningDetails,
+) -> Result<DeploymentRunningDetails, preprocess::Error> {
+	for (key, value) in &details.environment_variables {
+		if key.is_empty() || key.contains(|c: char| c == '=' || c == '\0' || c.is_whitespace()) {
+			return Err(preprocess::Error::new(format!(
+				"Invalid environment variable name `{key}`"
+			)));
+		}
+		if value
+			.value()
+			.is_some_and(|value| value.trim().is_empty() || value.contains('\0'))
+		{
+			return Err(preprocess::Error::new(format!(
+				"Environment variable `{key}` can't be blank"
+			)));
+		}
+	}
+
+	Ok(details)
+}
+
 impl FromStr for EnvironmentVariableValue {
 	type Err = Infallible;
 

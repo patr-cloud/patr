@@ -1821,8 +1821,8 @@ async fn create_deployment_name_length_bounds() {
 	let mt = first_machine_type(&setup, workspace.id).await;
 
 	for (name, expect_ok) in [
-		("abc".to_string(), false),
-		("abcd".to_string(), true),
+		("a".to_string(), false),
+		("ab".to_string(), true),
 		("a".repeat(255), true),
 		("a".repeat(256), false),
 	] {
@@ -3027,5 +3027,231 @@ async fn update_deployment_writes_no_deploy_history() {
 	assert!(
 		history.response.deploys.is_empty(),
 		"update should not write a deploy-history row"
+	);
+}
+
+// ---------- create / update: env vars the runner couldn't apply ----------
+
+/// Keys and values the runner would refuse or mangle in `KEY=value`: blank or
+/// `=`-bearing keys, whitespace in keys, NUL anywhere, and blank values.
+fn invalid_env_vars() -> Vec<(String, EnvironmentVariableValue)> {
+	[
+		("", "value"),
+		("A=B", "value"),
+		("A B", "value"),
+		("A\0B", "value"),
+		("KEY", ""),
+		("KEY", "   "),
+		("KEY", "a\0b"),
+	]
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key.to_string(),
+			EnvironmentVariableValue::String(value.to_string()),
+		)
+	})
+	.collect()
+}
+
+#[tokio::test]
+async fn create_deployment_rejects_invalid_env_vars() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	for (key, value) in invalid_env_vars() {
+		let mut body = patr_body(repo.id, runner.id, mt);
+		body.running_details
+			.environment_variables
+			.insert(key.clone(), value.clone());
+
+		let response = send_create(&setup, &user.access_token, workspace.id, body).await;
+		assert_eq!(
+			response.status_code(),
+			StatusCode::BAD_REQUEST,
+			"env var {key:?}={value:?} must be rejected"
+		);
+	}
+}
+
+#[tokio::test]
+async fn update_deployment_rejects_invalid_env_vars() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+	let deployment = send_create(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		patr_body(repo.id, runner.id, mt),
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+	.response
+	.id
+	.id;
+
+	for (key, value) in invalid_env_vars() {
+		let mut body = full_update(&setup, &user.access_token, workspace.id, deployment).await;
+		body.running_details
+			.environment_variables
+			.insert(key.clone(), value.clone());
+
+		let response =
+			send_update(&setup, &user.access_token, workspace.id, deployment, body).await;
+		assert_eq!(
+			response.status_code(),
+			StatusCode::BAD_REQUEST,
+			"env var {key:?}={value:?} must be rejected"
+		);
+	}
+}
+
+// ---------- create / update: secrets must belong to the same workspace ----------
+
+#[tokio::test]
+async fn create_deployment_with_foreign_secret_is_refused() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let other_workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	// The secret exists and the user can see it — it just lives elsewhere.
+	let foreign_secret = setup
+		.create_test_secret(&user.access_token, other_workspace.id)
+		.await;
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details.environment_variables.insert(
+		"API_KEY".to_string(),
+		EnvironmentVariableValue::Secret {
+			from_secret: foreign_secret.id,
+		},
+	);
+
+	let response = send_create(&setup, &user.access_token, workspace.id, body).await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"a deployment must not reference a secret from another workspace, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_with_own_secret_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+	let secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+
+	let mut body = patr_body(repo.id, runner.id, mt);
+	body.running_details.environment_variables.insert(
+		"API_KEY".to_string(),
+		EnvironmentVariableValue::Secret {
+			from_secret: secret.id,
+		},
+	);
+
+	let response = send_create(&setup, &user.access_token, workspace.id, body).await;
+
+	assert!(
+		response.status_code().is_success(),
+		"a secret from the same workspace should be accepted, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_with_foreign_secret_is_refused() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let other_workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	let mut create_body = patr_body(repo.id, runner.id, mt);
+	create_body.running_details.environment_variables.insert(
+		"FOO".to_string(),
+		EnvironmentVariableValue::String("bar".to_string()),
+	);
+	let deployment = send_create(&setup, &user.access_token, workspace.id, create_body)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+		.response
+		.id
+		.id;
+
+	let foreign_secret = setup
+		.create_test_secret(&user.access_token, other_workspace.id)
+		.await;
+
+	let mut body = full_update(&setup, &user.access_token, workspace.id, deployment).await;
+	body.running_details.environment_variables.insert(
+		"API_KEY".to_string(),
+		EnvironmentVariableValue::Secret {
+			from_secret: foreign_secret.id,
+		},
+	);
+
+	let response = send_update(&setup, &user.access_token, workspace.id, deployment, body).await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"an update must not reference a secret from another workspace, got {}",
+		response.status_code()
+	);
+
+	// The refusal rolls back the delete-and-reinsert, so the existing
+	// environment variables must be left untouched rather than wiped.
+	let info = get_info(&setup, &user.access_token, workspace.id, deployment).await;
+	assert_eq!(
+		info.running_details.environment_variables.get("FOO"),
+		Some(&EnvironmentVariableValue::String("bar".to_string())),
+		"a refused update must leave the existing env vars in place"
+	);
+	assert!(
+		!info
+			.running_details
+			.environment_variables
+			.contains_key("API_KEY"),
+		"a refused update must not have written the foreign reference"
 	);
 }

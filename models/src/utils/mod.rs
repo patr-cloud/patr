@@ -179,6 +179,13 @@ pub mod constants {
 		"https://api.patr.cloud"
 	};
 
+	/// Base URL for the secret store proxy, which speaks OpenBao's KV v2 API
+	pub const OPENBAO_BASE_URL: &str = if cfg!(debug_assertions) {
+		"http://localhost:3006"
+	} else {
+		"https://openbao.patr.cloud"
+	};
+
 	/// Patr's container registry URL
 	pub const CONTAINER_REGISTRY_URL: &str = "registry.patr.cloud";
 
@@ -191,9 +198,14 @@ pub mod constants {
 	pub const OTP_VERIFICATION_TOKEN_REGEX: &str = macros::verify_regex!(r"^(\d{3}\-?\d{3})$");
 
 	/// The Regex to validate a resource name (e.g. deployment name, etc.)
-	/// Matches a string that is between 4 and 255 characters long and can have
+	/// Matches a string that is between 2 and 255 characters long and can have
 	/// digits, letters, hyphens, underscores, spaces and dots.
-	pub const RESOURCE_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_ \.]{4,255}$");
+	///
+	/// The floor is two rather than four because plenty of legitimate names are
+	/// shorter than four characters — a secret called `ID`, `DB` or `PAT`, for
+	/// instance. Surfaces that want a longer name enforce it themselves (an API
+	/// token's name pairs this with a `length(min = 4)`).
+	pub const RESOURCE_NAME_REGEX: &str = macros::verify_regex!(r"^[a-zA-Z0-9\-_ \.]{2,255}$");
 
 	/// The Regex to validate a container registry repository name. Unlike a
 	/// generic resource name, this must satisfy the registry's storage

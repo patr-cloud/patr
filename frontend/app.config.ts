@@ -8,6 +8,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const isCSR = process.env.VITE_BUILD_TARGET === "csr";
 
+// `@secretlint/secretlint-rule-preset-recommend` imports `node:path` at the top
+// of its bundle and `node:fs` lazily, neither of which a browser build can
+// resolve. Point them at stubs — but only for the client router, so the SSR
+// bundle keeps the real modules. See `src/utils/node-shims/path.ts`.
+const clientNodeShims = {
+	"node:path": resolve(__dirname, "./src/utils/node-shims/path.ts"),
+	"node:fs": resolve(__dirname, "./src/utils/node-shims/fs.ts"),
+};
+
 export default defineConfig({
 	ssr: !isCSR,
 	middleware: isCSR ? undefined : "./src/middleware.ts",
@@ -32,6 +41,7 @@ export default defineConfig({
 				esbuild: {
 					pure: ["console.log"],
 				},
+				...(router === "client" ? { resolve: { alias: clientNodeShims } } : {}),
 				// @solid-primitives/storage has an internal circular dependency
 				// (cookies.js <-> index.js via a dead import). Forcing the package
 				// into a single chunk keeps the cycle chunk-internal, which Rollup
@@ -68,6 +78,7 @@ export default defineConfig({
 				esbuild: {
 					pure: ["console.log"],
 				},
+				...(router === "client" ? { resolve: { alias: clientNodeShims } } : {}),
 				server: {
 					fs: {
 						allow: [resolve(__dirname, "../assets/frontend")],

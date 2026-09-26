@@ -1,4 +1,4 @@
-#![feature(impl_trait_in_assoc_type, never_type)]
+#![feature(impl_trait_in_assoc_type)]
 
 //! Common utilities for the runner. This library contains all the things you
 //! will need to make a runner. All it needs are the implementations of how the
@@ -45,7 +45,7 @@ pub mod prelude {
 		error::RunnerError,
 		executor::RunnerExecutor,
 		runner::Runner,
-		utils::{RouterExt, assets::*, client, config::*, constants, ext_traits::*},
+		utils::{RouterExt, assets::*, client, config::*, constants, ext_traits::*, secrets},
 	};
 
 	/// The type of the database connection. A mutable reference to this should

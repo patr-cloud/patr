@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT secret_id AS \"secret_id!: Uuid\" FROM deployment_environment_variable WHERE deployment_id = $1 AND secret_id IS NOT NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "secret_id!: Uuid",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "d3aeaccd94b46acfccfcd56575f8c7eaa1dbac23cb16e075b1d1b94d27852101"
+}

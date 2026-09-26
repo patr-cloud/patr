@@ -33,7 +33,6 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     build-essential \
     postgresql-client \
     clang \
-    docker-compose \
     sqlite3 \
     cmake \
     cloudflared \
@@ -46,10 +45,11 @@ RUN mkdir -p --mode=0755 /usr/share/keyrings && \
     redis-tools && \
     rm -rf /var/lib/apt/lists/*
 
-# Setup non-root user with sudo permissions
+# Setup non-root user with sudo permissions. The docker CLI, the `docker`
+# group and this user's membership of it all come from the
+# docker-outside-of-docker feature.
 RUN adduser vscode && \
     adduser vscode sudo && \
-    adduser vscode docker && \
     echo vscode ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/vscode && \
     chmod 0440 /etc/sudoers.d/vscode
 

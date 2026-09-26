@@ -1,4 +1,4 @@
-const RESOURCE_NAME_REGEX = /^[a-zA-Z0-9\-_ .]{4,255}$/;
+const RESOURCE_NAME_REGEX = /^[a-zA-Z0-9\-_ .]{2,255}$/;
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // Pattern matches USER_NAME_REGEX on the backend: 1–100 chars, no HTML
 // metacharacters (<, >, &), no control chars / tabs / newlines.
@@ -14,7 +14,7 @@ const ROLE_DESCRIPTION_REGEX = /^[^<>&\n\r\t\x00-\x1f]{0,500}$/;
 const XSS_PATTERN = /[<>&\x00-\x1f]/;
 
 // Pattern strings for HTML input pattern attribute (without delimiters and flags)
-const RESOURCE_NAME_PATTERN = "[a-zA-Z0-9\\-_ \\.]{4,255}";
+const RESOURCE_NAME_PATTERN = "[a-zA-Z0-9\\-_ \\.]{2,255}";
 const EMAIL_PATTERN = "[^@\\s]+@[^@\\s]+\\.[^@\\s]+";
 
 // Special characters accepted in passwords. Mirrors the backend

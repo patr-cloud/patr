@@ -5,8 +5,10 @@ import { HYDRATION_TIMEOUT } from '@/helpers/config';
 // Frontend reference:
 //   frontend/src/routes/_logged-in/_workspaced/deployments/index.tsx (list)
 //   frontend/src/routes/_logged-in/_workspaced/deployments/new.tsx (create)
-//   frontend/src/routes/_logged-in/_workspaced/deployments/$id.tsx (detail: metrics/info/logs)
-//   .../deployments/-components/{info,metrics,logs,port,env-input,probe-input,config-mount}.tsx
+//   frontend/src/routes/_logged-in/_workspaced/deployments/$id.tsx
+//       (detail: metrics / info / environment / logs)
+//   .../deployments/-components/{info,metrics,logs,port,probe-input,config-mount}.tsx
+//   .../deployments/-components/{environment,env-list,env-input,env-convert-modal}.tsx
 //
 // Registry + runner pickers are InputDropdowns: an <input> (by placeholder) that
 // opens a Portal of option <div>s (by label text). Selecting = click input,
@@ -133,6 +135,83 @@ export async function submitEnvUpload(page: Page): Promise<void> {
 	await addToDeploymentButton(page).click();
 }
 
+// ---------- Convert to secrets (env-list.tsx + env-convert-modal.tsx) ----------
+
+// The per-row hint shown when a value looks like a credential. The wording is
+// secretlint's own ("found Stripe secret key") when a vendor rule matches, and
+// "<KEY> looks like a secret" when only the local heuristics do.
+export function envSecretHint(page: Page, text: RegExp) {
+	return page.getByText(text);
+}
+
+// Opens the modal for every convertible row. There is a second button with the
+// same label inside the modal (the submit), so this is scoped to the one that
+// is on the page before the modal exists.
+export async function openConvertToSecrets(page: Page): Promise<void> {
+	await page.getByRole('button', { name: /Convert to secrets/i }).click();
+}
+
+// The per-row "Convert" button beside a hint, which opens the modal with just
+// that row ticked.
+export async function convertSingleEnv(page: Page): Promise<void> {
+	await page
+		.getByRole('button', { name: /^Convert$/ })
+		.first()
+		.click();
+}
+
+export function convertModalHeading(page: Page) {
+	return page.getByText('Convert to secrets', { exact: true });
+}
+
+export function convertEmptyState(page: Page) {
+	return page.getByText(/No environment variables to convert/i);
+}
+
+// The Checkbox component keeps its real <input> `sr-only`, so Playwright sees
+// it as hidden and `.check()` would never pass actionability. Clicking the
+// wrapping <label> is both what a user does and what actually toggles it.
+const checkboxLabels = (page: Page) => page.locator('label:has(input[type="checkbox"])');
+
+export function convertSelectAll(page: Page) {
+	return checkboxLabels(page).filter({ hasText: 'Select all' });
+}
+
+/** One row's checkbox, indexed past the "Select all" that precedes them. */
+export function convertRowCheckbox(page: Page, row = 0) {
+	return checkboxLabels(page).filter({ hasNotText: 'Select all' }).nth(row);
+}
+
+// Row controls inside the modal. The name input opens blank; the value is
+// seeded from the deployment's row.
+export function convertNameInput(page: Page) {
+	return page.locator('input[placeholder="Secret name"]');
+}
+
+export function convertValueInput(page: Page) {
+	return page.locator('input[placeholder="Secret value"]');
+}
+
+export function convertNameRequiredError(page: Page) {
+	return page.getByText('Give this secret a name', { exact: true });
+}
+
+// The modal's submit. Scoped to the dialog's footer by taking the last match,
+// since the page behind it has a button with the same label.
+export function convertSubmitButton(page: Page) {
+	return page.getByRole('button', { name: /^(Convert to secrets|Converting…)$/ }).last();
+}
+
+// The String / Secret toggle on each row (value-type-toggle.tsx).
+export function valueTypeToggle(page: Page, type: 'String' | 'Secret', row = 0) {
+	return page.getByRole('radio', { name: type, exact: true }).nth(row);
+}
+
+// The secret picker a row shows once its toggle is on Secret.
+export function envSecretPicker(page: Page) {
+	return page.locator('input[placeholder="Select a secret"]');
+}
+
 // ---------- Detail (/deployments/{id}) ----------
 
 export async function openDeploymentDetail(page: Page, id: string, tab?: string): Promise<void> {
@@ -150,6 +229,11 @@ export function infoTab(page: Page) {
 
 export function logsTab(page: Page) {
 	return page.getByRole('button', { name: 'Logs', exact: true });
+}
+
+// Environment variables moved off the info tab onto their own (environment.tsx).
+export function environmentTab(page: Page) {
+	return page.getByRole('button', { name: 'Configuration', exact: true });
 }
 
 // The Start (FiPlay) / Stop (FiPause) buttons are icon-only; locate them by

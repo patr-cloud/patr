@@ -30,7 +30,7 @@ pub async fn delete_domain_in_workspace(
 
 	// Fails with ResourceInUse if managed URLs (or their custom hostnames) still
 	// reference this domain. The user must delete all managed URLs first.
-	query!(
+	let rows_deleted = query!(
 		r#"
 		DELETE FROM
 			workspace_domain
@@ -44,7 +44,12 @@ pub async fn delete_domain_in_workspace(
 	.map_err(|err| match err {
 		sqlx::Error::Database(err) if err.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		err => ErrorType::server_error(err),
-	})?;
+	})?
+	.rows_affected();
+
+	if rows_deleted == 0 {
+		return Err(ErrorType::ResourceDoesNotExist);
+	}
 
 	query!(
 		r#"

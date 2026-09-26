@@ -24,10 +24,13 @@ pub struct ClientIP(
 	pub IpAddr,
 );
 
-impl FromRequestParts<()> for ClientIP {
+impl<S> FromRequestParts<S> for ClientIP
+where
+	S: Send + Sync,
+{
 	type Rejection = Infallible;
 
-	async fn from_request_parts(parts: &mut Parts, _: &()) -> Result<Self, Self::Rejection> {
+	async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
 		static PRIVATE_RANGES: LazyLock<Vec<IpNetwork>> = LazyLock::new(|| {
 			[
 				"127.0.0.0/8",    // IPv4 loopback
@@ -46,7 +49,7 @@ impl FromRequestParts<()> for ClientIP {
 			.collect()
 		});
 
-		let peer = ConnectInfo::<SocketAddr>::from_request_parts(parts, &())
+		let peer = ConnectInfo::<SocketAddr>::from_request_parts(parts, state)
 			.await
 			.unwrap()
 			.ip();

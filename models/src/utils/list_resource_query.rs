@@ -66,9 +66,10 @@ pub struct ListResourceQuery<
 	pub count: usize,
 	/// The page number that should be returned. This is zero-indexed. So to get
 	/// the first page, you should set this to 0, and to get the second page,
-	/// you should set this to 1, etc.
+	/// you should set this to 1, etc. Capped at [MAX_PAGE] so the `page * count`
+	/// offset handlers cast to `i32` can't overflow.
 	#[serde(default)]
-	#[preprocess(none)]
+	#[preprocess(range(min = 0, max = MAX_PAGE))]
 	pub page: usize,
 	/// Any other query parameters that should be included in the request.
 	#[serde(flatten)]
@@ -98,6 +99,10 @@ const fn default_page_size() -> usize {
 /// in some downstream handlers safe and discourages clients from pulling the
 /// entire table in one round trip.
 pub const MAX_PAGE_SIZE: usize = 100;
+
+/// The highest page number a paginated request can ask for: the largest page
+/// whose `page * count` offset still fits in the `i32` handlers bind it as.
+pub const MAX_PAGE: usize = i32::MAX as usize / MAX_PAGE_SIZE;
 
 impl<T, Q> Default for ListResourceQuery<T, Q>
 where

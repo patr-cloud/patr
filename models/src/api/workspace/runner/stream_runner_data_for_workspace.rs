@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 use crate::{
 	api::workspace::{
@@ -146,6 +147,14 @@ macros::declare_stream_endpoint!(
 		ManagedUrlDeleted {
 			/// The ID of the managed URL that was deleted
 			id: Uuid,
+		},
+		/// A secret got a new value. Only sent to runners with a deployment
+		/// that references it, so those deployments pick up the new value.
+		SecretUpdated {
+			/// The ID of the secret that was updated
+			id: Uuid,
+			/// When the secret's value last changed
+			last_updated: OffsetDateTime,
 		},
 	},
 	client_msg = {

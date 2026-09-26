@@ -12,6 +12,7 @@ pub async fn initialize_secret_tables(
 			id UUID NOT NULL,
 			name CITEXT NOT NULL,
 			workspace_id UUID NOT NULL,
+			last_updated TIMESTAMPTZ NOT NULL,
 			deleted TIMESTAMPTZ
 		);
 		"#
@@ -31,8 +32,9 @@ pub async fn initialize_secret_indices(
 	query!(
 		r#"
 		ALTER TABLE secret
-		ADD CONSTRAINT secret_pk
-		PRIMARY KEY(id);
+			ADD CONSTRAINT secret_pk PRIMARY KEY(id),
+			ADD CONSTRAINT secret_uq_id_workspace_id
+				UNIQUE(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)

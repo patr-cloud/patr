@@ -18,11 +18,16 @@ async fn setup_with_statuses(
 
 	setup.notify_upsert(id);
 
-	// Wait for the initial upsert to complete.
+	// Wait for the actor's first run to finish: an upsert, or — for a stopped
+	// deployment, which is never applied — its first status check.
 	let mock = setup.mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
-		Duration::from_secs(5),
+		move || {
+			mock.has_call(
+				|c| matches!(c, ExecutorCall::Upsert(i) | ExecutorCall::GetStatus(i) if *i == id),
+			)
+		},
+		Duration::from_secs(10),
 	)
 	.await;
 

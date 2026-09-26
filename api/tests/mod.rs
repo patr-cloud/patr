@@ -11,6 +11,9 @@ pub mod utils;
 pub mod api;
 /// All tests related to the loki.patr.cloud log proxy are in this module.
 pub mod loki;
+/// All tests related to the openbao.patr.cloud OpenBao proxy are in this
+/// module.
+pub mod openbao;
 /// All tests related to the OCI registry are in this module.
 pub mod registry;
 

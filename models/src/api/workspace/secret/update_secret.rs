@@ -26,8 +26,14 @@ macros::declare_api_endpoint!(
 		/// The updated name of the secret
 		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
-		/// The updated value of the secret
+		/// The updated value of the secret. When omitted, the existing value is
+		/// kept; when present, the secret is rotated to the new value.
 		#[preprocess(none)]
-		pub value: String,
-	}
+		pub value: Option<String>,
+	},
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::Secret,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.secret_id),
+	},
 );

@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, marker::PhantomData, time::Duration};
 
 use models::api::workspace::deployment::*;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
+use time::OffsetDateTime;
 
 use super::resource_supervisor::ResourceSupervisorMessage;
 use crate::prelude::*;
@@ -59,6 +60,10 @@ pub struct DeploymentActorState<E: RunnerExecutor> {
 	/// Last config successfully applied to the executor. Used for change
 	/// detection so that duplicate `ConfigUpdated` messages are no-ops.
 	pub last_applied: Option<(Deployment, DeploymentRunningDetails)>,
+	/// When each referenced secret's value last changed, as of the last
+	/// successful apply. A rotated secret changes nothing in `last_applied`,
+	/// so this is what tells the actor to re-apply with the new value.
+	pub last_applied_secrets: BTreeMap<Uuid, OffsetDateTime>,
 	/// Last status reported to the supervisor. Only sends
 	/// `ResourceStatusChanged` when the status actually changes.
 	pub last_reported_status: Option<DeploymentStatus>,
@@ -114,6 +119,7 @@ where
 			executor,
 			supervisor_ref: args.supervisor_ref,
 			last_applied: None,
+			last_applied_secrets: BTreeMap::new(),
 			last_reported_status: None,
 		})
 	}
@@ -197,9 +203,21 @@ where
 			Err(err) => return Err(err.into()),
 		};
 
+	// A stopped deployment has nothing to apply a config to — the status poll
+	// keeps it down, and starting it applies the latest config then.
+	if desired_deployment.status == DeploymentStatus::Stopped {
+		trace!("ConfigUpdated for a stopped deployment, skipping");
+		return Ok(());
+	}
+
+	// Snapshot the versions before applying, and record this snapshot (not a
+	// re-read) once it succeeds. A rotation that lands mid-apply then still looks
+	// new to the `ConfigUpdated` it queued, so it's applied rather than skipped.
+	let desired_secrets = get_local_secret_versions(&state.database, deployment_id).await?;
+
 	// Compare with last applied config, ignoring the status field since
 	// status changes don't represent config changes that need an upsert.
-	let config_changed =
+	let config_changed = desired_secrets != state.last_applied_secrets ||
 		state
 			.last_applied
 			.as_ref()
@@ -245,6 +263,7 @@ where
 			return Err(err.into());
 		}
 		state.last_applied = Some((desired_deployment, desired_details));
+		state.last_applied_secrets = desired_secrets;
 	}
 
 	Ok(())
@@ -376,6 +395,7 @@ where
 
 			let (deployment, running_details) =
 				get_local_deployment_info(&state.database, deployment_id).await?;
+			let secrets = get_local_secret_versions(&state.database, deployment_id).await?;
 
 			if let Err(err) = state
 				.executor
@@ -396,6 +416,7 @@ where
 				return Err(err.into());
 			}
 			state.last_applied = Some((deployment, running_details));
+			state.last_applied_secrets = secrets;
 		}
 	}
 
@@ -451,6 +472,41 @@ async fn get_local_deployment_status(
 
 	row.try_get::<DeploymentStatus, _>("status")
 		.map_err(Into::into)
+}
+
+/// Get when each secret the deployment references last changed, from the local
+/// database.
+async fn get_local_secret_versions(
+	database: &sqlx::Pool<DatabaseType>,
+	deployment_id: Uuid,
+) -> Result<BTreeMap<Uuid, OffsetDateTime>, RunnerError> {
+	query(
+		r#"
+		SELECT
+			secret.id,
+			secret.last_updated
+		FROM
+			deployment_environment_variable
+		INNER JOIN
+			secret
+		ON
+			secret.id = deployment_environment_variable.secret_id
+		WHERE
+			deployment_environment_variable.deployment_id = $1;
+		"#,
+	)
+	.bind(deployment_id)
+	.fetch_all(database)
+	.await?
+	.into_iter()
+	.map(|row| {
+		Ok((
+			row.try_get::<Uuid, _>("id")?,
+			row.try_get::<OffsetDateTime, _>("last_updated")?,
+		))
+	})
+	.collect::<Result<BTreeMap<_, _>, sqlx::Error>>()
+	.map_err(Into::into)
 }
 
 /// Get the deployment and its running details from the local database.

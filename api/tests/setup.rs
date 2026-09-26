@@ -8,6 +8,7 @@ use api::{
 	routes::{
 		api_patr_cloud,
 		loki_patr_cloud,
+		openbao_patr_cloud,
 		registry_patr_cloud,
 		registry_patr_cloud::{endpoint::RegistryEndpoint, request::RegistryUnprocessedApiRequest},
 	},
@@ -17,6 +18,7 @@ use api::{
 		EmailConfig,
 		LogsConfig,
 		MetricsConfig,
+		OpenBaoConfig,
 		OpenTelemetryConfig,
 		RedisConfig,
 		RegistryConfig,
@@ -55,6 +57,7 @@ pub struct TestSetup {
 	api: TestServer,
 	registry: TestServer,
 	loki: TestServer,
+	openbao: TestServer,
 	state: AppState,
 	cloudflare_mock: MockServer,
 	permission_ids: BTreeMap<String, Uuid>,
@@ -274,6 +277,99 @@ impl TestSetup {
 		}
 	}
 
+	/// Make a raw HTTP call to the openbao TestServer.
+	///
+	/// Mirrors [`make_loki_call`] for the OpenBao read proxy, which speaks
+	/// OpenBao's own API rather than a typed Patr endpoint.
+	pub async fn make_openbao_call(
+		&self,
+		method: http::Method,
+		path: &str,
+		headers: Vec<(http::HeaderName, &str)>,
+	) -> TestResponse {
+		let mut req = self.openbao.method(method, path);
+		for (name, value) in headers {
+			req = req.add_header(name, value);
+		}
+		req.await
+	}
+
+	/// Read a secret's value straight out of OpenBao, bypassing the API.
+	///
+	/// Lets a test assert what was actually stored. Returns `None` when
+	/// OpenBao holds no value at that path.
+	pub async fn read_openbao_secret(&self, workspace_id: Uuid, secret_id: Uuid) -> Option<String> {
+		let response = reqwest::Client::new()
+			.get(format!(
+				"{}/v1/secret/data/{}/{}",
+				self.state.config.open_bao.endpoint.trim_end_matches('/'),
+				workspace_id,
+				secret_id
+			))
+			.header("X-Vault-Token", &self.state.config.open_bao.token)
+			.send()
+			.await
+			.expect("failed to reach OpenBao");
+
+		if !response.status().is_success() {
+			return None;
+		}
+
+		response
+			.json::<serde_json::Value>()
+			.await
+			.expect("invalid JSON from OpenBao")
+			.pointer("/data/data/value")
+			.and_then(|value| value.as_str())
+			.map(String::from)
+	}
+
+	/// Delete a secret's value straight out of OpenBao, bypassing the API.
+	///
+	/// Used to set up the "metadata row exists but the value is gone" case.
+	pub async fn delete_openbao_secret(&self, workspace_id: Uuid, secret_id: Uuid) {
+		reqwest::Client::new()
+			.delete(format!(
+				"{}/v1/secret/metadata/{}/{}",
+				self.state.config.open_bao.endpoint.trim_end_matches('/'),
+				workspace_id,
+				secret_id
+			))
+			.header("X-Vault-Token", &self.state.config.open_bao.token)
+			.send()
+			.await
+			.expect("failed to reach OpenBao");
+	}
+
+	/// The versions of a secret OpenBao still holds, straight from its KV v2
+	/// metadata, keyed by version number. Empty if the secret isn't there.
+	pub async fn read_openbao_versions(&self, workspace_id: Uuid, secret_id: Uuid) -> Vec<String> {
+		let response = reqwest::Client::new()
+			.get(format!(
+				"{}/v1/secret/metadata/{}/{}",
+				self.state.config.open_bao.endpoint.trim_end_matches('/'),
+				workspace_id,
+				secret_id
+			))
+			.header("X-Vault-Token", &self.state.config.open_bao.token)
+			.send()
+			.await
+			.expect("failed to reach OpenBao");
+
+		if !response.status().is_success() {
+			return Vec::new();
+		}
+
+		response
+			.json::<serde_json::Value>()
+			.await
+			.expect("invalid JSON from OpenBao")
+			.pointer("/data/versions")
+			.and_then(|versions| versions.as_object())
+			.map(|versions| versions.keys().cloned().collect())
+			.unwrap_or_default()
+	}
+
 	/// Make a raw HTTP call to the registry TestServer (no typed endpoint).
 	///
 	/// Mirrors [`make_loki_call`] for the registry server. Used for raw-OCI
@@ -391,6 +487,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	let web_listener = TcpListener::bind("127.0.0.1:0").await?;
 	let registry_listener = TcpListener::bind("127.0.0.1:0").await?;
 	let loki_listener = TcpListener::bind("127.0.0.1:0").await?;
+	let openbao_listener = TcpListener::bind("127.0.0.1:0").await?;
 
 	let web_bind_address = web_listener.local_addr()?;
 
@@ -529,6 +626,12 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 			service: "registry.patr.cloud".to_string(),
 			realm: "http://localhost:3000/auth/docker-login".to_string(),
 		},
+		open_bao: OpenBaoConfig {
+			endpoint: std::env::var("PATR_TEST_OPENBAO_ENDPOINT")
+				.unwrap_or_else(|_| "http://localhost:18200".to_string()),
+			token: std::env::var("PATR_TEST_OPENBAO_TOKEN")
+				.unwrap_or_else(|_| "test-root-token".to_string()),
+		},
 	};
 
 	TRACING.call_once(|| {
@@ -646,6 +749,13 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 			.into_make_service_with_connect_info::<SocketAddr>(),
 	));
 
+	let openbao = TestServer::builder().build(axum::serve(
+		openbao_listener,
+		openbao_patr_cloud::setup_routes(&state)
+			.await
+			.into_make_service_with_connect_info::<SocketAddr>(),
+	));
+
 	let permission_ids: BTreeMap<String, Uuid> = {
 		use sqlx::Row;
 		let rows = sqlx::query("SELECT id, name FROM permission")
@@ -666,6 +776,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		api,
 		registry,
 		loki,
+		openbao,
 		state,
 		cloudflare_mock,
 		permission_ids,

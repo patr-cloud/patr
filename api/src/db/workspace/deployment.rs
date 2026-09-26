@@ -78,6 +78,7 @@ pub async fn initialize_deployment_tables(
 		r#"
 		CREATE TABLE deployment_environment_variable(
 			deployment_id UUID NOT NULL,
+			workspace_id UUID NOT NULL,
 			name VARCHAR(256) NOT NULL,
 			value TEXT,
 			secret_id UUID
@@ -345,10 +346,12 @@ pub async fn initialize_deployment_constraints(
 	query!(
 		r#"
 		ALTER TABLE deployment_environment_variable
-			ADD CONSTRAINT deployment_environment_variable_fk_deployment_id
-				FOREIGN KEY(deployment_id) REFERENCES deployment(id),
-			ADD CONSTRAINT deployment_environment_variable_fk_secret_id
-				FOREIGN KEY(secret_id) REFERENCES secret(id),
+			ADD CONSTRAINT deployment_environment_variable_fk_deployment_id_workspace_id
+				FOREIGN KEY(deployment_id, workspace_id)
+					REFERENCES deployment(id, workspace_id),
+			ADD CONSTRAINT deployment_environment_variable_fk_secret_id_workspace_id
+				FOREIGN KEY(secret_id, workspace_id)
+					REFERENCES secret(id, workspace_id),
 			ADD CONSTRAINT deployment_env_var_chk_value_secret_id_either_not_null CHECK(
 				(
 					value IS NOT NULL AND
