@@ -101,6 +101,7 @@ const CreateSecretPage = () => {
 									<PasswordInput
 										id="secret-value"
 										name="secret-value"
+										autocomplete="new-password"
 										placeholder="Enter the secret value"
 										value={value()}
 										onInput={(e) => {

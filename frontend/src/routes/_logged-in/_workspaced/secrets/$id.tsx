@@ -190,6 +190,7 @@ const SecretDetailPage = () => {
 													<PasswordInput
 														id="secret-value"
 														name="secret-value"
+														autocomplete="new-password"
 														placeholder="Enter a new value to rotate the secret"
 														value={value()}
 														onInput={(e) => {
