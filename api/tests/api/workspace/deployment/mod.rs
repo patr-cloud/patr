@@ -3030,6 +3030,98 @@ async fn update_deployment_writes_no_deploy_history() {
 	);
 }
 
+// ---------- create / update: env vars the runner couldn't apply ----------
+
+/// Keys and values the runner would refuse or mangle in `KEY=value`: blank or
+/// `=`-bearing keys, whitespace in keys, NUL anywhere, and blank values.
+fn invalid_env_vars() -> Vec<(String, EnvironmentVariableValue)> {
+	[
+		("", "value"),
+		("A=B", "value"),
+		("A B", "value"),
+		("A\0B", "value"),
+		("KEY", ""),
+		("KEY", "   "),
+		("KEY", "a\0b"),
+	]
+	.into_iter()
+	.map(|(key, value)| {
+		(
+			key.to_string(),
+			EnvironmentVariableValue::String(value.to_string()),
+		)
+	})
+	.collect()
+}
+
+#[tokio::test]
+async fn create_deployment_rejects_invalid_env_vars() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+
+	for (key, value) in invalid_env_vars() {
+		let mut body = patr_body(repo.id, runner.id, mt);
+		body.running_details
+			.environment_variables
+			.insert(key.clone(), value.clone());
+
+		let response = send_create(&setup, &user.access_token, workspace.id, body).await;
+		assert_eq!(
+			response.status_code(),
+			StatusCode::BAD_REQUEST,
+			"env var {key:?}={value:?} must be rejected"
+		);
+	}
+}
+
+#[tokio::test]
+async fn update_deployment_rejects_invalid_env_vars() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+	let deployment = send_create(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		patr_body(repo.id, runner.id, mt),
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+	.response
+	.id
+	.id;
+
+	for (key, value) in invalid_env_vars() {
+		let mut body = full_update(&setup, &user.access_token, workspace.id, deployment).await;
+		body.running_details
+			.environment_variables
+			.insert(key.clone(), value.clone());
+
+		let response =
+			send_update(&setup, &user.access_token, workspace.id, deployment, body).await;
+		assert_eq!(
+			response.status_code(),
+			StatusCode::BAD_REQUEST,
+			"env var {key:?}={value:?} must be rejected"
+		);
+	}
+}
+
 // ---------- create / update: secrets must belong to the same workspace ----------
 
 #[tokio::test]

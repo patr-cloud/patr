@@ -43,6 +43,10 @@ const isSecretValue = (value: EnvironmentVariableValue): value is { fromSecret: 
 
 const valueIsEmpty = (value: EnvironmentVariableValue): boolean => typeof value === "string" && value === "";
 
+// The runner turns each variable into `KEY=value`, so a key can't hold `=` or
+// whitespace, and a value can't be blank. The API refuses both too.
+const VALID_KEY = /^[^\s=\0]+$/;
+
 const secretId = (value: EnvironmentVariableValue): string => (isSecretValue(value) ? value.fromSecret : "");
 
 const modeOf = (value: EnvironmentVariableValue): ValueType => (isSecretValue(value) ? "secret" : "string");
@@ -98,7 +102,14 @@ const EnvInput = (props: EnvInputProps) => {
 		const isEmpty = valueIsEmpty(row.value);
 		if (keyEmpty && isEmpty) return errs; // draft row
 		if (keyEmpty) errs.key = "Key required";
-		if (isEmpty) errs.value = "Value required";
+		else if (!VALID_KEY.test(row.key)) errs.key = "Key can't contain spaces or =";
+		// The editor showing has to match what would be saved: a row switched to
+		// Secret still holds its plain value until a secret is picked, and saving
+		// it would store that value as plaintext.
+		if (row.mode !== modeOf(row.value)) errs.value = row.mode === "secret" ? "Pick a secret" : "Value required";
+		else if (isEmpty) errs.value = "Value required";
+		else if (typeof row.value === "string" && (row.value.trim() === "" || row.value.includes("\0")))
+			errs.value = "Value can't be blank";
 		if (!keyEmpty && (keyCounts().get(row.key) ?? 0) > 1) errs.key = "Duplicate key";
 		return errs;
 	};
@@ -110,6 +121,7 @@ const EnvInput = (props: EnvInputProps) => {
 		const counts = keyCounts();
 		for (const row of rows()) {
 			if (row.key === "" || valueIsEmpty(row.value)) continue;
+			if (row.mode !== modeOf(row.value)) continue;
 			if ((counts.get(row.key) ?? 0) > 1) continue;
 			out[row.key] = row.value;
 		}

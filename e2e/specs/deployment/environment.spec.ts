@@ -23,7 +23,7 @@ import {
 	valueTypeToggle,
 } from '@/helpers/ui/deployment';
 
-// Environment variables live on their own "Environment Deets" tab. The API
+// Environment variables live on the deployment's "Configuration" tab. The API
 // contract for env vars (replace-vs-keep, cross-workspace secret refs) is
 // covered in the Rust suite (api/tests/api/workspace/deployment/mod.rs); here
 // we cover the UI: the tab saves, values that look like credentials are
@@ -101,6 +101,32 @@ test.describe('deployment > environment [UI]', () => {
 			// Wait past the lint debounce before asserting the absence.
 			await page.waitForTimeout(2_000);
 			await expect(envSecretHint(page, /looks like a secret|found /i)).toHaveCount(0);
+		} finally {
+			await context.close();
+		}
+	});
+
+	// Flipping a row to Secret only swaps the editor; its plain value stays until
+	// a secret is picked. Saving then must be blocked, not store the value as
+	// plaintext behind a secret picker.
+	test('a row switched to Secret without picking one blocks the save', async ({
+		browser,
+		api,
+	}) => {
+		const { user, dep } = await setup(api, { environmentVariables: { DB_PASS: 'hunter2' } });
+		const context = await newContext(browser, user.clientIp);
+		await loginAs(context, user, { workspaceId: user.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDeploymentDetail(page, dep.id, 'environment');
+			await valueTypeToggle(page, 'Secret').click();
+
+			await expect(envSecretPicker(page)).toBeVisible({ timeout: 15_000 });
+			await expect(page.getByText('Pick a secret', { exact: true })).toBeVisible();
+			await expect(updateButton(page)).toBeDisabled();
+
+			const info = await getDeploymentInfoAPI(api, user, user.workspaceId, dep.id);
+			expect(info.environmentVariables).toEqual({ DB_PASS: 'hunter2' });
 		} finally {
 			await context.close();
 		}
