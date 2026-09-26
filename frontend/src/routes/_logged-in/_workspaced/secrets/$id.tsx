@@ -33,20 +33,22 @@ const SecretDetailPage = () => {
 	const secretInfoQuery = useSecretInfoQuery(() => params().id);
 	const isDeleteAllowed = useIsAllowed("secret", "delete", () => params().id);
 
-	const [name, setName] = createSignal("");
+	const [name, setName] = createSignal<string>();
 	const [value, setValue] = createSignal("");
 	const [error, setError] = createSignal("");
 
-	// Seed the editable name once the secret info loads.
+	// Seed the editable name once the secret info loads. Only once: the query
+	// refetches whenever the window regains focus, and reseeding then would wipe
+	// out a rename the user is in the middle of typing.
 	createEffect(() => {
 		const secretName = secretInfoQuery.data?.secret.name;
-		if (secretName !== undefined) {
+		if (secretName !== undefined && name() === undefined) {
 			setName(secretName);
 		}
 	});
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId: wsId }) => {
-		const secretName = name().trim();
+		const secretName = (name() ?? "").trim();
 
 		if (!secretName) {
 			setError("Name is required.");
@@ -161,7 +163,7 @@ const SecretDetailPage = () => {
 														name="secret-name"
 														placeholder="OPENAI_API_KEY"
 														type={InputType.Text}
-														value={name()}
+														value={name() ?? ""}
 														onInput={(e) => {
 															setName(e.currentTarget.value);
 															setError("");

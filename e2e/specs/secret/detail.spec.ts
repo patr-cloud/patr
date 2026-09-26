@@ -68,6 +68,28 @@ test.describe('secret > detail [UI]', () => {
 		expect(after.lastUpdated).toBe(before.lastUpdated);
 	});
 
+	// The secret query refetches whenever the window regains focus. That must not
+	// reseed the name field and wipe out a rename the user is part-way through.
+	test('a refetch on window focus keeps a rename being typed', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		const name = randomSecretName();
+		const secret = await createSecretAPI(api, user, user.workspaceId, name, 'kept-value');
+		await withDetail(browser, user, secret.id, async (page) => {
+			await expect(page.locator('#secret-name')).toHaveValue(name);
+			await fillSecretName(page, 'HALF_TYPED');
+
+			const refetch = page.waitForResponse(
+				(response) =>
+					response.request().method() === 'GET' &&
+					response.url().includes(`/secret/${secret.id}`),
+			);
+			await page.evaluate(() => window.dispatchEvent(new Event('visibilitychange')));
+			await refetch;
+
+			await expect(page.locator('#secret-name')).toHaveValue('HALF_TYPED');
+		});
+	});
+
 	test('rotating the value bumps lastUpdated', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		const name = randomSecretName();
