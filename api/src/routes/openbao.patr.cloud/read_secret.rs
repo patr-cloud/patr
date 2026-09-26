@@ -1,12 +1,12 @@
 use axum::{
 	body::Body,
-	extract::{ConnectInfo, Path, State},
+	extract::{Path, State},
 	http::Request,
 	response::Response,
 };
 use http::StatusCode;
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::extractors::ClientIP};
 
 /// Handler for OpenBao KV v2 reads
 /// (`/v1/secret/data/{workspace_id}/{secret_id}`).
@@ -15,7 +15,7 @@ use crate::prelude::*;
 /// metric proxies. The value itself is never logged.
 pub(super) async fn handle_read_secret(
 	State(state): State<AppState>,
-	ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
+	ClientIP(ip): ClientIP,
 	Path((workspace_id, secret_id)): Path<(Uuid, Uuid)>,
 	req: Request<Body>,
 ) -> Response {
@@ -30,7 +30,7 @@ pub(super) async fn handle_read_secret(
 
 	if let Err(response) = super::auth::authenticate_and_authorize(
 		&state,
-		addr,
+		ip,
 		runner_id,
 		&api_token,
 		workspace_id,

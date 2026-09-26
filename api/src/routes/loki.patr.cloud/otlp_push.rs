@@ -1,9 +1,4 @@
-use axum::{
-	body::Body,
-	extract::{ConnectInfo, State},
-	http::Request,
-	response::Response,
-};
+use axum::{body::Body, extract::State, http::Request, response::Response};
 use http::StatusCode;
 use opentelemetry_proto::tonic::{
 	collector::logs::v1::ExportLogsServiceRequest,
@@ -12,7 +7,7 @@ use opentelemetry_proto::tonic::{
 use prost::Message;
 use rustis::client::Client as RedisClient;
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::extractors::ClientIP};
 
 /// Handler for OTLP log push requests (`/otlp/v1/logs`).
 ///
@@ -21,7 +16,7 @@ use crate::prelude::*;
 /// rewritten using the same typed logic for both content types.
 pub(super) async fn handle_otlp_push(
 	State(state): State<AppState>,
-	ConnectInfo(addr): ConnectInfo<std::net::SocketAddr>,
+	ClientIP(ip): ClientIP,
 	req: Request<Body>,
 ) -> Response {
 	// Extract auth before any async work to avoid Send issues
@@ -41,7 +36,7 @@ pub(super) async fn handle_otlp_push(
 		.to_string();
 
 	let (runner_id, workspace_id) =
-		match super::auth::authenticate_and_authorize(&state, addr, runner_id, &api_token).await {
+		match super::auth::authenticate_and_authorize(&state, ip, runner_id, &api_token).await {
 			Ok(ids) => ids,
 			Err(resp) => return resp,
 		};

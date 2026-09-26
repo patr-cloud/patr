@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::net::IpAddr;
 
 use axum::{body::Body, response::Response};
 use base64::prelude::*;
@@ -23,7 +23,7 @@ pub(super) fn extract_basic_auth(headers: &http::HeaderMap) -> Option<(Uuid, Str
 /// workspace_id)` on success, or an error Response.
 pub(super) async fn authenticate_and_authorize(
 	state: &AppState,
-	addr: SocketAddr,
+	client_ip: IpAddr,
 	runner_id: Uuid,
 	api_token: &str,
 ) -> Result<(Uuid, Uuid), Response> {
@@ -42,7 +42,7 @@ pub(super) async fn authenticate_and_authorize(
 		&mut redis_conn,
 		ClientType::ApiToken,
 		&state.config,
-		addr.ip(),
+		client_ip,
 		api_token,
 	)
 	.await

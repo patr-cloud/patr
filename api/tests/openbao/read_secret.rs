@@ -1,7 +1,11 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	net::IpAddr,
+};
 
+use ipnetwork::IpNetwork;
 use models::{
-	api::workspace::secret::*,
+	api::{user::*, workspace::secret::*},
 	rbac::{Permission, RunnerPermission, SecretPermission, WorkspacePermission},
 	utils::Uuid,
 };
@@ -231,6 +235,77 @@ async fn read_secret_refusals_do_not_reveal_existence() {
 	assert!(
 		responses.iter().all(|response| *response == responses[0]),
 		"every refusal must look the same, got {responses:?}"
+	);
+}
+
+/// Behind nginx the socket peer is always the proxy, so a token's IP allowlist
+/// has to be checked against the client nginx reports, as the API does.
+#[tokio::test]
+async fn read_secret_checks_the_token_ip_allowlist_against_the_real_client() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+
+	let allowed = "203.0.113.7".parse::<IpAddr>().unwrap();
+	let token = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateApiTokenRequest>::builder()
+				.headers(CreateApiTokenRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateApiTokenRequest {
+					token: UserApiToken {
+						name: random_name(8),
+						permissions: BTreeMap::from([(
+							workspace.id,
+							WorkspacePermission::Member {
+								permissions: BTreeMap::from([(
+									setup.get_permission_id(Permission::Runner(
+										RunnerPermission::Execute,
+									)),
+									BTreeSet::from([runner.id]),
+								)]),
+							},
+						)]),
+						token_nbf: None,
+						token_exp: None,
+						allowed_ips: Some(vec![IpNetwork::from(allowed)]),
+						created: time::OffsetDateTime::now_utc(),
+					},
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
+		.response
+		.token;
+
+	let mut statuses = Vec::new();
+	for client_ip in ["203.0.113.7", "198.51.100.1"] {
+		let response = setup
+			.make_openbao_call(
+				http::Method::GET,
+				&secret_path(&workspace.id, &secret.id),
+				vec![
+					(http::header::AUTHORIZATION, &basic_auth(&runner.id, &token)),
+					(http::HeaderName::from_static("x-real-ip"), client_ip),
+				],
+			)
+			.await;
+		statuses.push(response.status_code());
+	}
+
+	assert_eq!(
+		statuses,
+		vec![StatusCode::OK, StatusCode::UNAUTHORIZED],
+		"the allowlisted client must get through and any other must not"
 	);
 }
 
