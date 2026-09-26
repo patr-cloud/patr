@@ -22,6 +22,7 @@ An endpoint's shape — path, method, request/response DTOs, `authentication`, `
 - Handlers destructure `AuthenticatedAppRequest { request, database, redis, client_ip, user_data, state }` and return `Result<AppResponse<E>, ErrorType>`.
 - **The layer stack owns the DB transaction** (`DataStoreConnectionLayer`): it auto-commits on `Ok`, auto-rolls-back on `Err`. Handlers never begin/commit a tx — just return `Result`.
 - `mount_*` takes an `allowed_client_type`. If a client is `ApiToken` and the endpoint's `API_ALLOWED` is false, it's silently not mounted.
+- **Handlers must check the id is their kind of resource.** `ResourcePermissionAuthenticator` only proves the path id is *some* live resource in the workspace and that the caller holds the permission on it — not that it's a secret, a volume, etc. So a handler for a typed id must confirm its own row exists before doing anything else, above all before soft-deleting the shared `resource` row. Otherwise e.g. `DELETE /secret/{deployment_id}` soft-deletes the deployment. Check the typed `DELETE`'s `rows_affected()` (see `delete_secret`, `delete_role`) or `fetch_optional(…).ok_or(ErrorType::ResourceDoesNotExist)` on the typed `SELECT` (see `delete_deployment`). **Every new resource type's handlers need this**, and `api/tests/api/workspace/rbac/resource_type.rs` should get a wrong-type case for its delete route.
 
 ## Auth & caching
 

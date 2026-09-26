@@ -52,8 +52,9 @@ pub async fn delete_deployment(
 		"#,
 		deployment_id as _
 	)
-	.fetch_one(&mut **database)
+	.fetch_optional(&mut **database)
 	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist)?
 	.runner;
 
 	query!(

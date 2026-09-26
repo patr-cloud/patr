@@ -11,6 +11,7 @@ use crate::prelude::*;
 
 pub mod invite;
 pub mod permissions;
+pub mod resource_type;
 
 #[tokio::test]
 async fn list_all_permissions_works() {

@@ -55,7 +55,7 @@ pub async fn remove_runner_from_workspace(
 	.await?
 	.map(|runner| runner.cloudflare_tunnel_id);
 
-	query!(
+	let rows_deleted = query!(
 		r#"
 		DELETE FROM
 			runner
@@ -69,7 +69,12 @@ pub async fn remove_runner_from_workspace(
 	.map_err(|err| match err {
 		sqlx::Error::Database(dbe) if dbe.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		err => err.into(),
-	})?;
+	})?
+	.rows_affected();
+
+	if rows_deleted == 0 {
+		return Err(ErrorType::ResourceDoesNotExist);
+	}
 
 	query!(
 		r#"

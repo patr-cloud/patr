@@ -80,7 +80,7 @@ pub async fn delete_repository(
 	.await?;
 
 	// Delete the repository
-	query!(
+	let rows_deleted = query!(
 		r#"
 		DELETE FROM
 			container_registry_repository
@@ -90,7 +90,12 @@ pub async fn delete_repository(
 		repository_id as _
 	)
 	.execute(&mut **database)
-	.await?;
+	.await?
+	.rows_affected();
+
+	if rows_deleted == 0 {
+		return Err(ErrorType::ResourceDoesNotExist);
+	}
 
 	// Mark the resource as deleted so any subsequent access to this id is denied
 	// (401) like a never-created id — matching every other delete handler and

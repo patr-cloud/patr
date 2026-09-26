@@ -81,12 +81,13 @@ pub async fn delete_managed_url(
 		"#,
 		managed_url_id as _,
 	)
-	.fetch_one(&mut **database)
+	.fetch_optional(&mut **database)
 	.await
 	.map_err(|e| match e {
 		sqlx::Error::Database(dbe) if dbe.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		err => ErrorType::server_error(err),
-	})?;
+	})?
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
 	query!(
 		r#"

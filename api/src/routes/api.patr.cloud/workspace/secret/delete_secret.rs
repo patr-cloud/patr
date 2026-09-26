@@ -27,7 +27,7 @@ pub async fn delete_secret(
 ) -> Result<AppResponse<DeleteSecretRequest>, ErrorType> {
 	trace!("Deleting secret ID: `{secret_id}`");
 
-	query!(
+	let rows_deleted = query!(
 		r#"
 		DELETE FROM
 			secret
@@ -41,7 +41,12 @@ pub async fn delete_secret(
 	.map_err(|err| match err {
 		sqlx::Error::Database(dbe) if dbe.is_foreign_key_violation() => ErrorType::ResourceInUse,
 		err => ErrorType::server_error(err),
-	})?;
+	})?
+	.rows_affected();
+
+	if rows_deleted == 0 {
+		return Err(ErrorType::ResourceDoesNotExist);
+	}
 
 	query!(
 		r#"
