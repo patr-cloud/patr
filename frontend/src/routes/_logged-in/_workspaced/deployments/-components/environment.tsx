@@ -133,6 +133,7 @@ const DeploymentEnvironment = (props: DeploymentEnvironmentProps) => {
 				</div>
 
 				<ConfigMount
+					showLabel={false}
 					disabled={() => !deploymentPermissions().edit}
 					value={() => deploymentQuery.data?.configMounts ?? {}}
 					onChange={(next) => setLocalInfo((prev) => (prev ? { ...prev, configMounts: next } : undefined))}

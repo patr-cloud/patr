@@ -18,8 +18,9 @@ interface VolumeMountProps {
 	/** Config mount paths on the same deployment — a volume can't share a path with one. */
 	configMountPaths?: MaybeAccessor<string[]>;
 	/**
-	 * Whether to name the section in the left gutter. Off on the Configuration
-	 * tab, where a heading above already says "Volumes" and explains them.
+	 * Whether to give the section a left gutter with its name. Off on the
+	 * Configuration tab, where a heading above names the section and the rows
+	 * run the full width.
 	 */
 	showLabel?: MaybeAccessor<boolean>;
 	/** Disables all inputs. */
@@ -139,7 +140,7 @@ const VolumeMount = (props: VolumeMountProps) => {
 				    is taller than the input, so hanging the error off the row would
 				    leave it closer to the next row than to the input it belongs to. */}
 				<div class="flex gap-8 items-start w-full">
-					<Show when={showLabel()} fallback={<div class="flex-2" />}>
+					<Show when={showLabel()}>
 						<Label
 							parentClass="flex-2"
 							label="Volumes"
@@ -197,7 +198,9 @@ const VolumeMount = (props: VolumeMountProps) => {
 					return (
 						<div class="flex flex-col gap-1 w-full mt-3">
 							<div class="flex gap-8 items-center w-full">
-								<div class="flex-2" />
+								<Show when={showLabel()}>
+									<div class="flex-2" />
+								</Show>
 								<section class="flex-10 flex items-center gap-4 w-full">
 									<Input
 										class={`flex-12 ${err() ? "border-error!" : ""}`}
@@ -227,7 +230,9 @@ const VolumeMount = (props: VolumeMountProps) => {
 							</div>
 							<Show when={err()}>
 								<div class="flex gap-8 w-full">
-									<div class="flex-2" />
+									<Show when={showLabel()}>
+										<div class="flex-2" />
+									</Show>
 									<div class="flex-10 text-error text-sm">{err()}</div>
 								</div>
 							</Show>
@@ -238,7 +243,9 @@ const VolumeMount = (props: VolumeMountProps) => {
 
 			<Show when={!get(props.disabled) && rows().length > 0}>
 				<div class="flex gap-8 w-full mt-2">
-					<div class="flex-2" />
+					<Show when={showLabel()}>
+						<div class="flex-2" />
+					</Show>
 					<small class="flex-10 text-xxs text-grey">
 						Removing a volume keeps its data on the runner; re-adding the same path restores it.
 					</small>
