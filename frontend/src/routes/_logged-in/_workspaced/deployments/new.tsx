@@ -302,6 +302,7 @@ const CreateDeploymentPage = () => {
 							<div class="border-t border-border-color mt-2" />
 
 							<EnvList
+								label="Environment Variables"
 								value={() => ({})}
 								onChange={setEnvVars}
 								onValidityChange={setEnvValid}

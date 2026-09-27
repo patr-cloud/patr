@@ -1,7 +1,7 @@
 import { FiTrash2 } from "solid-icons/fi";
 import { createEffect, createMemo, createSignal, createUniqueId, Index, JSX, Show } from "solid-js";
 import { EnvironmentVariableValue } from "~/bindings";
-import { Button, ButtonVariant, Input, InputDropdown, InputType } from "~/components";
+import { Button, ButtonVariant, Input, InputDropdown, InputType, Label } from "~/components";
 import { Color } from "~/utils/color";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -18,6 +18,12 @@ interface EnvInputProps {
 	disabled?: MaybeAccessor<boolean>;
 	/** Additional class for the root container. */
 	class?: MaybeAccessor<string>;
+	/**
+	 * Label for the left gutter, matching the other fields on a form that has
+	 * one. Omitted on the Configuration tab, where a heading already names the
+	 * section and the rows run the full width.
+	 */
+	label?: MaybeAccessor<string>;
 	/**
 	 * Rendered at the end of each row, under the inputs and any validation
 	 * error. Lets a parent annotate a row without this component knowing what
@@ -170,7 +176,8 @@ const EnvInput = (props: EnvInputProps) => {
 	};
 
 	return (
-		<div class={`flex items-start w-full ${get(props.class) ?? ""}`}>
+		<div class={`flex gap-8 items-start w-full ${get(props.class) ?? ""}`}>
+			<Show when={get(props.label)}>{(label) => <Label parentClass="flex-2 mt-6" label={label()} />}</Show>
 			<div class="flex flex-col flex-10 gap-1 w-full">
 				{/* Column headings, mirroring the row's columns below. */}
 				<div class="flex items-center gap-4 w-full text-sm text-grey">

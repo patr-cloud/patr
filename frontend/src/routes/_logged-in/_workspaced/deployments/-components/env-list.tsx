@@ -29,6 +29,8 @@ interface EnvListProps {
 	 * takes effect once the deployment is saved, which is the parent's to say.
 	 */
 	onSecretCreated?: () => void;
+	/** Label for the left gutter. See `EnvInput`'s `label`. */
+	label?: MaybeAccessor<string>;
 }
 
 /** How long the rows must settle before secretlint is asked about them. */
@@ -194,6 +196,7 @@ const EnvList = (props: EnvListProps) => {
 				onValidityChange={props.onValidityChange}
 				disabled={props.disabled}
 				class={props.class}
+				label={props.label}
 				secrets={() =>
 					(secretsQuery.data?.secrets ?? []).map((secret) => ({ id: secret.id, name: secret.name }))
 				}
@@ -235,8 +238,13 @@ const EnvList = (props: EnvListProps) => {
 			/>
 
 			<Show when={!get(props.disabled)}>
-				<div class="flex flex-col gap-1 w-full">
-					<div class="flex items-center gap-8">
+				{/* Same two-column split as the rows above, so this lines up with
+				    the inputs rather than the label gutter. */}
+				<div class="flex gap-8 w-full">
+					<Show when={get(props.label)}>
+						<div class="flex-2" />
+					</Show>
+					<div class="flex-10 flex items-center gap-8">
 						<Button
 							type="button"
 							variant={ButtonVariant.Plain}
