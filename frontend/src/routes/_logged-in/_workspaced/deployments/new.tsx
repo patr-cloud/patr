@@ -282,7 +282,14 @@ const CreateDeploymentPage = () => {
 							{/* Divider */}
 							<div class="border-t border-border-color mt-2" />
 
-							<EnvList value={() => ({})} onChange={setEnvVars} onValidityChange={setEnvValid} />
+							<EnvList
+								value={() => ({})}
+								onChange={setEnvVars}
+								onValidityChange={setEnvValid}
+								onSecretCreated={() =>
+									toast("Secret created. Create the deployment to start using it.", "success")
+								}
+							/>
 
 							<PortInput value={() => ({})} onChange={setPortList} onValidityChange={setPortsValid} />
 

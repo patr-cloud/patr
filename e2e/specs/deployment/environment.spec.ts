@@ -8,13 +8,13 @@ import { createSecretAPI, findSecretByName, randomSecretName } from '@/helpers/s
 import {
 	openDeploymentDetail,
 	environmentTab,
+	infoTab,
 	updateButton,
+	unsavedChangesNote,
 	fillFirstEnv,
-	openConvertToSecrets,
-	convertSingleEnv,
-	convertEmptyState,
+	convertEnv,
+	convertModalHeading,
 	convertNameInput,
-	convertRowCheckbox,
 	convertValueInput,
 	convertNameRequiredError,
 	convertSubmitButton,
@@ -27,7 +27,8 @@ import {
 // contract for env vars (replace-vs-keep, cross-workspace secret refs) is
 // covered in the Rust suite (api/tests/api/workspace/deployment/mod.rs); here
 // we cover the UI: the tab saves, values that look like credentials are
-// flagged, and converting one turns the row into a secret reference.
+// flagged, converting one turns its row into a secret reference, and Update
+// only enables once there is something to save.
 
 test.beforeAll(async () => {
 	await seedMachineType();
@@ -80,9 +81,24 @@ test.describe('deployment > environment [UI]', () => {
 			await fillFirstEnv(page, 'DB_URL', 'postgresql://user:hunter2@localhost:5432/app');
 
 			// The lint is debounced and its rules are a lazily-imported chunk.
-			await expect(envSecretHint(page, /connection string/i)).toBeVisible({
-				timeout: 15_000,
-			});
+			const hint = envSecretHint(
+				page,
+				/^PostgreSQL connection string - visible to viewers\. Store as secret\?$/,
+			);
+			await expect(hint).toBeVisible({ timeout: 15_000 });
+			// The warning colour carries it; there's no icon beside the text.
+			await expect(hint.locator('xpath=..').locator('svg')).toHaveCount(0);
+
+			// The hint and its Convert button end where the value field does.
+			const field = await page
+				.locator('input[placeholder="Enter Env Value"]')
+				.first()
+				.locator('xpath=..')
+				.boundingBox();
+			const convert = await page.getByRole('button', { name: /^Convert$/ }).boundingBox();
+			expect(Math.abs(field!.x + field!.width - (convert!.x + convert!.width))).toBeLessThan(
+				4,
+			);
 		} finally {
 			await context.close();
 		}
@@ -100,7 +116,31 @@ test.describe('deployment > environment [UI]', () => {
 
 			// Wait past the lint debounce before asserting the absence.
 			await page.waitForTimeout(2_000);
-			await expect(envSecretHint(page, /looks like a secret|found /i)).toHaveCount(0);
+			await expect(envSecretHint(page, /visible to viewers/)).toHaveCount(0);
+		} finally {
+			await context.close();
+		}
+	});
+
+	// A real-shaped OpenAI project key is named as one, not just "possible secret".
+	// Built at runtime so no key-shaped literal sits in the repo for secret
+	// scanners to trip on.
+	test('an OpenAI key is named as one', async ({ browser, api }) => {
+		const { user, dep } = await setup(api);
+		const context = await newContext(browser, user.clientIp);
+		await loginAs(context, user, { workspaceId: user.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDeploymentDetail(page, dep.id, 'environment');
+			const key = ['sk', 'proj', 'a1'.repeat(37) + 'T3Blbk' + 'FJ' + 'b2'.repeat(37)].join(
+				'-',
+			);
+			await fillFirstEnv(page, 'OPENAI_API_KEY', key);
+			await expect(
+				envSecretHint(page, /^OpenAI API token - visible to viewers\. Store as secret\?$/),
+			).toBeVisible({
+				timeout: 15_000,
+			});
 		} finally {
 			await context.close();
 		}
@@ -140,17 +180,29 @@ test.describe('deployment > environment [UI]', () => {
 		const page = await context.newPage();
 		try {
 			await openDeploymentDetail(page, dep.id, 'environment');
+			// Converting is per variable, from the row's hint; there's no bulk button.
+			await expect(page.getByRole('button', { name: /Convert to secrets/i })).toHaveCount(0);
 			await fillFirstEnv(page, 'API_TOKEN', 's3cr3t-value-goes-here');
+			await expect(
+				envSecretHint(page, /^Possible secret - visible to viewers\. Convert to secret\?$/),
+			).toBeVisible({
+				timeout: 15_000,
+			});
 
-			await openConvertToSecrets(page);
+			await convertEnv(page);
+			await expect(convertModalHeading(page)).toBeVisible();
 			// Name opens blank — a secret's name is the user's to choose.
-			await expect(convertNameInput(page).first()).toHaveValue('');
+			await expect(convertNameInput(page)).toHaveValue('');
 			// The value is carried over from the row.
-			await expect(convertValueInput(page).first()).toHaveValue('s3cr3t-value-goes-here');
+			await expect(convertValueInput(page)).toHaveValue('s3cr3t-value-goes-here');
 
-			await convertRowCheckbox(page).click();
-			await convertNameInput(page).first().fill(secretName);
+			await convertNameInput(page).fill(secretName);
 			await convertSubmitButton(page).click();
+
+			// The secret exists now, but the deployment isn't saved yet — both
+			// the toast and the note beside Update say so.
+			await expectToast(page, /^Secret created\. Update the deployment to start using it\.$/);
+			await expect(unsavedChangesNote(page)).toBeVisible();
 
 			// The row is now a reference, so its value input is replaced by a picker.
 			await expect(envSecretPicker(page)).toBeVisible({ timeout: 15_000 });
@@ -171,7 +223,7 @@ test.describe('deployment > environment [UI]', () => {
 		}
 	});
 
-	test('a selected row cannot be converted without a name', async ({ browser, api }) => {
+	test('a variable cannot be converted without a name', async ({ browser, api }) => {
 		const { user, dep } = await setup(api);
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user, { workspaceId: user.workspaceId });
@@ -179,30 +231,15 @@ test.describe('deployment > environment [UI]', () => {
 		try {
 			await openDeploymentDetail(page, dep.id, 'environment');
 			await fillFirstEnv(page, 'API_TOKEN', 's3cr3t-value-goes-here');
+			await convertEnv(page);
 
-			await openConvertToSecrets(page);
-			await convertRowCheckbox(page).click();
-			await expect(convertNameRequiredError(page)).toBeVisible();
+			// No nagging until the user tries to convert.
+			await expect(convertNameRequiredError(page)).toHaveCount(0);
 
 			// Submitting with a blank name is a no-op — the modal stays put.
 			await convertSubmitButton(page).click();
 			await expect(convertNameRequiredError(page)).toBeVisible();
-		} finally {
-			await context.close();
-		}
-	});
-
-	// The button stays enabled with nothing to convert: the modal explains why,
-	// which beats a dead button.
-	test('the modal explains itself when there is nothing to convert', async ({ browser, api }) => {
-		const { user, dep } = await setup(api);
-		const context = await newContext(browser, user.clientIp);
-		await loginAs(context, user, { workspaceId: user.workspaceId });
-		const page = await context.newPage();
-		try {
-			await openDeploymentDetail(page, dep.id, 'environment');
-			await openConvertToSecrets(page);
-			await expect(convertEmptyState(page)).toBeVisible();
+			await expect(convertModalHeading(page)).toBeVisible();
 		} finally {
 			await context.close();
 		}
@@ -226,15 +263,13 @@ test.describe('deployment > environment [UI]', () => {
 			await fillFirstEnv(page, name, 'postgresql://user:hunter2@localhost:5432/app');
 
 			await page.waitForTimeout(2_000);
-			await expect(envSecretHint(page, /connection string|looks like a secret/i)).toHaveCount(
-				0,
-			);
+			await expect(envSecretHint(page, /visible to viewers/)).toHaveCount(0);
 		} finally {
 			await context.close();
 		}
 	});
 
-	test('the per-row Convert opens the modal with that row ticked', async ({ browser, api }) => {
+	test('the per-row Convert opens the modal for that variable', async ({ browser, api }) => {
 		const { user, dep } = await setup(api);
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user, { workspaceId: user.workspaceId });
@@ -246,9 +281,102 @@ test.describe('deployment > environment [UI]', () => {
 				timeout: 15_000,
 			});
 
-			await convertSingleEnv(page);
-			// Pre-ticked, so the name error is already showing for that row.
-			await expect(convertNameRequiredError(page)).toBeVisible();
+			await convertEnv(page);
+			await expect(page.getByText('DB_URL', { exact: true }).last()).toBeVisible();
+			await expect(convertValueInput(page)).toHaveValue(
+				'postgresql://user:hunter2@localhost:5432/app',
+			);
+		} finally {
+			await context.close();
+		}
+	});
+
+	// Nothing to save means nothing to click: Update enables on the first edit,
+	// with a note beside it, and disables again once the edit is undone.
+	test('Update only enables while there are unsaved changes', async ({ browser, api }) => {
+		const { user, dep } = await setup(api, { environmentVariables: { LOG_LEVEL: 'info' } });
+		const context = await newContext(browser, user.clientIp);
+		await loginAs(context, user, { workspaceId: user.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDeploymentDetail(page, dep.id, 'environment');
+			const value = page.locator('input[placeholder="Enter Env Value"]').first();
+			await expect(value).toHaveValue('info', { timeout: 15_000 });
+			await expect(updateButton(page)).toBeDisabled();
+			await expect(unsavedChangesNote(page)).toHaveCount(0);
+
+			await value.fill('debug');
+			await expect(updateButton(page)).toBeEnabled();
+			await expect(unsavedChangesNote(page)).toBeVisible();
+
+			await value.fill('info');
+			await expect(updateButton(page)).toBeDisabled();
+			await expect(unsavedChangesNote(page)).toHaveCount(0);
+
+			// Saving settles it back to disabled.
+			await value.fill('debug');
+			await updateButton(page).click();
+			await expectToast(page, /Deployment updated successfully/i);
+			await expect(updateButton(page)).toBeDisabled();
+			await expect(unsavedChangesNote(page)).toHaveCount(0);
+		} finally {
+			await context.close();
+		}
+	});
+
+	// A refresh only asks for confirmation while there's something to lose.
+	test('refreshing only prompts while there are unsaved changes', async ({ browser, api }) => {
+		const { user, dep } = await setup(api, { environmentVariables: { LOG_LEVEL: 'info' } });
+		const context = await newContext(browser, user.clientIp);
+		await loginAs(context, user, { workspaceId: user.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDeploymentDetail(page, dep.id, 'environment');
+			const value = page.locator('input[placeholder="Enter Env Value"]').first();
+			await expect(value).toHaveValue('info', { timeout: 15_000 });
+
+			const dialogs: string[] = [];
+			page.on('dialog', async (dialog) => {
+				dialogs.push(dialog.type());
+				await dialog.accept();
+			});
+
+			// Browsers only show the unload prompt after a user gesture, so
+			// interact before each reload for the check to mean anything.
+			await value.click();
+			await page.reload();
+			await expect(value).toHaveValue('info', { timeout: 15_000 });
+			expect(dialogs).toEqual([]);
+
+			await value.fill('debug');
+			await page.reload();
+			expect(dialogs).toEqual(['beforeunload']);
+		} finally {
+			await context.close();
+		}
+	});
+
+	// Config files are part of what the container starts with, so they sit with
+	// the env vars on Configuration rather than on Info.
+	test('config files live on the Configuration tab', async ({ browser, api }) => {
+		const { user, dep } = await setup(api);
+		const context = await newContext(browser, user.clientIp);
+		await loginAs(context, user, { workspaceId: user.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDeploymentDetail(page, dep.id, 'environment');
+			await expect(
+				page.getByRole('heading', { name: 'Config Files', exact: true }),
+			).toBeVisible({
+				timeout: 15_000,
+			});
+			await expect(page.locator('input[name="deployment-config-filename"]')).toHaveCount(1);
+
+			await infoTab(page).click();
+			await expect(page.locator('input[name="deployment-name"]')).toBeVisible({
+				timeout: 15_000,
+			});
+			await expect(page.locator('input[name="deployment-config-filename"]')).toHaveCount(0);
 		} finally {
 			await context.close();
 		}
