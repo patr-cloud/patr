@@ -24,6 +24,11 @@ interface EnvListProps {
 	disabled?: MaybeAccessor<boolean>;
 	/** Additional class for the root container. */
 	class?: MaybeAccessor<string>;
+	/**
+	 * Fires when a row's value has just been converted into a secret. It only
+	 * takes effect once the deployment is saved, which is the parent's to say.
+	 */
+	onSecretCreated?: () => void;
 }
 
 /** How long the rows must settle before secretlint is asked about them. */
@@ -65,9 +70,10 @@ const looksLikeSecret = (key: string, value: string): boolean => {
 };
 
 /**
- * The deployment's environment variables, plus everything that acts on them as
- * a set: the .env upload, the convert-to-secrets flow, and the hints for values
- * that look like credentials. `EnvInput` below stays a plain key/value editor.
+ * The deployment's environment variables, plus everything that acts on them
+ * beyond plain editing: the .env upload, the hints for values that look like
+ * credentials, and converting one into a secret. `EnvInput` below stays a plain
+ * key/value editor.
  */
 const EnvList = (props: EnvListProps) => {
 	// What the editor seeds its rows from. This must NOT follow the editor's own
@@ -101,15 +107,15 @@ const EnvList = (props: EnvListProps) => {
 		props.onChange(next);
 	};
 
-	// Only plain, non-empty values can become secrets.
+	// Only plain, non-empty values can become secrets, so only they are linted.
 	const convertible = createMemo(() =>
 		Object.entries(current())
 			.filter(([key, value]) => key !== "" && typeof value === "string" && value !== "")
 			.map(([key, value]) => ({ key, value: value as string }))
 	);
 
-	// Secret names are unique per workspace, so a key that already names one
-	// can't be converted — the modal flags those rows.
+	// Secret names are unique per workspace; the convert modal warns when the
+	// name typed is taken, and a key that already names a secret gets no hint.
 	const secretsQuery = useSecretsQuery(
 		() => undefined,
 		() => "100"
@@ -147,24 +153,26 @@ const EnvList = (props: EnvListProps) => {
 		if (typeof value !== "string" || key === "" || value === "") return undefined;
 		if (existingSecretNames().has(key.toLowerCase())) return undefined;
 
-		// secretlint names what it found ("Stripe secret key detected"), which
-		// beats our generic wording whenever it has an opinion.
-		const found = findings()[key];
-		if (found?.length) return found[0];
+		// secretlint names what it found ("OpenAI API token"), which beats our
+		// generic wording whenever it has an opinion.
+		const found = findings()[key]?.[0];
+		if (found) return `${found.charAt(0).toUpperCase()}${found.slice(1)} - visible to viewers. Store as secret?`;
 
-		return looksLikeSecret(key, value) ? `${key} looks like a secret` : undefined;
+		return looksLikeSecret(key, value) ? "Possible secret - visible to viewers. Convert to secret?" : undefined;
 	};
 
 	const [convertOpen, setConvertOpen] = createSignal(false);
-	const [preselected, setPreselected] = createSignal<string[]>([]);
+	const [converting, setConverting] = createSignal<{ key: string; value: string } | null>(null);
 
-	const openConvert = (keys: string[]) => {
-		setPreselected(keys);
+	const openConvert = (key: string, value: string) => {
+		setConverting({ key, value });
 		setConvertOpen(true);
 	};
 
-	const applyConvertedSecrets = (converted: Record<string, EnvironmentVariableValue>) =>
-		pushIntoEditor({ ...current(), ...converted });
+	const applyConvertedSecret = (key: string, secretId: string) => {
+		pushIntoEditor({ ...current(), [key]: { fromSecret: secretId } });
+		props.onSecretCreated?.();
+	};
 
 	const [uploadOpen, setUploadOpen] = createSignal(false);
 
@@ -192,15 +200,17 @@ const EnvList = (props: EnvListProps) => {
 				rowHint={(row) => (
 					<Show when={!get(props.disabled) ? hintFor(row.key, row.value) : undefined}>
 						{(hint) => (
-							// Spans the key and value columns, with spacers standing in for the
-							// toggle and delete button so the hint ends where the value input does.
-							<div class="flex items-center gap-4 w-full">
+							// Spans the key and value columns, with invisible copies of the toggle
+							// and delete button so the hint ends where the value input does. The
+							// copies are a full row tall, so the hint sits at the top of its row,
+							// and the negative margin gives back the empty space below it.
+							<div class="flex items-start gap-4 w-full -mb-1.5">
 								<div class="flex-12 flex items-center justify-end gap-3 min-w-0">
-									<Alert type="warning" message={hint()} truncate />
+									<Alert type="warning" message={hint()} hideIcon />
 									<Button
 										type="button"
 										variant={ButtonVariant.Plain}
-										onClick={() => openConvert([row.key])}
+										onClick={() => openConvert(row.key, row.value as string)}
 										class="flex items-center gap-2 text-sm whitespace-nowrap cursor-pointer"
 									>
 										<FiLock size={14} />
@@ -236,17 +246,6 @@ const EnvList = (props: EnvListProps) => {
 							<FiUpload size={14} />
 							Upload your .env file
 						</Button>
-						{/* Deliberately not disabled when there is nothing to convert: the
-						    modal says so, which beats a dead button that explains nothing. */}
-						<Button
-							type="button"
-							variant={ButtonVariant.Plain}
-							onClick={() => openConvert([])}
-							class="flex items-center gap-2 text-sm cursor-pointer"
-						>
-							<FiLock size={14} />
-							Convert to secrets
-						</Button>
 					</div>
 				</div>
 
@@ -260,10 +259,9 @@ const EnvList = (props: EnvListProps) => {
 				<EnvConvertModal
 					isOpen={convertOpen}
 					setIsOpen={setConvertOpen}
-					convertible={convertible}
+					entry={converting}
 					existingSecretNames={existingSecretNames}
-					initialSelection={preselected}
-					onConverted={applyConvertedSecrets}
+					onConverted={applyConvertedSecret}
 				/>
 			</Show>
 		</div>

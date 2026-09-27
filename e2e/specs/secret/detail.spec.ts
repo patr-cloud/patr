@@ -13,6 +13,9 @@ import {
 	openSecretDetail,
 	fillSecretName,
 	fillSecretValue,
+	revealSecretValue,
+	updateValueButton,
+	cancelValueButton,
 	saveButton,
 	deleteSecretViaModal,
 } from '@/helpers/ui/secret';
@@ -21,7 +24,8 @@ import { expectToast, expectUrl } from '@/helpers/ui/workspace';
 // The stored value itself (OpenBao round-trips, rotation overwriting it) is
 // asserted in the Rust API suite (api/tests/api/workspace/secret.rs), which
 // can read OpenBao directly. Here we cover the dashboard: edits land, a
-// rotation bumps `lastUpdated` while a rename doesn't, and delete behaves.
+// rotation bumps `lastUpdated` while a rename doesn't, the value field stays
+// hidden until asked for, and delete behaves.
 
 test.beforeAll(async () => {
 	await seedMachineType();
@@ -96,6 +100,7 @@ test.describe('secret > detail [UI]', () => {
 		const secret = await createSecretAPI(api, user, user.workspaceId, name, 'old-value');
 		const before = await getSecretAPI(api, user, user.workspaceId, secret.id);
 		await withDetail(browser, user, secret.id, async (page) => {
+			await revealSecretValue(page);
 			await fillSecretValue(page, 'new-value');
 			await saveButton(page).click();
 			await expectToast(page, /Secret updated successfully/i);
@@ -105,6 +110,38 @@ test.describe('secret > detail [UI]', () => {
 		expect(after.name).toBe(name);
 		// The API suite checks the new timestamp is later; here it just has to move.
 		expect(after.lastUpdated).not.toBe(before.lastUpdated);
+	});
+
+	// The value can't be read back, so there's nothing to show in a field until
+	// the user asks to replace it. Cancelling puts the field away again, and a
+	// save then keeps the stored value.
+	test('the value field is hidden until Update value is clicked', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		const secret = await createSecretAPI(
+			api,
+			user,
+			user.workspaceId,
+			randomSecretName(),
+			'kept',
+		);
+		const before = await getSecretAPI(api, user, user.workspaceId, secret.id);
+		await withDetail(browser, user, secret.id, async (page) => {
+			await expect(page.locator('#secret-value')).toHaveCount(0);
+			await expect(
+				page.getByText(/The current value is hidden and can't be viewed/),
+			).toBeVisible();
+
+			await revealSecretValue(page);
+			await fillSecretValue(page, 'typed-then-cancelled');
+			await cancelValueButton(page).click();
+			await expect(page.locator('#secret-value')).toHaveCount(0);
+			await expect(updateValueButton(page)).toBeVisible();
+
+			await saveButton(page).click();
+			await expectToast(page, /Secret updated successfully/i);
+		});
+		const after = await getSecretAPI(api, user, user.workspaceId, secret.id);
+		expect(after.lastUpdated).toBe(before.lastUpdated);
 	});
 
 	test('delete via modal: success toast, redirect to list, secret gone', async ({

@@ -35,6 +35,9 @@ const SecretDetailPage = () => {
 
 	const [name, setName] = createSignal<string>();
 	const [value, setValue] = createSignal("");
+	// The value can't be read back, so its field stays hidden until the user
+	// asks to replace it.
+	const [editingValue, setEditingValue] = createSignal(false);
 	const [error, setError] = createSignal("");
 
 	// Seed the editable name once the secret info loads. Only once: the query
@@ -57,7 +60,7 @@ const SecretDetailPage = () => {
 
 		const requestBody: UpdateSecretRequest = {
 			name: secretName,
-			value: value() ? value() : undefined,
+			value: editingValue() && value() ? value() : undefined,
 		};
 
 		const response = await httpRequest<UpdateSecretResponse>(
@@ -189,20 +192,54 @@ const SecretDetailPage = () => {
 											<div class="flex gap-8 items-start w-full">
 												<Label parentClass="flex-2 pt-2.5" for="secret-value" label="Value" />
 												<div class="flex-10 flex flex-col">
-													<PasswordInput
-														id="secret-value"
-														name="secret-value"
-														autocomplete="new-password"
-														placeholder="Enter a new value to rotate the secret"
-														value={value()}
-														onInput={(e) => {
-															setValue(e.currentTarget.value);
-															setError("");
-														}}
-													/>
-													<p class="text-grey text-xs mt-1">
-														Leave blank to keep the current value.
-													</p>
+													<Show
+														when={editingValue()}
+														fallback={
+															<div class="flex items-center gap-4 pt-2.5">
+																<p class="text-grey text-sm">
+																	The current value is hidden and can't be viewed. It
+																	stays unchanged unless you update it.
+																</p>
+																<Button
+																	type="button"
+																	variant={ButtonVariant.Plain}
+																	onClick={() => setEditingValue(true)}
+																	class="text-sm whitespace-nowrap cursor-pointer"
+																>
+																	Update value
+																</Button>
+															</div>
+														}
+													>
+														<PasswordInput
+															id="secret-value"
+															name="secret-value"
+															autocomplete="new-password"
+															placeholder="Enter the new value"
+															value={value()}
+															onInput={(e) => {
+																setValue(e.currentTarget.value);
+																setError("");
+															}}
+														/>
+														<div class="flex items-center gap-4 mt-1">
+															<p class="text-grey text-xs">
+																Saving replaces the current value. Deployments using
+																this secret restart with the new one.
+															</p>
+															<Button
+																type="button"
+																variant={ButtonVariant.Plain}
+																onClick={() => {
+																	setEditingValue(false);
+																	setValue("");
+																}}
+																class="text-xs whitespace-nowrap cursor-pointer"
+															>
+																Cancel
+															</Button>
+														</div>
+													</Show>
 													<Show when={error()}>
 														<div class="mt-1">
 															<Alert message={error()} type="error" />

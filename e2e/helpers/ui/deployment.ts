@@ -135,71 +135,46 @@ export async function submitEnvUpload(page: Page): Promise<void> {
 	await addToDeploymentButton(page).click();
 }
 
-// ---------- Convert to secrets (env-list.tsx + env-convert-modal.tsx) ----------
+// ---------- Convert to a secret (env-list.tsx + env-convert-modal.tsx) ----------
 
-// The per-row hint shown when a value looks like a credential. The wording is
-// secretlint's own ("found Stripe secret key") when a vendor rule matches, and
-// "<KEY> looks like a secret" when only the local heuristics do.
+// The per-row hint shown when a value looks like a credential: "OpenAI API
+// token - visible to viewers. Store as secret?" when a secretlint rule matches,
+// and "Possible secret - visible to viewers. Convert to secret?" when only the
+// local heuristics do.
 export function envSecretHint(page: Page, text: RegExp) {
 	return page.getByText(text);
 }
 
-// Opens the modal for every convertible row. There is a second button with the
-// same label inside the modal (the submit), so this is scoped to the one that
-// is on the page before the modal exists.
-export async function openConvertToSecrets(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /Convert to secrets/i }).click();
-}
-
-// The per-row "Convert" button beside a hint, which opens the modal with just
-// that row ticked.
-export async function convertSingleEnv(page: Page): Promise<void> {
+// The "Convert" button beside a row's hint, which opens the modal for that one
+// variable. `row` counts hinted rows, not all rows.
+export async function convertEnv(page: Page, row = 0): Promise<void> {
 	await page
 		.getByRole('button', { name: /^Convert$/ })
-		.first()
+		.nth(row)
 		.click();
 }
 
 export function convertModalHeading(page: Page) {
-	return page.getByText('Convert to secrets', { exact: true });
+	return page.getByText('Convert to a secret', { exact: true });
 }
 
-export function convertEmptyState(page: Page) {
-	return page.getByText(/No environment variables to convert/i);
-}
-
-// The Checkbox component keeps its real <input> `sr-only`, so Playwright sees
-// it as hidden and `.check()` would never pass actionability. Clicking the
-// wrapping <label> is both what a user does and what actually toggles it.
-const checkboxLabels = (page: Page) => page.locator('label:has(input[type="checkbox"])');
-
-export function convertSelectAll(page: Page) {
-	return checkboxLabels(page).filter({ hasText: 'Select all' });
-}
-
-/** One row's checkbox, indexed past the "Select all" that precedes them. */
-export function convertRowCheckbox(page: Page, row = 0) {
-	return checkboxLabels(page).filter({ hasNotText: 'Select all' }).nth(row);
-}
-
-// Row controls inside the modal. The name input opens blank; the value is
-// seeded from the deployment's row.
+// The name opens blank; the value is seeded from the deployment's row.
 export function convertNameInput(page: Page) {
-	return page.locator('input[placeholder="Secret name"]');
+	return page.locator('#convert-secret-name');
 }
 
 export function convertValueInput(page: Page) {
-	return page.locator('input[placeholder="Secret value"]');
+	return page.locator('#convert-secret-value');
 }
 
 export function convertNameRequiredError(page: Page) {
 	return page.getByText('Give this secret a name', { exact: true });
 }
 
-// The modal's submit. Scoped to the dialog's footer by taking the last match,
-// since the page behind it has a button with the same label.
+// The modal's submit. Scoped to its form, since each hinted row on the page
+// behind has a "Convert" button too.
 export function convertSubmitButton(page: Page) {
-	return page.getByRole('button', { name: /^(Convert to secrets|Converting…)$/ }).last();
+	return page.locator('form:has(#convert-secret-name) button[type="submit"]');
 }
 
 // The String / Secret toggle on each row (value-type-toggle.tsx).
@@ -259,6 +234,11 @@ export function infoImageTagInput(page: Page) {
 
 export function updateButton(page: Page) {
 	return page.getByRole('button', { name: /^(Update|Updating\.\.\.)$/ });
+}
+
+// Shown beside Update while the tab's draft differs from the saved deployment.
+export function unsavedChangesNote(page: Page) {
+	return page.getByText('Unsaved changes', { exact: true });
 }
 
 // ---------- Delete modal ----------

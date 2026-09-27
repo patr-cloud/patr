@@ -1,5 +1,5 @@
 import { FiChevronDown } from "solid-icons/fi";
-import { createEffect, createSignal, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { ExposedPortType, GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
 import {
 	Button,
@@ -11,6 +11,7 @@ import {
 	Label,
 	RangeSlider,
 	ToggleSwitch,
+	UnsavedChangesGuard,
 	useToast,
 } from "~/components";
 import { useAuthState } from "~/hooks";
@@ -23,8 +24,7 @@ import { REGISTRY_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
 import PortInput from "./port";
-import ConfigMount from "./config-mount";
-import { toUpdateRequest } from "./utils";
+import { isSameUpdate, toUpdateRequest } from "./utils";
 
 interface DeploymentInfoProps {
 	deploymentId: string;
@@ -53,7 +53,14 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [_, setHasUpdated] = createSignal(false);
 	const [isUpdating, setIsUpdating] = createSignal(false);
 	const [portsValid, setPortsValid] = createSignal(true);
-	const [configMountsValid, setConfigMountsValid] = createSignal(true);
+
+	// Whether the draft would change anything if saved. Update stays disabled
+	// until it would.
+	const isDirty = createMemo(() => {
+		const info = localInfo();
+		const saved = deploymentQuery.data;
+		return !!info && !!saved && !isSameUpdate(info, saved);
+	});
 
 	type DeployInfo = GetDeploymentInfoResponse | undefined;
 	const updateLocal = (fn: (prev: DeployInfo) => DeployInfo) => {
@@ -67,10 +74,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		return info.registry === REGISTRY_DOMAIN;
 	};
 
-	const refetchDeploymentInfo = () => {
+	const refetchDeploymentInfo = async () => {
 		const wsId = workspaceId();
 		if (wsId) {
-			queryClient.invalidateQueries({ queryKey: deploymentKeys.detail(wsId, props.deploymentId) });
+			await queryClient.invalidateQueries({ queryKey: deploymentKeys.detail(wsId, props.deploymentId) });
 		}
 	};
 
@@ -85,7 +92,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		// The Update button is disabled when env/ports are invalid, but form
 		// submission can still be triggered via Enter on another input or
 		// programmatically. Block invalid payloads defensively.
-		if (!portsValid() || !configMountsValid()) {
+		if (!portsValid()) {
 			toast("Please fix the highlighted errors before saving", "error");
 			return;
 		}
@@ -116,7 +123,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			}
 
 			toast("Deployment updated successfully", "success");
-			refetchDeploymentInfo();
+			// Re-seed from what the server now holds, so anything it normalised
+			// doesn't leave the form looking unsaved.
+			await refetchDeploymentInfo();
+			setLocalInfo(deploymentQuery.data);
 		} finally {
 			setIsUpdating(false);
 		}
@@ -291,21 +301,16 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					}}
 					onValidityChange={setPortsValid}
 				/>
-
-				<ConfigMount
-					disabled={() => !deploymentPermissions().edit}
-					value={() => deploymentQuery.data?.configMounts ?? {}}
-					onChange={(next) => updateLocal((prev) => (prev ? { ...prev, configMounts: next } : undefined))}
-					onValidityChange={setConfigMountsValid}
-				/>
 			</div>
 
 			<Show when={deploymentPermissions().edit}>
-				<div class="w-full flex justify-end items-center">
+				{/* Sticky, so saving doesn't mean scrolling to the end of a long form. */}
+				<div class="sticky bottom-0 z-10 w-full flex justify-end items-center gap-4 py-4 bg-secondary-dark border-t border-border-color">
+					<Show when={isDirty()}>
+						<span class="text-sm text-grey">Unsaved changes</span>
+					</Show>
 					<Button
-						disabled={
-							!deploymentPermissions().edit || isUpdating() || !portsValid() || !configMountsValid()
-						}
+						disabled={!isDirty() || isUpdating() || !portsValid()}
 						loading={isUpdating()}
 						loadingContent={() => <span>Updating...</span>}
 						type="submit"
@@ -315,6 +320,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					</Button>
 				</div>
 			</Show>
+
+			<UnsavedChangesGuard
+				when={isDirty}
+				message="You have unsaved changes to this deployment. If you leave now, they'll be lost."
+			/>
 		</form>
 	);
 };

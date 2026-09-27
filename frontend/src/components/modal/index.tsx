@@ -45,7 +45,7 @@ const ModalContainer = (rawProps: ParentProps<ModalContainerProps>) => {
 		>
 			<button
 				onClick={() => props.closeFn(false)}
-				class="absolute w-5 h-5 top-4 right-4 bg-primary rounded-full cursor-pointer flex justify-center items-center hover:bg-primary/80 transition"
+				class="absolute w-5 h-5 top-4 right-4 bg-primary text-secondary rounded-full cursor-pointer flex justify-center items-center hover:bg-primary/80 transition"
 			>
 				<FiX size="16" />
 			</button>

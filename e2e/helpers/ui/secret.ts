@@ -8,7 +8,8 @@ import { HYDRATION_TIMEOUT } from '@/helpers/config';
 //   frontend/src/routes/_logged-in/_workspaced/secrets/$id.tsx (detail)
 //
 // Create and detail share the same two fields: #secret-name and #secret-value.
-// On the detail page a blank value keeps the stored one.
+// On the detail page #secret-value is hidden until "Update value" is clicked,
+// since the stored value can't be shown.
 
 async function waitForVisible(page: Page, selector: string): Promise<void> {
 	await page.locator(selector).first().waitFor({ state: 'visible', timeout: HYDRATION_TIMEOUT });
@@ -59,6 +60,20 @@ export async function submitCreateSecret(page: Page): Promise<void> {
 export async function openSecretDetail(page: Page, id: string): Promise<void> {
 	await page.goto(`/secrets/${id}`, { waitUntil: 'domcontentloaded' });
 	await waitForVisible(page, '#secret-name');
+}
+
+// Reveals the detail page's value field, which starts hidden.
+export async function revealSecretValue(page: Page): Promise<void> {
+	await updateValueButton(page).click();
+	await waitForVisible(page, '#secret-value');
+}
+
+export function updateValueButton(page: Page) {
+	return page.getByRole('button', { name: 'Update value', exact: true });
+}
+
+export function cancelValueButton(page: Page) {
+	return page.getByRole('button', { name: 'Cancel', exact: true });
 }
 
 export function saveButton(page: Page) {

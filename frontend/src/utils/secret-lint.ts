@@ -54,22 +54,24 @@ const loadLinter = async () => {
 const MASKED = /\*{3,}/g;
 
 /**
- * Reduces a rule's message to the part that names what was found, dropping the
- * masked value itself: `found Stripe secret key: ****` becomes `found Stripe
- * secret key`. The asterisk run still encodes the secret's length, and reads
- * like noise either way.
+ * Reduces a rule's message to the name of what was found, dropping the masked
+ * value and the "found" in front of it: `found Stripe secret key: ****` becomes
+ * `Stripe secret key`. The asterisk run still encodes the secret's length, and
+ * reads like noise either way.
  */
 const describe = (message: string): string =>
 	message
 		.replace(MASKED, "")
 		.replace(/\s+/g, " ")
 		.replace(/[\s:,-]+$/, "")
+		.replace(/^\s*found\s+/i, "")
 		.trim();
 
 /**
- * The findings for one environment variable, or an empty array when secretlint
- * has nothing to say. Never throws: a failure to load or lint just means no
- * findings, since this only drives an optional hint.
+ * What secretlint found in one environment variable (`PostgreSQL connection
+ * string`, say), or an empty array when it has nothing to say. Never throws: a
+ * failure to load or lint just means no findings, since this only drives an
+ * optional hint.
  */
 export async function lintEnvVar(key: string, value: string): Promise<string[]> {
 	try {

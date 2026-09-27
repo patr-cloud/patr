@@ -14,6 +14,8 @@ interface AlertProps {
 	 * point and must be readable in full.
 	 */
 	truncate?: boolean;
+	/** Leave out the leading icon, for alerts where the colour alone says enough. */
+	hideIcon?: boolean;
 }
 
 const Alert = (props: AlertProps) => {
@@ -24,13 +26,13 @@ const Alert = (props: AlertProps) => {
 			}`}
 			title={props.truncate ? props.message : undefined}
 		>
-			{props.type === "error" && (
+			{!props.hideIcon && props.type === "error" && (
 				<FiAlertCircle size={16} class={`text-error ${props.truncate ? "shrink-0" : ""}`} />
 			)}
-			{props.type === "warning" && (
+			{!props.hideIcon && props.type === "warning" && (
 				<FiAlertCircle size={16} class={`text-warning ${props.truncate ? "shrink-0" : ""}`} />
 			)}
-			{props.type === "success" && (
+			{!props.hideIcon && props.type === "success" && (
 				<FiCheckCircle size={16} class={`text-success ${props.truncate ? "shrink-0" : ""}`} />
 			)}
 			<span class={`text-${props.type} text-sm ${props.truncate ? "truncate leading-4" : ""}`}>

@@ -41,8 +41,15 @@ const UnsavedChangesGuard = (rawProps: UnsavedChangesGuardProps) => {
 	);
 
 	// In-app navigation (sidebar, tabs): pause it and let the modal below decide.
-	// `withResolver` hands us `proceed`/`reset` to wire to the buttons.
-	const blocker = useBlocker({ withResolver: true, shouldBlockFn: () => props.when() });
+	// `withResolver` hands us `proceed`/`reset` to wire to the buttons. The
+	// router's own unload prompt is switched off: it fires for every mounted
+	// blocker without asking `shouldBlockFn`, so it would prompt on every
+	// refresh. The listener below covers unloads, and only while dirty.
+	const blocker = useBlocker({
+		withResolver: true,
+		shouldBlockFn: () => props.when(),
+		enableBeforeUnload: false,
+	});
 
 	// Tab close / refresh / external navigation: the browser can only show its own
 	// generic prompt, and only if a beforeunload listener is registered — so add
