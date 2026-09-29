@@ -152,6 +152,7 @@ pub(super) async fn load_actor_auth_data(
 	});
 
 	Ok(ActorAuthDataCache {
+		login_id: *login_id,
 		actor_id: user.id,
 		kind: ActorAuthDataCacheKind::WebLogin {
 			email: user.email,

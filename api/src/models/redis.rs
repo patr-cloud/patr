@@ -9,12 +9,18 @@ use crate::prelude::*;
 
 /// Everything an authenticated request needs to know about the actor behind
 /// a login, as cached in Redis under
-/// [`auth_data_for_login_id`][redis::keys::auth_data_for_login_id]. A cache
-/// hit builds the request's [`RequestActorData`] from this alone, without
-/// touching the database.
+/// [`auth_data_for_login_id`][redis::keys::auth_data_for_login_id] (web logins)
+/// or [`auth_data_for_token`][redis::keys::auth_data_for_token] (API tokens and
+/// service accounts). A cache hit builds the request's [`RequestActorData`]
+/// from this alone, without touching the database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorAuthDataCache {
+	/// The login this entry is for: the web login ID, the API token ID, or —
+	/// for a service account, which is its own single credential — the
+	/// service account ID. Not always the cache key (tokens are keyed by their
+	/// hash), so it's kept here for the login's stale-since stamp.
+	pub login_id: Uuid,
 	/// The actor behind the login: the user ID or the service account ID.
 	pub actor_id: Uuid,
 	/// Which kind of login this is, and what it carries.
@@ -59,10 +65,6 @@ pub enum ActorAuthDataCacheKind {
 		/// the entry because the client IP differs per request and has to be
 		/// checked on cache hits too.
 		allowed_ips: Option<Vec<IpNetwork>>,
-		/// The argon2 hash of the token's secret, as stored in the database,
-		/// so the presented secret can be verified on a hit without a
-		/// database round trip.
-		token_hash: String,
 	},
 	/// A service account's token.
 	#[serde(rename_all = "camelCase")]
@@ -71,9 +73,5 @@ pub enum ActorAuthDataCacheKind {
 		name: String,
 		/// When the service account was created.
 		created: OffsetDateTime,
-		/// The argon2 hash of the token's secret, as stored in the database,
-		/// so the presented secret can be verified on a hit without a
-		/// database round trip.
-		token_hash: String,
 	},
 }
