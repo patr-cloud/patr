@@ -1,6 +1,7 @@
-use argon2::{Algorithm, Argon2, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
 use models::api::workspace::service_account::*;
+use rand::{RngExt, distr::Alphanumeric};
+use sha2::{Digest as _, Sha256};
 
 use crate::prelude::*;
 
@@ -25,23 +26,22 @@ pub async fn create_service_account(
 		redis: _,
 		client_ip: _,
 		actor_data,
-		state,
+		state: _,
 	}: AuthenticatedAppRequest<'_, CreateServiceAccountRequest>,
 ) -> Result<AppResponse<CreateServiceAccountRequest>, ErrorType> {
 	info!("Creating service account with name: `{name}`");
 
 	// Generate token
-	let refresh_token = Uuid::new_v4();
-	let token_hash = Argon2::new_with_secret(
-		state.config.password_pepper.as_bytes(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.map_err(ErrorType::server_error)?
-	.hash_password_with_salt(refresh_token.as_bytes(), &generate_salt())
-	.map_err(ErrorType::server_error)?
-	.to_string();
+	let token = format!(
+		"{}{}",
+		constants::SERVICE_ACCOUNT_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
+	let token_hash = hex::encode(Sha256::digest(&token));
 
 	// Create resource
 	let id = query!(
@@ -185,8 +185,6 @@ pub async fn create_service_account(
 		}
 		other => ErrorType::server_error(other),
 	})?;
-
-	let token = format!("patrv1.{}.{}", refresh_token, id);
 
 	AppResponse::builder()
 		.body(CreateServiceAccountResponse {

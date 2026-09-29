@@ -113,6 +113,18 @@ pub async fn initialize_api_token_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	// Tokens are looked up by their hash.
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			user_api_token_uq_token_hash
+		ON
+			user_api_token(token_hash);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	query!(
 		r#"
 		ALTER TABLE user_api_token_workspace_permission_type

@@ -29,3 +29,4 @@ mod m026_deployment_env_var_workspace_id;
 mod m027_fix_migrated_schema_drift;
 mod m028_deployment_volumes;
 mod m029_add_service_accounts;
+mod m030_index_token_hashes;
