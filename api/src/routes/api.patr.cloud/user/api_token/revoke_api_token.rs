@@ -25,7 +25,7 @@ pub async fn revoke_api_token(
 ) -> Result<AppResponse<RevokeApiTokenRequest>, ErrorType> {
 	trace!("Revoke API token: {}", token_id);
 
-	let rows_affected = query!(
+	let Some(token) = query!(
 		r#"
 		UPDATE
 			user_api_token
@@ -33,20 +33,20 @@ pub async fn revoke_api_token(
 			revoked = NOW()
 		WHERE
 			token_id = $1 AND
-			user_id = $2;
+			user_id = $2
+		RETURNING
+			token_hash;
 		"#,
 		token_id as _,
 		actor_data.id as _,
 	)
-	.execute(&mut **database)
+	.fetch_optional(&mut **database)
 	.await?
-	.rows_affected();
-
-	if rows_affected == 0 {
+	else {
 		return Err(ErrorType::ApiTokenDoesNotExist);
-	}
+	};
 
-	permissions::mark_login_stale(redis, &token_id).await?;
+	permissions::mark_token_stale(redis, &token_id, &token.token_hash).await?;
 
 	AppResponse::builder()
 		.status_code(StatusCode::ACCEPTED)

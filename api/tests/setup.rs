@@ -152,7 +152,7 @@ impl TestSetup {
 
 	/// Make a typed API call against the routes configured for
 	/// `ActorClientType::UserLogin(UserLoginType::ApiToken)` authentication. Use this for any test
-	/// that presents a `patrv1.{refresh}.{login_id}` API token in the
+	/// that presents a `patr_at_…` API token in the
 	/// `Authorization` header — the WebDashboard-routed server rejects it as
 	/// a malformed access token.
 	///

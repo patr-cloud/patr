@@ -21,8 +21,8 @@ async fn create_service_account_works() {
 
 	assert!(!sa.name.is_empty());
 	assert!(
-		sa.token.starts_with("patrv1."),
-		"token should start with patrv1."
+		sa.token.starts_with("patr_sa_"),
+		"token should start with patr_sa_"
 	);
 }
 
@@ -500,8 +500,8 @@ async fn regenerate_token_works() {
 
 	let new_token = &response.response.token;
 	assert!(
-		new_token.starts_with("patrv1."),
-		"new token should start with patrv1."
+		new_token.starts_with("patr_sa_"),
+		"new token should start with patr_sa_"
 	);
 	assert_ne!(
 		&sa.token, new_token,

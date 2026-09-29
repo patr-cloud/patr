@@ -1,6 +1,7 @@
-use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use models::api::user::*;
+use rand::{RngExt, distr::Alphanumeric};
 use reqwest::StatusCode;
+use sha2::{Digest as _, Sha256};
 
 use crate::{models::permissions, prelude::*};
 
@@ -21,30 +22,25 @@ pub async fn regenerate_api_token(
 		redis,
 		client_ip: _,
 		actor_data,
-		state,
+		state: _,
 	}: AuthenticatedAppRequest<'_, RegenerateApiTokenRequest>,
 ) -> Result<AppResponse<RegenerateApiTokenRequest>, ErrorType> {
 	trace!("Regenerating API token: {}", token_id);
 
-	let refresh_token = Uuid::new_v4();
-	let hashed_refresh_token = argon2::Argon2::new_with_secret(
-		state.config.password_pepper.as_ref(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.inspect_err(|err| {
-		error!("Error creating Argon2: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.hash_password_with_salt(refresh_token.as_bytes(), &generate_salt())
-	.inspect_err(|err| {
-		error!("Error hashing refresh token: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.to_string();
+	let token = format!(
+		"{}{}",
+		constants::API_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
+	let token_hash = hex::encode(Sha256::digest(&token));
 
-	let rows_affected = query!(
+	// `old` is the row as it was before the update (Postgres 18), so this hands
+	// back the hash being replaced, whose cache entry has to go.
+	let Some(old) = query!(
 		r#"
 		UPDATE
 			user_api_token
@@ -52,26 +48,24 @@ pub async fn regenerate_api_token(
 			token_hash = $1
 		WHERE
 			token_id = $2 AND
-			user_id = $3;
+			user_id = $3
+		RETURNING
+			old.token_hash;
 		"#,
-		hashed_refresh_token,
+		token_hash,
 		token_id as _,
 		actor_data.id as _,
 	)
-	.execute(&mut **database)
+	.fetch_optional(&mut **database)
 	.await?
-	.rows_affected();
-
-	if rows_affected == 0 {
+	else {
 		return Err(ErrorType::ApiTokenDoesNotExist);
-	}
+	};
 
-	permissions::mark_login_stale(redis, &token_id).await?;
+	permissions::mark_token_stale(redis, &token_id, &old.token_hash).await?;
 
 	AppResponse::builder()
-		.body(RegenerateApiTokenResponse {
-			token: format!("patrv1.{}.{}", refresh_token, token_id),
-		})
+		.body(RegenerateApiTokenResponse { token })
 		.headers(())
 		.status_code(StatusCode::ACCEPTED)
 		.build()

@@ -115,9 +115,9 @@ export async function readNewTokenFromModal(page: Page): Promise<string> {
 	await expect(page.getByText(/API Token Created Successfully/i)).toBeVisible({
 		timeout: 15_000,
 	});
-	// The token text starts with "patrv1." — locate by that prefix.
+	// The token text starts with "patr_at_" — locate by that prefix.
 	const token = await page
-		.locator('text=/patrv1\\.[a-f0-9-]+\\.[a-f0-9-]+/i')
+		.locator('text=/patr_at_[A-Za-z0-9]{32}/')
 		.first()
 		.innerText();
 	return token.trim();
