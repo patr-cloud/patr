@@ -714,7 +714,7 @@ async fn docker_login_works() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 	// docker login is for API tokens, not web-dashboard sessions — the handler
-	// validates the password as a `patrv1.` token.
+	// validates the password as an API token.
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,

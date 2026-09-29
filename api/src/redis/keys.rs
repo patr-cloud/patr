@@ -4,11 +4,19 @@ use models::api::auth::SocialLoginProvider;
 
 use crate::prelude::*;
 
-/// The key holding the cached authentication data for a login ID: the actor
-/// behind it, which kind of login it is, and its permissions. Compared against
-/// the `*_cache_stale_since` stamps below on every read.
+/// The key holding the cached authentication data for a web login: the user
+/// behind it and their permissions. Compared against the `*_cache_stale_since`
+/// stamps below on every read.
 pub fn auth_data_for_login_id(login_id: &Uuid) -> String {
 	format!("authData:{}", login_id)
+}
+
+/// The key holding the cached authentication data for an opaque token (an API
+/// token or a service account token), keyed by the token's SHA-256. Finding an
+/// entry here is itself proof the presented token is the one it was cached
+/// for. Compared against the `*_cache_stale_since` stamps below on every read.
+pub fn auth_data_for_token(token_hash: &str) -> String {
+	format!("authData:token:{}", token_hash)
 }
 
 /// Stamp for one login ID: cached permissions for this login created before

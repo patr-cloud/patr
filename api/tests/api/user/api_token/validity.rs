@@ -4,7 +4,7 @@
 use std::{collections::BTreeMap, net::IpAddr, str::FromStr};
 
 use ipnetwork::IpNetwork;
-use models::{ApiSuccessResponseBody, api::user::*, rbac::WorkspacePermission, utils::Uuid};
+use models::{ApiSuccessResponseBody, api::user::*, rbac::WorkspacePermission};
 
 use super::{call_with_token, mint_token_raw};
 use crate::prelude::*;
@@ -215,7 +215,7 @@ async fn api_token_malformed_rejected() {
 #[tokio::test]
 async fn api_token_unknown_rejected() {
 	let setup = setup().await.expect("failed to setup test server");
-	let fake = format!("patrv1.{}.{}", Uuid::nil(), Uuid::nil());
+	let fake = format!("patr_at_{}", "0".repeat(32));
 	assert_eq!(
 		401,
 		call_with_token(&setup, &fake).await.status_code().as_u16(),

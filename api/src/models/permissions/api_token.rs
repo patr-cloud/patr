@@ -8,14 +8,15 @@ use crate::{
 	prelude::*,
 };
 
-/// Load everything the cache holds for the API token `token_id`: the user
-/// behind it, the token's restrictions, and its effective permissions. Also
+/// Load everything the cache holds for the API token whose hash is
+/// `token_hash`: the user behind it, the token's restrictions, and its
+/// effective permissions. Also
 /// says how long the entry may live: until the token expires, at most
 /// [`constants::CACHED_PERMISSIONS_VALIDITY`] — expiry isn't kept in the
 /// entry; the entry just doesn't outlive the token.
 pub(super) async fn load_actor_auth_data(
 	database: &mut DatabaseConnection,
-	token_id: &Uuid,
+	token_hash: &str,
 ) -> Result<(ActorAuthDataCache, Duration), ErrorType> {
 	// Taken before the lookup, so a stamp written while the lookup is in
 	// flight still marks this entry stale.
@@ -25,8 +26,8 @@ pub(super) async fn load_actor_auth_data(
 	let Some(token) = query!(
 		r#"
 		SELECT
+			user_api_token.token_id AS "token_id: Uuid",
 			user_api_token.user_id AS "user_id: Uuid",
-			user_api_token.token_hash,
 			user_api_token.token_nbf,
 			user_api_token.token_exp,
 			user_api_token.allowed_ips,
@@ -42,16 +43,16 @@ pub(super) async fn load_actor_auth_data(
 		ON
 			"user".id = user_api_token.user_id
 		WHERE
-			user_api_token.token_id = $1;
+			user_api_token.token_hash = $1;
 		"#,
-		token_id as _,
+		token_hash,
 	)
 	.fetch_optional(&mut *database)
 	.await?
 	else {
-		// A user login with no API token row is a web login, whose ID is no
-		// use as a `patrv1.` token.
-		warn!("The login is not an API token");
+		// No specific error for the token not being found, since we don't
+		// want to leak whether a token ever existed
+		warn!("No API token with this hash");
 		return Err(ErrorType::AuthorizationTokenInvalid);
 	};
 
@@ -156,7 +157,7 @@ pub(super) async fn load_actor_auth_data(
 		WHERE
 			token_id = $1;
 		"#,
-		token_id as _,
+		token.token_id as _,
 	)
 	.fetch_all(&mut *database)
 	.await?
@@ -178,7 +179,7 @@ pub(super) async fn load_actor_auth_data(
 		WHERE
 			user_api_token_permission_binding.token_id = $1;
 		"#,
-		token_id as _,
+		token.token_id as _,
 	)
 	.fetch_all(&mut *database)
 	.await?
@@ -207,6 +208,7 @@ pub(super) async fn load_actor_auth_data(
 
 	Ok((
 		ActorAuthDataCache {
+			login_id: token.token_id,
 			actor_id: token.user_id,
 			kind: ActorAuthDataCacheKind::ApiToken {
 				email: token.email,
@@ -214,7 +216,6 @@ pub(super) async fn load_actor_auth_data(
 				last_name: token.last_name,
 				created: token.created,
 				allowed_ips: token.allowed_ips,
-				token_hash: token.token_hash,
 			},
 			permissions,
 			created_at,

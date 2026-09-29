@@ -67,6 +67,18 @@ pub async fn initialize_service_account_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	// Tokens are looked up by their hash.
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			service_account_uq_token_hash
+		ON
+			service_account(token_hash);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 

@@ -1,6 +1,7 @@
-use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
 use models::{api::user::*, rbac::WorkspacePermission};
+use rand::{RngExt, distr::Alphanumeric};
+use sha2::{Digest as _, Sha256};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -33,7 +34,7 @@ pub async fn create_api_token(
 		redis: _,
 		client_ip: _,
 		actor_data,
-		state,
+		state: _,
 	}: AuthenticatedAppRequest<'_, CreateApiTokenRequest>,
 ) -> Result<AppResponse<CreateApiTokenRequest>, ErrorType> {
 	info!("Creating API token");
@@ -56,23 +57,16 @@ pub async fn create_api_token(
 
 	let now = OffsetDateTime::now_utc();
 
-	let refresh_token = Uuid::new_v4();
-	let hashed_refresh_token = argon2::Argon2::new_with_secret(
-		state.config.password_pepper.as_ref(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.inspect_err(|err| {
-		error!("Error creating Argon2: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.hash_password_with_salt(refresh_token.as_bytes(), &generate_salt())
-	.inspect_err(|err| {
-		error!("Error hashing refresh token: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.to_string();
+	let token = format!(
+		"{}{}",
+		constants::API_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
+	let token_hash = hex::encode(Sha256::digest(&token));
 
 	let token_id = query!(
 		r#"
@@ -147,7 +141,7 @@ pub async fn create_api_token(
 		token_id as _,
 		&name,
 		actor_data.id as _,
-		&hashed_refresh_token,
+		&token_hash,
 		token_nbf,
 		token_exp,
 		allowed_ips.as_deref(),
@@ -293,7 +287,7 @@ pub async fn create_api_token(
 	AppResponse::builder()
 		.body(CreateApiTokenResponse {
 			id: token_id,
-			token: format!("patrv1.{}.{}", refresh_token, token_id),
+			token,
 		})
 		.headers(())
 		.status_code(StatusCode::CREATED)

@@ -1,8 +1,8 @@
 use std::{collections::BTreeMap, net::IpAddr, ops::Sub, str::FromStr as _};
 
-use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
-use models::{ActorData, RequestActorData, utils::ActorClientTypeDiscriminant};
+use models::{ActorData, RequestActorData};
 use rustis::client::Client as RedisClient;
+use sha2::{Digest as _, Sha256};
 use time::OffsetDateTime;
 use tokio::sync::OnceCell;
 
@@ -62,19 +62,26 @@ mod web_dashboard;
 /// The Redis cache of authenticated actors, and what marks it stale.
 mod cache;
 
-pub use self::cache::{mark_actor_stale, mark_all_stale, mark_login_stale, mark_workspace_stale};
+pub use self::cache::{
+	mark_actor_stale,
+	mark_all_stale,
+	mark_login_stale,
+	mark_token_stale,
+	mark_workspace_stale,
+};
 
 /// Authenticate a bearer token and return who is making the request.
 ///
-/// A token is either a JWT ([`authenticate_jwt`]) or a
-/// `patrv1.{secret}.{login_id}` token ([`authenticate_opaque_token`]). Both
-/// key the cache by login ID, so a hit costs no database round trip; a miss
+/// A token is either a JWT ([`authenticate_jwt`]) or an opaque API token or
+/// service account token ([`authenticate_opaque_token`]). Both are cached —
+/// JWTs by their login ID, opaque tokens by their hash — so a hit costs no
+/// database round trip; a miss
 /// looks the login up, verifies it, loads its permissions and caches the lot
 /// until the token expires or something marks it stale (see [`cache`]).
 ///
 /// `accepted_client_types` is who the caller serves. Kinds outside it aren't
 /// even parsed: a JWT sent to a route that only takes API tokens is a
-/// malformed API token as far as that route is concerned, and a `patrv1.`
+/// malformed API token as far as that route is concerned, and an opaque
 /// token of a kind the route doesn't take is rejected before any work is done
 /// on it.
 pub async fn authenticate(
@@ -100,15 +107,7 @@ pub async fn authenticate(
 		return Err(ErrorType::MalformedAccessToken);
 	}
 
-	authenticate_opaque_token(
-		database,
-		redis,
-		config,
-		client_ip,
-		token,
-		accepted_client_types,
-	)
-	.await
+	authenticate_opaque_token(database, redis, client_ip, token, accepted_client_types).await
 }
 
 /// Authenticate a JWT. Today every JWT is a web dashboard session; an OAuth
@@ -169,7 +168,8 @@ async fn authenticate_jwt(
 	}
 	trace!("JWT audience valid");
 
-	let entry = if let Some(entry) = cache::read(redis, &claims.sub).await {
+	let cache_key = redis::keys::auth_data_for_login_id(&claims.sub);
+	let entry = if let Some(entry) = cache::read(redis, &cache_key).await {
 		trace!("Cached auth data found for login `{}`", claims.sub);
 		entry
 	} else {
@@ -177,7 +177,7 @@ async fn authenticate_jwt(
 
 		cache::write(
 			redis,
-			&claims.sub,
+			&cache_key,
 			&entry,
 			constants::CACHED_PERMISSIONS_VALIDITY,
 		)
@@ -211,103 +211,69 @@ async fn authenticate_jwt(
 		.build())
 }
 
-/// Authenticate a `patrv1.{secret}.{login_id}` token: a user API token or a
-/// service account token. `actor_client` says which, and that kind's module
-/// takes it from there.
+/// Authenticate an opaque token: a user API token (`patr_at_…`) or a service
+/// account token (`patr_sa_…`). The prefix says which, so a kind this route
+/// doesn't take is turned away before anything is looked up. The token is
+/// found by its SHA-256, in the cache and then in the database, so finding it
+/// is itself the proof that it's genuine.
 async fn authenticate_opaque_token(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
-	config: &AppConfig,
 	client_ip: IpAddr,
 	token: &str,
 	accepted_client_types: &[ActorClientType],
 ) -> Result<RequestActorData, ErrorType> {
-	trace!("Parsing authentication header as an API token");
+	trace!("Parsing authentication header as an opaque token");
 
-	let Some(token) = token.strip_prefix("patrv1.") else {
-		warn!("Authentication header is neither a JWT nor an API token");
+	let (client_type, secret) =
+		if let Some(secret) = token.strip_prefix(constants::API_TOKEN_PREFIX) {
+			(ActorClientType::UserLogin(UserLoginType::ApiToken), secret)
+		} else if let Some(secret) = token.strip_prefix(constants::SERVICE_ACCOUNT_TOKEN_PREFIX) {
+			(ActorClientType::ServiceAccount, secret)
+		} else {
+			warn!("Authentication header is neither a JWT nor an opaque token");
+			return Err(ErrorType::MalformedApiToken);
+		};
+
+	if secret.len() != constants::OPAQUE_TOKEN_SECRET_LENGTH ||
+		!secret.bytes().all(|byte| byte.is_ascii_alphanumeric())
+	{
+		warn!(
+			"Invalid opaque token: the secret is not {} base62 characters",
+			constants::OPAQUE_TOKEN_SECRET_LENGTH
+		);
 		return Err(ErrorType::MalformedApiToken);
-	};
+	}
 
-	let (secret, login_id) = token.split_once('.').ok_or_else(|| {
-		warn!("Invalid API token: missing secret/login-id separator");
-		ErrorType::MalformedApiToken
-	})?;
+	if !accepted_client_types.contains(&client_type) {
+		warn!("A `{client_type}` token was presented to a route that doesn't accept it");
+		return Err(ErrorType::Unauthorized);
+	}
 
-	let secret = Uuid::parse_str(secret).map_err(|err| {
-		warn!("Invalid API token: secret is not a valid UUID: {}", err);
-		ErrorType::MalformedApiToken
-	})?;
+	let token_hash = hex::encode(Sha256::digest(token));
+	let cache_key = redis::keys::auth_data_for_token(&token_hash);
 
-	let login_id = Uuid::parse_str(login_id).map_err(|err| {
-		warn!("Invalid API token: login ID is not a valid UUID: {}", err);
-		ErrorType::MalformedApiToken
-	})?;
-
-	let entry = if let Some(entry) = cache::read(redis, &login_id).await {
-		trace!("Cached auth data found for login `{login_id}`");
+	let entry = if let Some(entry) = cache::read(redis, &cache_key).await {
+		trace!("Cached auth data found for the token");
 		entry
 	} else {
-		// `actor_client` says which kind of login this is; for a user login,
-		// `user_login` says which kind of user login.
-		let Some(client) = query!(
-			r#"
-			SELECT
-				actor_client.actor_client_type AS "actor_client_type: ActorClientTypeDiscriminant",
-				user_login.login_type AS "login_type?: UserLoginType"
-			FROM
-				actor_client
-			LEFT JOIN
-				user_login
-			ON
-				user_login.login_id = actor_client.id
-			WHERE
-				actor_client.id = $1;
-			"#,
-			login_id as _,
-		)
-		.fetch_optional(&mut *database)
-		.await?
-		else {
-			warn!("No login found for the API token");
-			// No specific error for the login not being found, since we don't
-			// want to leak information about whether a loginId is valid or if
-			// it's expired
-			return Err(ErrorType::AuthorizationTokenInvalid);
-		};
-
-		let client_type = match (client.actor_client_type, client.login_type) {
-			(ActorClientTypeDiscriminant::UserLogin, Some(login_type)) => {
-				ActorClientType::UserLogin(login_type)
-			}
-			(ActorClientTypeDiscriminant::ServiceAccount, _) => ActorClientType::ServiceAccount,
-			(ActorClientTypeDiscriminant::UserLogin, None) => {
-				error!("User login `{login_id}` has no `user_login` row");
-				return Err(ErrorType::server_error(
-					"user login without a user_login row",
-				));
-			}
-		};
-
 		let (entry, ttl) = match client_type {
 			ActorClientType::UserLogin(UserLoginType::ApiToken) => {
-				api_token::load_actor_auth_data(&mut *database, &login_id).await?
+				api_token::load_actor_auth_data(&mut *database, &token_hash).await?
 			}
 			ActorClientType::ServiceAccount => {
-				service_account::load_actor_auth_data(&mut *database, &login_id).await?
+				service_account::load_actor_auth_data(&mut *database, &token_hash).await?
 			}
 			ActorClientType::UserLogin(UserLoginType::WebLogin) => {
-				warn!("A web login's ID was presented as an API token");
-				return Err(ErrorType::AuthorizationTokenInvalid);
+				unreachable!("only the opaque token prefixes are parsed above")
 			}
 		};
 
-		cache::write(redis, &login_id, &entry, ttl).await;
+		cache::write(redis, &cache_key, &entry, ttl).await;
 		entry
 	};
 
-	// Checked on every request, cache hit or not: that this route takes this
-	// kind of client, the presented secret, and for API tokens the client's
+	// Checked on every request, cache hit or not: for API tokens, the client's
 	// IP.
 	let (actor, created) = match entry.kind {
 		ActorAuthDataCacheKind::ApiToken {
@@ -316,36 +282,7 @@ async fn authenticate_opaque_token(
 			last_name,
 			created,
 			allowed_ips,
-			token_hash,
 		} => {
-			if !accepted_client_types.contains(&ActorClientType::UserLogin(UserLoginType::ApiToken))
-			{
-				warn!("Login `{login_id}` is an API token, which this route doesn't accept");
-				return Err(ErrorType::Unauthorized);
-			}
-
-			// Verify that the token presented is valid
-			let Ok(password_hash) = PasswordHash::new(&token_hash) else {
-				error!("Unable to parse password hash: {}", token_hash);
-				return Err(ErrorType::server_error("password hash parsing failed"));
-			};
-
-			let success = Argon2::new_with_secret(
-				config.password_pepper.as_bytes(),
-				Algorithm::Argon2id,
-				Version::V0x13,
-				constants::HASHING_PARAMS,
-			)
-			.map_err(ErrorType::server_error)?
-			.verify_password(secret.as_bytes(), &password_hash)
-			.is_ok();
-
-			if !success {
-				warn!("API token has an invalid secret");
-				return Err(ErrorType::AuthorizationTokenInvalid);
-			}
-			trace!("API token secret valid");
-
 			if let Some(allowed_ips) = allowed_ips &&
 				!allowed_ips
 					.iter()
@@ -365,43 +302,14 @@ async fn authenticate_opaque_token(
 				created,
 			)
 		}
-		ActorAuthDataCacheKind::ServiceAccount {
-			name,
-			created,
-			token_hash,
-		} => {
-			if !accepted_client_types.contains(&ActorClientType::ServiceAccount) {
-				warn!("Login `{login_id}` is a service account, which this route doesn't accept");
-				return Err(ErrorType::Unauthorized);
-			}
-
-			// Verify that the token presented is valid
-			let Ok(password_hash) = PasswordHash::new(&token_hash) else {
-				error!("Unable to parse password hash: {}", token_hash);
-				return Err(ErrorType::server_error("password hash parsing failed"));
-			};
-
-			let success = Argon2::new_with_secret(
-				config.password_pepper.as_bytes(),
-				Algorithm::Argon2id,
-				Version::V0x13,
-				constants::HASHING_PARAMS,
-			)
-			.map_err(ErrorType::server_error)?
-			.verify_password(secret.as_bytes(), &password_hash)
-			.is_ok();
-
-			if !success {
-				warn!("API token has an invalid secret");
-				return Err(ErrorType::AuthorizationTokenInvalid);
-			}
-			trace!("API token secret valid");
-
+		ActorAuthDataCacheKind::ServiceAccount { name, created } => {
 			(ActorData::ServiceAccount { name }, created)
 		}
 		ActorAuthDataCacheKind::WebLogin { .. } => {
-			warn!("A web login's ID was presented as an API token");
-			return Err(ErrorType::AuthorizationTokenInvalid);
+			error!("A web login's cache entry was found under an opaque token's hash");
+			return Err(ErrorType::server_error(
+				"web login cached under a token hash",
+			));
 		}
 	};
 
@@ -409,7 +317,7 @@ async fn authenticate_opaque_token(
 		.id(entry.actor_id)
 		.actor(actor)
 		.created(created)
-		.login_id(login_id)
+		.login_id(entry.login_id)
 		.permissions(entry.permissions)
 		.build())
 }
