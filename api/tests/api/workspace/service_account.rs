@@ -46,8 +46,10 @@ async fn create_service_account_duplicate_name() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateServiceAccountRequest {
-					name: sa.name,
-					description: None,
+					service_account: ServiceAccount {
+						name: sa.name,
+						description: None,
+					},
 					role_bindings: vec![],
 				})
 				.build(),
@@ -77,8 +79,10 @@ async fn create_service_account_invalid_name() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateServiceAccountRequest {
-					name: "!!!".to_string(),
-					description: None,
+					service_account: ServiceAccount {
+						name: "!!!".to_string(),
+						description: None,
+					},
 					role_bindings: vec![],
 				})
 				.build(),
@@ -225,9 +229,11 @@ async fn update_service_account_name_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateServiceAccountRequest {
-					name: Some(new_name.clone()),
-					description: None,
-					role_bindings: None,
+					service_account: ServiceAccount {
+						name: new_name.clone(),
+						description: None,
+					},
+					role_bindings: vec![],
 				})
 				.build(),
 		)
@@ -287,9 +293,11 @@ async fn update_service_account_role_bindings_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(UpdateServiceAccountRequest {
-					name: None,
-					description: None,
-					role_bindings: Some(vec![grant.clone()]),
+					service_account: ServiceAccount {
+						name: sa.name.clone(),
+						description: None,
+					},
+					role_bindings: vec![grant.clone()],
 				})
 				.build(),
 		)
@@ -313,7 +321,78 @@ async fn update_service_account_role_bindings_works() {
 		.await
 		.json::<ApiSuccessResponseBody<GetServiceAccountInfoResponse>>();
 
-	assert_eq!(vec![grant], response.response.service_account.role_bindings);
+	assert_eq!(vec![grant], response.response.role_bindings);
+}
+
+#[tokio::test]
+async fn update_service_account_duplicate_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let taken = setup
+		.create_test_service_account(&user.access_token, workspace.id, vec![])
+		.await;
+	let sa = setup
+		.create_test_service_account(&user.access_token, workspace.id, vec![])
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateServiceAccountRequest>::builder()
+				.path(UpdateServiceAccountPath {
+					workspace_id: workspace.id,
+					service_account_id: sa.id,
+				})
+				.headers(UpdateServiceAccountRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateServiceAccountRequest {
+					service_account: ServiceAccount {
+						name: taken.name,
+						description: None,
+					},
+					role_bindings: vec![],
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(response.status_code(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn update_service_account_of_another_type_is_not_found() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateServiceAccountRequest>::builder()
+				.path(UpdateServiceAccountPath {
+					workspace_id: workspace.id,
+					service_account_id: runner.id,
+				})
+				.headers(UpdateServiceAccountRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateServiceAccountRequest {
+					service_account: ServiceAccount {
+						name: random_name(8),
+						description: None,
+					},
+					role_bindings: vec![],
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }
 
 // ── Delete ──────────────────────────────────────────────────────────────

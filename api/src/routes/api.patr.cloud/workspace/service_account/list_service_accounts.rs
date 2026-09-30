@@ -1,10 +1,5 @@
-use std::collections::BTreeMap;
-
 use axum::http::StatusCode;
-use models::{
-	api::workspace::{rbac::user::RoleBindingGrant, service_account::*},
-	prelude::*,
-};
+use models::{api::workspace::service_account::*, prelude::*};
 
 use crate::prelude::*;
 
@@ -76,49 +71,22 @@ pub async fn list_service_accounts(
 	.fetch_all(&mut **database)
 	.await?;
 
-	// One query for every grant on the page, folded by actor
-	let ids = rows.iter().map(|row| row.id).collect::<Vec<_>>();
-	let mut grants_by_actor = query!(
-		r#"
-		SELECT
-			actor_id AS "actor_id: Uuid",
-			role_id AS "role_id: Uuid",
-			scope_id AS "scope_id: Uuid"
-		FROM
-			role_binding
-		WHERE
-			actor_id = ANY($1::UUID[]);
-		"#,
-		&ids as _,
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.fold(BTreeMap::<Uuid, Vec<_>>::new(), |mut map, row| {
-		map.entry(row.actor_id).or_default().push(RoleBindingGrant {
-			role_id: row.role_id,
-			resource_id: row.scope_id,
-		});
-		map
-	});
-
-	let service_accounts = rows
-		.into_iter()
-		.map(|row| {
-			total_count = row.total_count;
-			WithId::new(
-				row.id,
-				ServiceAccount {
-					name: row.name,
-					description: row.description,
-					role_bindings: grants_by_actor.remove(&row.id).unwrap_or_default(),
-				},
-			)
-		})
-		.collect::<Vec<_>>();
-
 	AppResponse::builder()
-		.body(ListServiceAccountsResponse { service_accounts })
+		.body(ListServiceAccountsResponse {
+			service_accounts: rows
+				.into_iter()
+				.map(|row| {
+					total_count = row.total_count;
+					WithId::new(
+						row.id,
+						ServiceAccount {
+							name: row.name,
+							description: row.description,
+						},
+					)
+				})
+				.collect(),
+		})
 		.headers(ListServiceAccountsResponseHeaders {
 			total_count: TotalCountHeader(total_count as _),
 		})
