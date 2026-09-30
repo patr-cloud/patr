@@ -1,8 +1,5 @@
-use crate::{
-	api::workspace::rbac::user::RoleBindingGrant,
-	prelude::*,
-	utils::constants::RESOURCE_NAME_REGEX,
-};
+use super::ServiceAccount;
+use crate::{api::workspace::rbac::user::RoleBindingGrant, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Route to update a service account
@@ -27,14 +24,13 @@ macros::declare_api_endpoint!(
 		}
 	},
 	request = {
-		/// Updated name
-		#[preprocess(optional(trim, regex = RESOURCE_NAME_REGEX))]
-		pub name: Option<String>,
-		/// Updated description
-		#[preprocess(none)]
-		pub description: Option<String>,
-		/// Updated role grants (replaces every existing grant)
-		pub role_bindings: Option<Vec<RoleBindingGrant>>,
+		/// The updated name and description of the service account
+		#[serde(flatten)]
+		#[preprocess]
+		pub service_account: ServiceAccount,
+		/// The role grants this service account holds (replaces every
+		/// existing grant)
+		pub role_bindings: Vec<RoleBindingGrant>,
 	},
 	client_type = [WebLogin, ApiToken],
 	audit_log = AppAuditLogger {

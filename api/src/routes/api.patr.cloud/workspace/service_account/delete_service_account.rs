@@ -44,7 +44,7 @@ pub async fn delete_service_account(
 	// references the actor, so the order matters. The `actor_client` row
 	// deliberately stays — `audit_log` points at it, and removing it would
 	// erase the trail of what this account did.
-	query!(
+	let rows_deleted = query!(
 		r#"
 		DELETE FROM
 			service_account
@@ -54,7 +54,12 @@ pub async fn delete_service_account(
 		service_account_id as _,
 	)
 	.execute(&mut **database)
-	.await?;
+	.await?
+	.rows_affected();
+
+	if rows_deleted == 0 {
+		return Err(ErrorType::ResourceDoesNotExist);
+	}
 
 	query!(
 		r#"

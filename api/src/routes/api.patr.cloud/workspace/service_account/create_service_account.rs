@@ -17,8 +17,7 @@ pub async fn create_service_account(
 					},
 				body:
 					CreateServiceAccountRequestProcessed {
-						name,
-						description,
+						service_account: ServiceAccountProcessed { name, description },
 						role_bindings,
 					},
 			},
@@ -136,11 +135,6 @@ pub async fn create_service_account(
 	// Every grant is a binding: a role plus the one resource it applies at.
 	// One insert for the lot. The scope FK pivots on workspace_id, so a role
 	// or a resource from another workspace is what the FK violation means.
-	let (role_ids, scope_ids) = role_bindings
-		.iter()
-		.map(|grant| (grant.role_id, grant.resource_id))
-		.collect::<(Vec<_>, Vec<_>)>();
-
 	query!(
 		r#"
 		INSERT INTO
@@ -169,8 +163,14 @@ pub async fn create_service_account(
 		"#,
 		workspace_id as _,
 		id as _,
-		&role_ids as _,
-		&scope_ids as _,
+		&role_bindings
+			.iter()
+			.map(|grant| grant.role_id)
+			.collect::<Vec<_>>() as _,
+		&role_bindings
+			.iter()
+			.map(|grant| grant.resource_id)
+			.collect::<Vec<_>>() as _,
 		actor_data.id as _,
 	)
 	.execute(&mut **database)

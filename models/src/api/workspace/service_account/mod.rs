@@ -22,23 +22,22 @@ pub use self::{
 	regenerate_service_account_token::*,
 	update_service_account::*,
 };
-use crate::{api::workspace::rbac::user::RoleBindingGrant, prelude::*};
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 /// Represents a service account in a workspace.
 ///
 /// A service account is a non-human identity used to authenticate runners and
 /// other automated processes. It has a single token that can be regenerated,
 /// and is granted access through role bindings like any other actor.
+#[::preprocess::sync]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]
 pub struct ServiceAccount {
 	/// The name of the service account
+	#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 	pub name: String,
 	/// An optional description of what this service account is used for
+	#[preprocess(none)]
 	#[ts(type = "string | null")]
 	pub description: Option<String>,
-	/// The role grants this service account holds — each a role and the
-	/// resource it applies at.
-	#[search(skip)]
-	pub role_bindings: Vec<RoleBindingGrant>,
 }
