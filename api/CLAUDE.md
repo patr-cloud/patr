@@ -4,7 +4,7 @@ The backend binary. See the root `CLAUDE.md` for workspace-wide build/sqlx/style
 
 ## One app, many hostnames
 
-`api/` serves seven logical hosts off a single axum app, dispatched by the `Host` header (`src/routes/mod.rs`): `api.` (REST API), `app.` (dashboard — `/api/*` re-mounts the API as `WebDashboard`, everything else reverse-proxies to `FRONTEND_URL`), `registry.` (OCI registry), `loki.` / `mimir.` (authenticated push proxies), `assets.`, `openbao.` (authenticated OpenBao read proxy — runners only, see below).
+`api/` serves seven logical hosts off a single axum app, dispatched by the `Host` header (`src/routes/mod.rs`): `api.` (REST API), `app.` (dashboard — `/api/*` re-mounts the API for `WebLogin`, everything else reverse-proxies to `FRONTEND_URL`), `registry.` (OCI registry), `loki.` / `mimir.` (authenticated push proxies), `assets.`, `openbao.` (authenticated OpenBao read proxy — runners only, see below).
 
 **In debug builds each host gets its own port** (`src/app.rs`): base `bind_address` = api, +1 app, +2 registry, +3 loki, +4 assets, +5 mimir, +6 openbao. Hit `localhost:<base+N>` locally, not vhosts. Release dispatches all on one port by Host header.
 
@@ -21,7 +21,7 @@ An endpoint's shape — path, method, request/response DTOs, `authentication`, `
 - Mount via the `RouterExt` trait: `.mount_endpoint` (unauth), `.mount_auth_endpoint`, `.mount_registry_endpoint`.
 - Handlers destructure `AuthenticatedAppRequest { request, database, redis, client_ip, actor_data, state }` and return `Result<AppResponse<E>, ErrorType>`.
 - **The layer stack owns the DB transaction** (`DataStoreConnectionLayer`): it auto-commits on `Ok`, auto-rolls-back on `Err`. Handlers never begin/commit a tx — just return `Result`.
-- `mount_*` takes an `allowed_client_type`. If a client is `ApiToken` and the endpoint's `API_ALLOWED` is false, it's silently not mounted.
+- `mount_*` takes the host's client types. An endpoint whose `client_type` list shares none of them is silently not mounted on that host, and an authenticated endpoint only accepts the kinds in the overlap.
 - **Handlers must check the id is their kind of resource.** `ResourcePermissionAuthenticator` only proves the path id is *some* live resource in the workspace and that the caller holds the permission on it — not that it's a secret, a volume, etc. So a handler for a typed id must confirm its own row exists before doing anything else, above all before soft-deleting the shared `resource` row. Otherwise e.g. `DELETE /secret/{deployment_id}` soft-deletes the deployment. Check the typed `DELETE`'s `rows_affected()` (see `delete_secret`, `delete_role`) or `fetch_optional(…).ok_or(ErrorType::ResourceDoesNotExist)` on the typed `SELECT` (see `delete_deployment`). **Every new resource type's handlers need this**, and `api/tests/api/workspace/rbac/resource_type.rs` should get a wrong-type case for its delete route.
 
 ## Auth & caching

@@ -38,10 +38,7 @@ pub async fn docker_login(
 		&state.config,
 		client_ip,
 		authorization.password(),
-		&[
-			ActorClientType::UserLogin(UserLoginType::ApiToken),
-			ActorClientType::ServiceAccount,
-		],
+		DockerLoginRequest::ALLOWED_CLIENT_TYPES,
 	)
 	.await?;
 
