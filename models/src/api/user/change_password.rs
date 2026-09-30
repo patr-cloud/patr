@@ -7,7 +7,6 @@ macros::declare_api_endpoint!(
 	/// forgot password, this does not require the user to enter an OTP.
 	ChangePassword,
 	POST "/user/change-password",
-	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -28,5 +27,6 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub mfa_otp: Option<String>,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

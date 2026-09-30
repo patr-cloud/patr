@@ -16,7 +16,6 @@ macros::declare_api_endpoint!(
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
 	},
-	client_type = [WebLogin],
 	request = {
 		/// The ID of the invite to preview
 		#[preprocess(none)]
@@ -29,5 +28,6 @@ macros::declare_api_endpoint!(
 		/// The name of the workspace the invite is for
 		pub workspace_name: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

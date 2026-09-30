@@ -5,7 +5,6 @@ macros::declare_api_endpoint!(
 	/// List all API tokens for a particular user.
 	ListApiTokens,
 	GET "/user/api-token",
-	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -24,5 +23,6 @@ macros::declare_api_endpoint!(
 		/// The list of API tokens
 		pub tokens: Vec<WithId<UserApiToken>>,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );
