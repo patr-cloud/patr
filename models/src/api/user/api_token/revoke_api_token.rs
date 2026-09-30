@@ -7,7 +7,6 @@ macros::declare_api_endpoint!(
 		/// The ID of the token to revoke
 		pub token_id: Uuid,
 	},
-	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -17,5 +16,6 @@ macros::declare_api_endpoint!(
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

@@ -8,7 +8,6 @@ macros::declare_api_endpoint!(
 		/// The login ID to get information about.
 		pub login_id: Uuid,
 	},
-	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -23,5 +22,6 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub login: WithId<UserWebLogin>,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

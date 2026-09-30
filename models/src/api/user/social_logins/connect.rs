@@ -11,7 +11,6 @@ macros::declare_api_endpoint!(
 		/// endpoint.
 		pub provider: SocialLoginProvider,
 	},
-	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -26,5 +25,6 @@ macros::declare_api_endpoint!(
 		/// user's browser to this URL to begin the OAuth flow.
 		pub authorize_url: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

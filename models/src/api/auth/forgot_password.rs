@@ -5,7 +5,6 @@ macros::declare_api_endpoint!(
 	/// This will send an OTP to their email address.
 	ForgotPassword,
 	POST "/auth/forgot-password",
-	client_type = [WebLogin],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
@@ -18,5 +17,6 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, length(min = 1))]
 		pub cf_turnstile_token: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

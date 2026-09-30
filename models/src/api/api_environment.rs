@@ -19,7 +19,6 @@ macros::declare_api_endpoint!(
 	/// instance-specific values they can't know at build time.
 	GetApiEnvironment,
 	GET "/info",
-	client_type = [WebLogin],
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
@@ -36,5 +35,6 @@ macros::declare_api_endpoint!(
 		#[serde(skip_serializing_if = "Option::is_none")]
 		pub base_domain: Option<String>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

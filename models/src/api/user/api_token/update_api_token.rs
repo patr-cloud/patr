@@ -9,7 +9,6 @@ macros::declare_api_endpoint!(
 		/// The ID of the token to update
 		pub token_id: Uuid,
 	},
-	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -25,5 +24,6 @@ macros::declare_api_endpoint!(
 		#[preprocess]
 		pub token: UserApiToken,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

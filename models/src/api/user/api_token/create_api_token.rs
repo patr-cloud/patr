@@ -5,7 +5,6 @@ macros::declare_api_endpoint!(
 	/// Create a new API token for the user with the given permissions.
 	CreateApiToken,
 	POST "/user/api-token",
-	client_type = [WebLogin],
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -27,5 +26,6 @@ macros::declare_api_endpoint!(
 		/// The token itself
 		pub token: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );
