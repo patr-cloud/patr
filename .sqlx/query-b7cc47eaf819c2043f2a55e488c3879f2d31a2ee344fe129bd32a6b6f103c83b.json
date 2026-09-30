@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE service_account SET name = $1, description = $2 WHERE id = $3 AND deleted IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b7cc47eaf819c2043f2a55e488c3879f2d31a2ee344fe129bd32a6b6f103c83b"
+}

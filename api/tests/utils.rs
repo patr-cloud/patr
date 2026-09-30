@@ -288,8 +288,10 @@ impl TestSetup {
 						user_agent: TEST_USER_AGENT,
 					})
 					.body(CreateServiceAccountRequest {
-						name: name.clone(),
-						description: None,
+						service_account: ServiceAccount {
+							name: name.clone(),
+							description: None,
+						},
 						role_bindings,
 					})
 					.build(),

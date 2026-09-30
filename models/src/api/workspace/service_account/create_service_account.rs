@@ -1,8 +1,5 @@
-use crate::{
-	api::workspace::rbac::user::RoleBindingGrant,
-	prelude::*,
-	utils::constants::RESOURCE_NAME_REGEX,
-};
+use super::ServiceAccount;
+use crate::{api::workspace::rbac::user::RoleBindingGrant, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Route to create a service account in a workspace. Returns the service
@@ -26,12 +23,10 @@ macros::declare_api_endpoint!(
 		}
 	},
 	request = {
-		/// Name of the service account
-		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
-		pub name: String,
-		/// Optional description
-		#[preprocess(none)]
-		pub description: Option<String>,
+		/// The name and description of the new service account
+		#[serde(flatten)]
+		#[preprocess]
+		pub service_account: ServiceAccount,
 		/// Roles to assign to this service account
 		pub role_bindings: Vec<RoleBindingGrant>,
 	},

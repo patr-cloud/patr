@@ -29,8 +29,10 @@ async fn service_account_create_permission_grants_access() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(CreateServiceAccountRequest {
-					name: random_name(8),
-					description: None,
+					service_account: ServiceAccount {
+						name: random_name(8),
+						description: None,
+					},
 					role_bindings: vec![],
 				})
 				.build(),

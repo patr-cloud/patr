@@ -4,6 +4,7 @@ use models::api::workspace::{
 	domain::*,
 	runner::*,
 	secret::*,
+	service_account::*,
 };
 
 use crate::prelude::*;
@@ -107,6 +108,22 @@ async fn typed_deletes_refuse_an_id_of_another_type() {
 		)
 		.await;
 	statuses.push(("deployment", response.status_code()));
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteServiceAccountRequest>::builder()
+				.path(DeleteServiceAccountPath {
+					workspace_id: workspace.id,
+					service_account_id: deployment.id,
+				})
+				.headers(DeleteServiceAccountRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	statuses.push(("service account", response.status_code()));
 
 	assert!(
 		statuses

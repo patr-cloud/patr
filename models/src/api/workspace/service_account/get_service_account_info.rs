@@ -1,5 +1,5 @@
 use super::ServiceAccount;
-use crate::prelude::*;
+use crate::{api::workspace::rbac::user::RoleBindingGrant, prelude::*};
 
 macros::declare_api_endpoint!(
 	/// Route to get service account information
@@ -24,8 +24,12 @@ macros::declare_api_endpoint!(
 		}
 	},
 	response = {
-		/// The service account information
+		/// The service account's name and description
+		#[serde(flatten)]
 		pub service_account: WithId<ServiceAccount>,
+		/// The role grants this service account holds — each a role and the
+		/// resource it applies at.
+		pub role_bindings: Vec<RoleBindingGrant>,
 	},
 	client_type = [WebLogin, ApiToken],
 	audit_log = NoAuditLogger,

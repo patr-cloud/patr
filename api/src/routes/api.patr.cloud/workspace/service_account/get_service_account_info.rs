@@ -73,9 +73,9 @@ pub async fn get_service_account_info(
 				ServiceAccount {
 					name: service_account.name,
 					description: service_account.description,
-					role_bindings,
 				},
 			),
+			role_bindings,
 		})
 		.headers(())
 		.status_code(StatusCode::OK)
