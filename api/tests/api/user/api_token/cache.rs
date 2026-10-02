@@ -4,6 +4,7 @@
 
 use std::{collections::BTreeMap, net::IpAddr, str::FromStr};
 
+use api::models::permissions;
 use ipnetwork::IpNetwork;
 use models::{ApiSuccessResponseBody, api::user::*, rbac::WorkspacePermission};
 
@@ -72,7 +73,7 @@ async fn cached_api_token_does_not_vouch_for_other_tokens() {
 		"the first call should populate the cache"
 	);
 
-	let forged = format!("patr_at_{}", "0".repeat(32));
+	let forged = permissions::generate_api_token();
 	assert_eq!(
 		401,
 		call_with_token(&setup, &forged)

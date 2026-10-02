@@ -84,6 +84,11 @@ pub mod constants {
 	/// about 190 bits of entropy.
 	pub const OPAQUE_TOKEN_SECRET_LENGTH: usize = 32;
 
+	/// The number of base62 characters ending an opaque token: a CRC32 of
+	/// everything before it, so a typo or a lookalike can be rejected without
+	/// a lookup, and a leaked token can be recognised by scanners.
+	pub const OPAQUE_TOKEN_CHECKSUM_LENGTH: usize = 6;
+
 	/// The duration that the permission data in Redis will be valid for. Beyond
 	/// that, the data will be considered stale and will be reloaded from the
 	/// database. This is done to prevent the Redis data from having infinite

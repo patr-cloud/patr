@@ -1,10 +1,9 @@
 use axum::http::StatusCode;
 use models::{api::user::*, rbac::WorkspacePermission};
-use rand::{RngExt, distr::Alphanumeric};
 use sha2::{Digest as _, Sha256};
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn create_api_token(
 	AuthenticatedAppRequest {
@@ -57,15 +56,7 @@ pub async fn create_api_token(
 
 	let now = OffsetDateTime::now_utc();
 
-	let token = format!(
-		"{}{}",
-		constants::API_TOKEN_PREFIX,
-		rand::rng()
-			.sample_iter(Alphanumeric)
-			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
-			.map(char::from)
-			.collect::<String>()
-	);
+	let token = permissions::generate_api_token();
 	let token_hash = hex::encode(Sha256::digest(&token));
 
 	let token_id = query!(
