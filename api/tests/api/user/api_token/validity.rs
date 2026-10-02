@@ -3,6 +3,7 @@
 
 use std::{collections::BTreeMap, net::IpAddr, str::FromStr};
 
+use api::models::permissions;
 use ipnetwork::IpNetwork;
 use models::{ApiSuccessResponseBody, api::user::*, rbac::WorkspacePermission};
 
@@ -215,11 +216,37 @@ async fn api_token_malformed_rejected() {
 #[tokio::test]
 async fn api_token_unknown_rejected() {
 	let setup = setup().await.expect("failed to setup test server");
-	let fake = format!("patr_at_{}", "0".repeat(32));
+	let fake = permissions::generate_api_token();
 	assert_eq!(
 		401,
 		call_with_token(&setup, &fake).await.status_code().as_u16(),
 		"a well-formed but unknown token should be 401"
+	);
+}
+
+/// A token whose checksum doesn't match is rejected as malformed (400) before
+/// it's looked up, whether it has a typo or carries another kind's prefix.
+#[tokio::test]
+async fn api_token_bad_checksum_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let token = permissions::generate_api_token();
+
+	let (body, last) = token.split_at(token.len() - 1);
+	let typo = format!("{body}{}", if last == "0" { '1' } else { '0' });
+	assert_eq!(
+		400,
+		call_with_token(&setup, &typo).await.status_code().as_u16(),
+		"a token with a typo in its checksum should be 400"
+	);
+
+	let relabelled = token.replacen("patr_at_", "patr_sa_", 1);
+	assert_eq!(
+		400,
+		call_with_token(&setup, &relabelled)
+			.await
+			.status_code()
+			.as_u16(),
+		"a token relabelled with another kind's prefix should be 400"
 	);
 }
 
