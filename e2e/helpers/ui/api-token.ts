@@ -117,7 +117,7 @@ export async function readNewTokenFromModal(page: Page): Promise<string> {
 	});
 	// The token text starts with "patr_at_" — locate by that prefix.
 	const token = await page
-		.locator('text=/patr_at_[A-Za-z0-9]{32}/')
+		.locator('text=/patr_at_[A-Za-z0-9]{38}/')
 		.first()
 		.innerText();
 	return token.trim();

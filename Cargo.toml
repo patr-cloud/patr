@@ -39,6 +39,7 @@ axum-extra                     = { default-features = false, version = "0.12" }
 axum-test                      = { default-features = false, version = "21" }
 axum-typed-websockets          = { default-features = false, git = "https://github.com/cachix/axum-typed-websockets" }
 base32                         = { default-features = false, version = "0.5" }
+base62                         = { default-features = false, version = "2" }
 base64                         = { default-features = false, version = "0.22" }
 bollard                        = { default-features = false, version = "0.21" }
 build-print                    = { default-features = false, version = "1" }
@@ -51,6 +52,7 @@ config                         = { default-features = false, version = "0.15" }
 console-subscriber             = { default-features = false, version = "0.5" }
 console_error_panic_hook       = { default-features = false, version = "0.1" }
 convert_case                   = { default-features = false, version = "0.11" }
+crc32fast                      = { default-features = false, version = "1" }
 cron                           = { default-features = false, version = "0.16" }
 crossterm                      = { default-features = false, version = "0.29" }
 dashmap                        = { default-features = false, version = "6" }

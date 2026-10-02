@@ -1,9 +1,8 @@
 use axum::http::StatusCode;
 use models::api::workspace::service_account::*;
-use rand::{RngExt, distr::Alphanumeric};
 use sha2::{Digest as _, Sha256};
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn create_service_account(
 	AuthenticatedAppRequest {
@@ -32,15 +31,7 @@ pub async fn create_service_account(
 	info!("Creating service account with name: `{name}`");
 
 	// Generate token
-	let token = format!(
-		"{}{}",
-		constants::SERVICE_ACCOUNT_TOKEN_PREFIX,
-		rand::rng()
-			.sample_iter(Alphanumeric)
-			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
-			.map(char::from)
-			.collect::<String>()
-	);
+	let token = permissions::generate_service_account_token();
 	let token_hash = hex::encode(Sha256::digest(&token));
 
 	// Create resource

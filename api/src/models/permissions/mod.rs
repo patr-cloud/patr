@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, net::IpAddr, ops::Sub, str::FromStr as _};
 
 use models::{ActorData, RequestActorData};
+use rand::{RngExt, distr::Alphanumeric};
 use rustis::client::Client as RedisClient;
 use sha2::{Digest as _, Sha256};
 use time::OffsetDateTime;
@@ -225,23 +226,29 @@ async fn authenticate_opaque_token(
 ) -> Result<RequestActorData, ErrorType> {
 	trace!("Parsing authentication header as an opaque token");
 
-	let (client_type, secret) =
-		if let Some(secret) = token.strip_prefix(constants::API_TOKEN_PREFIX) {
-			(ActorClientType::UserLogin(UserLoginType::ApiToken), secret)
-		} else if let Some(secret) = token.strip_prefix(constants::SERVICE_ACCOUNT_TOKEN_PREFIX) {
-			(ActorClientType::ServiceAccount, secret)
-		} else {
-			warn!("Authentication header is neither a JWT nor an opaque token");
-			return Err(ErrorType::MalformedApiToken);
-		};
+	let client_type = if token.starts_with(constants::API_TOKEN_PREFIX) {
+		ActorClientType::UserLogin(UserLoginType::ApiToken)
+	} else if token.starts_with(constants::SERVICE_ACCOUNT_TOKEN_PREFIX) {
+		ActorClientType::ServiceAccount
+	} else {
+		warn!("Authentication header is neither a JWT nor an opaque token");
+		return Err(ErrorType::MalformedApiToken);
+	};
 
-	if secret.len() != constants::OPAQUE_TOKEN_SECRET_LENGTH ||
-		!secret.bytes().all(|byte| byte.is_ascii_alphanumeric())
-	{
-		warn!(
-			"Invalid opaque token: the secret is not {} base62 characters",
-			constants::OPAQUE_TOKEN_SECRET_LENGTH
-		);
+	// Split the token into the randomly generated part (entropy) and checksum of that entropy
+	let Some((entropy, presented_checksum)) =
+		token.split_at_checked(token.len() - constants::OPAQUE_TOKEN_CHECKSUM_LENGTH)
+	else {
+		warn!("Invalid opaque token: the checksum isn't on a character boundary");
+		return Err(ErrorType::MalformedApiToken);
+	};
+	let calculated_checksum = format!(
+		"{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(entropy.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	);
+	if presented_checksum != calculated_checksum {
+		warn!("Invalid opaque token: the checksum doesn't match");
 		return Err(ErrorType::MalformedApiToken);
 	}
 
@@ -320,4 +327,47 @@ async fn authenticate_opaque_token(
 		.login_id(entry.login_id)
 		.permissions(entry.permissions)
 		.build())
+}
+
+/// Generates a new user API token: [`API_TOKEN_PREFIX`][constants::API_TOKEN_PREFIX],
+/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
+/// base62 characters, and a checksum of both.
+pub fn generate_api_token() -> String {
+	let body = format!(
+		"{}{}",
+		constants::API_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
+
+	format!(
+		"{body}{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	)
+}
+
+/// Generates a new service account token:
+/// [`SERVICE_ACCOUNT_TOKEN_PREFIX`][constants::SERVICE_ACCOUNT_TOKEN_PREFIX],
+/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
+/// base62 characters, and a checksum of both.
+pub fn generate_service_account_token() -> String {
+	let body = format!(
+		"{}{}",
+		constants::SERVICE_ACCOUNT_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
+
+	format!(
+		"{body}{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	)
 }
