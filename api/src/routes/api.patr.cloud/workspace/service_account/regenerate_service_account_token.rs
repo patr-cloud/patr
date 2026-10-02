@@ -1,6 +1,5 @@
 use axum::http::StatusCode;
 use models::api::workspace::service_account::*;
-use rand::{RngExt, distr::Alphanumeric};
 use sha2::{Digest as _, Sha256};
 
 use crate::{models::permissions, prelude::*};
@@ -29,15 +28,7 @@ pub async fn regenerate_service_account_token(
 		state: _,
 	}: AuthenticatedAppRequest<'_, RegenerateServiceAccountTokenRequest>,
 ) -> Result<AppResponse<RegenerateServiceAccountTokenRequest>, ErrorType> {
-	let token = format!(
-		"{}{}",
-		constants::SERVICE_ACCOUNT_TOKEN_PREFIX,
-		rand::rng()
-			.sample_iter(Alphanumeric)
-			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
-			.map(char::from)
-			.collect::<String>()
-	);
+	let token = permissions::generate_service_account_token();
 	let token_hash = hex::encode(Sha256::digest(&token));
 
 	// `old` is the row as it was before the update (Postgres 18), so this hands

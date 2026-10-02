@@ -1,5 +1,4 @@
 use models::api::user::*;
-use rand::{RngExt, distr::Alphanumeric};
 use reqwest::StatusCode;
 use sha2::{Digest as _, Sha256};
 
@@ -27,15 +26,7 @@ pub async fn regenerate_api_token(
 ) -> Result<AppResponse<RegenerateApiTokenRequest>, ErrorType> {
 	trace!("Regenerating API token: {}", token_id);
 
-	let token = format!(
-		"{}{}",
-		constants::API_TOKEN_PREFIX,
-		rand::rng()
-			.sample_iter(Alphanumeric)
-			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
-			.map(char::from)
-			.collect::<String>()
-	);
+	let token = permissions::generate_api_token();
 	let token_hash = hex::encode(Sha256::digest(&token));
 
 	// `old` is the row as it was before the update (Postgres 18), so this hands
