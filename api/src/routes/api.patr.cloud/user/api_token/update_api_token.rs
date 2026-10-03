@@ -63,7 +63,8 @@ pub async fn update_api_token(
 			allowed_ips = $4
 		WHERE
 			token_id = $5 AND
-			user_id = $6
+			user_id = $6 AND
+			revoked IS NULL
 		RETURNING
 			token_hash;
 		"#,

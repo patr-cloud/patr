@@ -85,8 +85,8 @@ pub mod constants {
 	pub const OPAQUE_TOKEN_SECRET_LENGTH: usize = 32;
 
 	/// The number of base62 characters ending an opaque token: a CRC32 of
-	/// everything before it, so a typo or a lookalike can be rejected without
-	/// a lookup, and a leaked token can be recognised by scanners.
+	/// everything before it, so a typo is rejected without a lookup and a
+	/// leaked token can be recognised by scanners.
 	pub const OPAQUE_TOKEN_CHECKSUM_LENGTH: usize = 6;
 
 	/// The duration that the permission data in Redis will be valid for. Beyond

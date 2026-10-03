@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE user_api_token SET revoked = NOW() WHERE token_id = $1 AND user_id = $2 RETURNING token_hash;",
+  "query": "UPDATE user_api_token SET revoked = NOW() WHERE token_id = $1 AND user_id = $2 AND revoked IS NULL RETURNING token_hash;",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       false
     ]
   },
-  "hash": "0f77111c2e8f79a88247cb0878f32387b00d45ea75dd9d221d5def222821262b"
+  "hash": "81a253932bb34b11297fce242348ee190fe1b6955bde4e4d1fb9a8ffd6f0088c"
 }
