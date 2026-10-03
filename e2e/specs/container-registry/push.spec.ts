@@ -153,7 +153,7 @@ test.describe('@docker container registry push/pull', () => {
 		expect(wrongUser.ok).toBe(false);
 
 		// Garbage token.
-		const badToken = await dockerLoginPatr(dind.dockerHost, 'patrv1.not.a.real.token');
+		const badToken = await dockerLoginPatr(dind.dockerHost, 'not-a-real-token');
 		expect(badToken.ok).toBe(false);
 
 		// The real token + correct username works.

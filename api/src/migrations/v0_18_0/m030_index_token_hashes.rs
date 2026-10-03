@@ -3,8 +3,8 @@
 //!
 //! No data changes. Existing rows keep their argon2 hashes, which no SHA-256
 //! can match, so tokens issued before this change stop authenticating until
-//! they're regenerated. They're kept rather than cleared so a later migration
-//! can upgrade them in place on first use.
+//! they're regenerated. They're kept rather than cleared so they can still be
+//! upgraded on first use.
 
 use crate::prelude::*;
 

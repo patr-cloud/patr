@@ -33,7 +33,8 @@ pub async fn revoke_api_token(
 			revoked = NOW()
 		WHERE
 			token_id = $1 AND
-			user_id = $2
+			user_id = $2 AND
+			revoked IS NULL
 		RETURNING
 			token_hash;
 		"#,

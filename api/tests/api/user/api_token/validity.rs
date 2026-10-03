@@ -5,7 +5,18 @@ use std::{collections::BTreeMap, net::IpAddr, str::FromStr};
 
 use api::models::permissions;
 use ipnetwork::IpNetwork;
-use models::{ApiSuccessResponseBody, api::user::*, rbac::WorkspacePermission};
+use models::{
+	ApiSuccessResponseBody,
+	api::{
+		user::*,
+		workspace::{
+			GetWorkspaceInfoPath,
+			GetWorkspaceInfoRequest,
+			GetWorkspaceInfoRequestHeaders,
+		},
+	},
+	rbac::WorkspacePermission,
+};
 
 use super::{call_with_token, mint_token_raw};
 use crate::prelude::*;
@@ -247,6 +258,54 @@ async fn api_token_bad_checksum_rejected() {
 			.status_code()
 			.as_u16(),
 		"a token relabelled with another kind's prefix should be 400"
+	);
+}
+
+/// A real API token relabelled as a service account token, with its checksum
+/// recomputed to match, is unknown (401): the hash covers the prefix.
+#[tokio::test]
+async fn api_token_relabelled_with_a_valid_checksum_is_unknown() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	let get_workspace_info = |token: &str| {
+		setup.make_api_call(
+			ApiRequest::<GetWorkspaceInfoRequest>::builder()
+				.path(GetWorkspaceInfoPath {
+					workspace_id: workspace.id,
+				})
+				.headers(GetWorkspaceInfoRequestHeaders {
+					authorization: BearerToken::from_str(token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+
+	let secret = &api_token.token["patr_at_".len()..api_token.token.len() - 6];
+	let body = format!("patr_sa_{secret}");
+	let relabelled = format!(
+		"{body}{:0>6}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes()))
+	);
+
+	assert!(
+		get_workspace_info(&api_token.token)
+			.await
+			.status_code()
+			.is_success(),
+		"the API token itself should work"
+	);
+	assert_eq!(
+		401,
+		get_workspace_info(&relabelled).await.status_code().as_u16(),
+		"the relabelled token should be unknown"
 	);
 }
 
