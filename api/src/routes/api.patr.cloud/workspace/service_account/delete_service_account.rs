@@ -44,22 +44,22 @@ pub async fn delete_service_account(
 	// references the actor, so the order matters. The `actor_client` row
 	// deliberately stays — `audit_log` points at it, and removing it would
 	// erase the trail of what this account did.
-	let rows_deleted = query!(
+	let Some(deleted) = query!(
 		r#"
 		DELETE FROM
 			service_account
 		WHERE
-			id = $1;
+			id = $1
+		RETURNING
+			token_hash;
 		"#,
 		service_account_id as _,
 	)
-	.execute(&mut **database)
+	.fetch_optional(&mut **database)
 	.await?
-	.rows_affected();
-
-	if rows_deleted == 0 {
+	else {
 		return Err(ErrorType::ResourceDoesNotExist);
-	}
+	};
 
 	query!(
 		r#"
@@ -90,6 +90,7 @@ pub async fn delete_service_account(
 	.await?;
 
 	// Invalidate cached permissions
+	permissions::mark_token_stale(redis, &service_account_id, &deleted.token_hash).await?;
 	permissions::mark_actor_stale(redis, &service_account_id).await?;
 
 	AppResponse::builder()

@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_api_token SET name = $1, token_nbf = $2, token_exp = $3, allowed_ips = $4 WHERE token_id = $5 AND user_id = $6 AND revoked IS NULL RETURNING token_hash;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_hash",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "InetArray",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7841e4a8ba00d7116510bd8a129935b4bcb0e2d1b578cdc4ac25e504843506e9"
+}

@@ -28,12 +28,14 @@ axum                           = { workspace = true, features = ["default", "mac
 axum-extra                     = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets          = { workspace = true, features = ["default"] }
 base32                         = { workspace = true, features = [] }
+base62                         = { workspace = true, features = [] }
 base64                         = { workspace = true, features = ["default"] }
 cfg-if                         = { workspace = true, features = [] }
 clap                           = { workspace = true, features = ["std", "derive"] }
 cloudflare                     = { workspace = true, features = ["rustls-tls"], optional = true }
 config                         = { workspace = true, features = ["json", "convert-case"] }
 console-subscriber             = { workspace = true, features = ["default"] }
+crc32fast                      = { workspace = true, features = [] }
 cron                           = { workspace = true, features = [] }
 derive_more                    = { workspace = true, features = ["from"] }
 futures                        = { workspace = true, features = ["default"] }

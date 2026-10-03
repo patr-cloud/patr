@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX service_account_uq_token_hash ON service_account(token_hash);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "de726aeb3ca4b0caa4e972e6c6ee334218b6227fb09a8fbf4f892804efe128fe"
+}

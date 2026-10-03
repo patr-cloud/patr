@@ -18,7 +18,7 @@ use crate::{prelude::*, rbac::WorkspacePermission, utils::ActorClientType};
 pub enum UserLoginType {
 	/// A web dashboard session, authenticated via JWT.
 	WebLogin,
-	/// A user API token (`patrv1.*`).
+	/// A user API token (`patr_at_…`).
 	ApiToken,
 }
 
