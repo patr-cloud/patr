@@ -3,6 +3,7 @@ use std::{
 	net::IpAddr,
 };
 
+use api::models::permissions;
 use ipnetwork::IpNetwork;
 use models::{
 	api::{user::*, workspace::secret::*},
@@ -79,7 +80,7 @@ async fn read_secret_invalid_token_returns_401() {
 			&secret_path(&workspace.id, &secret.id),
 			vec![(
 				http::header::AUTHORIZATION,
-				&basic_auth(&runner.id, "patrv1.not-a-real-token.nope"),
+				&basic_auth(&runner.id, &permissions::generate_service_account_token()),
 			)],
 		)
 		.await;

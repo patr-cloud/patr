@@ -39,7 +39,8 @@ pub async fn regenerate_api_token(
 			token_hash = $1
 		WHERE
 			token_id = $2 AND
-			user_id = $3
+			user_id = $3 AND
+			revoked IS NULL
 		RETURNING
 			old.token_hash;
 		"#,
