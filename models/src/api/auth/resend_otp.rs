@@ -5,7 +5,6 @@ macros::declare_api_endpoint!(
 	/// verify their account. The recovery method can either be an email or a phone number.
 	ResendOtp,
 	POST "/auth/resend-otp",
-	api = false,
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
@@ -18,5 +17,6 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, length(min = 8), custom = "validate_password")]
 		pub password: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

@@ -27,7 +27,6 @@ struct GitHubTokenResponse {
 #[derive(Deserialize)]
 struct GitHubUserProfile {
 	id: i64,
-	login: String,
 	name: Option<String>,
 }
 

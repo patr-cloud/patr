@@ -1,14 +1,16 @@
-use std::{collections::BTreeMap, net::IpAddr, str::FromStr as _};
+use std::{collections::BTreeMap, net::IpAddr, ops::Sub, str::FromStr as _};
 
-use models::{RequestUserData, rbac::WorkspacePermission};
-use rustis::{
-	client::Client as RedisClient,
-	commands::{GenericCommands as _, StringCommands as _},
-};
+use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
+use models::{ActorData, RequestActorData, utils::ActorClientTypeDiscriminant};
+use rustis::client::Client as RedisClient;
 use time::OffsetDateTime;
 use tokio::sync::OnceCell;
 
-use crate::{models::redis::UserPermissionCache, prelude::*, utils::config::AppConfig};
+use crate::{
+	models::{access_token_data::AccessTokenData, redis::ActorAuthDataCacheKind},
+	prelude::*,
+	utils::config::AppConfig,
+};
 
 /// A global map of Permission -> PermissionID for all permissions.
 /// This is used to cache the permission IDs for faster lookup instead of
@@ -50,153 +52,364 @@ pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Pe
 		})
 }
 
-/// Contains the functions to extract permissions for an API token.
+/// Loads the auth data of a user API token.
 mod api_token;
-/// Contains the functions to extract permissions for a web dashboard JWT.
+/// Loads the auth data of a service account.
+mod service_account;
+/// Loads the auth data of a web dashboard session.
 mod web_dashboard;
 
-pub use self::{
-	api_token::get_permissions_for_api_token,
-	web_dashboard::get_permissions_for_web_login,
-};
+/// The Redis cache of authenticated actors, and what marks it stale.
+mod cache;
 
-/// Gets the user data for the given token based on the allowed client type.
-/// This function delegates the permission extraction to the appropriate module
-/// based on whether the token is for an API token or a web dashboard session.
+pub use self::cache::{mark_actor_stale, mark_all_stale, mark_login_stale, mark_workspace_stale};
+
+/// Authenticate a bearer token and return who is making the request.
 ///
-/// For a given token, it gets all the information of the user that the login ID
-/// has (based on that token).
-pub async fn get_user_data_for_token(
+/// A token is either a JWT ([`authenticate_jwt`]) or a
+/// `patrv1.{secret}.{login_id}` token ([`authenticate_opaque_token`]). Both
+/// key the cache by login ID, so a hit costs no database round trip; a miss
+/// looks the login up, verifies it, loads its permissions and caches the lot
+/// until the token expires or something marks it stale (see [`cache`]).
+///
+/// `accepted_client_types` is who the caller serves. Kinds outside it aren't
+/// even parsed: a JWT sent to a route that only takes API tokens is a
+/// malformed API token as far as that route is concerned, and a `patrv1.`
+/// token of a kind the route doesn't take is rejected before any work is done
+/// on it.
+pub async fn authenticate(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
-	allowed_client_type: ClientType,
 	config: &AppConfig,
 	client_ip: IpAddr,
 	token: &str,
-) -> Result<RequestUserData, ErrorType> {
-	match allowed_client_type {
-		ClientType::ApiToken => {
-			api_token::get_permissions(database, redis, config, client_ip, token).await
-		}
-		ClientType::WebDashboard => {
-			web_dashboard::get_permissions(database, redis, config, client_ip, token).await
-		}
+	accepted_client_types: &[ActorClientType],
+) -> Result<RequestActorData, ErrorType> {
+	let accepts_jwt =
+		accepted_client_types.contains(&ActorClientType::UserLogin(UserLoginType::WebLogin));
+	let accepts_opaque_token = accepted_client_types
+		.contains(&ActorClientType::UserLogin(UserLoginType::ApiToken)) ||
+		accepted_client_types.contains(&ActorClientType::ServiceAccount);
+
+	if accepts_jwt && let Ok(claims) = AccessTokenData::decode(token, &config.jwt_secret) {
+		return authenticate_jwt(database, redis, claims).await;
 	}
+
+	if !accepts_opaque_token {
+		warn!("Authentication header is not a JWT, and only JWTs are accepted here");
+		return Err(ErrorType::MalformedAccessToken);
+	}
+
+	authenticate_opaque_token(
+		database,
+		redis,
+		config,
+		client_ip,
+		token,
+		accepted_client_types,
+	)
+	.await
 }
 
-/// Read the cached permission map for `login_id` from Redis if it is still
-/// valid. Validity is checked against four revocation timestamps (user,
-/// login, workspace, global): if any timestamp is newer than the cache
-/// entry's `creation_time`, the entry is stale, gets deleted, and `None` is
-/// returned so the caller recomputes from the database.
-async fn get_cached_permissions(
-	redis_connection: &mut RedisClient,
-	login_id: &Uuid,
-	user_id: &Uuid,
-) -> Result<Option<BTreeMap<Uuid, WorkspacePermission>>, ErrorType> {
-	let redis_data: Option<String> = redis_connection
-		.get(redis::keys::permission_for_login_id(login_id))
-		.await?;
-	let Some(Ok(data)) = redis_data
-		.as_deref()
-		.map(serde_json::from_str::<UserPermissionCache>)
-	else {
-		return Ok(None);
-	};
-
-	// Check whether the data stored in redis is still valid
-	// Simple example: When a user has their permissions stored in Redis, and they
-	// have been removed from a workspace, that data in redis should be considered
-	// invalid. This check is to ensure that the data stored in redis is still
-	// valid.
-	// So when a user's permissions are updated (like being removed from a
-	// workspace), a timestamp is set in redis. When a request is processed, if this
-	// timestamp exists in Redis, and the data inserted into redis was inserted
-	// after this timestamp, it is considered valid.
-
-	// Check user revocation, then loginId revocation, then workspace ID revocation
-	let is_valid = 'validity: {
-		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::user_id_revocation_timestamp(user_id))
-			.await?
-			.and_then(|s| s.parse::<i128>().ok())
-			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
-			.filter(|time| {
-				// If the timestamp exists, and the token was inserted into Redis before the
-				// timestamp, then the data in Redis is considered invalid
-				data.creation_time < *time
-			})
-			.is_some();
-
-		if revoked {
-			break 'validity false;
-		}
-
-		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::login_id_revocation_timestamp(login_id))
-			.await?
-			.and_then(|s| s.parse::<i128>().ok())
-			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
-			.filter(|time| {
-				// If the timestamp exists, and the token was inserted into Redis before the
-				// timestamp, then the data in Redis is considered invalid
-				data.creation_time < *time
-			})
-			.is_some();
-
-		if revoked {
-			break 'validity false;
-		}
-
-		for workspace_id in data.permission.keys() {
-			let revoked = redis_connection
-				.get::<Option<String>>(redis::keys::workspace_id_revocation_timestamp(workspace_id))
-				.await?
-				.and_then(|s| s.parse::<i128>().ok())
-				.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
-				.filter(|time| {
-					// If the timestamp exists, and the token was inserted into Redis before the
-					// timestamp, then the data in Redis is considered invalid
-					data.creation_time < *time
-				})
-				.is_some();
-
-			if revoked {
-				break 'validity false;
-			}
-		}
-
-		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::global_revocation_timestamp())
-			.await?
-			.and_then(|s| s.parse::<i128>().ok())
-			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
-			.filter(|time| {
-				// If the timestamp exists, and the token was inserted into Redis before the
-				// timestamp, then the data in Redis is considered invalid
-				data.creation_time < *time
-			})
-			.is_some();
-
-		if revoked {
-			break 'validity false;
-		}
-
-		// None of the revocation timestamps exist, so the data in Redis is
-		// valid and can be used
-		true
-	};
-
-	if is_valid {
-		Ok(Some(data.permission))
-	} else {
-		// The data in redis is not valid anymore. It probably is expired due to a
-		// permission change, so delete it from Redis, and proceed to fetch the
-		// permissions from the database again. This ensures that the permissions are up
-		// to date, even if the cache is stale.
-		_ = redis_connection
-			.del(redis::keys::permission_for_login_id(login_id))
-			.await;
-		Ok(None)
+/// Authenticate a JWT. Today every JWT is a web dashboard session; an OAuth
+/// application's token will carry a claim saying so and branch here.
+async fn authenticate_jwt(
+	database: &mut DatabaseConnection,
+	redis: &mut RedisClient,
+	claims: AccessTokenData,
+) -> Result<RequestActorData, ErrorType> {
+	// The claims are checked on every request, cache hit or not: a login's
+	// cache entry outlives any one of its access tokens.
+	if claims.iss != constants::JWT_ISSUER {
+		warn!("Invalid JWT issuer: {}", claims.iss);
+		return Err(ErrorType::MalformedAccessToken);
 	}
+	trace!("JWT issuer valid");
+
+	// The token should have been issued within the last `REFRESH_TOKEN_VALIDITY`
+	// duration
+	if OffsetDateTime::now_utc().sub(
+		claims
+			.jti
+			.get_timestamp()
+			.ok_or(ErrorType::MalformedAccessToken)?,
+	) > AccessTokenData::REFRESH_TOKEN_VALIDITY
+	{
+		warn!("JWT is too old");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	}
+	trace!("JWT JTI valid");
+
+	if OffsetDateTime::now_utc() < claims.nbf {
+		warn!("JWT is not valid yet");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	}
+	trace!("JWT NBF valid");
+
+	if OffsetDateTime::now_utc() > claims.exp {
+		warn!("JWT has expired");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	}
+	trace!("JWT EXP valid");
+
+	if !claims
+		.aud
+		.clone()
+		.into_iter()
+		.any(|item| item == constants::PATR_JWT_AUDIENCE)
+	{
+		warn!(
+			"Invalid JWT audience: `{}`",
+			match &claims.aud {
+				OneOrMore::One(aud) => aud.clone(),
+				OneOrMore::Multiple(aud) => format!("[{}]", aud.join(", ")),
+			}
+		);
+		return Err(ErrorType::MalformedAccessToken);
+	}
+	trace!("JWT audience valid");
+
+	let entry = if let Some(entry) = cache::read(redis, &claims.sub).await {
+		trace!("Cached auth data found for login `{}`", claims.sub);
+		entry
+	} else {
+		let entry = web_dashboard::load_actor_auth_data(&mut *database, &claims.sub).await?;
+
+		cache::write(
+			redis,
+			&claims.sub,
+			&entry,
+			constants::CACHED_PERMISSIONS_VALIDITY,
+		)
+		.await;
+
+		entry
+	};
+
+	let ActorAuthDataCacheKind::WebLogin {
+		email,
+		first_name,
+		last_name,
+		created,
+	} = entry.kind
+	else {
+		warn!("JWT presented for a login that is not a web login");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	};
+
+	Ok(RequestActorData::builder()
+		.id(entry.actor_id)
+		.actor(ActorData::User {
+			email,
+			first_name,
+			last_name,
+			login: UserLoginType::WebLogin,
+		})
+		.created(created)
+		.login_id(claims.sub)
+		.permissions(entry.permissions)
+		.build())
+}
+
+/// Authenticate a `patrv1.{secret}.{login_id}` token: a user API token or a
+/// service account token. `actor_client` says which, and that kind's module
+/// takes it from there.
+async fn authenticate_opaque_token(
+	database: &mut DatabaseConnection,
+	redis: &mut RedisClient,
+	config: &AppConfig,
+	client_ip: IpAddr,
+	token: &str,
+	accepted_client_types: &[ActorClientType],
+) -> Result<RequestActorData, ErrorType> {
+	trace!("Parsing authentication header as an API token");
+
+	let Some(token) = token.strip_prefix("patrv1.") else {
+		warn!("Authentication header is neither a JWT nor an API token");
+		return Err(ErrorType::MalformedApiToken);
+	};
+
+	let (secret, login_id) = token.split_once('.').ok_or_else(|| {
+		warn!("Invalid API token: missing secret/login-id separator");
+		ErrorType::MalformedApiToken
+	})?;
+
+	let secret = Uuid::parse_str(secret).map_err(|err| {
+		warn!("Invalid API token: secret is not a valid UUID: {}", err);
+		ErrorType::MalformedApiToken
+	})?;
+
+	let login_id = Uuid::parse_str(login_id).map_err(|err| {
+		warn!("Invalid API token: login ID is not a valid UUID: {}", err);
+		ErrorType::MalformedApiToken
+	})?;
+
+	let entry = if let Some(entry) = cache::read(redis, &login_id).await {
+		trace!("Cached auth data found for login `{login_id}`");
+		entry
+	} else {
+		// `actor_client` says which kind of login this is; for a user login,
+		// `user_login` says which kind of user login.
+		let Some(client) = query!(
+			r#"
+			SELECT
+				actor_client.actor_client_type AS "actor_client_type: ActorClientTypeDiscriminant",
+				user_login.login_type AS "login_type?: UserLoginType"
+			FROM
+				actor_client
+			LEFT JOIN
+				user_login
+			ON
+				user_login.login_id = actor_client.id
+			WHERE
+				actor_client.id = $1;
+			"#,
+			login_id as _,
+		)
+		.fetch_optional(&mut *database)
+		.await?
+		else {
+			warn!("No login found for the API token");
+			// No specific error for the login not being found, since we don't
+			// want to leak information about whether a loginId is valid or if
+			// it's expired
+			return Err(ErrorType::AuthorizationTokenInvalid);
+		};
+
+		let client_type = match (client.actor_client_type, client.login_type) {
+			(ActorClientTypeDiscriminant::UserLogin, Some(login_type)) => {
+				ActorClientType::UserLogin(login_type)
+			}
+			(ActorClientTypeDiscriminant::ServiceAccount, _) => ActorClientType::ServiceAccount,
+			(ActorClientTypeDiscriminant::UserLogin, None) => {
+				error!("User login `{login_id}` has no `user_login` row");
+				return Err(ErrorType::server_error(
+					"user login without a user_login row",
+				));
+			}
+		};
+
+		let (entry, ttl) = match client_type {
+			ActorClientType::UserLogin(UserLoginType::ApiToken) => {
+				api_token::load_actor_auth_data(&mut *database, &login_id).await?
+			}
+			ActorClientType::ServiceAccount => {
+				service_account::load_actor_auth_data(&mut *database, &login_id).await?
+			}
+			ActorClientType::UserLogin(UserLoginType::WebLogin) => {
+				warn!("A web login's ID was presented as an API token");
+				return Err(ErrorType::AuthorizationTokenInvalid);
+			}
+		};
+
+		cache::write(redis, &login_id, &entry, ttl).await;
+		entry
+	};
+
+	// Checked on every request, cache hit or not: that this route takes this
+	// kind of client, the presented secret, and for API tokens the client's
+	// IP.
+	let (actor, created) = match entry.kind {
+		ActorAuthDataCacheKind::ApiToken {
+			email,
+			first_name,
+			last_name,
+			created,
+			allowed_ips,
+			token_hash,
+		} => {
+			if !accepted_client_types.contains(&ActorClientType::UserLogin(UserLoginType::ApiToken))
+			{
+				warn!("Login `{login_id}` is an API token, which this route doesn't accept");
+				return Err(ErrorType::Unauthorized);
+			}
+
+			// Verify that the token presented is valid
+			let Ok(password_hash) = PasswordHash::new(&token_hash) else {
+				error!("Unable to parse password hash: {}", token_hash);
+				return Err(ErrorType::server_error("password hash parsing failed"));
+			};
+
+			let success = Argon2::new_with_secret(
+				config.password_pepper.as_bytes(),
+				Algorithm::Argon2id,
+				Version::V0x13,
+				constants::HASHING_PARAMS,
+			)
+			.map_err(ErrorType::server_error)?
+			.verify_password(secret.as_bytes(), &password_hash)
+			.is_ok();
+
+			if !success {
+				warn!("API token has an invalid secret");
+				return Err(ErrorType::AuthorizationTokenInvalid);
+			}
+			trace!("API token secret valid");
+
+			if let Some(allowed_ips) = allowed_ips &&
+				!allowed_ips
+					.iter()
+					.any(|ip_network| ip_network.contains(client_ip))
+			{
+				info!("API token not accessed from an allowed IP Address");
+				return Err(ErrorType::DisallowedIpAddressForApiToken);
+			}
+
+			(
+				ActorData::User {
+					email,
+					first_name,
+					last_name,
+					login: UserLoginType::ApiToken,
+				},
+				created,
+			)
+		}
+		ActorAuthDataCacheKind::ServiceAccount {
+			name,
+			created,
+			token_hash,
+		} => {
+			if !accepted_client_types.contains(&ActorClientType::ServiceAccount) {
+				warn!("Login `{login_id}` is a service account, which this route doesn't accept");
+				return Err(ErrorType::Unauthorized);
+			}
+
+			// Verify that the token presented is valid
+			let Ok(password_hash) = PasswordHash::new(&token_hash) else {
+				error!("Unable to parse password hash: {}", token_hash);
+				return Err(ErrorType::server_error("password hash parsing failed"));
+			};
+
+			let success = Argon2::new_with_secret(
+				config.password_pepper.as_bytes(),
+				Algorithm::Argon2id,
+				Version::V0x13,
+				constants::HASHING_PARAMS,
+			)
+			.map_err(ErrorType::server_error)?
+			.verify_password(secret.as_bytes(), &password_hash)
+			.is_ok();
+
+			if !success {
+				warn!("API token has an invalid secret");
+				return Err(ErrorType::AuthorizationTokenInvalid);
+			}
+			trace!("API token secret valid");
+
+			(ActorData::ServiceAccount { name }, created)
+		}
+		ActorAuthDataCacheKind::WebLogin { .. } => {
+			warn!("A web login's ID was presented as an API token");
+			return Err(ErrorType::AuthorizationTokenInvalid);
+		}
+	};
+
+	Ok(RequestActorData::builder()
+		.id(entry.actor_id)
+		.actor(actor)
+		.created(created)
+		.login_id(login_id)
+		.permissions(entry.permissions)
+		.build())
 }

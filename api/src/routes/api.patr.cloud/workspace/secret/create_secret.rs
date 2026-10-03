@@ -24,7 +24,7 @@ pub async fn create_secret(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, CreateSecretRequest>,
 ) -> Result<AppResponse<CreateSecretRequest>, ErrorType> {

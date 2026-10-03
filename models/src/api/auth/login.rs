@@ -8,7 +8,6 @@ macros::declare_api_endpoint!(
 	/// the authentication token needed to access all the services on PATR.
 	Login,
 	POST "/auth/sign-in",
-	api = false,
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
@@ -42,5 +41,6 @@ macros::declare_api_endpoint!(
 		/// It contains the login_id and the refresh_token concatenated together.
 		pub refresh_token: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

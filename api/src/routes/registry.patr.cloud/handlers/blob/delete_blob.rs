@@ -52,7 +52,7 @@ pub async fn delete_blob(
 		redis: _,
 		s3: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, DeleteBlobPath>,
 ) -> Result<RegistryResponse<DeleteBlobPath>, RegistryError> {

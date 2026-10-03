@@ -10,6 +10,7 @@ pub mod rbac;
 pub mod resources_info;
 pub mod runner;
 pub mod secret;
+pub mod service_account;
 
 #[tokio::test]
 async fn create_workspace_works() {

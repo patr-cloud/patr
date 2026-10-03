@@ -36,7 +36,7 @@ pub async fn version_check(
 		redis: _,
 		s3: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		config: _,
 	}: AuthenticatedRegistryAppRequest<'_, GetApiVersionPath>,
 ) -> Result<RegistryResponse<GetApiVersionPath>, RegistryError> {

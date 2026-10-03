@@ -18,16 +18,16 @@ pub async fn connect_social_login_initiate(
 				body: ConnectSocialLoginInitiateRequestProcessed,
 			},
 		redis,
-		user_data,
+		actor_data,
 		state,
 		..
 	}: AuthenticatedAppRequest<'_, ConnectSocialLoginInitiateRequest>,
 ) -> Result<AppResponse<ConnectSocialLoginInitiateRequest>, ErrorType> {
-	trace!("Initiating GitHub connect flow for user {}", user_data.id);
+	trace!("Initiating GitHub connect flow for user {}", actor_data.id);
 
 	let oauth_state_token = Uuid::new_v4().to_string();
 	let payload = serde_json::to_string(&GithubStatePayload::Authenticated {
-		user_id: user_data.id,
+		user_id: actor_data.id,
 	})
 	.map_err(ErrorType::server_error)?;
 

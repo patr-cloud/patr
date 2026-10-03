@@ -22,7 +22,7 @@ pub async fn get_domain_info_in_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, GetDomainInfoInWorkspaceRequest>,
 ) -> Result<AppResponse<GetDomainInfoInWorkspaceRequest>, ErrorType> {
