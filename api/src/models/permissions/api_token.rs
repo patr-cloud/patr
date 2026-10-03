@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use models::rbac::{WorkspacePermission, intersect_workspace_permissions};
+use sqlx::Connection as _;
 use time::{Duration, OffsetDateTime};
 
 use crate::{
@@ -10,10 +11,9 @@ use crate::{
 
 /// Load everything the cache holds for the API token whose hash is
 /// `token_hash`: the user behind it, the token's restrictions, and its
-/// effective permissions. Also
-/// says how long the entry may live: until the token expires, at most
-/// [`constants::CACHED_PERMISSIONS_VALIDITY`] — expiry isn't kept in the
-/// entry; the entry just doesn't outlive the token.
+/// effective permissions. Also says how long the entry may live: until the
+/// token expires, at most [`constants::CACHED_PERMISSIONS_VALIDITY`] — expiry
+/// isn't kept in the entry; the entry just doesn't outlive the token.
 pub(super) async fn load_actor_auth_data(
 	database: &mut DatabaseConnection,
 	token_hash: &str,
@@ -23,7 +23,10 @@ pub(super) async fn load_actor_auth_data(
 	let created_at = OffsetDateTime::now_utc();
 	let now = created_at;
 
-	let Some(token) = query!(
+	// Waits out an uncommitted revoke, update or regenerate of the row, then
+	// releases the lock right away so a long request doesn't hold it.
+	let mut savepoint = database.begin().await?;
+	let token = query!(
 		r#"
 		SELECT
 			user_api_token.token_id AS "token_id: Uuid",
@@ -43,13 +46,17 @@ pub(super) async fn load_actor_auth_data(
 		ON
 			"user".id = user_api_token.user_id
 		WHERE
-			user_api_token.token_hash = $1;
+			user_api_token.token_hash = $1
+		FOR SHARE OF
+			user_api_token;
 		"#,
 		token_hash,
 	)
-	.fetch_optional(&mut *database)
-	.await?
-	else {
+	.fetch_optional(&mut *savepoint)
+	.await?;
+	savepoint.rollback().await?;
+
+	let Some(token) = token else {
 		// No specific error for the token not being found, since we don't
 		// want to leak whether a token ever existed
 		warn!("No API token with this hash");
@@ -78,8 +85,7 @@ pub(super) async fn load_actor_auth_data(
 	};
 
 	// User's current role-derived permissions (the upper bound for the
-	// token). Read directly from the DB — the token's cache slot is keyed
-	// on its own login_id, so reusing the user's cached perms doesn't apply.
+	// token).
 	let mut user_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
 
 	query!(

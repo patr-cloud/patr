@@ -1,6 +1,7 @@
-//! The Redis cache of authenticated actors, keyed by login ID.
+//! The Redis cache of authenticated actors, keyed by login ID for web logins
+//! and by token hash for opaque tokens.
 //!
-//! One entry per login ([`ActorAuthDataCache`]) holds everything a request
+//! One entry per credential ([`ActorAuthDataCache`]) holds everything a request
 //! needs, so a hit costs no database round trip. Entries are never updated in
 //! place: anything that changes what an entry would contain bumps a
 //! `*_cache_stale_since` stamp for its scope instead, and the next read of an
@@ -31,10 +32,10 @@ pub(super) async fn read(redis: &mut RedisClient, key: &str) -> Option<ActorAuth
 	let entry = redis
 		.get::<Option<String>>(key)
 		.await
-		.inspect_err(|err| error!("Error reading the cached auth data `{key}`: `{err}`"))
+		.inspect_err(|err| error!("Error reading cached auth data: `{err}`"))
 		.ok()??;
 	let entry = serde_json::from_str::<ActorAuthDataCache>(&entry)
-		.inspect_err(|err| warn!("Discarding an undecodable cache entry `{key}`: `{err}`"))
+		.inspect_err(|err| warn!("Discarding an undecodable auth data entry: `{err}`"))
 		.ok()?;
 
 	let stale = redis
@@ -54,7 +55,12 @@ pub(super) async fn read(redis: &mut RedisClient, key: &str) -> Option<ActorAuth
 			.collect::<Vec<_>>(),
 		)
 		.await
-		.inspect_err(|err| error!("Error reading the stale-since stamps for `{key}`: `{err}`"))
+		.inspect_err(|err| {
+			error!(
+				"Error reading the stale-since stamps for login `{}`: `{err}`",
+				entry.login_id
+			)
+		})
 		.ok()?
 		.into_iter()
 		.flatten()
@@ -63,7 +69,7 @@ pub(super) async fn read(redis: &mut RedisClient, key: &str) -> Option<ActorAuth
 		.any(|stamp| entry.created_at < stamp);
 
 	if stale {
-		trace!("Cached auth data `{key}` is stale");
+		trace!("Cached auth data for login `{}` is stale", entry.login_id);
 		// Tidy up so requests that keep failing to refetch (say, a revoked
 		// token) don't keep paying for the stamp reads.
 		_ = redis.del(key).await;
@@ -83,16 +89,24 @@ pub(super) async fn write(
 	entry: &ActorAuthDataCache,
 	ttl: time::Duration,
 ) {
-	let Ok(value) = serde_json::to_string(entry)
-		.inspect_err(|err| error!("Error serialising the auth data `{key}`: `{err}`"))
-	else {
+	let Ok(value) = serde_json::to_string(entry).inspect_err(|err| {
+		error!(
+			"Error serialising the auth data for login `{}`: `{err}`",
+			entry.login_id
+		)
+	}) else {
 		return;
 	};
 
 	_ = redis
 		.setex(key, ttl.whole_seconds().unsigned_abs(), value)
 		.await
-		.inspect_err(|err| error!("Error caching the auth data `{key}`: `{err}`"));
+		.inspect_err(|err| {
+			error!(
+				"Error caching the auth data for login `{}`: `{err}`",
+				entry.login_id
+			)
+		});
 }
 
 /// Stamp one web login's cached entry as stale, and drop the entry itself. For

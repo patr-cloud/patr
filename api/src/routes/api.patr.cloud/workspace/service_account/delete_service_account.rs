@@ -91,6 +91,7 @@ pub async fn delete_service_account(
 
 	// Invalidate cached permissions
 	permissions::mark_token_stale(redis, &service_account_id, &deleted.token_hash).await?;
+	permissions::mark_actor_stale(redis, &service_account_id).await?;
 
 	AppResponse::builder()
 		.body(DeleteServiceAccountResponse)

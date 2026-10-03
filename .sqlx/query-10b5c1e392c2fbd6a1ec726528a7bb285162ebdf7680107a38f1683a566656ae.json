@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id AS \"id: Uuid\", workspace_id AS \"workspace_id: Uuid\", name, created FROM service_account WHERE token_hash = $1 AND deleted IS NULL;",
+  "query": "SELECT id AS \"id: Uuid\", workspace_id AS \"workspace_id: Uuid\", name, created FROM service_account WHERE token_hash = $1 AND deleted IS NULL FOR SHARE;",
   "describe": {
     "columns": [
       {
@@ -36,5 +36,5 @@
       false
     ]
   },
-  "hash": "c5ac1ba26b5f8f8d07635364bff1a06dd306c6a047bcf66741183e6f68822063"
+  "hash": "10b5c1e392c2fbd6a1ec726528a7bb285162ebdf7680107a38f1683a566656ae"
 }

@@ -76,9 +76,9 @@ pub use self::cache::{
 /// A token is either a JWT ([`authenticate_jwt`]) or an opaque API token or
 /// service account token ([`authenticate_opaque_token`]). Both are cached —
 /// JWTs by their login ID, opaque tokens by their hash — so a hit costs no
-/// database round trip; a miss
-/// looks the login up, verifies it, loads its permissions and caches the lot
-/// until the token expires or something marks it stale (see [`cache`]).
+/// database round trip; a miss looks the login up, verifies it, loads its
+/// permissions and caches the lot until the token expires or something marks
+/// it stale (see [`cache`]).
 ///
 /// `accepted_client_types` is who the caller serves. Kinds outside it aren't
 /// even parsed: a JWT sent to a route that only takes API tokens is a
@@ -235,8 +235,10 @@ async fn authenticate_opaque_token(
 		return Err(ErrorType::MalformedApiToken);
 	};
 
-	// Split the token into the randomly generated part (entropy) and checksum of that entropy
-	let Some((entropy, presented_checksum)) =
+	// The prefix and secret, and the checksum of both. Only the checksum is
+	// checked: anyone can compute a valid one, so length or character checks
+	// wouldn't stop a crafted token.
+	let Some((body, presented_checksum)) =
 		token.split_at_checked(token.len() - constants::OPAQUE_TOKEN_CHECKSUM_LENGTH)
 	else {
 		warn!("Invalid opaque token: the checksum isn't on a character boundary");
@@ -244,7 +246,7 @@ async fn authenticate_opaque_token(
 	};
 	let calculated_checksum = format!(
 		"{:0>width$}",
-		base62::encode_fmt(crc32fast::hash(entropy.as_bytes())),
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
 		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
 	);
 	if presented_checksum != calculated_checksum {

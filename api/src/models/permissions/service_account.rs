@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use models::rbac::WorkspacePermission;
+use sqlx::Connection as _;
 use time::{Duration, OffsetDateTime};
 
 use crate::{
@@ -27,7 +28,10 @@ pub(super) async fn load_actor_auth_data(
 	// flight still marks this entry stale.
 	let created_at = OffsetDateTime::now_utc();
 
-	let Some(service_account) = query!(
+	// Waits out an uncommitted regenerate or delete of the row, then releases
+	// the lock right away so a long request doesn't hold it.
+	let mut savepoint = database.begin().await?;
+	let service_account = query!(
 		r#"
 		SELECT
 			id AS "id: Uuid",
@@ -38,13 +42,16 @@ pub(super) async fn load_actor_auth_data(
 			service_account
 		WHERE
 			token_hash = $1 AND
-			deleted IS NULL;
+			deleted IS NULL
+		FOR SHARE;
 		"#,
 		token_hash,
 	)
-	.fetch_optional(&mut *database)
-	.await?
-	else {
+	.fetch_optional(&mut *savepoint)
+	.await?;
+	savepoint.rollback().await?;
+
+	let Some(service_account) = service_account else {
 		warn!("No live service account with this token hash");
 		return Err(ErrorType::AuthorizationTokenInvalid);
 	};
