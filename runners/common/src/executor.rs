@@ -60,12 +60,30 @@ pub trait RunnerExecutor: Sized {
 	) -> impl Future<Output = Result<(), RunnerError>> + Send;
 
 	/// This function is called when a deployment is deleted. The runner should
-	/// return an error if the deployment failed to delete. This will be used to
-	/// retry the deletion.
+	/// tear down the workload **and reclaim its persistent storage** — this is
+	/// irreversible. To tear down a deployment that will be started again,
+	/// use [`stop_deployment`](Self::stop_deployment) instead.
+	///
+	/// The runner should return an error if the deployment failed to delete.
+	/// This will be used to retry the deletion.
 	fn delete_deployment(
 		&self,
 		deployment_id: Uuid,
 	) -> impl Future<Output = Result<(), RunnerError>> + Send;
+
+	/// This function is called when a deployment is stopped. The runner should
+	/// tear down the workload but keep its persistent storage, so the
+	/// deployment can be started again later with its data intact.
+	///
+	/// Defaults to [`delete_deployment`](Self::delete_deployment), which is
+	/// correct for a runner with no persistent storage. Runners that own
+	/// storage must override it.
+	fn stop_deployment(
+		&self,
+		deployment_id: Uuid,
+	) -> impl Future<Output = Result<(), RunnerError>> + Send {
+		self.delete_deployment(deployment_id)
+	}
 
 	/// This function should return a stream of all the running deployment IDs
 	/// in the runner, sorted by the deployment ID.

@@ -15,6 +15,12 @@ interface ConfigMountProps {
 	onChange: (next: Record<string, Base64String>) => void;
 	/** Fires whenever the validity of the rows changes. Parents gate submit on this. */
 	onValidityChange?: (valid: boolean) => void;
+	/**
+	 * Whether to give the section a left gutter with its name. Off on the
+	 * Configuration tab, where a heading above names the section and the rows
+	 * run the full width.
+	 */
+	showLabel?: MaybeAccessor<boolean>;
 	/** Disables all inputs. */
 	disabled?: MaybeAccessor<boolean>;
 }
@@ -27,6 +33,8 @@ const ConfigMount = (props: ConfigMountProps) => {
 	const [draftContent, setDraftContent] = createSignal<Base64String | null>(null);
 	const [draftFileLabel, setDraftFileLabel] = createSignal<string>("");
 	const [error, setError] = createSignal<string | null>(null);
+
+	const showLabel = () => get(props.showLabel) ?? true;
 
 	const committedMap = (): Record<string, Base64String> => {
 		const out: Record<string, Base64String> = {};
@@ -146,7 +154,9 @@ const ConfigMount = (props: ConfigMountProps) => {
 		<div class="flex flex-col gap-0 w-full">
 			<Show when={!get(props.disabled)}>
 				<div class="flex gap-8 items-center w-full">
-					<Label parentClass="flex-2" label="Config File" />
+					<Show when={showLabel()}>
+						<Label parentClass="flex-2" label="Config File" />
+					</Show>
 					<section class="flex-10 flex items-center gap-4 w-full">
 						<Input
 							type={InputType.Text}
@@ -186,11 +196,16 @@ const ConfigMount = (props: ConfigMountProps) => {
 				</div>
 
 				<Show when={error()}>
-					<p class="text-sm text-error mt-1 ml-20">{error()}</p>
+					<div class="flex gap-8 w-full mt-1">
+						<Show when={showLabel()}>
+							<div class="flex-2" />
+						</Show>
+						<p class="flex-10 text-sm text-error">{error()}</p>
+					</div>
 				</Show>
 			</Show>
 
-			<Show when={get(props.disabled) && rows().length > 0}>
+			<Show when={showLabel() && get(props.disabled) && rows().length > 0}>
 				<div class="flex gap-8 items-center w-full">
 					<Label parentClass="flex-2" label="Config File" />
 					<div class="flex-10" />
@@ -203,7 +218,9 @@ const ConfigMount = (props: ConfigMountProps) => {
 					return (
 						<div class="flex flex-col gap-1 w-full mt-3">
 							<div class="flex gap-8 items-center w-full">
-								<div class="flex-2" />
+								<Show when={showLabel()}>
+									<div class="flex-2" />
+								</Show>
 								<section class="flex-10 flex items-center gap-4 w-full">
 									<Input
 										class={`flex-5 ${err() ? "border-error!" : ""}`}
@@ -251,7 +268,9 @@ const ConfigMount = (props: ConfigMountProps) => {
 							</div>
 							<Show when={err()}>
 								<div class="flex gap-8 w-full">
-									<div class="flex-2" />
+									<Show when={showLabel()}>
+										<div class="flex-2" />
+									</Show>
 									<div class="flex-10 text-error text-sm">{err()}</div>
 								</div>
 							</Show>

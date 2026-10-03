@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n    1 AS priority,\n    'Number' AS type,\n    'RUNNING_JOBS' AS statistic,\n    SUM(CASE WHEN status = 'Running' THEN 1 ELSE 0 END)::REAL AS value\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    1, 'Number', 'PENDING_JOBS',\n    SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    2, 'Number', 'FAILED_JOBS',\n    SUM(CASE WHEN status = 'Failed' THEN 1 ELSE 0 END)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    2, 'Number', 'ACTIVE_JOBS',\n    SUM(CASE WHEN status IN ('Pending', 'Queued', 'Running') THEN 1 ELSE 0 END)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    2, 'Number', 'STALE_RUNNING_JOBS',\n    COUNT(*)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND status = 'Running'\n    AND run_at < now() - INTERVAL '1 hour'\n\nUNION ALL\n\nSELECT\n    2, 'Percentage', 'KILL_RATE',\n    ROUND(100.0 * SUM(CASE WHEN status = 'Killed' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 2)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    3, 'Number', 'JOBS_PAST_HOUR',\n    COUNT(*)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at >= now() - INTERVAL '1 hour'\n\nUNION ALL\n\nSELECT\n    3, 'Number', 'JOBS_TODAY',\n    COUNT(*)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at::date = CURRENT_DATE\n\nUNION ALL\n\nSELECT\n    3, 'Number', 'KILLED_JOBS_TODAY',\n    SUM(CASE WHEN status = 'Killed' THEN 1 ELSE 0 END)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at::date = CURRENT_DATE\n\nUNION ALL\n\nSELECT\n    3, 'Decimal', 'AVG_JOBS_PER_MINUTE_PAST_HOUR',\n    ROUND(COUNT(*) / 60.0, 2)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at >= now() - INTERVAL '1 hour'\n\nUNION ALL\n\nSELECT\n    4, 'Number', 'TOTAL_JOBS',\n    COUNT(*)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    4, 'Number', 'DONE_JOBS',\n    SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    4, 'Number', 'COMPLETED_JOBS',\n    SUM(CASE WHEN status IN ('Done', 'Failed', 'Killed') THEN 1 ELSE 0 END)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    4, 'Number', 'KILLED_JOBS',\n    SUM(CASE WHEN status = 'Killed' THEN 1 ELSE 0 END)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    4, 'Percentage', 'SUCCESS_RATE',\n    ROUND(100.0 * SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 2)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    5, 'Decimal', 'AVG_JOB_DURATION_MINS',\n    ROUND(AVG(EXTRACT(EPOCH FROM (done_at - run_at)) / 60.0), 2)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND status IN ('Done', 'Failed', 'Killed')\n    AND done_at IS NOT NULL\n\nUNION ALL\n\nSELECT\n    5, 'Decimal', 'LONGEST_RUNNING_JOB_MINS',\n    ROUND(MAX(CASE WHEN status = 'Running' THEN EXTRACT(EPOCH FROM (now() - run_at)) / 60.0 ELSE 0 END), 2)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    5, 'Number', 'QUEUE_BACKLOG',\n    SUM(CASE WHEN status = 'Pending' AND run_at <= now() THEN 1 ELSE 0 END)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    6, 'Number', 'JOBS_PAST_24_HOURS',\n    COUNT(*)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at >= now() - INTERVAL '1 day'\n\nUNION ALL\n\nSELECT\n    6, 'Number', 'JOBS_PAST_7_DAYS',\n    COUNT(*)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at >= now() - INTERVAL '7 days'\n\nUNION ALL\n\nSELECT\n    6, 'Number', 'KILLED_JOBS_PAST_7_DAYS',\n    SUM(CASE WHEN status = 'Killed' THEN 1 ELSE 0 END)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at >= now() - INTERVAL '7 days'\n\nUNION ALL\n\nSELECT\n    6, 'Percentage', 'SUCCESS_RATE_PAST_24H',\n    ROUND(100.0 * SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 2)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at >= now() - INTERVAL '1 day'\n\nUNION ALL\n\nSELECT\n    7, 'Decimal', 'AVG_JOBS_PER_HOUR_PAST_24H',\n    ROUND(COUNT(*) / 24.0, 2)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at >= now() - INTERVAL '1 day'\n\nUNION ALL\n\nSELECT\n    7, 'Decimal', 'AVG_JOBS_PER_DAY_PAST_7D',\n    ROUND(COUNT(*) / 7.0, 2)::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND run_at >= now() - INTERVAL '7 days'\n\nUNION ALL\n\nSELECT\n    8, 'Timestamp', 'MOST_RECENT_JOB',\n    EXTRACT(EPOCH FROM MAX(run_at))::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n\nUNION ALL\n\nSELECT\n    8, 'Timestamp', 'OLDEST_PENDING_JOB',\n    EXTRACT(EPOCH FROM MIN(run_at))::REAL\nFROM apalis.jobs\nWHERE job_type = $1\n    AND status = 'Pending'\n    AND run_at <= now()\n\nUNION ALL\n\nSELECT\n    8, 'Number', 'PEAK_HOUR_JOBS',\n    MAX(hourly_count)::REAL\nFROM (\n    SELECT COUNT(*) as hourly_count\n    FROM apalis.jobs\n    WHERE job_type = $1\n        AND run_at >= now() - INTERVAL '1 day'\n    GROUP BY EXTRACT(HOUR FROM run_at)\n) subquery\n\nORDER BY priority, statistic;\n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "priority",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "statistic",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "value",
+        "type_info": "Float4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "2081bdcf70787cdab55f2df7bbbc076581cba29b6513d45172cf23ad2a234479"
+}

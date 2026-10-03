@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE\n    apalis.jobs\nSET\n    status = 'Pending',\n    done_at = NULL,\n    lock_by = NULL,\n    lock_at = NULL,\n    attempts = attempts + 1,\n    last_result = '{\"Err\": \"Re-enqueued due to worker heartbeat timeout.\"}'\nWHERE\n    id IN (\n        SELECT\n            jobs.id\n        FROM\n            apalis.jobs\n            INNER JOIN apalis.workers ON lock_by = workers.id\n        WHERE\n            (\n                status = 'Running'\n                OR status = 'Queued'\n            )\n            AND NOW() - apalis.workers.last_seen >= $1\n            AND apalis.workers.worker_type = $2\n    );\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Interval",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5d7ccd8d4267874312eb02ff9b8ff0de07d7deb30bbe797ce1128d2d15e3a35d"
+}

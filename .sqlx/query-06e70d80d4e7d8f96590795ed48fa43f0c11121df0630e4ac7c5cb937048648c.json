@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE\n    apalis.jobs\nSET\n    status = $4,\n    attempts = $2,\n    last_result = $3,\n    done_at = NOW()\nWHERE\n    id = $1\n    AND lock_by = $5\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4",
+        "Jsonb",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "06e70d80d4e7d8f96590795ed48fa43f0c11121df0630e4ac7c5cb937048648c"
+}

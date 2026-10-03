@@ -219,7 +219,7 @@ pub async fn update_deployment(
 	query(
 		r#"
 		DELETE FROM
-			deployment_volume_mount
+			deployment_volume
 		WHERE
 			deployment_id = $1;
 		"#,
@@ -228,35 +228,25 @@ pub async fn update_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	for (volume_id, volume_mount_path) in volumes {
+	for path in volumes.keys() {
 		query(
 			r#"
 			INSERT INTO
-				deployment_volume_mount(
+				deployment_volume(
 					deployment_id,
-					volume_id,
-					volume_mount_path
+					path
 				)
 			VALUES
 				(
 					$1,
-					$2,
-					$3
+					$2
 				);
 			"#,
 		)
 		.bind(deployment_id)
-		.bind(volume_id)
-		.bind(volume_mount_path)
+		.bind(path)
 		.execute(&mut **database)
-		.await
-		.map_err(|err| match err {
-			sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceInUse,
-			sqlx::Error::Database(err) if err.is_foreign_key_violation() => {
-				ErrorType::ResourceDoesNotExist
-			}
-			err => ErrorType::server_error(err),
-		})?;
+		.await?;
 	}
 
 	supervisor_ref.send_after(Duration::from_millis(50), move || {

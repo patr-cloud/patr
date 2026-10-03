@@ -12,6 +12,7 @@ use models::api::workspace::deployment::*;
 pub enum ExecutorCall {
 	Upsert(Uuid),
 	Delete(Uuid),
+	Stop(Uuid),
 	GetStatus(Uuid),
 	ListRunning,
 }
@@ -105,6 +106,21 @@ impl RunnerExecutor for MockExecutor {
 			.lock()
 			.unwrap()
 			.push(ExecutorCall::Delete(deployment_id));
+
+		if let Some(err_msg) = self.state.delete_errors.lock().unwrap().get(&deployment_id) {
+			return Err(RunnerError::host(std::io::Error::other(err_msg.clone())));
+		}
+		Ok(())
+	}
+
+	// Overridden so tests can tell a stop from a delete. The trait default
+	// would forward to `delete_deployment` and record `Delete`.
+	async fn stop_deployment(&self, deployment_id: Uuid) -> Result<(), RunnerError> {
+		self.state
+			.calls
+			.lock()
+			.unwrap()
+			.push(ExecutorCall::Stop(deployment_id));
 
 		if let Some(err_msg) = self.state.delete_errors.lock().unwrap().get(&deployment_id) {
 			return Err(RunnerError::host(std::io::Error::other(err_msg.clone())));

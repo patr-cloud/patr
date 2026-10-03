@@ -68,6 +68,15 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		setLocalInfo(fn);
 	};
 
+	// Volumes are node-local, so a deployment with any runs a single replica.
+	const hasVolumes = () => Object.keys(localInfo()?.volumes ?? {}).length > 0;
+	createEffect(() => {
+		const info = localInfo();
+		if (hasVolumes() && info && (info.minHorizontalScale > 1 || info.maxHorizontalScale > 1)) {
+			updateLocal((prev) => (prev ? { ...prev, minHorizontalScale: 1, maxHorizontalScale: 1 } : undefined));
+		}
+	});
+
 	const isPatrRegistry = () => {
 		const info = localInfo();
 		if (!info) return false;
@@ -252,14 +261,20 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				<div class="border-t border-border-color w-full mt-2" />
 
 				<div class="flex gap-8 items-center w-full">
-					<Label parentClass="flex-2" label="Horizontal Scale" comments="Min & max replica count" />
+					<Label
+						parentClass="flex-2"
+						label="Horizontal Scale"
+						comments={
+							hasVolumes() ? "Deployments with volumes run a single replica" : "Min & max replica count"
+						}
+					/>
 					<div class="flex-10">
 						<RangeSlider
 							min={1}
 							max={10}
 							valueLow={() => localInfo()?.minHorizontalScale ?? 1}
 							valueHigh={() => localInfo()?.maxHorizontalScale ?? 2}
-							disabled={!deploymentPermissions().edit}
+							disabled={!deploymentPermissions().edit || hasVolumes()}
 							onChangeLow={(val) => {
 								updateLocal((prev) => (prev ? { ...prev, minHorizontalScale: val } : undefined));
 							}}

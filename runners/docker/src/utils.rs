@@ -131,6 +131,21 @@ pub async fn update_config(
 	Ok((new_id, config_name))
 }
 
+/// The Docker volume name backing a deployment volume:
+/// `patr-{deployment_id}-{sha256(path)[..16]}`.
+///
+/// Derived from the *path*, never an ordinal. Config mounts can use ordinals
+/// safely because they're stateless; for a volume an ordinal shift would remap
+/// a directory's data onto a different directory. Hashing the path also means
+/// removing a volume and re-adding the same path finds the same data.
+pub fn deployment_volume_name(deployment_id: Uuid, path: &str) -> String {
+	let hash = Sha256::digest(path.as_bytes())
+		.iter()
+		.map(|byte| format!("{byte:02x}"))
+		.collect::<String>();
+	format!("patr-{deployment_id}-{}", &hash[..16])
+}
+
 /// All commonly used constants in the Docker runner.
 pub mod constants {
 	/// The current crate version, stamped onto every `managed-by=patr` Swarm

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO deployment_volume(deployment_id, path) SELECT * FROM UNNEST($1::UUID[], $2::TEXT[]);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "26ea6919d77189ff6dcf56970d7d7fdaeb3f39958730ebe8999dd1827f4d6fca"
+}

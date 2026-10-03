@@ -118,10 +118,9 @@ pub async fn get_deployment_info(
 	let volumes = query(
 		r#"
 		SELECT
-			volume_id,
-			volume_mount_path
+			path
 		FROM
-			deployment_volume_mount
+			deployment_volume
 		WHERE
 			deployment_id = $1;
 		"#,
@@ -130,12 +129,7 @@ pub async fn get_deployment_info(
 	.fetch_all(&mut **database)
 	.await?
 	.into_iter()
-	.map(|row| {
-		let volume_id = row.try_get::<Uuid, _>("volume_id")?;
-		let volume_mount_path = row.try_get::<String, _>("volume_mount_path")?;
-
-		Ok((volume_id, volume_mount_path))
-	})
+	.map(|row| Ok((row.try_get::<String, _>("path")?, VolumeConfig {})))
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
 	let row = query(

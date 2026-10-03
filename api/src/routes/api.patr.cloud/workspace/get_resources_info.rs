@@ -49,7 +49,6 @@ pub async fn get_resources_info(
 			COALESCE(
 				deployment.name::TEXT,
 				container_registry_repository.name,
-				deployment_volume.name,
 				secret.name::TEXT,
 				workspace_domain.name || '.' || workspace_domain.tld,
 				runner.name
@@ -65,9 +64,6 @@ pub async fn get_resources_info(
 		LEFT JOIN
 			container_registry_repository
 			ON container_registry_repository.id = resource.id
-		LEFT JOIN
-			deployment_volume
-			ON deployment_volume.id = resource.id
 		LEFT JOIN
 			secret
 			ON secret.id = resource.id

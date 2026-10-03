@@ -11,7 +11,6 @@ const resourceActionMap: Record<ResourceTypes, ActionTypes[]> = {
 	managedURL: ["view", "edit", "delete", "add", "verify"],
 	runner: ["view", "edit", "create", "delete", "regenerateToken"],
 	secret: ["view", "edit", "create", "delete"],
-	volume: ["create", "delete", "view", "edit"],
 	viewRoles: [],
 	modifyRoles: [],
 	editWorkspace: [],
@@ -39,7 +38,6 @@ const workspaceScopedActions: Record<string, string[]> = {
 	managedURL: ["add"],
 	runner: ["create"],
 	secret: ["create"],
-	volume: ["create"],
 };
 
 /**
@@ -59,7 +57,6 @@ const resourceTypes = [
 	"managedURL",
 	"runner",
 	"secret",
-	"volume",
 	"viewRoles",
 	"modifyRoles",
 	"editWorkspace",
@@ -241,7 +238,6 @@ const RESOURCE_LIST_ENDPOINTS: Record<ResourceTypeName, string | null> = {
 	deployment: "deployment",
 	containerRegistryRepository: "container-registry",
 	runner: "runner",
-	volume: "volume",
 	secret: "secret",
 	domain: "domain",
 	managedURL: "managed-url",
