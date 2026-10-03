@@ -2,8 +2,6 @@ use clap::Subcommand;
 
 use crate::prelude::*;
 
-/// Create a new runner
-mod create;
 /// Print info about the runner configured on this host
 mod current;
 /// List deployments assigned to a specific runner
@@ -33,11 +31,8 @@ pub enum RunnerCommand {
 #[command(rename_all = "kebab-case")]
 pub enum RunnerActionCommand {
 	/// Setup the CLI's configuration settings for first time use.
-	#[command(alias = "configure")]
+	#[command(alias = "configure", alias = "create", alias = "new")]
 	Setup(setup::Args),
-	/// Create a new runner by name
-	#[command(alias = "new")]
-	Create(create::Args),
 	/// The command to list all runners for a specific workspace
 	#[command(alias = "ls")]
 	List,
@@ -64,9 +59,6 @@ pub async fn execute(
 	use RunnerActionCommand::*;
 	match command {
 		RunnerCommand::RunnerAction(Setup(args)) => setup::execute(args, global_args, state).await,
-		RunnerCommand::RunnerAction(Create(args)) => {
-			create::execute(args, global_args, state).await
-		}
 		RunnerCommand::RunnerAction(List) | RunnerCommand::ListRunners => {
 			list::execute(global_args, state).await
 		}

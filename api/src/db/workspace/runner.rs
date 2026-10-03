@@ -15,7 +15,12 @@ pub async fn initialize_runner_tables(
 			last_seen TIMESTAMPTZ,
 			workspace_id UUID NOT NULL,
 			cloudflare_tunnel_id TEXT NOT NULL,
-			deleted TIMESTAMPTZ
+			deleted TIMESTAMPTZ,
+			/* Column order matters: `query!` decodes `SELECT *` by index, so a
+			fresh database must lay this table out exactly as the migrations
+			do — added columns go at the end, in migration order. */
+			version TEXT NOT NULL,
+			service_account_id UUID NOT NULL
 		);
 		"#
 	)
@@ -69,6 +74,8 @@ pub async fn initialize_runner_constraints(
 		ALTER TABLE runner
 			ADD CONSTRAINT runner_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
+			ADD CONSTRAINT runner_fk_service_account_id
+				FOREIGN KEY(service_account_id) REFERENCES service_account(id),
 			ADD CONSTRAINT runner_fk_id_workspace_id
 				FOREIGN KEY(id, workspace_id, deleted) 
 					REFERENCES resource(id, workspace_id, deleted)

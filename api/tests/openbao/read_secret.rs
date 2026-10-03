@@ -1,42 +1,14 @@
-use std::{
-	collections::{BTreeMap, BTreeSet},
-	net::IpAddr,
-};
+use std::collections::BTreeMap;
 
 use api::models::permissions;
-use ipnetwork::IpNetwork;
 use models::{
-	api::{user::*, workspace::secret::*},
-	rbac::{Permission, RunnerPermission, SecretPermission, WorkspacePermission},
+	api::workspace::{rbac::user::RoleBindingGrant, secret::*},
+	rbac::{Permission, SecretPermission, WorkspacePermission},
 	utils::Uuid,
 };
 
 use super::helpers::*;
 use crate::prelude::*;
-
-/// Build an API token scoped to `Runner::Execute` on one runner, which is what
-/// a runner is configured with.
-async fn runner_token(
-	setup: &TestSetup,
-	user: &TestUser,
-	workspace_id: Uuid,
-	runner_id: Uuid,
-) -> String {
-	let permission_id = setup.get_permission_id(Permission::Runner(RunnerPermission::Execute));
-
-	setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(
-				workspace_id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(permission_id, BTreeSet::from([runner_id]))]),
-				},
-			)]),
-		)
-		.await
-		.token
-}
 
 #[tokio::test]
 async fn read_secret_no_auth_returns_401() {
@@ -103,7 +75,7 @@ async fn read_secret_returns_openbao_shaped_value() {
 	let secret = setup
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
-	let token = runner_token(&setup, &user, workspace.id, runner.id).await;
+	let token = runner.token.clone();
 
 	let response = setup
 		.make_openbao_call(
@@ -137,19 +109,22 @@ async fn read_secret_without_execute_is_denied() {
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
 
-	// A token with every secret permission but no Runner::Execute.
-	let token = setup
-		.create_test_api_token(
+	// A service account that can view every secret but has no Runner::Execute.
+	let role = setup
+		.create_role_with_permissions(
 			&user.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(
-						setup.get_permission_id(Permission::Secret(SecretPermission::View)),
-						BTreeSet::from([workspace.id]),
-					)]),
-				},
-			)]),
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Secret(SecretPermission::View))],
+		)
+		.await;
+	let token = setup
+		.create_test_service_account(
+			&user.access_token,
+			workspace.id,
+			vec![RoleBindingGrant {
+				role_id: role.id,
+				resource_id: workspace.id,
+			}],
 		)
 		.await
 		.token;
@@ -181,7 +156,7 @@ async fn read_secret_from_another_workspace_is_denied() {
 	let other_secret = setup
 		.create_test_secret(&user.access_token, other_workspace.id)
 		.await;
-	let token = runner_token(&setup, &user, workspace.id, runner.id).await;
+	let token = runner.token.clone();
 
 	// The secret exists, but in a workspace this runner has nothing to do with.
 	let response = setup
@@ -214,7 +189,7 @@ async fn read_secret_refusals_do_not_reveal_existence() {
 	let other_secret = setup
 		.create_test_secret(&user.access_token, other_workspace.id)
 		.await;
-	let token = runner_token(&setup, &user, workspace.id, runner.id).await;
+	let token = runner.token.clone();
 
 	let mut responses = Vec::new();
 	for (runner_id, secret_id) in [
@@ -239,10 +214,10 @@ async fn read_secret_refusals_do_not_reveal_existence() {
 	);
 }
 
-/// Behind nginx the socket peer is always the proxy, so a token's IP allowlist
-/// has to be checked against the client nginx reports, as the API does.
+/// Secret values are read by runners, which authenticate as their own service
+/// account. A user's API token is refused outright, however privileged it is.
 #[tokio::test]
-async fn read_secret_checks_the_token_ip_allowlist_against_the_real_client() {
+async fn read_secret_user_api_token_returns_401() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -252,61 +227,26 @@ async fn read_secret_checks_the_token_ip_allowlist_against_the_real_client() {
 	let secret = setup
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
-
-	let allowed = "203.0.113.7".parse::<IpAddr>().unwrap();
 	let token = setup
-		.make_web_dashboard_call(
-			ApiRequest::<CreateApiTokenRequest>::builder()
-				.headers(CreateApiTokenRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(CreateApiTokenRequest {
-					token: UserApiToken {
-						name: random_name(8),
-						permissions: BTreeMap::from([(
-							workspace.id,
-							WorkspacePermission::Member {
-								permissions: BTreeMap::from([(
-									setup.get_permission_id(Permission::Runner(
-										RunnerPermission::Execute,
-									)),
-									BTreeSet::from([runner.id]),
-								)]),
-							},
-						)]),
-						token_nbf: None,
-						token_exp: None,
-						allowed_ips: Some(vec![IpNetwork::from(allowed)]),
-						created: time::OffsetDateTime::now_utc(),
-					},
-				})
-				.build(),
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
 		)
 		.await
-		.json::<ApiSuccessResponseBody<CreateApiTokenResponse>>()
-		.response
 		.token;
 
-	let mut statuses = Vec::new();
-	for client_ip in ["203.0.113.7", "198.51.100.1"] {
-		let response = setup
-			.make_openbao_call(
-				http::Method::GET,
-				&secret_path(&workspace.id, &secret.id),
-				vec![
-					(http::header::AUTHORIZATION, &basic_auth(&runner.id, &token)),
-					(http::HeaderName::from_static("x-real-ip"), client_ip),
-				],
-			)
-			.await;
-		statuses.push(response.status_code());
-	}
+	let response = setup
+		.make_openbao_call(
+			http::Method::GET,
+			&secret_path(&workspace.id, &secret.id),
+			vec![(http::header::AUTHORIZATION, &basic_auth(&runner.id, &token))],
+		)
+		.await;
 
 	assert_eq!(
-		statuses,
-		vec![StatusCode::OK, StatusCode::UNAUTHORIZED],
-		"the allowlisted client must get through and any other must not"
+		response.status_code(),
+		StatusCode::UNAUTHORIZED,
+		"a user API token must not read secret values"
 	);
 }
 
@@ -321,7 +261,7 @@ async fn read_deleted_secret_returns_404() {
 	let secret = setup
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
-	let token = runner_token(&setup, &user, workspace.id, runner.id).await;
+	let token = runner.token.clone();
 
 	setup
 		.make_web_dashboard_call(
@@ -364,7 +304,7 @@ async fn read_secret_missing_in_openbao_passes_through_404() {
 	let secret = setup
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
-	let token = runner_token(&setup, &user, workspace.id, runner.id).await;
+	let token = runner.token.clone();
 
 	// Metadata row intact, value gone: the proxy forwards whatever OpenBao says.
 	setup.delete_openbao_secret(workspace.id, secret.id).await;
@@ -396,7 +336,7 @@ async fn read_secret_with_runner_from_another_workspace_is_denied() {
 	let secret = setup
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
-	let token = runner_token(&setup, &user, other_workspace.id, other_runner.id).await;
+	let token = other_runner.token.clone();
 
 	// The runner is real and the token is valid, but it belongs elsewhere.
 	let response = setup
