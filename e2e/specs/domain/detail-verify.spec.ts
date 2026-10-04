@@ -26,9 +26,7 @@ async function withDetail(
 }
 
 test.describe('domain > detail [UI]', () => {
-	// Bug: the verify handler shows a success toast even though verification
-	// failed (the chip stays "not verified").
-	test('clicking Verify shows a misleading success toast but stays unverified', async ({
+	test('clicking Verify without the TXT record says it was not found', async ({
 		browser,
 		api,
 	}) => {
@@ -37,7 +35,7 @@ test.describe('domain > detail [UI]', () => {
 		await withDetail(browser, user, added.id, async (page) => {
 			await expect(verifyButton(page)).toBeVisible();
 			await verifyButton(page).click();
-			await expectToast(page, /Domain verification initiated/i);
+			await expectToast(page, /Verification record not found yet/i);
 			// It does not become verified.
 			const info = await getDomainInfoAPI(api, user, user.workspaceId, added.id);
 			expect(info.isVerified).toBe(false);

@@ -22,15 +22,18 @@ import {
 } from "~/components";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
-import { GetDomainInfoInWorkspaceResponse } from "~/bindings";
+import { VerifyDomainInWorkspaceResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
 import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
 import { useDomainsQuery } from "~/hooks/fetch";
 import type { WorkspaceDomain } from "~/hooks/fetch/domains";
+import { domainKeys } from "~/hooks/query-keys";
+import { useQueryClient } from "@tanstack/solid-query";
 
 const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (prev: boolean) => void }) => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
+	const queryClient = useQueryClient();
 	const [loading, setLoading] = createSignal(false);
 
 	const verificationRecord = () => {
@@ -49,25 +52,32 @@ const DNSRecords = (props: { domainId: string; domainName: string; closeFn: (pre
 
 		if (!wsId || !domainId) {
 			toast("Unable to verify domain", "error");
+			setLoading(false);
 			return;
 		}
 
-		const verifyResp = await httpRequest<GetDomainInfoInWorkspaceResponse>(
+		const verifyResp = await httpRequest<VerifyDomainInWorkspaceResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/domain/${domainId}/verify`,
 			{
 				method: "POST",
 			}
 		);
 
+		setLoading(false);
+
 		if (!verifyResp.ok) {
 			console.error("Failed to verify domain:", verifyResp.data.error);
 			toast("Failed to verify domain", "error");
-			setLoading(false);
 			return;
 		}
 
-		setLoading(false);
-		toast("Domain verification initiated", "success");
+		if (!verifyResp.data.verified) {
+			toast("Verification record not found yet. DNS changes can take a while to propagate.", "error");
+			return;
+		}
+
+		toast("Domain verified", "success");
+		queryClient.invalidateQueries({ queryKey: domainKeys.all(wsId) });
 		props.closeFn(false);
 	};
 

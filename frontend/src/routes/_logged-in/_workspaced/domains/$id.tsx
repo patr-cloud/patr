@@ -5,7 +5,7 @@ import {
 	CreateManagedURLRequest,
 	CreateManagedURLResponse,
 	DeleteDomainInWorkspaceResponse,
-	GetDomainInfoInWorkspaceResponse,
+	VerifyDomainInWorkspaceResponse,
 } from "~/bindings";
 import {
 	Button,
@@ -155,7 +155,7 @@ const DomainInfo = () => {
 			return;
 		}
 
-		const verifyResp = await httpRequest<GetDomainInfoInWorkspaceResponse>(
+		const verifyResp = await httpRequest<VerifyDomainInWorkspaceResponse>(
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/domain/${domainId}/verify`,
 			{ method: "POST" }
 		);
@@ -166,7 +166,12 @@ const DomainInfo = () => {
 			return;
 		}
 
-		toast("Domain verification initiated", "success");
+		if (!verifyResp.data.verified) {
+			toast("Verification record not found yet. DNS changes can take a while to propagate.", "error");
+			return;
+		}
+
+		toast("Domain verified", "success");
 		refetchDomainInfo();
 	});
 
