@@ -464,6 +464,15 @@ async fn resend_otp_works() {
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
 
+	// Expire the first code, so the sign-up can only complete if the resend
+	// issued a fresh one.
+	setup
+		.execute_sql(&format!(
+			"UPDATE user_to_sign_up SET otp_expiry = NOW() - INTERVAL '1 hour' \
+			 WHERE email = '{email}'"
+		))
+		.await;
+
 	setup
 		.make_web_dashboard_call(
 			ApiRequest::<ResendOtpRequest>::builder()
@@ -472,12 +481,32 @@ async fn resend_otp_works() {
 				})
 				.body(ResendOtpRequest {
 					email: email.clone(),
-					password: password.clone(),
 				})
 				.build(),
 		)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(ResendOtpResponse));
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CompleteSignUpRequest>::builder()
+				.headers(CompleteSignUpRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CompleteSignUpRequest {
+					email: email.clone(),
+					verification_token: "000000".to_string(),
+					cf_turnstile_token: "1x00000000000000000000AA".to_string(),
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_success(),
+		"sign-up should complete with the resent code, got {}",
+		response.status_code()
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -833,7 +862,6 @@ async fn resend_otp_nonexistent_user() {
 				})
 				.body(ResendOtpRequest {
 					email: format!("{}@example.com", random_name(8)),
-					password: random_password(),
 				})
 				.build(),
 		)

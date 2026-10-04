@@ -805,6 +805,66 @@ async fn delete_manifest_works() {
 	);
 }
 
+/// Deleting by a tag deletes the manifest that tag points at.
+#[tokio::test]
+async fn delete_manifest_by_tag_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
+		.await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteContainerRepositoryManifestRequest>::builder()
+				.path(DeleteContainerRepositoryManifestPath {
+					workspace_id: workspace.id,
+					repository_id: repo.id,
+					digest_or_tag: "v1".to_string(),
+				})
+				.headers(DeleteContainerRepositoryManifestRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(
+			DeleteContainerRepositoryManifestResponse,
+		));
+
+	let manifests = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListContainerRepositoryManifestsRequest>::builder()
+				.path(ListContainerRepositoryManifestsPath {
+					workspace_id: workspace.id,
+					repository_id: repo.id,
+				})
+				.headers(ListContainerRepositoryManifestsRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListContainerRepositoryManifestsResponse>>();
+
+	assert!(
+		manifests.response.manifests.is_empty(),
+		"manifest should be gone after deleting it by tag"
+	);
+}
+
 #[tokio::test]
 async fn delete_manifest_nonexistent() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -1043,6 +1103,112 @@ async fn delete_manifest_in_use_by_deployment() {
 	assert!(
 		response.status_code().is_client_error(),
 		"deleting a manifest used by a live deployment should fail with ResourceInUse"
+	);
+}
+
+/// A manifest is in use when a deployment runs any of its tags, not just the
+/// tag named in the delete.
+#[tokio::test]
+async fn delete_manifest_in_use_through_sibling_tag() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+	// The test image is seeded by repo name, so both tags point at the same
+	// manifest.
+	let image = setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "v1")
+		.await;
+	let sibling = setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "latest")
+		.await;
+	assert_eq!(image.manifest_digest, sibling.manifest_digest);
+
+	let machine_type = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListAllDeploymentMachineTypeRequest>::builder()
+				.path(ListAllDeploymentMachineTypePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListAllDeploymentMachineTypeRequestHeaders {
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListAllDeploymentMachineTypeResponse>>()
+		.response
+		.machine_types[0]
+		.id;
+
+	let _ = setup
+		.make_web_dashboard_call(
+			ApiRequest::<CreateDeploymentRequest>::builder()
+				.path(CreateDeploymentPath {
+					workspace_id: workspace.id,
+				})
+				.headers(CreateDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(CreateDeploymentRequest {
+					name: random_name(8),
+					registry: DeploymentRegistry::PatrRegistry {
+						registry: PatrRegistry,
+						repository_id: repo.id,
+					},
+					image_tag: "latest".to_string(),
+					runner: runner.id,
+					machine_type,
+					running_details: DeploymentRunningDetails {
+						deploy_on_push: false,
+						min_horizontal_scale: 1,
+						max_horizontal_scale: 1,
+						ports: BTreeMap::new(),
+						environment_variables: BTreeMap::new(),
+						startup_probe: None,
+						liveness_probe: None,
+						config_mounts: BTreeMap::new(),
+						volumes: BTreeMap::new(),
+					},
+					deploy_on_create: false,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>();
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteContainerRepositoryManifestRequest>::builder()
+				.path(DeleteContainerRepositoryManifestPath {
+					workspace_id: workspace.id,
+					repository_id: repo.id,
+					digest_or_tag: "v1".to_string(),
+				})
+				.headers(DeleteContainerRepositoryManifestRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(
+		422,
+		response.status_code().as_u16(),
+		"deleting v1 while a deployment runs latest on the same manifest should be ResourceInUse"
 	);
 }
 

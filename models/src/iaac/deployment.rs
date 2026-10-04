@@ -36,7 +36,7 @@ pub struct IaacDeployment {
 	#[serde(alias = "max-scale", alias = "maxscale")]
 	pub max_horizontal_scale: MaybeExternallySourced<u16>,
 	/// The ports that the deployment exposes. This is a map of port numbers to
-	/// the type of port (HTTP, HTTPS, TCP, etc.).
+	/// the type of port (only HTTP for now).
 	#[serde(
 		alias = "port",
 		default,
@@ -194,7 +194,7 @@ impl From<IaacDeploymentImage> for String {
 }
 
 /// A helper type to parse the ports of a deployment. This is a map of port
-/// numbers to the type of port (HTTP, HTTPS, TCP, etc.). The port numbers
+/// numbers to the type of port (only HTTP for now). The port numbers
 /// are stored as `StringifiedU16`, which is a wrapper around `u16`
 /// that implements `Serialize` and `Deserialize` to ensure that the port
 /// numbers are always serialized as strings.
@@ -205,10 +205,7 @@ impl From<IaacDeploymentImage> for String {
 /// - `8080/http`
 /// - `8080` (defaults to HTTP)
 ///
-/// The type of the port can be one of:
-/// - `http`
-/// - `tcp`
-/// - `udp`
+/// The only port type is `http`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct IaacDeploymentPorts(BTreeMap<StringifiedU16, ExposedPortType>);
 

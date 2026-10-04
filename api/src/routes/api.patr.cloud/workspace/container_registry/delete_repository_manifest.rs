@@ -30,8 +30,32 @@ pub async fn delete_repository_manifest(
 ) -> Result<AppResponse<DeleteContainerRepositoryManifestRequest>, ErrorType> {
 	info!("Starting: Delete container repository manifest");
 
+	// A tag resolves to the manifest it points at; a digest is used as-is.
+	let digest = query!(
+		r#"
+		SELECT
+			COALESCE(
+				(
+					SELECT
+						manifest_digest
+					FROM
+						container_registry_repository_tag
+					WHERE
+						repository_id = $1 AND
+						name = $2
+				),
+				$2
+			) AS "digest!";
+		"#,
+		repository_id as _,
+		digest_or_tag,
+	)
+	.fetch_one(&mut **database)
+	.await?
+	.digest;
+
 	// Refuse if any live deployment references a tag that points at this
-	// manifest (handles both digest and tag name input).
+	// manifest.
 	let in_use = query!(
 		r#"
 		SELECT
@@ -48,12 +72,12 @@ pub async fn delete_repository_manifest(
 					container_registry_repository_tag
 				WHERE
 					repository_id = $1 AND
-					(manifest_digest = $2 OR name = $2)
+					manifest_digest = $2
 			)
 		LIMIT 1;
 		"#,
 		repository_id as _,
-		digest_or_tag,
+		digest,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -73,7 +97,7 @@ pub async fn delete_repository_manifest(
 			manifest_digest = $2;
 		"#,
 		repository_id as _,
-		digest_or_tag
+		digest
 	)
 	.execute(&mut **database)
 	.await?;
@@ -89,7 +113,7 @@ pub async fn delete_repository_manifest(
 		RETURNING manifest_digest;
 		"#,
 		repository_id as _,
-		digest_or_tag
+		digest
 	)
 	.fetch_optional(&mut **database)
 	.await?

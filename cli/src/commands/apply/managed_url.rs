@@ -48,7 +48,7 @@ pub async fn apply(
 	.body
 	.domains
 	.into_iter()
-	.find(|d| d.name == domain)
+	.find(|d| d.name.eq_ignore_ascii_case(&domain))
 	.map(|d| d.id)
 	.ok_or_else(|| {
 		AppError::IaacError(IaacError::ResourceNotFound(format!(

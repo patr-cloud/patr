@@ -801,6 +801,49 @@ async fn list_domains_search_counts_only_matches() {
 	assert_eq!(domain1.id, body.response.domains[0].id);
 }
 
+/// Searching by the full domain name, dot included, finds the domain.
+#[tokio::test]
+async fn list_domains_search_matches_full_domain_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let domain1 = setup
+		.create_test_domain(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_domain(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDomainsInWorkspaceRequest>::builder()
+				.path(ListDomainsInWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: WorkspaceDomainSearchParams {
+						name: Some(domain1.domain.clone()),
+						..Default::default()
+					},
+					count: 10,
+					page: 0,
+					additional_query: (),
+				})
+				.headers(ListDomainsInWorkspaceRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListDomainsInWorkspaceResponse>>();
+	assert_eq!(1, body.response.domains.len());
+	assert_eq!(domain1.id, body.response.domains[0].id);
+}
+
 /// is-domain-valid: an already-added domain is reported as a conflict (409).
 #[tokio::test]
 async fn is_domain_valid_existing_conflicts() {

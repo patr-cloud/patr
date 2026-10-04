@@ -20,7 +20,7 @@ export function randomDeploymentName(prefix = 'e2e-dep'): string {
 	return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-export type ExposedPortType = 'http' | 'tcp' | 'udp';
+export type ExposedPortType = 'http';
 
 export type DeploymentInfo = {
 	id: string;

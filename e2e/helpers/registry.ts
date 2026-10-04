@@ -144,8 +144,8 @@ export async function listTagsAPI(
 	return resp.tags;
 }
 
-// Delete a manifest by digest OR tag name. Note: deleting by tag name → 404
-// (the handler matches on manifest_digest); only digest deletes succeed.
+// Delete a manifest by digest OR tag name. A tag deletes the manifest it points
+// at, along with every tag on that manifest.
 export async function deleteManifestAPI(
 	api: ApiClient,
 	user: Creds,

@@ -195,13 +195,22 @@ test.describe('confirm-signup — URL parameter handling', () => {
 	});
 });
 
-test.describe('confirm-signup — navigation', () => {
-	test('"Resend Code" button navigates back to /sign-up', async ({ browser, api }) => {
+test.describe('confirm-signup — resend', () => {
+	test('"Resend Code" issues a fresh code after the first one expires', async ({
+		browser,
+		api,
+	}) => {
 		const pending = await createPendingSignup(api);
+		await backdateSignupOtp(pending.email, '1 hour');
 		await withContext(browser, async (page) => {
 			await openConfirmSignup(page, pending.email);
 			await page.getByRole('button', { name: /Resend Code/ }).click();
-			await expect(page).toHaveURL(/\/sign-up$/, { timeout: 10_000 });
+			await expect(page.getByText(/A new code is on its way/i).first()).toBeVisible({
+				timeout: 10_000,
+			});
+			await fillOtp(page, DEBUG_OTP);
+			await submitConfirm(page);
+			await expect(page).toHaveURL(/\/login$/, { timeout: 10_000 });
 		});
 	});
 });

@@ -86,7 +86,7 @@ pub struct Args {
 	)]
 	pub max_horizontal_scale: Option<u16>,
 	/// The ports to expose for the deployment. This should be of the format
-	/// `PORT:TYPE`, where `TYPE` is one of `http`, `tcp`, or `udp`.
+	/// `PORT:TYPE`, where `TYPE` is `http`.
 	#[arg(
 		short = 'p',
 		long = "ports",
@@ -318,11 +318,9 @@ fn parse_ports_from_args(
 
 			let port_type = match port_type.to_lowercase().as_str() {
 				"http" => ExposedPortType::Http,
-				"tcp" => ExposedPortType::Tcp,
-				"udp" => ExposedPortType::Udp,
 				_ => {
 					return Err(AppError::ParseError(format!(
-						"Invalid port type: `{}`. Expected one of `http`, `tcp`, or `udp`.",
+						"Invalid port type: `{}`. Expected `http`.",
 						port_type
 					)));
 				}
@@ -539,21 +537,7 @@ fn edit_ports(ports: &mut BTreeMap<StringifiedU16, ExposedPortType>) {
 				continue;
 			};
 
-			let Some(port_type) = Select::new(
-				"Port type:",
-				vec![
-					ExposedPortType::Http,
-					ExposedPortType::Tcp,
-					ExposedPortType::Udp,
-				],
-			)
-			.with_formatter(&|input| input.value.to_string().to_lowercase())
-			.prompt_skippable()
-			.expect_tty("Failed to read port type") else {
-				continue;
-			};
-
-			ports.insert(port.into(), port_type);
+			ports.insert(port.into(), ExposedPortType::Http);
 		} else if let Some(remove_label) = selection.strip_prefix("Remove ") {
 			let port_str = remove_label.split(':').next().unwrap_or("");
 			if let Ok(port_num) = port_str.parse::<u16>() {

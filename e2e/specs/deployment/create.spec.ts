@@ -28,8 +28,8 @@ import {
 } from '@/helpers/ui/deployment';
 
 // Deployment creation through the dashboard. The API contract — registry/tag/
-// port/probe/config-mount round-trips, name/scale/FK validation, the TCP-enum
-// gap and deployOnCreate status — lives in the Rust API suite
+// port/probe/config-mount round-trips, name/scale/FK validation, rejecting
+// non-HTTP ports and deployOnCreate status — lives in the Rust API suite
 // (api/tests/api/workspace/deployment/mod.rs). Here we cover the create form.
 
 test.beforeAll(async () => {

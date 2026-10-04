@@ -55,7 +55,7 @@ pub async fn list_domains_in_workspace(
 		WHERE
 			workspace_domain.workspace_id = $1 AND
 			workspace_domain.deleted IS NULL AND
-			($4::TEXT IS NULL OR CONCAT(name, tld) ILIKE '%' || $4::TEXT || '%') AND
+			($4::TEXT IS NULL OR CONCAT(name, '.', tld) ILIKE '%' || $4::TEXT || '%') AND
 			($5::BOOLEAN IS NULL OR is_verified = $5) AND
 			($6::TIMESTAMPTZ IS NULL OR last_verified >= $6) AND
 			($7::TIMESTAMPTZ IS NULL OR last_verified <= $7)

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, onMount, Show } from "solid-js";
-import { CompleteSignUpRequest } from "~/bindings";
+import { CompleteSignUpRequest, ResendOtpRequest } from "~/bindings";
 import { Alert, Button, ButtonVariant, Input, InputType, OtpInput, useToast, Turnstile } from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { cloudOnly, IS_CLOUD } from "~/utils/env";
@@ -69,9 +69,30 @@ const ConfirmSignUp = () => {
 		}
 	});
 
+	const { execute: resendOtp } = createAsyncAction(async () => {
+		if (!email().trim()) {
+			setEmailError("Email is required.");
+			return;
+		}
+
+		const body: ResendOtpRequest = { email: email() };
+		const resp = await httpRequest("/api/auth/resend-otp", {
+			method: "POST",
+			body: JSON.stringify(body),
+		});
+
+		if (!resp.ok) {
+			toast("Couldn't send a new code. Please try again.", "error");
+			return;
+		}
+
+		toast("A new code is on its way. Check your email.", "success");
+	});
+
 	const handleResendOtp = () => {
-		toast("To get a new code, please sign up again with the same email.", "info");
-		navigate({ to: "/sign-up" });
+		resendOtp().catch(() => {
+			toast("An unexpected error occurred. Please try again.", "error");
+		});
 	};
 
 	const onSubmit = async (e: Event) => {
