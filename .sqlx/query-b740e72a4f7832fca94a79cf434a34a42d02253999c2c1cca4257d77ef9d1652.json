@@ -1,11 +1,12 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE user_to_sign_up SET otp_hash = $1 WHERE email = $2::CITEXT;",
+  "query": "UPDATE user_to_sign_up SET otp_hash = $1, otp_expiry = $2 WHERE email = $3::CITEXT;",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
         "Text",
+        "Timestamptz",
         {
           "Custom": {
             "name": "citext",
@@ -16,5 +17,5 @@
     },
     "nullable": []
   },
-  "hash": "d1e0550a651059f3da2b5c0855a98bd205383e4737762453c2f2eeb9ff1a84ca"
+  "hash": "b740e72a4f7832fca94a79cf434a34a42d02253999c2c1cca4257d77ef9d1652"
 }

@@ -1,14 +1,10 @@
-use argon2::{
-	Algorithm,
-	PasswordHash,
-	PasswordHasher,
-	PasswordVerifier,
-	Version,
-	password_hash::generate_salt,
-};
+use std::ops::Add;
+
+use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
 use models::api::auth::*;
 use rand::RngExt;
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 
@@ -19,12 +15,12 @@ pub async fn resend_otp(
 				path: ResendOtpPath,
 				query: (),
 				headers: ResendOtpRequestHeaders { user_agent: _ },
-				body: ResendOtpRequestProcessed { email, password },
+				body: ResendOtpRequestProcessed { email },
 			},
 		database,
 		redis: _,
 		client_ip: _,
-		state,
+		mut state,
 	}: AppRequest<'_, ResendOtpRequest>,
 ) -> Result<AppResponse<ResendOtpRequest>, ErrorType> {
 	info!("Resending OTP to email: `{email}`");
@@ -44,7 +40,8 @@ pub async fn resend_otp(
 	.await?;
 
 	if let Some(user_data) = row {
-		let success = argon2::Argon2::new_with_secret(
+		let otp = format!("{:06}", rand::rng().random_range(constants::OTP_RANGE));
+		let hashed_otp = argon2::Argon2::new_with_secret(
 			state.config.password_pepper.as_ref(),
 			Algorithm::Argon2id,
 			Version::V0x13,
@@ -54,51 +51,46 @@ pub async fn resend_otp(
 			error!("Error while creating Argon2 instance: {}", err);
 		})
 		.map_err(ErrorType::server_error)?
-		.verify_password(
-			password.as_bytes(),
-			&PasswordHash::new(&user_data.password).map_err(ErrorType::server_error)?,
-		)
+		.hash_password_with_salt(otp.as_bytes(), &generate_salt())
 		.inspect_err(|err| {
-			info!("Error while verifying password: {}", err);
+			error!("Error hashing OTP: {}", err);
 		})
-		.is_ok();
+		.map_err(ErrorType::server_error)?
+		.to_string();
+		let otp_expiry = OffsetDateTime::now_utc().add(constants::OTP_VALIDITY);
 
-		if success {
-			let otp = format!("{:06}", rand::rng().random_range(constants::OTP_RANGE));
-			let hashed_otp = argon2::Argon2::new_with_secret(
-				state.config.password_pepper.as_ref(),
-				Algorithm::Argon2id,
-				Version::V0x13,
-				constants::HASHING_PARAMS,
+		query!(
+			r#"
+			UPDATE
+				user_to_sign_up
+			SET
+				otp_hash = $1,
+				otp_expiry = $2
+			WHERE
+				email = $3::CITEXT;
+			"#,
+			hashed_otp,
+			otp_expiry,
+			&email
+		)
+		.execute(&mut **database)
+		.await?;
+
+		state
+			.worker
+			.send_email(
+				email.to_string(),
+				UserSignUpEmail {
+					first_name: user_data.first_name,
+					email: email.to_string(),
+					otp,
+					otp_expiry: constants::OTP_VALIDITY.to_string(),
+				},
 			)
+			.await
 			.inspect_err(|err| {
-				error!("Error while creating Argon2 instance: {}", err);
-			})
-			.map_err(ErrorType::server_error)?
-			.hash_password_with_salt(otp.as_bytes(), &generate_salt())
-			.inspect_err(|err| {
-				error!("Error hashing OTP: {}", err);
-			})
-			.map_err(ErrorType::server_error)?
-			.to_string();
-
-			query!(
-				r#"
-				UPDATE
-					user_to_sign_up
-				SET
-					otp_hash = $1
-				WHERE
-					email = $2::CITEXT;
-				"#,
-				hashed_otp,
-				&email
-			)
-			.execute(&mut **database)
-			.await?;
-
-			// TODO send OTP to user
-		}
+				error!("Error enqueuing sign-up email: `{}`", err);
+			})?;
 	}
 
 	AppResponse::builder()

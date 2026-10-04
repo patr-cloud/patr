@@ -1,4 +1,4 @@
-use crate::{prelude::*, utils::validate_password};
+use crate::prelude::*;
 
 macros::declare_api_endpoint!(
 	/// Route to resent an OTP to the linked recovery method opted by the user to
@@ -14,9 +14,6 @@ macros::declare_api_endpoint!(
 		/// The email address of the user
 		#[preprocess(trim, email)]
 		pub email: String,
-		/// The password of the user
-		#[preprocess(trim, length(min = 8), custom = "validate_password")]
-		pub password: String,
 	},
 	audit_log = NoAuditLogger,
 );
