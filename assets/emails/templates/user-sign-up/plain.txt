@@ -8,7 +8,7 @@ Or visit: https://app.patr.cloud/sign-up/confirm?otp={{ otp }}&email={{ email }}
 
 This code will expire in {{ otp_expiry }}.
 
-If you did not create an account, you can safely ignore this email. If you have any questions or need assistance, please contact our support team at support@patr.cloud.
+If you did not create an account, you can safely ignore this email.
 
 Need help? Talk to us on Discord: https://patr.cloud/discord
 

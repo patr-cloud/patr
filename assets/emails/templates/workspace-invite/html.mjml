@@ -88,11 +88,7 @@
         <mj-column>
           <mj-text
             >If you weren't expecting this invite, you can safely ignore this
-            email. If you have any questions or need assistance, please contact
-            our support team at
-            <a href="mailto:support@patr.cloud" style="color: #f89b41"
-              >support@patr.cloud</a
-            >.</mj-text
+            email.</mj-text
           >
         </mj-column>
       </mj-section>
