@@ -120,6 +120,18 @@ async fn ports_are_optional() {
 	);
 }
 
+/// HTTP is the only port type, so anything else is rejected.
+#[tokio::test]
+async fn non_http_ports_are_rejected() {
+	for port_type in ["tcp", "udp"] {
+		expect_rejected(
+			&format!("{MINIMAL}  ports:\n    5432: {port_type}\n"),
+			"a non-HTTP port should be rejected",
+		)
+		.await;
+	}
+}
+
 /// Every field the API requires has to be spelled out — none of them silently
 /// default to something the file never said.
 #[tokio::test]

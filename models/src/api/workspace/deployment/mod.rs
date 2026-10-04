@@ -257,10 +257,6 @@ impl FromStr for EnvironmentVariableValue {
 	sqlx(type_name = "EXPOSED_PORT_TYPE", rename_all = "lowercase")
 )]
 pub enum ExposedPortType {
-	/// TCP
-	Tcp,
-	/// UDP
-	Udp,
 	/// HTTP
 	Http,
 }

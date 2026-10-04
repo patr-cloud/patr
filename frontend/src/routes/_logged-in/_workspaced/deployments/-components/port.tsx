@@ -1,7 +1,7 @@
 import { FiExternalLink, FiTrash2 } from "solid-icons/fi";
 import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
 import { ExposedPortType } from "~/bindings";
-import { Button, ButtonVariant, Input, InputDropdown, Label, InputType } from "~/components";
+import { Button, ButtonVariant, Input, Label, InputType } from "~/components";
 import { Color } from "~/utils/color";
 import { DEPLOYMENT_DOMAIN } from "~/utils/env";
 import { get } from "~/utils/func";
@@ -33,12 +33,6 @@ type Row = { id: string; port: string; type: ExposedPortType };
 const DEFAULT_TYPE: ExposedPortType = "http";
 
 const makeDraftRow = (): Row => ({ id: createUniqueId(), port: "", type: DEFAULT_TYPE });
-
-const TYPE_OPTIONS = [
-	{ value: "http", label: "HTTP" },
-	{ value: "tcp", label: "TCP" },
-	{ value: "udp", label: "UDP" },
-];
 
 const PortInput = (props: PortInputProps) => {
 	const [rows, setRows] = createSignal<Row[]>([makeDraftRow()]);
@@ -176,16 +170,6 @@ const PortInput = (props: PortInputProps) => {
 										}}
 									/>
 									<div class="flex-7 flex items-center gap-4">
-										<InputDropdown
-											class="flex-3"
-											disabled={get(props.disabled)}
-											placeholder="Type"
-											value={row().type}
-											onSelect={(value) =>
-												updateRow(row().id, { type: value as ExposedPortType })
-											}
-											options={TYPE_OPTIONS}
-										/>
 										<Show when={showVisitUrl()} fallback={<div class="flex-9" />}>
 											<a
 												class="flex-9 flex items-center justify-center gap-2 rounded-xs bg-secondary-light border border-secondary-medium py-xs text-primary"

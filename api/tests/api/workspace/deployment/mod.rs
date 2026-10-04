@@ -1774,8 +1774,10 @@ async fn create_deployment_reusable_after_delete() {
 	);
 }
 
+/// HTTP is the only port type, so a TCP port is rejected as a bad request
+/// instead of reaching the database.
 #[tokio::test]
-async fn create_deployment_tcp_port_500() {
+async fn create_deployment_tcp_port_rejected() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -1787,17 +1789,28 @@ async fn create_deployment_tcp_port_500() {
 		.await;
 	let mt = first_machine_type(&setup, workspace.id).await;
 
-	// The DB `exposed_port_type` enum only has `http`; a TCP port hits the enum
-	// and 500s instead of being stored or cleanly rejected. Pinned gap.
-	let mut body = patr_body(repo.id, runner.id, mt);
-	body.running_details
-		.ports
-		.insert(StringifiedU16::new(5432), ExposedPortType::Tcp);
-	let resp = send_create(&setup, &user.access_token, workspace.id, body).await;
-	assert!(
-		resp.status_code().is_server_error(),
-		"a TCP port should hit the DB enum gap → 500, got {}",
-		resp.status_code()
+	let body = patr_body(repo.id, runner.id, mt);
+	let mut raw_body = serde_json::to_value(&body).unwrap();
+	raw_body["ports"] = serde_json::json!({ "5432": "tcp" });
+	let resp = setup
+		.make_web_dashboard_raw_call(
+			ApiRequest::<CreateDeploymentRequest>::builder()
+				.path(CreateDeploymentPath {
+					workspace_id: workspace.id,
+				})
+				.headers(CreateDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(body)
+				.build(),
+			raw_body,
+		)
+		.await;
+	assert_eq!(
+		400,
+		resp.status_code().as_u16(),
+		"a TCP port should be rejected as a bad request"
 	);
 }
 

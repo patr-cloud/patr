@@ -119,6 +119,37 @@ impl TestSetup {
 		req.json(&request.body).await
 	}
 
+	/// Make a web dashboard call with the typed request's path, query and
+	/// headers, but send `body` instead of the typed body. Used for bodies the
+	/// request type can't express, such as a value its enums don't have.
+	pub async fn make_web_dashboard_raw_call<E>(
+		&self,
+		request: ApiRequest<E>,
+		body: serde_json::Value,
+	) -> TestResponse
+	where
+		E: ApiEndpoint,
+		E::RequestHeaders: Headers,
+		E::RequestPath: std::fmt::Display,
+		E::RequestQuery: Serialize,
+	{
+		let path_str = request.path.to_string();
+		let query_str = serde_qs::to_string(&request.query).unwrap_or_default();
+		let full_path = if query_str.is_empty() {
+			path_str
+		} else {
+			format!("{}?{}", path_str, query_str)
+		};
+
+		let mut req = self.web.method(E::METHOD, &full_path);
+		req = req.add_header("X-Real-IP", random_ipv4().to_string());
+		let header_map = request.headers.to_header_map();
+		for (name, value) in header_map.iter() {
+			req = req.add_header(name.clone(), value.to_str().unwrap());
+		}
+		req.json(&body).await
+	}
+
 	/// Make a typed API call against the routes configured for
 	/// `ClientType::ApiToken` authentication. Use this for any test that
 	/// presents a `patrv1.{refresh}.{login_id}` API token in the
