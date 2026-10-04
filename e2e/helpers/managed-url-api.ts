@@ -7,7 +7,7 @@ import { markDomainVerified } from '@/helpers/db';
 // REST helpers for managed URLs. Managed URLs hang off a (verified) domain and
 // every create/update/delete/verify call hits Cloudflare (the e2e CF mock).
 // The route base is /infrastructure/managed-url (workspace-wide, not under the
-// domain). Update is POST (the frontend's PATCH is a 405 bug — pinned).
+// domain). Update is POST.
 
 type Creds = { accessToken: string; clientIp: string };
 
@@ -120,7 +120,6 @@ export async function listManagedUrlsAPI(
 	return { urls: body.urls, totalCount: header === null ? null : Number(header) };
 }
 
-// Update is POST (the frontend uses PATCH → 405).
 export async function updateManagedUrlAPI(
 	api: ApiClient,
 	user: Creds,

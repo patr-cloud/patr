@@ -9,6 +9,7 @@ import { expectToast } from '@/helpers/ui/workspace';
 import {
 	createVerifiedDomain,
 	createManagedUrlAPI,
+	listManagedUrlsAPI,
 	proxyDeploymentBody,
 	randomSubdomain,
 } from '@/helpers/managed-url-api';
@@ -16,8 +17,8 @@ import {
 // Managed URLs are managed from the domain detail page. The create form's
 // target picker is a nested deployment dropdown without a stable selector, so
 // creation stays API + @docker; the dashboard surfaces tested here are the
-// display row and the delete two-step. (ProxyUrl/Redirect/verify/update remain
-// API-only.)
+// display row, the edit form and the delete two-step. (ProxyUrl/Redirect/verify
+// remain API-only.)
 
 test.beforeAll(async () => {
 	await seedMachineType();
@@ -94,6 +95,43 @@ test.describe('managed-url > detail [UI]', () => {
 			await page.locator('button.text-red-500', { hasText: /^Delete$/ }).click();
 			await expectToast(page, /Managed URL deleted successfully/i);
 			await expect(link).toHaveCount(0, { timeout: 10_000 });
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('edit a managed URL path via the domain detail row', async ({ browser, api }) => {
+		const { user, domain, dep } = await setup(api);
+		const sub = randomSubdomain();
+		const { id } = await createManagedUrlAPI(
+			api,
+			user,
+			user.workspaceId,
+			proxyDeploymentBody({
+				domainId: domain.id,
+				deploymentId: dep.id,
+				port: 80,
+				subDomain: sub,
+			}),
+		);
+		const context = await newContext(browser, user.clientIp);
+		await loginAs(context, user, { workspaceId: user.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDomainDetail(page, domain.id);
+			await expect(page.getByText(`${sub}.${domain.domain}`, { exact: false })).toBeVisible({
+				timeout: 15_000,
+			});
+			// The row's pencil icon is the grey icon button next to the trash icon.
+			await page.locator('button.text-gray-400').first().click();
+			// The page also has the create form's Path input, so stay inside the
+			// edit form.
+			const form = page.locator('form', { hasText: 'Update Managed URL' });
+			await form.getByPlaceholder('Path').fill('/edited');
+			await form.getByRole('button', { name: /^Update$/ }).click();
+			await expectToast(page, /Managed URL updated successfully/i);
+			const { urls } = await listManagedUrlsAPI(api, user, user.workspaceId);
+			expect(urls.find((url) => url.id === id)?.path).toBe('/edited');
 		} finally {
 			await context.close();
 		}

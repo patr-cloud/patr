@@ -204,7 +204,7 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 			const response = await httpRequest<UpdateManagedURLResponse>(
 				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url/${props.managedUrl.id}`,
 				{
-					method: "PATCH",
+					method: "POST",
 					body: JSON.stringify(requestBody),
 				}
 			);
