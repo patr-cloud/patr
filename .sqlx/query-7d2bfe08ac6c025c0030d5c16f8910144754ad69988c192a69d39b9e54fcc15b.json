@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COALESCE((SELECT manifest_digest FROM container_registry_repository_tag WHERE repository_id = $1 AND name = $2), $2) AS \"digest!\";",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "digest!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "7d2bfe08ac6c025c0030d5c16f8910144754ad69988c192a69d39b9e54fcc15b"
+}
