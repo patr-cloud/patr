@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT workspace_domain.id, CONCAT(name, '.', tld) AS \"name!\", is_verified, last_verified, COUNT(*) OVER() AS \"total_count!\" FROM workspace_domain INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON workspace_domain.id = resource.id WHERE workspace_domain.workspace_id = $1 AND workspace_domain.deleted IS NULL AND ($4::TEXT IS NULL OR CONCAT(name, tld) ILIKE '%' || $4::TEXT || '%') AND ($5::BOOLEAN IS NULL OR is_verified = $5) AND ($6::TIMESTAMPTZ IS NULL OR last_verified >= $6) AND ($7::TIMESTAMPTZ IS NULL OR last_verified <= $7) ORDER BY resource.created DESC LIMIT $8 OFFSET $9;",
+  "query": "SELECT workspace_domain.id, CONCAT(name, '.', tld) AS \"name!\", is_verified, last_verified, COUNT(*) OVER() AS \"total_count!\" FROM workspace_domain INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON workspace_domain.id = resource.id WHERE workspace_domain.workspace_id = $1 AND workspace_domain.deleted IS NULL AND ($4::TEXT IS NULL OR CONCAT(name, '.', tld) ILIKE '%' || $4::TEXT || '%') AND ($5::BOOLEAN IS NULL OR is_verified = $5) AND ($6::TIMESTAMPTZ IS NULL OR last_verified >= $6) AND ($7::TIMESTAMPTZ IS NULL OR last_verified <= $7) ORDER BY resource.created DESC LIMIT $8 OFFSET $9;",
   "describe": {
     "columns": [
       {
@@ -50,5 +50,5 @@
       null
     ]
   },
-  "hash": "7fea62e3e1b444ec34516df802cdf41df197bd037fb26150c991a5af8df40e0a"
+  "hash": "e1235e69deef6e52052e1b87f414012d1346b74283fded2589a55e3793595b18"
 }
