@@ -63,3 +63,24 @@ Copy `config/api.sample.json` → `config/api.json` (and `config/runner.docker.s
 - Branches: `feature/<name>`, `fix/<name>`, `refactor/<name>`.
 - Flow: `develop` → `staging` → `master`. `develop` auto-deploys to alpha.
 - Commits: sentence case, lazy in tone but grammatically correct; small change = one short line. No `Co-Authored-By`, no headers, no emoji.
+
+## Area agents
+
+Each part of Patr has an agent in `.claude/agents/` that owns it: `api`, `access-control`, `security`, `runners`, `frontend`, `cli`, `iaac`, `platform` and `user-communication`. A tenth agent, `meta`, keeps the agents, skills and `CLAUDE.md` files in sync with the code. Each area agent catches what a feature leaves out of its area, including work no diff points to, and implements its area's part of a plan.
+
+- **Scoping.** `/scope-feature-coverage` asks every area agent what a feature needs and folds the answers into the plan. It's expensive, so **only the user runs it**. When planning anything that adds or changes user-facing surface (a resource, field, operation, principal or behaviour), push hard for it before the plan is final, but never run it yourself. Bug fixes, refactors and internal changes don't need it.
+- **Plans carry everything.** A plan's execution section has:
+  - a stage table giving the stage, agent and task for each piece of work;
+  - where bindings get regenerated;
+  - the verification commands;
+  - the commits.
+
+  A plan that names an agent for a task is the go-ahead to hand that task over without asking again. Agents work in the current checkout and never commit.
+- **Stages:**
+  1. **Contract.** `api`, then `access-control`. Run `just bindings` at the end of the stage.
+  2. **Consumers, in parallel.** `runners`, `frontend`, `user-communication`, and `cli` then `iaac`. Those last two share a crate, so they run in that order.
+  3. **Cross-cutting.** `platform` (gating, config and deploy notes), then `security` (review only, unless the plan assigns a fix), then a full build and test, then `meta`.
+
+  Agents with nothing to do in a feature drop out of their stage.
+- **Backlogs.** Areas that aren't fully built yet keep untracked backlogs at the repo root: `DOCS_TODO.md`, `IAAC_TODO.md` and `CLI_TODO.md`. Gaps a plan defers in those areas go there. Never commit them. Built areas have no backlog; their gaps go into the plan.
+- **Migrations.** Every schema change goes through the `migrations` skill.
