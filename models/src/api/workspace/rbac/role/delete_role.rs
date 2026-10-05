@@ -10,11 +10,12 @@ macros::declare_api_endpoint!(
 		pub role_id: Uuid,
 	},
 	query = {
-		/// Whether to remove users from the role. If set to true, all users
-		/// with this role will be removed. If set to false, the role will be
-		/// deleted only if no users have this role. By default, this is set to false.
+		/// Whether to remove the role's bindings. If set to true, every member
+		/// and service account holding the role loses it. If set to false, the
+		/// role will be deleted only if nobody holds it. By default, this is
+		/// set to false.
 		#[serde(default)]
-		pub remove_users: bool,
+		pub remove_bindings: bool,
 	},
 	request_headers = {
 		/// Token used to authorize user
