@@ -68,7 +68,12 @@ Copy `config/api.sample.json` → `config/api.json` (and `config/runner.docker.s
 
 Each part of Patr has an agent in `.claude/agents/` that owns it: `api`, `access-control`, `security`, `runners`, `frontend`, `cli`, `iaac`, `platform` and `user-communication`. A tenth agent, `meta`, keeps the agents, skills and `CLAUDE.md` files in sync with the code. Each area agent catches what a feature leaves out of its area, including work no diff points to, and implements its area's part of a plan.
 
-- **Scoping.** `/scope-feature-coverage` asks every area agent what a feature needs and folds the answers into the plan. It's expensive, so **only the user runs it**. When planning anything that adds or changes user-facing surface (a resource, field, operation, principal or behaviour), push hard for it before the plan is final, but never run it yourself. Bug fixes, refactors and internal changes don't need it.
+- **Scoping is a gate in plan mode.** `/scope-feature-coverage` asks every area agent what a feature needs and folds the answers into the plan. It's expensive, so **only the user runs it**; never run it yourself. When a plan adds or changes user-facing surface (a resource, field, operation, principal or behaviour):
+  - **Ask before writing the execution section,** with `AskUserQuestion`. Offer "Run `/scope-feature-coverage` now (Recommended)" and "Skip", and say why the agents matter for this feature. Mentioning it inside another message doesn't count as asking.
+  - **Don't call `ExitPlanMode` until the user has answered.** If they run it, fold the results into the plan first.
+  - **Scope the whole feature,** never just part of it or a later PR.
+  
+  Bug fixes, refactors and internal changes don't need it.
 - **Plans carry everything.** A plan's execution section has:
   - a stage table giving the stage, agent and task for each piece of work;
   - where bindings get regenerated;
