@@ -2,7 +2,7 @@ import { createQuery, keepPreviousData } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import { GetRoleInfoResponse } from "~/bindings/GetRoleInfoResponse";
 import { ListAllRolesResponse } from "~/bindings/ListAllRolesResponse";
-import { ListUsersForRoleResponse } from "~/bindings/ListUsersForRoleResponse";
+import { ListRoleBindingsResponse } from "~/bindings/ListRoleBindingsResponse";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { roleKeys } from "~/hooks/query-keys";
@@ -119,7 +119,7 @@ export const useRoleInfoQuery = (roleId: Accessor<string>, workspaceId?: Accesso
 	});
 };
 
-export const useRoleUsersQuery = (roleId: Accessor<string>) => {
+export const useRoleBindingsQuery = (roleId: Accessor<string>) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
@@ -128,12 +128,12 @@ export const useRoleUsersQuery = (roleId: Accessor<string>) => {
 		const wsId = workspaceId();
 		const id = roleId();
 		return {
-			queryKey: roleKeys.users(wsId ?? "", id),
+			queryKey: roleKeys.bindings(wsId ?? "", id),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!id,
-			meta: { errorMessage: "Failed to fetch users for role" },
+			meta: { errorMessage: "Failed to fetch the role's bindings" },
 			queryFn: async () => {
-				const response = await httpRequest<ListUsersForRoleResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${id}/users`,
+				const response = await httpRequest<ListRoleBindingsResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/role/${id}/bindings`,
 					{ method: "GET" }
 				);
 
@@ -141,7 +141,7 @@ export const useRoleUsersQuery = (roleId: Accessor<string>) => {
 					throw new Error(response.data.error);
 				}
 
-				return response.data.users || [];
+				return response.data.bindings || [];
 			},
 		};
 	});

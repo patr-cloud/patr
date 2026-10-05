@@ -311,7 +311,7 @@ async fn delete_role_works() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.query(DeleteRoleQuery {
-					remove_users: false,
+					remove_bindings: false,
 				})
 				.build(),
 		)
@@ -320,7 +320,7 @@ async fn delete_role_works() {
 }
 
 #[tokio::test]
-async fn list_users_for_role_works() {
+async fn list_role_bindings_works() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -330,26 +330,26 @@ async fn list_users_for_role_works() {
 
 	let response = setup
 		.make_web_dashboard_call(
-			ApiRequest::<ListUsersForRoleRequest>::builder()
-				.path(ListUsersForRolePath {
+			ApiRequest::<ListRoleBindingsRequest>::builder()
+				.path(ListRoleBindingsPath {
 					workspace_id: workspace.id,
 					role_id: role.id,
 				})
-				.headers(ListUsersForRoleRequestHeaders {
+				.headers(ListRoleBindingsRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.build(),
 		)
 		.await
-		.json::<ApiSuccessResponseBody<ListUsersForRoleResponse>>();
+		.json::<ApiSuccessResponseBody<ListRoleBindingsResponse>>();
 
-	// New role, no users assigned yet
-	assert!(response.response.users.is_empty());
+	// New role, nobody holds it yet
+	assert!(response.response.bindings.is_empty());
 }
 
 #[tokio::test]
-async fn list_users_for_role_filters_by_role() {
+async fn list_role_bindings_filters_by_role() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
@@ -369,128 +369,125 @@ async fn list_users_for_role_filters_by_role() {
 
 	let response = setup
 		.make_web_dashboard_call(
-			ApiRequest::<ListUsersForRoleRequest>::builder()
-				.path(ListUsersForRolePath {
+			ApiRequest::<ListRoleBindingsRequest>::builder()
+				.path(ListRoleBindingsPath {
 					workspace_id: workspace.id,
 					role_id: role_a.id,
 				})
-				.headers(ListUsersForRoleRequestHeaders {
+				.headers(ListRoleBindingsRequestHeaders {
 					authorization: admin.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.build(),
 		)
 		.await
-		.json::<ApiSuccessResponseBody<ListUsersForRoleResponse>>();
+		.json::<ApiSuccessResponseBody<ListRoleBindingsResponse>>();
 
-	// Must return only role_a's user, not role_b's — the query has to filter
+	// Must return only role_a's holder, not role_b's — the query has to filter
 	// by role_id, not just workspace_id.
-	let user_ids = response
+	let holders = response
 		.response
-		.users
+		.bindings
 		.iter()
-		.map(|u| u.id)
+		.map(|binding| binding.actor.id)
 		.collect::<Vec<_>>();
-	assert_eq!(user_ids, vec![user_a.user_id]);
-	assert!(!user_ids.contains(&user_b.user_id));
+	assert_eq!(holders, vec![user_a.user_id]);
+	assert!(!holders.contains(&user_b.user_id));
+	assert!(matches!(
+		response.response.bindings[0].actor.data,
+		WorkspaceActor::User(_)
+	));
+	assert_eq!(workspace.id, response.response.bindings[0].resource_id);
 }
 
-/// page/count slice a role's user list, pages don't overlap, and every page
-/// reports the full total.
+/// A service account holding the role is listed alongside the members holding
+/// it, each with the resource its binding applies at.
 #[tokio::test]
-async fn list_users_for_role_pagination() {
+async fn list_role_bindings_includes_service_accounts() {
 	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
 	let role = setup
-		.create_test_role(&user.access_token, workspace.id)
+		.create_test_role(&admin.access_token, workspace.id)
 		.await;
-	for _ in 0..5 {
-		setup
-			.add_user_to_workspace_with_role(&user.access_token, workspace.id, role.id)
-			.await;
-	}
-
-	let mut pages = Vec::new();
-	for page in 0..3usize {
-		let response = setup
-			.make_web_dashboard_call(
-				ApiRequest::<ListUsersForRoleRequest>::builder()
-					.path(ListUsersForRolePath {
-						workspace_id: workspace.id,
-						role_id: role.id,
-					})
-					.query(ListResourceQuery {
-						sort: None,
-						search: Default::default(),
-						count: 2,
-						page,
-						additional_query: (),
-					})
-					.headers(ListUsersForRoleRequestHeaders {
-						authorization: user.access_token.clone(),
-						user_agent: TEST_USER_AGENT,
-					})
-					.build(),
-			)
-			.await;
-		assert_eq!("5", response.header("x-total-count"));
-		pages.push(response.json::<ApiSuccessResponseBody<ListUsersForRoleResponse>>());
-	}
-	assert_eq!(2, pages[0].response.users.len());
-	assert_eq!(2, pages[1].response.users.len());
-	assert_eq!(1, pages[2].response.users.len());
-	let ids = pages
-		.iter()
-		.flat_map(|page| page.response.users.iter().map(|u| u.id))
-		.collect::<BTreeSet<_>>();
-	assert_eq!(
-		5,
-		ids.len(),
-		"the three pages should cover 5 distinct users"
-	);
-}
-
-/// A non-zero page past the end of the role's user list is rejected as out of
-/// bounds.
-#[tokio::test]
-async fn list_users_for_role_page_out_of_bounds() {
-	let setup = setup().await.expect("failed to setup test server");
-	let user = setup.create_test_user().await;
-	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let role = setup
-		.create_test_role(&user.access_token, workspace.id)
+	let member = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
 		.await;
-	setup
-		.add_user_to_workspace_with_role(&user.access_token, workspace.id, role.id)
+	let service_account = setup
+		.create_test_service_account(
+			&admin.access_token,
+			workspace.id,
+			vec![RoleBindingGrant {
+				role_id: role.id,
+				resource_id: workspace.id,
+			}],
+		)
 		.await;
 
 	let response = setup
 		.make_web_dashboard_call(
-			ApiRequest::<ListUsersForRoleRequest>::builder()
-				.path(ListUsersForRolePath {
+			ApiRequest::<ListRoleBindingsRequest>::builder()
+				.path(ListRoleBindingsPath {
 					workspace_id: workspace.id,
 					role_id: role.id,
 				})
-				.query(ListResourceQuery {
-					sort: None,
-					search: Default::default(),
-					count: 10,
-					page: 50,
-					additional_query: (),
+				.headers(ListRoleBindingsRequestHeaders {
+					authorization: admin.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
 				})
-				.headers(ListUsersForRoleRequestHeaders {
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListRoleBindingsResponse>>();
+
+	let bindings = response.response.bindings;
+	assert_eq!(2, bindings.len());
+	assert!(
+		bindings.iter().any(|binding| {
+			binding.actor.id == member.user_id &&
+				matches!(binding.actor.data, WorkspaceActor::User(_))
+		}),
+		"the member should be listed as a user"
+	);
+	assert!(
+		bindings.iter().any(|binding| {
+			binding.actor.id == service_account.id &&
+				matches!(
+					&binding.actor.data,
+					WorkspaceActor::ServiceAccount(account) if account.name == service_account.name
+				)
+		}),
+		"the service account should be listed as one"
+	);
+	assert!(
+		bindings
+			.iter()
+			.all(|binding| binding.resource_id == workspace.id)
+	);
+}
+
+#[tokio::test]
+async fn list_role_bindings_of_unknown_role_is_not_found() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListRoleBindingsRequest>::builder()
+				.path(ListRoleBindingsPath {
+					workspace_id: workspace.id,
+					role_id: Uuid::new_v4(),
+				})
+				.headers(ListRoleBindingsRequestHeaders {
 					authorization: user.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.build(),
 		)
 		.await;
-	assert_eq!(
-		400,
-		response.status_code().as_u16(),
-		"a page past the end should be PageOutOfBounds (400)"
-	);
+
+	assert_eq!(StatusCode::NOT_FOUND, response.status_code());
 }
 
 #[tokio::test]
@@ -833,7 +830,7 @@ async fn delete_role_in_use() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.query(DeleteRoleQuery {
-					remove_users: false,
+					remove_bindings: false,
 				})
 				.build(),
 		)
@@ -864,7 +861,7 @@ async fn delete_role_nonexistent() {
 					user_agent: TEST_USER_AGENT,
 				})
 				.query(DeleteRoleQuery {
-					remove_users: false,
+					remove_bindings: false,
 				})
 				.build(),
 		)
@@ -1253,7 +1250,7 @@ async fn delete_role_soft_deletes_resource_row() {
 					role_id: role.id,
 				})
 				.query(DeleteRoleQuery {
-					remove_users: false,
+					remove_bindings: false,
 				})
 				.headers(DeleteRoleRequestHeaders {
 					authorization: admin.access_token.clone(),
@@ -1533,7 +1530,7 @@ async fn role_cross_workspace_delete_denied() {
 					role_id: role_a.id,
 				})
 				.query(DeleteRoleQuery {
-					remove_users: false,
+					remove_bindings: false,
 				})
 				.headers(DeleteRoleRequestHeaders {
 					authorization: owner_b.access_token.clone(),
@@ -1660,7 +1657,7 @@ async fn default_roles_are_immutable() {
 					role_id: seeded.id,
 				})
 				.query(DeleteRoleQuery {
-					remove_users: false,
+					remove_bindings: false,
 				})
 				.headers(DeleteRoleRequestHeaders {
 					authorization: user.access_token.clone(),

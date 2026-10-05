@@ -4,9 +4,9 @@ use models::api::workspace::rbac::role::*;
 use crate::{models::permissions, prelude::*};
 
 /// Deletes a role from the workspace and revokes the cached permissions. This
-/// will delete all the permissions associated with the role. Any user that has
-/// the role will have it removed, if the `remove_users` query parameter is set
-/// to true. Otherwise, an error will be thrown.
+/// will delete all the permissions associated with the role. Any member or
+/// service account holding the role loses it if the `remove_bindings` query
+/// parameter is set to true. Otherwise, an error will be thrown.
 pub async fn delete_role(
 	AuthenticatedAppRequest {
 		request:
@@ -15,7 +15,7 @@ pub async fn delete_role(
 					workspace_id,
 					role_id,
 				},
-				query: DeleteRoleQueryProcessed { remove_users },
+				query: DeleteRoleQueryProcessed { remove_bindings },
 				headers: DeleteRoleRequestHeaders {
 					authorization: _,
 					user_agent: _,
@@ -54,13 +54,13 @@ pub async fn delete_role(
 		return Err(ErrorType::RoleIsImmutable);
 	}
 
-	// Only count when the caller might want to abort. With `remove_users=true`
+	// Only count when the caller might want to abort. With `remove_bindings=true`
 	// we'd delete regardless, so paying for a COUNT round-trip is wasted work.
 	// The handler runs in a transaction, so we *could* rely on the DELETE
 	// rolling back on Err — but reading "abort if in use" up front is clearer
 	// than "delete, then conditionally return Err to undo the delete via the
 	// outer rollback."
-	if !remove_users {
+	if !remove_bindings {
 		let users_with_role = query!(
 			r#"
 			SELECT

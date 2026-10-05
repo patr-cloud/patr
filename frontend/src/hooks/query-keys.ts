@@ -40,7 +40,7 @@ export const roleKeys = {
 	allRoles: (workspaceId: string, page: string | undefined, count: string | undefined) =>
 		[...roleKeys.all(workspaceId), "allRoles", page, count] as const,
 	detail: (workspaceId: string, roleId: string) => [...roleKeys.all(workspaceId), "detail", roleId] as const,
-	users: (workspaceId: string, roleId: string) => [...roleKeys.all(workspaceId), "users", roleId] as const,
+	bindings: (workspaceId: string, roleId: string) => [...roleKeys.all(workspaceId), "bindings", roleId] as const,
 };
 
 export const memberKeys = {

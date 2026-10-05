@@ -17,7 +17,7 @@ import {
 	expectToast,
 } from '@/helpers/ui/role';
 
-// Role delete at the API layer (remove_users=true cascade, in-use → 409,
+// Role delete at the API layer (remove_bindings=true cascade, in-use → 409,
 // nonexistent) lives in the Rust API suite (api/tests/api/workspace/rbac/mod.rs).
 // Here we cover the delete-via-dashboard flow.
 
