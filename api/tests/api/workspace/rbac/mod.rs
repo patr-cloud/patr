@@ -1106,6 +1106,65 @@ async fn update_user_roles_nonexistent_role() {
 }
 
 #[tokio::test]
+async fn update_user_roles_rejects_service_accounts() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let role = setup
+		.create_test_role(&admin.access_token, workspace.id)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+	let modify_roles = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ModifyRoles)],
+		)
+		.await;
+	let service_account = setup
+		.create_test_service_account(
+			&admin.access_token,
+			workspace.id,
+			vec![RoleBindingGrant {
+				role_id: modify_roles.id,
+				resource_id: workspace.id,
+			}],
+		)
+		.await;
+
+	// A binding's creator must be a user, so a service account may not
+	// change anyone's roles even when it holds ModifyRoles.
+	let response = setup
+		.make_api_call(
+			ApiRequest::<UpdateUserRolesInWorkspaceRequest>::builder()
+				.path(UpdateUserRolesInWorkspacePath {
+					workspace_id: workspace.id,
+					user_id: user_b.user_id,
+				})
+				.headers(UpdateUserRolesInWorkspaceRequestHeaders {
+					authorization: BearerToken::from_str(&service_account.token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserRolesInWorkspaceRequest {
+					roles: vec![RoleBindingGrant {
+						role_id: modify_roles.id,
+						resource_id: workspace.id,
+					}],
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"expected a service account to be refused, got {}",
+		response.status_code()
+	);
+}
+
+#[tokio::test]
 async fn create_role_invalid_name() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
