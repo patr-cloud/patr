@@ -430,6 +430,32 @@ impl TestSetup {
 		&self.state.config.opentelemetry.logs.endpoint
 	}
 
+	/// Get the websocket URL for a path on the API server.
+	pub fn api_ws_url(&self, path: &str) -> String {
+		let mut url = self
+			.api
+			.server_address()
+			.expect("api test server should have an address");
+		url.set_scheme("ws").expect("ws is a valid scheme");
+		url.join(path.trim_start_matches('/'))
+			.expect("path should be a valid URL")
+			.to_string()
+	}
+
+	/// Count the Cloudflare KV writes made to a key.
+	pub async fn cloudflare_kv_writes(&self, key: &str) -> usize {
+		let suffix = format!("/values/{key}");
+		self.cloudflare_mock
+			.received_requests()
+			.await
+			.unwrap_or_default()
+			.iter()
+			.filter(|request| {
+				request.method == http::Method::PUT && request.url.path().ends_with(&suffix)
+			})
+			.count()
+	}
+
 	/// Look up the UUID of a permission by the strongly-typed `Permission`
 	/// enum. Uses the cached `permission_ids` populated at setup time.
 	pub fn get_permission_id(&self, permission: Permission) -> Uuid {
@@ -937,6 +963,17 @@ async fn mount_cloudflare_mocks(server: &MockServer) {
 			"result": [{
 				"id": "mock-zone-id",
 				"name": "testonpatr.cloud",
+				"account": { "id": "fake-account-id", "name": "mock" },
+				"activated_on": "2024-01-01T00:00:00Z",
+				"created_on": "2024-01-01T00:00:00Z",
+				"modified_on": "2024-01-01T00:00:00Z",
+				"meta": {
+					"custom_certificate_quota": 0,
+					"page_rule_quota": 3,
+					"phishing_detected": false
+				},
+				"owner": { "type": "user", "id": null, "email": null },
+				"permissions": [],
 				"status": "active",
 				"paused": false,
 				"type": "full",
@@ -1059,6 +1096,26 @@ async fn mount_cloudflare_mocks(server: &MockServer) {
 			"messages": [],
 			"result": {}
 		})))
+		.mount(server)
+		.await;
+
+	// POST /zones/*/dns_records — CreateDnsRecord, which returns the single
+	// record it created. Mounted with higher priority than the catch-all below.
+	Mock::given(method("POST"))
+		.and(path_regex(r"^/client/v4/zones/[^/]+/dns_records$"))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "mock-dns-record-id",
+			"name": "mock.testonpatr.cloud",
+			"type": "CNAME",
+			"content": "mock.cfargotunnel.com",
+			"ttl": 1,
+			"proxiable": true,
+			"proxied": true,
+			"meta": {},
+			"created_on": "2024-01-01T00:00:00Z",
+			"modified_on": "2024-01-01T00:00:00Z"
+		})))
+		.with_priority(1)
 		.mount(server)
 		.await;
 

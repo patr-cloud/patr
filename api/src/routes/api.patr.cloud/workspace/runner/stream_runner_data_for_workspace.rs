@@ -336,14 +336,15 @@ async fn handle_websocket(
 
 				match message {
 					DeploymentStatusUpdated { id, status } => {
-						let Ok(()) = update_deployment_status(id, runner_id, status, &state)
-							.await
-							.inspect_err(|err| {
-								error!(
-									"Failed to update deployment status for deployment ID: {}: {:?}",
-									id, err
-								);
-							})
+						let Ok(()) =
+							update_deployment_status(id, runner_id, workspace_id, status, &state)
+								.await
+								.inspect_err(|err| {
+									error!(
+										"Failed to update deployment status for deployment ID: {}: {:?}",
+										id, err
+									);
+								})
 						else {
 							error!("Failed to update deployment status for deployment ID: {id}");
 							continue;
@@ -424,11 +425,12 @@ async fn handle_websocket(
 async fn update_deployment_status(
 	id: Uuid,
 	runner_id: Uuid,
+	workspace_id: Uuid,
 	status: DeploymentStatus,
 	state: &AppState,
 ) -> Result<(), ErrorType> {
 	// Try to update the status, then always return the current status
-	let current_status = query!(
+	let Some(current_status) = query!(
 		r#"
 		WITH updated AS (
 			UPDATE
@@ -437,6 +439,9 @@ async fn update_deployment_status(
 				status = $1
 			WHERE
 				id = $2 AND
+				runner = $3 AND
+				workspace_id = $4 AND
+				deleted IS NULL AND
 				status != $1 AND (
 					(
 						$1 = 'errored' AND status = 'deploying'
@@ -460,16 +465,28 @@ async fn update_deployment_status(
 				FROM
 					deployment
 				WHERE
-					id = $2
+					id = $2 AND
+					runner = $3 AND
+					workspace_id = $4 AND
+					deleted IS NULL
 			)
-		) AS "status!: DeploymentStatus";
+		) AS "status: DeploymentStatus";
 		"#,
 		status as _,
 		id as _,
+		runner_id as _,
+		workspace_id as _,
 	)
 	.fetch_one(&state.database)
 	.await?
-	.status;
+	.status
+	else {
+		warn!(
+			"Runner {} reported a status for deployment {}, which isn't on that runner",
+			runner_id, id
+		);
+		return Ok(());
+	};
 
 	cfg_if! {
 		if #[cfg(feature = "cloud")] {
