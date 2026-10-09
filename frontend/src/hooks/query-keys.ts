@@ -16,6 +16,8 @@ export const runnerKeys = {
 	list: (workspaceId: string) => [...runnerKeys.all(workspaceId), "list"] as const,
 	pagedList: (workspaceId: string, page: string | undefined, count: string | undefined) =>
 		[...runnerKeys.all(workspaceId), "list", page, count] as const,
+	infiniteList: (workspaceId: string, search: string) =>
+		[...runnerKeys.all(workspaceId), "infiniteList", search] as const,
 	detail: (workspaceId: string, id: string) => [...runnerKeys.all(workspaceId), "detail", id] as const,
 	deployments: (workspaceId: string, runnerId: string, page: number, count: number) =>
 		[...runnerKeys.all(workspaceId), "deployments", runnerId, page, count] as const,
@@ -65,6 +67,8 @@ export const containerRegistryKeys = {
 	all: (workspaceId: string) => ["containerRegistry", workspaceId] as const,
 	list: (workspaceId: string, page: string | undefined, count: string | undefined) =>
 		[...containerRegistryKeys.all(workspaceId), "list", page, count] as const,
+	infiniteList: (workspaceId: string, search: string) =>
+		[...containerRegistryKeys.all(workspaceId), "infiniteList", search] as const,
 	detail: (workspaceId: string, id: string) => [...containerRegistryKeys.all(workspaceId), "detail", id] as const,
 	manifests: (workspaceId: string, repoId: string) =>
 		[...containerRegistryKeys.all(workspaceId), "manifests", repoId] as const,

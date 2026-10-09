@@ -28,7 +28,7 @@ const RunnerCard = (props: { item: WithId<Runner> }) => {
 		navigate({
 			to: "/runners/$id",
 			params: { id: props.item.id },
-			search: { tab: "deployments" },
+			search: { tab: "info" },
 		});
 
 	const lastSeenText = () =>
@@ -179,7 +179,7 @@ const ListRunnersPage = () => {
 												navigate({
 													to: "/runners/$id",
 													params: { id: item.id },
-													search: { tab: "deployments" },
+													search: { tab: "info" },
 												});
 											return (
 												<tr
