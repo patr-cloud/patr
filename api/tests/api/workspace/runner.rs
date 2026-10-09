@@ -1,8 +1,22 @@
+use std::{collections::BTreeMap, time::Duration};
+
+use futures::SinkExt;
 use models::{
 	ApiSuccessResponseBody,
-	api::workspace::runner::*,
-	utils::{ListResourceQuery, Uuid},
+	api::workspace::{
+		deployment::{
+			DeploymentStatus,
+			GetDeploymentInfoPath,
+			GetDeploymentInfoRequest,
+			GetDeploymentInfoRequestHeaders,
+			GetDeploymentInfoResponse,
+		},
+		runner::*,
+	},
+	rbac::WorkspacePermission,
+	utils::{BearerToken, ListResourceQuery, Uuid},
 };
+use tokio_tungstenite::tungstenite::{Message, client::IntoClientRequest};
 
 use crate::prelude::*;
 
@@ -773,5 +787,162 @@ async fn runner_unauthorized() {
 	assert!(
 		response.status_code().is_client_error(),
 		"expected client error without auth token"
+	);
+}
+
+/// Read a deployment's status through the API.
+async fn deployment_status(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+) -> DeploymentStatus {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id,
+					deployment_id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>()
+		.response
+		.deployment
+		.status
+		.clone()
+}
+
+#[tokio::test]
+async fn runner_cannot_update_status_of_another_workspaces_deployment() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let victim = setup.create_test_user().await;
+	let victim_workspace = setup.create_test_workspace(&victim.access_token).await;
+	let victim_runner = setup
+		.create_test_runner(&victim.access_token, victim_workspace.id)
+		.await;
+	let victim_deployment = setup
+		.create_test_deployment(&victim.access_token, victim_workspace.id, victim_runner.id)
+		.await;
+
+	let attacker = setup.create_test_user().await;
+	let attacker_workspace = setup.create_test_workspace(&attacker.access_token).await;
+	let attacker_runner = setup
+		.create_test_runner(&attacker.access_token, attacker_workspace.id)
+		.await;
+	let attacker_deployment = setup
+		.create_test_deployment(
+			&attacker.access_token,
+			attacker_workspace.id,
+			attacker_runner.id,
+		)
+		.await;
+
+	// `deploying` → `running` is an allowed transition, so only the runner and
+	// workspace checks stand between the attacker and the victim's deployment.
+	setup
+		.execute_sql(&format!(
+			"UPDATE deployment SET status = 'deploying' WHERE id IN ('{}', '{}');",
+			victim_deployment.id, attacker_deployment.id
+		))
+		.await;
+
+	let victim_kv_writes = setup
+		.cloudflare_kv_writes(&victim_deployment.id.to_string())
+		.await;
+
+	let token = setup
+		.create_test_api_token(
+			&attacker.access_token,
+			BTreeMap::from([(attacker_workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await
+		.token;
+	let mut request = setup
+		.api_ws_url(&format!(
+			"/workspace/{}/runner/{}/stream",
+			attacker_workspace.id, attacker_runner.id
+		))
+		.into_client_request()
+		.unwrap();
+	let headers = StreamRunnerDataForWorkspaceRequestHeaders {
+		authorization: BearerToken::from_str(&token).unwrap(),
+		user_agent: TEST_USER_AGENT,
+	}
+	.to_header_map();
+	for (name, value) in headers.iter() {
+		request.headers_mut().insert(name.clone(), value.clone());
+	}
+	let (mut runner_stream, _) = tokio_tungstenite::connect_async(request)
+		.await
+		.expect("the attacker's runner should connect");
+
+	// The stream ignores everything until the runner sets its exposure type.
+	// After that, messages are handled in order, so once the attacker's own
+	// deployment is `running`, the update for the victim's has been handled too.
+	let messages = [
+		StreamRunnerDataForWorkspaceClientMsg::SetRunnerExposureType {
+			exposure_type: RunnerExposureType::Private,
+		},
+		StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
+			id: victim_deployment.id,
+			status: DeploymentStatus::Running,
+		},
+		StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
+			id: attacker_deployment.id,
+			status: DeploymentStatus::Running,
+		},
+	];
+	for message in messages {
+		runner_stream
+			.send(Message::Text(
+				serde_json::to_string(&message).unwrap().into(),
+			))
+			.await
+			.unwrap();
+	}
+	let mut attacker_status = DeploymentStatus::Deploying;
+	for _ in 0..50 {
+		attacker_status = deployment_status(
+			&setup,
+			&attacker.access_token,
+			attacker_workspace.id,
+			attacker_deployment.id,
+		)
+		.await;
+		if attacker_status == DeploymentStatus::Running {
+			break;
+		}
+		tokio::time::sleep(Duration::from_millis(100)).await;
+	}
+	assert_eq!(
+		attacker_status,
+		DeploymentStatus::Running,
+		"the runner's own deployment should be updated"
+	);
+
+	assert_eq!(
+		deployment_status(
+			&setup,
+			&victim.access_token,
+			victim_workspace.id,
+			victim_deployment.id,
+		)
+		.await,
+		DeploymentStatus::Deploying,
+		"another workspace's runner must not change the deployment's status"
+	);
+	assert_eq!(
+		setup
+			.cloudflare_kv_writes(&victim_deployment.id.to_string())
+			.await,
+		victim_kv_writes,
+		"another workspace's runner must not rewrite the deployment's KV entry"
 	);
 }
