@@ -1,10 +1,21 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT workspace_id, name, token_hash, created FROM service_account WHERE id = $1 AND deleted IS NULL;",
+  "query": "SELECT id, workspace_id, name, created FROM service_account WHERE token_hash = $1 AND deleted IS NULL FOR SHARE;",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "service_account",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
         "name": "workspace_id",
         "type_info": "Uuid",
         "origin": {
@@ -15,24 +26,13 @@
         }
       },
       {
-        "ordinal": 1,
+        "ordinal": 2,
         "name": "name",
         "type_info": "Text",
         "origin": {
           "Table": {
             "table": "service_account",
             "name": "name"
-          }
-        }
-      },
-      {
-        "ordinal": 2,
-        "name": "token_hash",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "service_account",
-            "name": "token_hash"
           }
         }
       },
@@ -50,7 +50,7 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text"
       ]
     },
     "nullable": [
@@ -60,5 +60,5 @@
       false
     ]
   },
-  "hash": "f0231eed860eba79c9436f8e0b6d7dac2707e6639cddd8e076821ae186977546"
+  "hash": "d3407db5dcccc17e705a6c5f76c6be61cbd0ed06eef7646dfe43d9727b0ca515"
 }
