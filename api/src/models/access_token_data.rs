@@ -22,9 +22,19 @@ pub struct AccessTokenData {
 	/// subject.  The subject value MUST either be scoped to be locally unique
 	/// in the context of the issuer or be globally unique.
 	///
-	/// I think this is the user's login ID (from which we can extract
-	/// everything else that is needed to know about the user)
+	/// I guess this is the user ID of the user. For user's specific login ID, we'll use the
+	/// [`sid`][Self::sid] claim. OpenID Connect requires `sub` to identify the user rather than
+	/// the credential, and relying parties key their local accounts on it
 	pub sub: Uuid,
+	/// OpenID Connect Core 1.0, section 2:
+	/// The "sid" (session ID) claim identifies the session the token was
+	/// issued against.
+	///
+	/// This is the login ID — the `user_login` row backing this token. It is what the
+	/// authenticator looks up to resolve permissions and to check whether the session has been
+	/// revoked. From the login ID we can extract everything else that is needed to know about the
+	/// user or the session.
+	pub sid: Uuid,
 	/// RFC7519:
 	/// The "aud" (audience) claim identifies the recipients that the JWT is
 	/// intended for.  Each principal intended to process the JWT MUST identify
