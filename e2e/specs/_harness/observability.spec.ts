@@ -15,7 +15,6 @@ async function createRunner(
 	api: ApiClient,
 	user: UserHandle & { workspaceId: string },
 ): Promise<string> {
-	// Runners are only mintable through the consent-link flow now.
 	const runner = await createRunnerAPI(api, user, user.workspaceId);
 	return runner.id;
 }

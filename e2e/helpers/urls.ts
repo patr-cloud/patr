@@ -37,7 +37,10 @@ export const VINXI_DEV_URL = process.env.VINXI_DEV_URL ?? 'http://localhost:1303
 export const REGISTRY_HOST = 'registry.patr.cloud';
 
 // The host API listener ports the in-DinD socat bridges forward to (reached via
-// host.docker.internal): the OCI registry (API port + 2) and the API itself
-// (for the docker-login token realm, http://localhost:3000/auth/docker-login).
+// host.docker.internal): the OCI registry (API port + 2), the API itself (for
+// the docker-login token realm, http://localhost:3000/auth/docker-login), and
+// the loki (API port + 3) and mimir (API port + 5) proxies Alloy pushes to.
 export const HOST_REGISTRY_PORT = 3002;
 export const HOST_API_PORT = 3000;
+export const HOST_LOKI_PORT = 3003;
+export const HOST_MIMIR_PORT = 3005;

@@ -133,8 +133,12 @@ const server = createServer(async (req, res) => {
 
   // Catch-all: proxy anything else (OTLP log export, loki/mimir proxy
   // upstreams, etc.) to the real backend so standing in front of the real
-  // endpoints is transparent. Route by path; default to Loki.
-  const realBase = path.startsWith('/prometheus') ? REAL_MIMIR : REAL_LOKI;
+  // endpoints is transparent. Route by path: Mimir's query, remote-write and
+  // OTLP metrics paths go to Mimir; everything else defaults to Loki.
+  const realBase =
+    path.startsWith('/prometheus') || path === '/api/v1/push' || path === '/otlp/v1/metrics'
+      ? REAL_MIMIR
+      : REAL_LOKI;
   const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await readBody(req);
   return void proxy(realBase, req, res, search ? `?${search}` : '', body);
 });

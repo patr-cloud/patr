@@ -171,7 +171,8 @@ const routes = [
   [
     'DELETE',
     /^\/client\/v4\/accounts\/[^/]+\/cfd_tunnel\/[^/]+$/,
-    () => envelope({ id: TUNNEL.id }),
+    // DeleteTunnel decodes the whole tunnel, so a bare id fails to parse
+    () => envelope({ ...TUNNEL, deleted_at: '2024-01-02T00:00:00Z' }),
   ],
   ['GET', /^\/client\/v4\/accounts\/[^/]+\/cfd_tunnel\/[^/]+$/, () => envelope(TUNNEL)],
 ];

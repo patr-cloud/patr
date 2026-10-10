@@ -3,8 +3,8 @@ import { API_DIRECT_URL } from '@/helpers/urls';
 import { USER_AGENT } from '@/helpers/config';
 
 // Raw authenticated client for the runner data stream
-// (GET /workspace/{ws}/runner/{id}/stream). The real runner uses an API token
-// over this websocket; these helpers let specs drive the handshake/lock
+// (GET /workspace/{ws}/runner/{id}/stream). The real runner uses its runner
+// token over this websocket; these helpers let specs drive the handshake/lock
 // behavior (exposure handshake, RunnerAlreadyConnected, lock lifecycle) without
 // spinning a DinD runner.
 //
@@ -15,9 +15,11 @@ import { USER_AGENT } from '@/helpers/config';
 //   {"type":"SetRunnerExposureType","exposure_type":{"type":"private"}}
 // and the server's prompt is {"type":"ExposureTypeRequired"}.
 //
-// Auth + lock both happen before the upgrade: a token that isn't this runner's
-// own is a 401 and a second concurrent connection is a 409 (RunnerAlreadyConnected),
-// surfaced as an HTTP rejection (no 101) — open() rejects with the status.
+// Auth + lock both happen before the upgrade. The stream takes only this
+// runner's own token, so any other token (a user's, a service account's or
+// another runner's) is a 401, and a second concurrent connection is a 409
+// (RunnerAlreadyConnected), surfaced as an HTTP rejection (no 101) — open()
+// rejects with the status.
 
 const WS_BASE = API_DIRECT_URL.replace(/^http/, 'ws');
 
@@ -58,7 +60,8 @@ export class RunnerStream implements AsyncDisposable {
 	}
 
 	// Opens the stream. Resolves once upgraded, rejects with `WS <status>` if the
-	// server refuses the upgrade (401 not this runner's token, 409 RunnerAlreadyConnected).
+	// server refuses the upgrade (401 not this runner's token, 409
+	// RunnerAlreadyConnected).
 	static open(opts: {
 		workspaceId: string;
 		runnerId: string;

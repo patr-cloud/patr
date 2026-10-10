@@ -82,7 +82,7 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 		>
 			<Show
 				when={(deploymentsQuery.data?.deployments?.length ?? 0) > 0}
-				fallback={<EmptyState title="No Deployments on This Runner" />}
+				fallback={<EmptyState title="No deployments on this runner" />}
 			>
 				<div class="md:hidden flex flex-col gap-2">
 					<For each={deploymentsQuery.data?.deployments || []}>
