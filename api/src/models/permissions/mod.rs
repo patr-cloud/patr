@@ -111,6 +111,49 @@ pub async fn authenticate(
 	authenticate_opaque_token(database, redis, client_ip, token, accepted_client_types).await
 }
 
+/// Generates a new user API token: [`API_TOKEN_PREFIX`][constants::API_TOKEN_PREFIX],
+/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
+/// base62 characters, and a checksum of both.
+pub fn generate_api_token() -> String {
+	let body = format!(
+		"{}{}",
+		constants::API_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
+
+	format!(
+		"{body}{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	)
+}
+
+/// Generates a new service account token:
+/// [`SERVICE_ACCOUNT_TOKEN_PREFIX`][constants::SERVICE_ACCOUNT_TOKEN_PREFIX],
+/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
+/// base62 characters, and a checksum of both.
+pub fn generate_service_account_token() -> String {
+	let body = format!(
+		"{}{}",
+		constants::SERVICE_ACCOUNT_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
+
+	format!(
+		"{body}{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	)
+}
+
 /// Authenticate a JWT. Today every JWT is a web dashboard session; an OAuth
 /// application's token will carry a claim saying so and branch here.
 async fn authenticate_jwt(
@@ -329,47 +372,4 @@ async fn authenticate_opaque_token(
 		.login_id(entry.login_id)
 		.permissions(entry.permissions)
 		.build())
-}
-
-/// Generates a new user API token: [`API_TOKEN_PREFIX`][constants::API_TOKEN_PREFIX],
-/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
-/// base62 characters, and a checksum of both.
-pub fn generate_api_token() -> String {
-	let body = format!(
-		"{}{}",
-		constants::API_TOKEN_PREFIX,
-		rand::rng()
-			.sample_iter(Alphanumeric)
-			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
-			.map(char::from)
-			.collect::<String>()
-	);
-
-	format!(
-		"{body}{:0>width$}",
-		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
-		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
-	)
-}
-
-/// Generates a new service account token:
-/// [`SERVICE_ACCOUNT_TOKEN_PREFIX`][constants::SERVICE_ACCOUNT_TOKEN_PREFIX],
-/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
-/// base62 characters, and a checksum of both.
-pub fn generate_service_account_token() -> String {
-	let body = format!(
-		"{}{}",
-		constants::SERVICE_ACCOUNT_TOKEN_PREFIX,
-		rand::rng()
-			.sample_iter(Alphanumeric)
-			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
-			.map(char::from)
-			.collect::<String>()
-	);
-
-	format!(
-		"{body}{:0>width$}",
-		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
-		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
-	)
 }
