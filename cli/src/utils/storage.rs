@@ -1,4 +1,11 @@
-use std::{fmt, path::PathBuf, str::FromStr};
+use std::{
+	fmt,
+	fs::{OpenOptions, Permissions},
+	io::Write,
+	os::unix::fs::{OpenOptionsExt, PermissionsExt},
+	path::PathBuf,
+	str::FromStr,
+};
 
 use config::ConfigError;
 use serde::{Deserialize, Serialize};
@@ -125,7 +132,7 @@ impl AppState {
 					.required(false),
 			)
 		} else {
-			config::Config::builder()
+			builder
 		}
 		.build()
 		.map_err(AppError::ConfigReadError)?
@@ -148,11 +155,20 @@ impl AppState {
 		.unwrap();
 		std::fs::create_dir_all(config_dir.parent().expect("Failed to get parent directory"))
 			.map_err(|err| AppError::ConfigWriteError(ConfigError::Message(err.to_string())))?;
-		std::fs::write(
-			config_dir,
-			serde_json::to_vec(&self).expect("Failed to serialize the CLI state"),
-		)
-		.map_err(|err| AppError::ConfigWriteError(ConfigError::Message(err.to_string())))
+		// The state holds the user's token, so only its owner can read it.
+		OpenOptions::new()
+			.write(true)
+			.create(true)
+			.truncate(true)
+			.mode(0o600)
+			.open(config_dir)
+			.and_then(|mut file| {
+				file.set_permissions(Permissions::from_mode(0o600))?;
+				file.write_all(
+					&serde_json::to_vec(&self).expect("Failed to serialize the CLI state"),
+				)
+			})
+			.map_err(|err| AppError::ConfigWriteError(ConfigError::Message(err.to_string())))
 	}
 
 	/// Returns true if the user is logged in, false otherwise.
