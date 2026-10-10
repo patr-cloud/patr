@@ -22,7 +22,7 @@ pub async fn update_user_info(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateUserInfoRequest>,
 ) -> Result<AppResponse<UpdateUserInfoRequest>, ErrorType> {
@@ -40,7 +40,7 @@ pub async fn update_user_info(
 		"#,
 		&*first_name,
 		&*last_name,
-		user_data.id as _,
+		actor_data.id as _,
 	)
 	.execute(&mut **database)
 	.await?;

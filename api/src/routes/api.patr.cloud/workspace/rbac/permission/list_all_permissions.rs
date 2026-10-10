@@ -29,7 +29,7 @@ pub async fn list_all_permissions(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListAllPermissionsRequest>,
 ) -> Result<AppResponse<ListAllPermissionsRequest>, ErrorType> {

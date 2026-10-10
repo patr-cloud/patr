@@ -1,10 +1,9 @@
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::http::StatusCode;
 use models::api::auth::*;
-use rustis::commands::{GenericCommands, StringCommands};
-use time::OffsetDateTime;
+use rustis::commands::GenericCommands;
 
-use crate::{prelude::*, redis::keys as redis};
+use crate::{models::permissions, prelude::*, redis::keys as redis};
 
 pub async fn logout(
 	AuthenticatedAppRequest {
@@ -21,11 +20,11 @@ pub async fn logout(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, LogoutRequest>,
 ) -> Result<AppResponse<LogoutRequest>, ErrorType> {
-	info!("Logging out user: {}", user_data.id);
+	info!("Logging out user: {}", actor_data.id);
 
 	// User agent being a browser is expected to be checked in the
 	// UserAgentValidationLayer
@@ -107,7 +106,7 @@ pub async fn logout(
 	trace!("Deleted user login");
 
 	_ = redis
-		.del(redis::permission_for_login_id(&login_id))
+		.del(redis::auth_data_for_login_id(&login_id))
 		.await
 		.inspect_err(|err| {
 			error!(
@@ -115,19 +114,7 @@ pub async fn logout(
 				login_id, err
 			);
 		});
-	redis
-		.setex(
-			redis::login_id_revocation_timestamp(&login_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs() +
-				100,
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting the revocation timestamp: `{}`", err);
-		})?;
+	permissions::mark_login_stale(redis, &login_id).await?;
 
 	AppResponse::builder()
 		.body(LogoutResponse)

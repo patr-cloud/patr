@@ -6,7 +6,7 @@ mod create_new_role;
 mod delete_role;
 mod get_role_info;
 mod list_all_roles;
-mod list_users_for_role;
+mod list_role_bindings;
 mod update_role;
 
 use self::{
@@ -14,18 +14,18 @@ use self::{
 	delete_role::*,
 	get_role_info::*,
 	list_all_roles::*,
-	list_users_for_role::*,
+	list_role_bindings::*,
 	update_role::*,
 };
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_new_role, state, allowed_client_type)
-		.mount_auth_endpoint(delete_role, state, allowed_client_type)
-		.mount_auth_endpoint(get_role_info, state, allowed_client_type)
-		.mount_auth_endpoint(list_all_roles, state, allowed_client_type)
-		.mount_auth_endpoint(list_users_for_role, state, allowed_client_type)
-		.mount_auth_endpoint(update_role, state, allowed_client_type)
+		.mount_auth_endpoint(create_new_role, state, host_client_types)
+		.mount_auth_endpoint(delete_role, state, host_client_types)
+		.mount_auth_endpoint(get_role_info, state, host_client_types)
+		.mount_auth_endpoint(list_all_roles, state, host_client_types)
+		.mount_auth_endpoint(list_role_bindings, state, host_client_types)
+		.mount_auth_endpoint(update_role, state, host_client_types)
 		.with_state(state.clone())
 }

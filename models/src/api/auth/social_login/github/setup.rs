@@ -11,7 +11,6 @@ macros::declare_api_endpoint!(
 		/// for now.
 		pub provider: SocialLoginProvider,
 	},
-	api = false,
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
@@ -33,5 +32,6 @@ macros::declare_api_endpoint!(
 		/// Patr refresh token
 		pub refresh_token: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

@@ -15,9 +15,9 @@ use crate::{app::AppRequest, prelude::*, utils::access_token_data::AccessTokenDa
 
 /// The [`tower::Layer`] used to authenticate requests. This will parse the
 /// [`BearerToken`] header and verify it against the database. If the token is
-/// valid, the [`RequestUserData`] will be added to the request. All subsequent
+/// valid, the [`RequestActorData`] will be added to the request. All subsequent
 /// underlying layers will recieve an [`AppRequest`] with the
-/// appropriate [`RequestUserData`] filled.
+/// appropriate [`RequestActorData`] filled.
 pub struct AuthenticationLayer<E>
 where
 	E: ApiEndpoint,

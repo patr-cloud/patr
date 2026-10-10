@@ -2,7 +2,7 @@ use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use models::api::user::*;
 use reqwest::StatusCode;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn regenerate_api_token(
 	AuthenticatedAppRequest {
@@ -18,9 +18,9 @@ pub async fn regenerate_api_token(
 				body: RegenerateApiTokenRequestProcessed,
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, RegenerateApiTokenRequest>,
 ) -> Result<AppResponse<RegenerateApiTokenRequest>, ErrorType> {
@@ -56,7 +56,7 @@ pub async fn regenerate_api_token(
 		"#,
 		hashed_refresh_token,
 		token_id as _,
-		user_data.id as _,
+		actor_data.id as _,
 	)
 	.execute(&mut **database)
 	.await?
@@ -65,6 +65,8 @@ pub async fn regenerate_api_token(
 	if rows_affected == 0 {
 		return Err(ErrorType::ApiTokenDoesNotExist);
 	}
+
+	permissions::mark_login_stale(redis, &token_id).await?;
 
 	AppResponse::builder()
 		.body(RegenerateApiTokenResponse {

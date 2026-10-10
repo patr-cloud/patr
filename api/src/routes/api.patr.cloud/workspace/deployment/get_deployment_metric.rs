@@ -50,7 +50,7 @@ pub async fn get_deployment_metric(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, GetDeploymentMetricRequest>,
 ) -> Result<AppResponse<GetDeploymentMetricRequest>, ErrorType> {

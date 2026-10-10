@@ -1,10 +1,9 @@
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::http::StatusCode;
 use models::api::user::*;
-use rustis::commands::StringCommands;
 use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 /// The handler for the authenticated user to accept a workspace invite. The
 /// `invite_id` and `token` come from the invite email link. The caller must own
@@ -25,11 +24,11 @@ pub async fn accept_workspace_invite(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, AcceptWorkspaceInviteRequest>,
 ) -> Result<AppResponse<AcceptWorkspaceInviteRequest>, ErrorType> {
-	info!("User `{}` accepting invite `{invite_id}`", user_data.id);
+	info!("User `{}` accepting invite `{invite_id}`", actor_data.id);
 
 	let now = OffsetDateTime::now_utc();
 
@@ -96,7 +95,7 @@ pub async fn accept_workspace_invite(
 				email = $2::CITEXT
 		) AS "owns_email!: bool";
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 		invite.email,
 	)
 	.fetch_one(&mut **database)
@@ -130,7 +129,7 @@ pub async fn accept_workspace_invite(
 		VALUES
 			($1, $2, $3);
 		"#,
-		user_data.id as _,
+		actor_data.id as _,
 		workspace_id as _,
 		&actor_id as _,
 	)
@@ -198,20 +197,9 @@ pub async fn accept_workspace_invite(
 	.execute(&mut **database)
 	.await?;
 
-	info!("Invite accepted. Setting revocation timestamp");
+	info!("Invite accepted. Marking cached permissions stale");
 
-	redis
-		.setex(
-			redis::keys::user_id_revocation_timestamp(&user_data.id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting the revocation timestamp: `{err}`");
-		})?;
+	permissions::mark_actor_stale(redis, &actor_data.id).await?;
 
 	AppResponse::builder()
 		.body(AcceptWorkspaceInviteResponse {

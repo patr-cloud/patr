@@ -20,7 +20,7 @@ pub async fn get_user_info(
 		redis: _,
 		client_ip: _,
 		state: _,
-		user_data,
+		actor_data,
 	}: AuthenticatedAppRequest<'_, GetUserInfoRequest>,
 ) -> Result<AppResponse<GetUserInfoRequest>, ErrorType> {
 	info!("Getting authenticated user info");
@@ -38,14 +38,14 @@ pub async fn get_user_info(
 		WHERE
 			"user".id = $1;
 		"#,
-		user_data.id as _
+		actor_data.id as _
 	)
 	.fetch_one(&mut **database)
 	.await?;
 
 	let user_info = GetUserInfoResponse {
 		basic_user_info: WithId::new(
-			user_data.id,
+			actor_data.id,
 			BasicUserInfo {
 				first_name: row.first_name,
 				last_name: row.last_name,

@@ -6,12 +6,13 @@ mod delete_role;
 mod get_role_info;
 /// The endpoint to list all the roles in the workspace
 mod list_all_roles;
-/// The endpoint to list all the users for a role in the workspace
-mod list_users_for_role;
+/// The endpoint to list every binding of a role in the workspace
+mod list_role_bindings;
 /// The endpoint to update the details of a role in the workspace
 mod update_role;
 
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 use ts_rs::TS;
 
 pub use self::{
@@ -19,10 +20,11 @@ pub use self::{
 	delete_role::*,
 	get_role_info::*,
 	list_all_roles::*,
-	list_users_for_role::*,
+	list_role_bindings::*,
 	update_role::*,
 };
 use crate::{
+	api::workspace::{rbac::user::WorkspaceUserInfo, service_account::ServiceAccount},
 	prelude::*,
 	utils::constants::{RESOURCE_NAME_REGEX, ROLE_DESCRIPTION_REGEX},
 };
@@ -43,4 +45,34 @@ pub struct Role {
 	#[search(skip)]
 	#[serde(default)]
 	pub is_immutable: bool,
+}
+
+/// Who holds a binding: a member of the workspace or a service account in it.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, EnumDiscriminants, TS)]
+#[strum_discriminants(
+	name(WorkspaceActorDiscriminant),
+	cfg_attr(
+		not(target_arch = "wasm32"),
+		derive(sqlx::Type),
+		sqlx(type_name = "WORKSPACE_ACTOR_TYPE", rename_all = "snake_case"),
+	),
+	doc = "Workspace actor types"
+)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum WorkspaceActor {
+	/// A member of the workspace
+	User(WorkspaceUserInfo),
+	/// A service account in the workspace
+	ServiceAccount(ServiceAccount),
+}
+
+/// One binding of a role: who holds it, and the resource it applies at.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
+#[serde(rename_all = "camelCase")]
+pub struct RoleBinding {
+	/// Who holds the role. The ID is the user's for a member, and the service
+	/// account's for a service account.
+	pub actor: WithId<WorkspaceActor>,
+	/// The resource the role applies at
+	pub resource_id: Uuid,
 }

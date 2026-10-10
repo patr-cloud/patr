@@ -115,11 +115,11 @@ export async function deleteRoleAPI(
 	user: { accessToken: string; clientIp: string },
 	wsId: string,
 	roleId: string,
-	opts: { removeUsers?: boolean } = {},
+	opts: { removeBindings?: boolean } = {},
 ): Promise<void> {
-	// Serde renames the query field to camelCase, so the URL uses `removeUsers`
-	// (not snake_case `remove_users`).
-	const qs = opts.removeUsers ? '?removeUsers=true' : '';
+	// Serde renames the query field to camelCase, so the URL uses `removeBindings`
+	// (not snake_case `remove_bindings`).
+	const qs = opts.removeBindings ? '?removeBindings=true' : '';
 	await api.request('DELETE', `/workspace/${wsId}/rbac/role/${roleId}${qs}`, {
 		token: user.accessToken,
 		clientIp: user.clientIp,

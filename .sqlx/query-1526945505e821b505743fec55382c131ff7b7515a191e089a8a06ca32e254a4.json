@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT role_binding.actor_id AS \"actor_id: Uuid\", role_binding.scope_id AS \"scope_id: Uuid\", workspace_actor.actor_type AS \"actor_type: WorkspaceActorDiscriminant\", workspace_user.user_id AS \"user_id?: Uuid\", \"user\".first_name AS \"first_name?\", \"user\".last_name AS \"last_name?\", \"user\".email AS \"email?\", service_account.name AS \"service_account_name?\", service_account.description AS \"service_account_description?\" FROM role_binding INNER JOIN workspace_actor ON workspace_actor.id = role_binding.actor_id LEFT JOIN workspace_user ON workspace_user.actor_id = role_binding.actor_id LEFT JOIN \"user\" ON \"user\".id = workspace_user.user_id LEFT JOIN service_account ON service_account.id = role_binding.actor_id AND service_account.deleted IS NULL WHERE role_binding.workspace_id = $1 AND role_binding.role_id = $2 ORDER BY role_binding.created;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "actor_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "scope_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "actor_type: WorkspaceActorDiscriminant",
+        "type_info": {
+          "Custom": {
+            "name": "workspace_actor_type",
+            "kind": {
+              "Enum": [
+                "user",
+                "service_account"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "first_name?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_name?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "email?",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "service_account_name?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "service_account_description?",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1526945505e821b505743fec55382c131ff7b7515a191e089a8a06ca32e254a4"
+}

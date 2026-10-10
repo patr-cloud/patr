@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE service_account ADD CONSTRAINT service_account_pk PRIMARY KEY(id), ADD CONSTRAINT service_account_uq_id_workspace_id UNIQUE(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "75f0921e043d0aa93c127618e535bf8fc39381bc8528ec5a351404e8f4193659"
+}

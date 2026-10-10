@@ -21,7 +21,7 @@ pub async fn get_api_token_info(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, GetApiTokenInfoRequest>,
 ) -> Result<AppResponse<GetApiTokenInfoRequest>, ErrorType> {
@@ -44,7 +44,7 @@ pub async fn get_api_token_info(
 			revoked IS NULL;
 		"#,
 		token_id as _,
-		user_data.id as _,
+		actor_data.id as _,
 	)
 	.fetch_optional(&mut **database)
 	.await?
