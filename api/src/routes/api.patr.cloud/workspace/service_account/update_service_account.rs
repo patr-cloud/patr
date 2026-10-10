@@ -19,7 +19,12 @@ pub async fn update_service_account(
 					},
 				body:
 					UpdateServiceAccountRequestProcessed {
-						service_account: ServiceAccountProcessed { name, description },
+						service_account:
+							ServiceAccountProcessed {
+								name,
+								description,
+								is_immutable: _,
+							},
 						role_bindings,
 					},
 			},
@@ -30,6 +35,28 @@ pub async fn update_service_account(
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateServiceAccountRequest>,
 ) -> Result<AppResponse<UpdateServiceAccountRequest>, ErrorType> {
+	// A runner's service account changes only through the runner routes.
+	let is_immutable = query!(
+		r#"
+		SELECT
+			is_immutable
+		FROM
+			service_account
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		service_account_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist)?
+	.is_immutable;
+
+	if is_immutable {
+		return Err(ErrorType::ServiceAccountIsImmutable);
+	}
+
 	let rows_updated = query!(
 		r#"
 		UPDATE

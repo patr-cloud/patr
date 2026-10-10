@@ -38,6 +38,7 @@ For the feature in front of you:
    - Does it survive FullResync churn and a runner restart without redeploying anything that didn't change?
    - Is its status reported upstream, so a failure shows up in the dashboard instead of only in runner logs?
    - Can every executor implement it? An executor that can't must return `Unsupported` rather than ignore it.
+   - If the runner has to call the API for it, does the endpoint accept `ServiceAccount`, and do the runner's roles grant the permission?
 3. Protect what's already running:
    - Desired state stored before the feature, which lacks the new field, must default to the old behaviour.
    - A runner upgrading its binary has to migrate its SQLite cleanly.

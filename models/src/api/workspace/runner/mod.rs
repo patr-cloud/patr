@@ -1,5 +1,5 @@
-/// The endpoint to add a runner to a workspace
-mod add_runner_to_workspace;
+/// The endpoint to create a runner in a workspace
+mod create_runner;
 /// Get the token to use for the ingress tunnel for this runner
 mod get_ingress_token_for_runner;
 /// The endpoint to get the details of a runner in a workspace
@@ -10,6 +10,8 @@ mod get_runner_logs;
 mod get_runner_metrics;
 /// The endpoint to list all the runners in a workspace
 mod list_runners_for_workspace;
+/// The endpoint to regenerate a runner's token
+mod regenerate_runner_token;
 /// The endpoint to remove a runner from a workspace
 mod remove_runner_from_workspace;
 /// The endpoint to stream the runner data for a workspace
@@ -17,17 +19,19 @@ mod stream_runner_data_for_workspace;
 /// The endpoint to stream runner process logs in real time
 mod stream_runner_logs;
 
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use ts_rs::TS;
 
 pub use self::{
-	add_runner_to_workspace::*,
+	create_runner::*,
 	get_ingress_token_for_runner::*,
 	get_runner_info::*,
 	get_runner_logs::*,
 	get_runner_metrics::*,
 	list_runners_for_workspace::*,
+	regenerate_runner_token::*,
 	remove_runner_from_workspace::*,
 	stream_runner_data_for_workspace::*,
 	stream_runner_logs::*,
@@ -53,6 +57,12 @@ pub struct Runner {
 	/// The last timestamp the runner was seen online
 	#[ts(type = "Date | null")]
 	pub last_seen: Option<OffsetDateTime>,
+	/// The semver version the runner last reported on its handshake. For
+	/// runners that existed before version reporting, this is `0.0.0` until
+	/// they reconnect.
+	#[ts(type = "string")]
+	#[search(skip)]
+	pub version: Version,
 }
 
 /// A single log entry from a runner process.

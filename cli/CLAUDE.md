@@ -19,7 +19,7 @@ Every command module has a `pub struct Args` (deriving `clap::Args`; empty if no
 
 ## State
 
-`AppState` is persisted to `~/.local/share/patr/cli/config.json` (`utils::storage`). Two fields: `target_channel: Channel` and `auth: AuthState` (an `#[serde(untagged)]` enum — `LoggedIn { token, current_workspace }` or `LoggedOut`). **The nested-enum shape is deliberate** — `current_workspace` can't exist without a `token`, so it's unrepresentable as two optional fields. To mutate: `load()` the full state, modify `state.auth`, `state.save()` — don't build a fresh `AppState` (you'd drop `target_channel`). `load()` falls back to `Default` on any error.
+`AppState` is persisted to `~/.local/share/patr/cli/config.json` (`utils::storage`), mode `0600` since it holds the token. Debug builds use the repo's `config/cli.json` instead, and `CONFIG_PATH` overrides both. Two fields: `target_channel: Channel` and `auth: AuthState` (an `#[serde(untagged)]` enum — `LoggedIn { token, current_workspace }` or `LoggedOut`). **The nested-enum shape is deliberate** — `current_workspace` can't exist without a `token`, so it's unrepresentable as two optional fields. To mutate: `load()` the full state, modify `state.auth`, `state.save()` — don't build a fresh `AppState` (you'd drop `target_channel`). `load()` falls back to `Default` on any error.
 
 ## Errors
 
@@ -34,6 +34,8 @@ Single `AppError` enum (`error.rs`), returned from every `execute`. Network erro
 - Prompts use `inquire`, wrapped with `.expect_tty("…")` (`TtyExpectable`) so non-TTY stdin exits cleanly instead of panicking. Destructive commands also check `stdin().is_terminal()` and hint `-y`.
 - Runner `service {install,uninstall,status}` share `run_systemctl` (strict; `sudo` when non-root) and `sudo_spawn_error`. `uninstall`'s `stop`/`disable` are deliberately lenient (not-running shouldn't fail); `daemon-reload` + unit removal stay strict. Always check `/run/systemd/system` exists first.
 - `upgrade`/`uninstall` are gated off when built `--features package-managed` (Homebrew/distro builds) — the CLI refuses to touch its own install, no path-sniffing.
+- Flags that take a secret also read an env var, with `hide_env_values = true` so `--help` doesn't print it (`--token`/`PATR_TOKEN`, `--runner-token`/`PATR_RUNNER_TOKEN`). Files holding a token are opened with `.mode(0o600)` and also `set_permissions(0o600)`, since `mode` only applies when the file is created.
+- `runner setup {new,reconnect}` writes `utils::runner_config_path()`, with the runner's SQLite beside it as `.db`. `new` needs a login. `reconnect` takes `--runner-token` when logged out; when logged in it regenerates the token (confirm, or `-y`). Reconnecting the runner already configured only swaps `apiToken`. Replacing another runner's config needs `-f`, because the new runner would reconcile the old one's deployments, volumes included, off the host. Both ask every question before the call that creates or regenerates, so an aborted prompt changes nothing.
 
 ## Library > shell
 
@@ -76,3 +78,5 @@ API and asserts on the exact request bodies. `constants::API_BASE_URL` is a comp
 constant, so the recipe builds the tests with `PATR_TEST_API_BASE_URL` set — plain
 `cargo test -p cli` will point them at a real API and fail. One fixed port means one shared
 server, hence `--test-threads=1`.
+
+The tests build debug, so the release side of a `cfg!(debug_assertions)` branch (`AppState`'s config paths, `FRONTEND_BASE_URL`) never runs in them. Check it by hand.

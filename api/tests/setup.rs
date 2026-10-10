@@ -41,7 +41,12 @@ use models::{
 use preprocess::Preprocessable;
 use rand::{RngExt as _, distr::Alphanumeric};
 use serde::Serialize;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
+use tokio_tungstenite::{
+	MaybeTlsStream,
+	WebSocketStream,
+	tungstenite::{Error as TungsteniteError, client::IntoClientRequest as _},
+};
 use wiremock::{
 	Mock,
 	MockServer,
@@ -180,6 +185,41 @@ impl TestSetup {
 			req = req.add_header(name.clone(), value.to_str().unwrap());
 		}
 		req.json(&request.body).await
+	}
+
+	/// Open a WebSocket to a stream endpoint on the API host. Takes the
+	/// endpoint's path and headers rather than an [`ApiRequest`], whose
+	/// WebSocket body only the server side can build. Returns the status the
+	/// upgrade was refused with, if it was.
+	pub async fn connect_api_websocket(
+		&self,
+		path: impl std::fmt::Display,
+		headers: impl Headers,
+	) -> Result<WebSocketStream<MaybeTlsStream<TcpStream>>, http::StatusCode> {
+		let mut url = self
+			.api
+			.server_url(&path.to_string())
+			.expect("the api server has no address");
+		url.set_scheme("ws")
+			.expect("failed to switch the url to ws");
+		let mut client_request = url
+			.as_str()
+			.into_client_request()
+			.expect("invalid websocket request");
+		client_request.headers_mut().insert(
+			"X-Real-IP",
+			random_ipv4()
+				.to_string()
+				.parse()
+				.expect("invalid X-Real-IP"),
+		);
+		client_request.headers_mut().extend(headers.to_header_map());
+
+		match tokio_tungstenite::connect_async(client_request).await {
+			Ok((websocket, _)) => Ok(websocket),
+			Err(TungsteniteError::Http(response)) => Err(response.status()),
+			Err(err) => panic!("failed to connect the websocket: {err}"),
+		}
 	}
 
 	/// Same as [`make_api_call`] but pins the request's `X-Real-IP` to a
@@ -464,6 +504,14 @@ impl TestSetup {
 			.permission_ids
 			.get(&key)
 			.unwrap_or_else(|| panic!("permission '{}' not found in cached IDs", key))
+	}
+
+	/// Every request the Cloudflare mock has received, oldest first.
+	pub async fn cloudflare_requests(&self) -> Vec<wiremock::Request> {
+		self.cloudflare_mock
+			.received_requests()
+			.await
+			.expect("the Cloudflare mock isn't recording requests")
 	}
 
 	/// Read a value at `key` from the test Redis. Returns `None` if missing.
@@ -962,7 +1010,7 @@ async fn mount_cloudflare_mocks(server: &MockServer) {
 		.mount(server)
 		.await;
 
-	// GET /zones — ListZones
+	// GET /zones — ListZones (the runner handshake looks up the hosted zone)
 	Mock::given(method("GET"))
 		.and(path_regex(r"^/client/v4/zones$"))
 		.respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
@@ -987,7 +1035,18 @@ async fn mount_cloudflare_mocks(server: &MockServer) {
 				"paused": false,
 				"type": "full",
 				"development_mode": 0,
-				"name_servers": ["ns1.mock.com", "ns2.mock.com"]
+				"name_servers": ["ns1.mock.com", "ns2.mock.com"],
+				"account": { "id": "fake-account-id", "name": "mock-account" },
+				"owner": { "type": "user", "id": "mock-owner-id", "email": "owner@mock.com" },
+				"meta": {
+					"custom_certificate_quota": 0,
+					"page_rule_quota": 3,
+					"phishing_detected": false
+				},
+				"permissions": [],
+				"activated_on": "2024-01-01T00:00:00Z",
+				"created_on": "2024-01-01T00:00:00Z",
+				"modified_on": "2024-01-01T00:00:00Z"
 			}],
 			"result_info": {
 				"page": 1,
@@ -1077,6 +1136,55 @@ async fn mount_cloudflare_mocks(server: &MockServer) {
 			"connections": [],
 			"metadata": {}
 		})))
+		.mount(server)
+		.await;
+
+	// Specific overrides: the tunnel ids `deleted-tunnel-id` and
+	// `missing-tunnel-id` are already gone from Cloudflare (the first reads back
+	// with `deleted_at` set, the second 404s), and deleting either fails, so
+	// tests can exercise a handler treating them as already deleted. Mounted
+	// with higher priority than the generic GET and DELETE tunnel stubs.
+	Mock::given(method("GET"))
+		.and(path_regex(
+			r"^/client/v4/accounts/[^/]+/cfd_tunnel/deleted-tunnel-id$",
+		))
+		.respond_with(cf_success(serde_json::json!({
+			"id": "00000000-0000-0000-0000-000000000000",
+			"name": "mock-tunnel",
+			"created_at": "2024-01-01T00:00:00Z",
+			"deleted_at": "2024-01-01T00:00:00Z",
+			"connections": [],
+			"metadata": {}
+		})))
+		.with_priority(1)
+		.mount(server)
+		.await;
+
+	Mock::given(method("GET"))
+		.and(path_regex(
+			r"^/client/v4/accounts/[^/]+/cfd_tunnel/missing-tunnel-id$",
+		))
+		.respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+			"success": false,
+			"errors": [{ "code": 1003, "message": "Tunnel not found" }],
+			"messages": [],
+			"result": null
+		})))
+		.with_priority(1)
+		.mount(server)
+		.await;
+
+	Mock::given(method("DELETE"))
+		.and(path_regex(
+			r"^/client/v4/accounts/[^/]+/cfd_tunnel/(deleted|missing)-tunnel-id$",
+		))
+		.respond_with(ResponseTemplate::new(404).set_body_json(serde_json::json!({
+			"success": false,
+			"errors": [{ "code": 1003, "message": "Tunnel not found" }],
+			"messages": [],
+			"result": null
+		})))
+		.with_priority(1)
 		.mount(server)
 		.await;
 

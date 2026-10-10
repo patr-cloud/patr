@@ -15,7 +15,9 @@ pub async fn initialize_runner_tables(
 			last_seen TIMESTAMPTZ,
 			workspace_id UUID NOT NULL,
 			cloudflare_tunnel_id TEXT NOT NULL,
-			deleted TIMESTAMPTZ
+			deleted TIMESTAMPTZ,
+			version TEXT NOT NULL,
+			service_account_id UUID NOT NULL
 		);
 		"#
 	)
@@ -55,6 +57,18 @@ pub async fn initialize_runner_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	// Every runner has its own service account.
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			runner_uq_service_account_id
+		ON
+			runner(service_account_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
@@ -69,6 +83,8 @@ pub async fn initialize_runner_constraints(
 		ALTER TABLE runner
 			ADD CONSTRAINT runner_fk_workspace_id
 				FOREIGN KEY(workspace_id) REFERENCES workspace(id),
+			ADD CONSTRAINT runner_fk_service_account_id
+				FOREIGN KEY(service_account_id) REFERENCES service_account(id),
 			ADD CONSTRAINT runner_fk_id_workspace_id
 				FOREIGN KEY(id, workspace_id, deleted) 
 					REFERENCES resource(id, workspace_id, deleted)

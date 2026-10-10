@@ -2,23 +2,25 @@ use axum::Router;
 
 use crate::prelude::*;
 
-mod add_runner_to_workspace;
+mod create_runner;
 mod get_ingress_token_for_runner;
 mod get_runner_info;
 mod get_runner_logs;
 mod get_runner_metrics;
 mod list_runners_for_workspace;
+mod regenerate_runner_token;
 mod remove_runner_from_workspace;
 mod stream_runner_data_for_workspace;
 mod stream_runner_logs;
 
 use self::{
-	add_runner_to_workspace::*,
+	create_runner::*,
 	get_ingress_token_for_runner::*,
 	get_runner_info::*,
 	get_runner_logs::*,
 	get_runner_metrics::*,
 	list_runners_for_workspace::*,
+	regenerate_runner_token::*,
 	remove_runner_from_workspace::*,
 	stream_runner_data_for_workspace::*,
 	stream_runner_logs::*,
@@ -27,10 +29,11 @@ use self::{
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(add_runner_to_workspace, state, host_client_types)
+		.mount_auth_endpoint(create_runner, state, host_client_types)
 		.mount_auth_endpoint(get_ingress_token_for_runner, state, host_client_types)
 		.mount_auth_endpoint(get_runner_info, state, host_client_types)
 		.mount_auth_endpoint(list_runners_for_workspace, state, host_client_types)
+		.mount_auth_endpoint(regenerate_runner_token, state, host_client_types)
 		.mount_auth_endpoint(remove_runner_from_workspace, state, host_client_types)
 		.mount_auth_endpoint(stream_runner_data_for_workspace, state, host_client_types)
 		.mount_auth_endpoint(get_runner_logs, state, host_client_types)

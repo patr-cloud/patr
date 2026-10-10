@@ -1,4 +1,4 @@
-import { Accessor, createSignal, Setter } from "solid-js";
+import { Accessor, createSignal, JSX, Setter } from "solid-js";
 import { Button, ButtonVariant, Input, InputType, Modal, ModalContainer } from "~/components";
 import { Color } from "~/utils/color";
 
@@ -8,6 +8,9 @@ const RegenerateModal = (props: {
 	title: string;
 	isOpen: Accessor<boolean>;
 	setIsOpen: Setter<boolean>;
+	message?: string;
+	isLoading?: boolean;
+	renderTrigger?: (open: (value: boolean) => void) => JSX.Element;
 }) => {
 	const [resourceNameInput, setResourceNameInput] = createSignal("");
 	const [internalIsOpen, internalSetIsOpen] = createSignal(false);
@@ -23,7 +26,8 @@ const RegenerateModal = (props: {
 					<form class="w-full">
 						<h2 class="text-md text-primary font-semibold mb-4">{props.title}</h2>
 						<p class="mb-4 text-sm text-white">
-							This action will invalidate the old token and generate a new one. To Confirm, type &nbsp;
+							{props.message ?? "This action will invalidate the old token and generate a new one."} To
+							Confirm, type &nbsp;
 							<b>"{props.resourceName}"</b> below.
 						</p>
 
@@ -40,6 +44,8 @@ const RegenerateModal = (props: {
 								type="submit"
 								onClick={props.onClickRegenerate}
 								disabled={resourceNameInput() !== props.resourceName}
+								loading={props.isLoading}
+								loadingContent={() => <span>Regenerating...</span>}
 							>
 								REGENERATE
 							</Button>
@@ -47,11 +53,15 @@ const RegenerateModal = (props: {
 					</form>
 				</ModalContainer>
 			)}
-			renderTrigger={(open) => (
-				<Button onClick={() => open(true)} variant={ButtonVariant.Outlined} color={Color.Error}>
-					REGENERATE
-				</Button>
-			)}
+			renderTrigger={(open) =>
+				props.renderTrigger ? (
+					props.renderTrigger(open)
+				) : (
+					<Button onClick={() => open(true)} variant={ButtonVariant.Outlined} color={Color.Error}>
+						REGENERATE
+					</Button>
+				)
+			}
 		/>
 	);
 };

@@ -27,6 +27,28 @@ pub async fn delete_service_account(
 		state: _,
 	}: AuthenticatedAppRequest<'_, DeleteServiceAccountRequest>,
 ) -> Result<AppResponse<DeleteServiceAccountRequest>, ErrorType> {
+	// A runner's service account goes only with its runner.
+	let is_immutable = query!(
+		r#"
+		SELECT
+			is_immutable
+		FROM
+			service_account
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		service_account_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist)?
+	.is_immutable;
+
+	if is_immutable {
+		return Err(ErrorType::ServiceAccountIsImmutable);
+	}
+
 	// Remove every grant the account held
 	query!(
 		r#"

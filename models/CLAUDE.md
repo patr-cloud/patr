@@ -5,7 +5,7 @@ Shared DTOs and types used by the API, frontend (via generated TS bindings), CLI
 ## Structure
 
 - `src/api/` mirrors the HTTP endpoint tree (one file per endpoint, a `mod.rs` per resource for shared DTOs).
-- Endpoints are declared with `macros::declare_api_endpoint!` (grammar: doc comment, name, `METHOD "/path" { path }`, then optional `request_headers` / `authentication` / `query` / `request` / `response` / `audit_log`). Streaming endpoints use `declare_stream_endpoint!`. The macro generates the `Path`/`Query`/`RequestHeaders`/`Request`/`Response` structs and the `ApiEndpoint` impl.
+- Endpoints are declared with `macros::declare_api_endpoint!` (grammar: doc comment, name, `METHOD "/path" { path }`, then optional `request_headers` / `authentication` / `query` / `request` / `response`, and required `client_type` (any of `WebLogin`, `ApiToken`, `ServiceAccount`) and `audit_log`). Streaming endpoints use `declare_stream_endpoint!`. The macro generates the `Path`/`Query`/`RequestHeaders`/`Request`/`Response` structs and the `ApiEndpoint` impl.
 - `src/rbac/` holds `Permission` and its sub-enums — the RBAC source of truth.
 - `WithId<T>` / `OnlyId` flatten an `id: Uuid` onto a DTO via `#[serde(flatten)]` — the inner `T` must not carry its own id.
 

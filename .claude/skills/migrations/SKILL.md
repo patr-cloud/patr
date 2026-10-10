@@ -24,6 +24,7 @@ Watch for these:
 - **Backslashes in raw strings.** A Rust raw string (`r#"…"#`) passes them through literally. A regex `\.` is written `\.`; writing `\\.` puts two backslashes into the SQL.
 - **Postgres 18 names `NOT NULL` constraints**, as `<table>_<column>_not_null`. Renaming a column doesn't rename its constraint, so the old name lingers unless you rename that too.
 - **`ADD COLUMN` appends.** If the fresh-install DDL puts the column somewhere else, the two schemas differ in column order.
+- **Grants by name skip missing permissions.** A grant that joins on `permission.name` inserts nothing for a name the table doesn't have yet, and still succeeds. Insert the permission first, and on the alpha clone check every name the migration grants exists.
 
 ## Verifying against alpha
 

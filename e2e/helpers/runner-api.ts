@@ -10,7 +10,7 @@ type Creds = { accessToken: string; clientIp: string };
 
 const base = (ws: string) => `/workspace/${ws}/runner`;
 
-// Runner names go through RESOURCE_NAME_REGEX (4-255, allows upper/space/dot);
+// Runner names go through RESOURCE_NAME_REGEX (2-255, allows upper/space/dot);
 // unlike container repos there is NO stricter DB CHECK. Default fixture names
 // are simple and unique.
 export function randomRunnerName(prefix = 'e2e-runner'): string {
@@ -24,19 +24,36 @@ export type RunnerInfo = {
 	lastSeen: string | null;
 };
 
+// Create a runner the way `patr runner setup new` does. The response carries
+// the runner's own service account token, shown only once.
 export async function createRunnerAPI(
 	api: ApiClient,
 	user: Creds,
 	workspaceId: string,
 	name?: string,
-): Promise<{ id: string; name: string }> {
+): Promise<{ id: string; name: string; token: string }> {
 	const runnerName = name ?? randomRunnerName();
-	const resp = await api.request<{ id: string }>('POST', base(workspaceId), {
+	const resp = await api.request<{ id: string; token: string }>('POST', base(workspaceId), {
 		token: user.accessToken,
 		clientIp: user.clientIp,
 		body: { name: runnerName },
 	});
-	return { id: resp.id, name: runnerName };
+	return { id: resp.id, name: runnerName, token: resp.token };
+}
+
+// Rotate a runner's service account token. The old token stops working at once.
+export async function regenerateRunnerTokenAPI(
+	api: ApiClient,
+	user: Creds,
+	workspaceId: string,
+	runnerId: string,
+): Promise<string> {
+	const resp = await api.request<{ token: string }>(
+		'POST',
+		`${base(workspaceId)}/${runnerId}/token`,
+		{ token: user.accessToken, clientIp: user.clientIp },
+	);
+	return resp.token;
 }
 
 export async function getRunnerInfoAPI(
@@ -90,18 +107,4 @@ export async function listRunnersAPI(
 	const header = res.headers.get('x-total-count');
 	const body = JSON.parse(text) as { runners: RunnerInfo[] };
 	return { runners: body.runners, totalCount: header === null ? null : Number(header) };
-}
-
-export async function getIngressTokenAPI(
-	api: ApiClient,
-	user: Creds,
-	workspaceId: string,
-	runnerId: string,
-): Promise<string> {
-	const resp = await api.request<{ token: string }>(
-		'GET',
-		`${base(workspaceId)}/${runnerId}/ingress-token`,
-		{ token: user.accessToken, clientIp: user.clientIp },
-	);
-	return resp.token;
 }

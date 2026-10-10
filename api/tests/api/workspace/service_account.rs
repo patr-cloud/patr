@@ -57,6 +57,7 @@ async fn create_service_account_duplicate_name() {
 					service_account: ServiceAccount {
 						name: sa.name,
 						description: None,
+						is_immutable: false,
 					},
 					role_bindings: vec![],
 				})
@@ -90,6 +91,7 @@ async fn create_service_account_invalid_name() {
 					service_account: ServiceAccount {
 						name: "!!!".to_string(),
 						description: None,
+						is_immutable: false,
 					},
 					role_bindings: vec![],
 				})
@@ -240,6 +242,7 @@ async fn update_service_account_name_works() {
 					service_account: ServiceAccount {
 						name: new_name.clone(),
 						description: None,
+						is_immutable: false,
 					},
 					role_bindings: vec![],
 				})
@@ -304,6 +307,7 @@ async fn update_service_account_role_bindings_works() {
 					service_account: ServiceAccount {
 						name: sa.name.clone(),
 						description: None,
+						is_immutable: false,
 					},
 					role_bindings: vec![grant.clone()],
 				})
@@ -359,6 +363,7 @@ async fn update_service_account_duplicate_name() {
 					service_account: ServiceAccount {
 						name: taken.name,
 						description: None,
+						is_immutable: false,
 					},
 					role_bindings: vec![],
 				})
@@ -393,6 +398,7 @@ async fn update_service_account_of_another_type_is_not_found() {
 					service_account: ServiceAccount {
 						name: random_name(8),
 						description: None,
+						is_immutable: false,
 					},
 					role_bindings: vec![],
 				})
@@ -653,6 +659,225 @@ async fn deleted_service_account_token_is_rejected_immediately() {
 		get_workspace_info().await.status_code().as_u16(),
 		"a deleted account's token should be rejected with 401"
 	);
+}
+
+// ── Runner service accounts ─────────────────────────────────────────────
+
+/// A runner's service account is listed and readable like any other, flagged
+/// immutable. One made on the service account routes isn't.
+#[tokio::test]
+async fn runner_service_account_is_immutable() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let sa = setup
+		.create_test_service_account(&user.access_token, workspace.id, vec![])
+		.await;
+	let get_service_account_info = |service_account_id| {
+		setup.make_web_dashboard_call(
+			ApiRequest::<GetServiceAccountInfoRequest>::builder()
+				.path(GetServiceAccountInfoPath {
+					workspace_id: workspace.id,
+					service_account_id,
+				})
+				.headers(GetServiceAccountInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+
+	let service_accounts = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListServiceAccountsRequest>::builder()
+				.path(ListServiceAccountsPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListServiceAccountsRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListServiceAccountsResponse>>()
+		.response
+		.service_accounts;
+	assert_eq!(2, service_accounts.len());
+	let runner_sa = service_accounts
+		.iter()
+		.find(|listed| listed.name == format!("runner-{}", runner.id))
+		.expect("the runner's service account should be listed");
+	assert!(runner_sa.is_immutable);
+	assert!(
+		!service_accounts
+			.iter()
+			.find(|listed| listed.id == sa.id)
+			.expect("the service account should be listed")
+			.is_immutable
+	);
+
+	assert!(
+		get_service_account_info(runner_sa.id)
+			.await
+			.json::<ApiSuccessResponseBody<GetServiceAccountInfoResponse>>()
+			.response
+			.service_account
+			.is_immutable
+	);
+	assert!(
+		!get_service_account_info(sa.id)
+			.await
+			.json::<ApiSuccessResponseBody<GetServiceAccountInfoResponse>>()
+			.response
+			.service_account
+			.is_immutable
+	);
+}
+
+/// A runner's service account can't be updated, have its token regenerated or
+/// be deleted on the service account routes, and none of them change it.
+#[tokio::test]
+async fn runner_service_account_cannot_be_changed() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let role = setup
+		.create_role_with_permissions(
+			&user.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
+		.await;
+	let service_account_id = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListServiceAccountsRequest>::builder()
+				.path(ListServiceAccountsPath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListServiceAccountsRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListServiceAccountsResponse>>()
+		.response
+		.service_accounts[0]
+		.id;
+	let get_service_account_info = || {
+		setup.make_web_dashboard_call(
+			ApiRequest::<GetServiceAccountInfoRequest>::builder()
+				.path(GetServiceAccountInfoPath {
+					workspace_id: workspace.id,
+					service_account_id,
+				})
+				.headers(GetServiceAccountInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+	let before = get_service_account_info()
+		.await
+		.json::<ApiSuccessResponseBody<GetServiceAccountInfoResponse>>()
+		.response;
+
+	let update = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateServiceAccountRequest>::builder()
+				.path(UpdateServiceAccountPath {
+					workspace_id: workspace.id,
+					service_account_id,
+				})
+				.headers(UpdateServiceAccountRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateServiceAccountRequest {
+					service_account: ServiceAccount {
+						name: random_name(8),
+						description: None,
+						is_immutable: false,
+					},
+					role_bindings: vec![RoleBindingGrant {
+						role_id: role.id,
+						resource_id: workspace.id,
+					}],
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(StatusCode::FORBIDDEN, update.status_code());
+
+	let regenerate = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RegenerateServiceAccountTokenRequest>::builder()
+				.path(RegenerateServiceAccountTokenPath {
+					workspace_id: workspace.id,
+					service_account_id,
+				})
+				.headers(RegenerateServiceAccountTokenRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(StatusCode::FORBIDDEN, regenerate.status_code());
+
+	let delete = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteServiceAccountRequest>::builder()
+				.path(DeleteServiceAccountPath {
+					workspace_id: workspace.id,
+					service_account_id,
+				})
+				.headers(DeleteServiceAccountRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(StatusCode::FORBIDDEN, delete.status_code());
+
+	let after = get_service_account_info()
+		.await
+		.json::<ApiSuccessResponseBody<GetServiceAccountInfoResponse>>()
+		.response;
+	assert_eq!(before.service_account, after.service_account);
+	assert_eq!(before.role_bindings.len(), after.role_bindings.len());
+	assert!(
+		before
+			.role_bindings
+			.iter()
+			.all(|grant| after.role_bindings.contains(grant))
+	);
+
+	setup
+		.make_api_call(
+			ApiRequest::<GetWorkspaceInfoRequest>::builder()
+				.path(GetWorkspaceInfoPath {
+					workspace_id: workspace.id,
+				})
+				.headers(GetWorkspaceInfoRequestHeaders {
+					authorization: BearerToken::from_str(&runner.token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_status_ok();
 }
 
 // ── Unauthorized ────────────────────────────────────────────────────────

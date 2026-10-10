@@ -28,6 +28,29 @@ pub async fn regenerate_service_account_token(
 		state: _,
 	}: AuthenticatedAppRequest<'_, RegenerateServiceAccountTokenRequest>,
 ) -> Result<AppResponse<RegenerateServiceAccountTokenRequest>, ErrorType> {
+	// A runner's token is regenerated through the runner, which also drops its
+	// connection and rotates its tunnel.
+	let is_immutable = query!(
+		r#"
+		SELECT
+			is_immutable
+		FROM
+			service_account
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		service_account_id as _,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist)?
+	.is_immutable;
+
+	if is_immutable {
+		return Err(ErrorType::ServiceAccountIsImmutable);
+	}
+
 	let token = permissions::generate_service_account_token();
 	let token_hash = hex::encode(Sha256::digest(&token));
 

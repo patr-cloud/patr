@@ -13,15 +13,15 @@ These are the surfaces to probe:
 
 - **Tenant isolation.** Every query must be scoped to the caller's workspace. A path ID must belong to that workspace and be the right type of resource. Lists, counts and aggregates must never include another workspace's data.
 - **Authentication and authorisation:**
-  - endpoints mounted without auth, or open to API tokens when they shouldn't be;
+  - endpoints mounted without auth, or open to API tokens or service accounts (runner tokens) when they shouldn't be;
   - permissions checked on the wrong resource;
   - token scopes that can be widened;
-  - revocation that lags behind the cached permission map;
+  - revocation that lags behind the cached permission map, or misses a request already past the authenticator;
   - MFA that can be skipped;
   - auth endpoints that can be brute-forced.
   
   The access-control agent checks the model is complete; you check whether it can be bypassed.
-- **Secrets.** Secret values must never reach logs, API responses, audit logs, error messages, metrics labels, runner SQLite or frontend state. Check how the OpenBao proxy authenticates its callers.
+- **Secrets.** Secret values must never reach logs, API responses, audit logs, error messages, metrics labels, runner SQLite or frontend state. Check how the OpenBao proxy authenticates its callers. Credentials Patr mints for third parties, such as tunnel secrets, must be random per resource, never shared or hard-coded.
 - **Code execution on runners.** Runners turn user input into containers and proxy config: image names, env, config mount paths, volume paths, labels, managed URL hostnames that end up in Caddy config. Look for path traversal, config injection, host mounts and privilege escalation.
 - **SSRF.** Anything the server fetches on a user's behalf, such as external registries, domain verification, and the loki, mimir and openbao proxies.
 - **Injection:**

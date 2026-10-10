@@ -48,7 +48,7 @@ use rustis::{
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn stream_runner_data_for_workspace(
 	AuthenticatedAppRequest {
@@ -61,14 +61,14 @@ pub async fn stream_runner_data_for_workspace(
 				query: (),
 				headers:
 					StreamRunnerDataForWorkspaceRequestHeaders {
-						authorization: _,
+						authorization,
 						user_agent: _,
 					},
 				body: WebSocketUpgrade(upgrade),
 			},
-		database: _,
+		database,
 		redis,
-		client_ip: _,
+		client_ip,
 		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, StreamRunnerDataForWorkspaceRequest>,
@@ -94,6 +94,31 @@ pub async fn stream_runner_data_for_workspace(
 	else {
 		return Err(ErrorType::RunnerAlreadyConnected);
 	};
+
+	// Authenticate again now that the lock is held. Say Mallory has a leaked
+	// copy of Alice's runner token, and Alice regenerates it. The regenerate
+	// clears the cache, then drops this lock to close the old connection.
+	// Mallory connects with the old token, gets past the authenticator on a
+	// cached entry just before the cache is cleared, and takes the lock just
+	// after it's dropped, so nothing would close the connection. Authenticating
+	// again misses the cache and finds the old token gone. A connection that
+	// took the lock before it was dropped closes at its next ping instead.
+	if let Err(err) = permissions::authenticate(
+		database,
+		redis,
+		&state.config,
+		client_ip,
+		authorization.0.token(),
+		<StreamRunnerDataForWorkspaceRequest as ApiEndpoint>::ALLOWED_CLIENT_TYPES,
+	)
+	.await
+	{
+		_ = redis
+			.del(redis::keys::runner_connection_lock(&runner_id))
+			.await
+			.inspect_err(|err| error!("Error releasing runner connection lock: {:?}", err));
+		return Err(err);
+	}
 
 	let redis = redis.clone();
 
@@ -131,10 +156,11 @@ async fn handle_websocket(
 	state: AppState,
 ) {
 	let exposure_type;
+	let runner_version;
 
 	loop {
 		let Some(message) = websocket.next().await else {
-			debug!("Websocket client disconnected before setting exposure type");
+			debug!("Websocket client disconnected before sending handshake");
 			return;
 		};
 		let Ok(Message::Item(message)) = message else {
@@ -143,24 +169,26 @@ async fn handle_websocket(
 		};
 
 		trace!("Received message from websocket: {:?}", message);
-		let SetRunnerExposureType {
+		let Handshake {
+			version,
 			exposure_type: new_exposure_type,
 		} = message
 		else {
-			// Ignore other messages until exposure type is set
+			// Ignore other messages until the handshake is received
 			let Ok(()) = websocket
 				.send(Message::Item(
-					StreamRunnerDataForWorkspaceServerMsg::ExposureTypeRequired,
+					StreamRunnerDataForWorkspaceServerMsg::HandshakeRequired,
 				))
 				.await
 			else {
-				debug!("Failed to send exposure type required message to websocket");
+				debug!("Failed to send handshake required message to websocket");
 				continue;
 			};
 			continue;
 		};
 
 		exposure_type = new_exposure_type;
+		runner_version = version;
 
 		break;
 	}
@@ -184,11 +212,13 @@ async fn handle_websocket(
 			runner
 		SET
 			is_connected = TRUE,
-			last_seen = NOW()
+			last_seen = NOW(),
+			version = $2
 		WHERE
 			id = $1;
 		"#,
 		runner_id as _,
+		runner_version.to_string(),
 	)
 	.execute(&state.database)
 	.await
@@ -350,7 +380,10 @@ async fn handle_websocket(
 							continue;
 						};
 					}
-					SetRunnerExposureType { exposure_type } => {
+					Handshake {
+						version,
+						exposure_type,
+					} => {
 						let Ok(()) = update_runner_exposure_type(
 							runner_id,
 							workspace_id,
@@ -369,27 +402,29 @@ async fn handle_websocket(
 							);
 							continue;
 						};
+
+						let Ok(_) = query!(
+							r#"
+							UPDATE
+								runner
+							SET
+								version = $2
+							WHERE
+								id = $1;
+							"#,
+							runner_id as _,
+							version.to_string(),
+						)
+						.execute(&state.database)
+						.await
+						.inspect_err(|err| error!("Failed to update runner version: {:?}", err)) else {
+							continue;
+						};
 					}
 				}
 			}
 		}
 	}
-
-	_ = query!(
-		r#"
-		UPDATE
-			runner
-		SET
-			is_connected = FALSE,
-			last_seen = NOW()
-		WHERE
-			id = $1;
-		"#,
-		runner_id as _,
-	)
-	.execute(&state.database)
-	.await
-	.inspect_err(|err| error!("Failed to set runner as disconnected: {:?}", err));
 
 	trace!("Websocket closed, unsubscribing from runner data stream");
 	_ = pub_sub
@@ -418,6 +453,26 @@ async fn handle_websocket(
 	.await;
 	if let Err(err) = release_result {
 		error!("Error releasing runner connection lock: {:?}", err);
+	}
+
+	// A newer connection holding the lock (the runner moved machines) has
+	// already marked the runner connected
+	if redis.exists(lock_key).await.unwrap_or(0) == 0 {
+		_ = query!(
+			r#"
+			UPDATE
+				runner
+			SET
+				is_connected = FALSE,
+				last_seen = NOW()
+			WHERE
+				id = $1;
+			"#,
+			runner_id as _,
+		)
+		.execute(&state.database)
+		.await
+		.inspect_err(|err| error!("Failed to set runner as disconnected: {:?}", err));
 	}
 	_ = websocket.close().await;
 }
@@ -583,56 +638,56 @@ async fn update_runner_exposure_type(
 		RunnerExposureType::Private => {
 			trace!("Updating DNS record for the tunnel");
 
+			// Locked like the ingress token fetch, so the two can't both create
+			// a tunnel, and a regenerate or delete in flight finishes first
+			let mut transaction = state.database.begin().await?;
 			let tunnel_id = query!(
 				r#"
 				SELECT
-					*
+					cloudflare_tunnel_id
 				FROM
 					runner
 				WHERE
 					id = $1 AND
 					workspace_id = $2 AND
-					deleted IS NULL;
+					deleted IS NULL
+				FOR UPDATE;
 				"#,
 				&runner_id as _,
 				&workspace_id as _,
 			)
-			.fetch_optional(&state.database)
+			.fetch_optional(&mut *transaction)
 			.await?
 			.ok_or(ErrorType::ResourceDoesNotExist)?
 			.cloudflare_tunnel_id;
 
-			let tunnel = reqwest::Client::new()
-				.get(format!(
-					"{}accounts/{}/cfd_tunnel/{}",
-					state.config.cloudflare.base_url, state.config.cloudflare.account_id, tunnel_id
-				))
-				.bearer_auth(&state.config.cloudflare.api_key)
-				.send()
-				.await?
-				.json::<ApiSuccess<Option<Tunnel>>>()
-				.await?
-				.result
-				.filter(|tunnel| tunnel.deleted_at.is_none());
+			// `GET cfd_tunnel/` with an empty id hits the list endpoint, so a runner
+			// that has no tunnel yet skips the lookup
+			let tunnel = if tunnel_id.is_empty() {
+				None
+			} else {
+				reqwest::Client::new()
+					.get(format!(
+						"{}accounts/{}/cfd_tunnel/{}",
+						state.config.cloudflare.base_url, state.config.cloudflare.account_id, tunnel_id
+					))
+					.bearer_auth(&state.config.cloudflare.api_key)
+					.send()
+					.await?
+					.json::<ApiSuccess<Option<Tunnel>>>()
+					.await?
+					.result
+					.filter(|tunnel| tunnel.deleted_at.is_none())
+			};
 
-			let tunnel = if let Some(tunnel) = tunnel {
+			let tunnel_id = if let Some(tunnel) = tunnel {
 				info!("Tunnel exists. Updating tunnel `{}`", tunnel.id);
-				tunnel
+				tunnel.id.to_string()
 			} else {
 				// The tunnel does not exist. Create one
 				info!("Tunnel does not exist. Creating tunnel");
-				let tunnel = client
-					.request(&create_tunnel::CreateTunnel {
-						account_identifier: &state.config.cloudflare.account_id,
-						params: create_tunnel::Params {
-							config_src: &ConfigurationSrc::Cloudflare,
-							name: &format!("Runner: {}", runner_id),
-							tunnel_secret: &b"default".to_vec(),
-							metadata: None,
-						},
-					})
-					.await?
-					.result;
+				let tunnel_id =
+					utils::cloudflare::create_tunnel_with_config(runner_id, &state.config).await?;
 
 				query!(
 					r#"
@@ -645,18 +700,19 @@ async fn update_runner_exposure_type(
 						workspace_id = $3 AND
 						deleted IS NULL;
 					"#,
-					&tunnel.id as _,
+					&tunnel_id,
 					&runner_id as _,
 					&workspace_id as _,
 				)
-				.execute(&state.database)
+				.execute(&mut *transaction)
 				.await?;
 
-				tunnel
+				tunnel_id
 			};
+			transaction.commit().await?;
 
 			vec![DnsContent::CNAME {
-				content: format!("{}.cfargotunnel.com", tunnel.id),
+				content: format!("{tunnel_id}.cfargotunnel.com"),
 			}]
 		}
 		RunnerExposureType::PublicIP { mut ip_addresses } => {

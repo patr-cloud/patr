@@ -17,7 +17,12 @@ pub async fn create_service_account(
 					},
 				body:
 					CreateServiceAccountRequestProcessed {
-						service_account: ServiceAccountProcessed { name, description },
+						service_account:
+							ServiceAccountProcessed {
+								name,
+								description,
+								is_immutable: _,
+							},
 						role_bindings,
 					},
 			},
@@ -105,10 +110,11 @@ pub async fn create_service_account(
 				name,
 				description,
 				token_hash,
-				created
+				created,
+				is_immutable
 			)
 		VALUES
-			($1, $2, $3, $4, $5, NOW());
+			($1, $2, $3, $4, $5, NOW(), FALSE);
 		"#,
 		id as _,
 		workspace_id as _,

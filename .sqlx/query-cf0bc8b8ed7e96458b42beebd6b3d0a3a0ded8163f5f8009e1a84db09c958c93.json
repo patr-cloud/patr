@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO service_account(id, workspace_id, name, description, token_hash, created, is_immutable) VALUES ($1, $2, $3, $4, $5, NOW(), FALSE);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Varchar",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cf0bc8b8ed7e96458b42beebd6b3d0a3a0ded8163f5f8009e1a84db09c958c93"
+}

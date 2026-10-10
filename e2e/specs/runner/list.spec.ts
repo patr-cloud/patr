@@ -32,20 +32,20 @@ test.describe('runner > list [UI]', () => {
 		});
 	});
 
-	test('lists a runner with its name and an Unreachable status', async ({ browser, api }) => {
+	test('lists a runner with its name and a Not set up status', async ({ browser, api }) => {
 		await using user = await createUserWithWorkspace(api);
 		const name = randomRunnerName();
 		await createRunnerAPI(api, user, user.workspaceId, name);
 		await withList(browser, user, async (page) => {
 			await expect(runnerRow(page, name)).toBeVisible();
 			await expect(emptyStateHeading(page)).toBeHidden();
-			// A never-connected runner shows the unreachable status in its row. Scope
+			// A never-connected runner shows the not set up status in its row. Scope
 			// to the table; the mobile card grid (md:hidden) renders the status too
 			// and its element is first in the DOM but hidden at 1280.
 			await expect(
 				page
 					.getByRole('table')
-					.getByText(/unreachable/i)
+					.getByText(/not set up/i)
 					.first(),
 			).toBeVisible();
 		});

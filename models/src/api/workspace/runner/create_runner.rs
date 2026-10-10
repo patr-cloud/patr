@@ -1,8 +1,10 @@
 use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
 
 macros::declare_api_endpoint!(
-	/// Route to add runner to a workspace
-	AddRunnerToWorkspace,
+	/// Route to create a runner in a workspace. Creates the runner's service
+	/// account along with it, and returns the account's token (shown only
+	/// once), which the runner connects with.
+	CreateRunner,
 	POST "/workspace/{workspace_id}/runner" {
 		/// The ID of the workspace
 		pub workspace_id: Uuid,
@@ -29,8 +31,10 @@ macros::declare_api_endpoint!(
 		/// The ID of the created runner
 		#[serde(flatten)]
 		pub id: OnlyId,
+		/// The runner's token (shown only once)
+		pub token: String,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [WebLogin, ApiToken],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceCreated,
 		resource_type: ResourceType::Runner,

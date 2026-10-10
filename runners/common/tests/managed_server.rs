@@ -4,6 +4,8 @@
 //!
 //! Each runner connects with a unique `runner_id` in the WS path, so
 //! multiple tests can share the same server without interference.
+//! [`ManagedServerState::set_rejected`] makes the stream turn a runner away
+//! with a 401, the way the API does once the runner's token is regenerated.
 
 use std::{
 	collections::BTreeMap,
@@ -19,7 +21,7 @@ use axum::{
 		State,
 		ws::{Message, WebSocket, WebSocketUpgrade},
 	},
-	response::IntoResponse,
+	response::{IntoResponse, Response},
 	routing::get,
 };
 use axum_extra::TypedHeader;
@@ -38,9 +40,13 @@ use tokio::sync::{OnceCell, broadcast};
 pub struct RunnerChannel {
 	/// Send server messages (DeploymentCreated, etc.) to this runner.
 	pub server_tx: broadcast::Sender<String>,
-	/// Client messages (SetRunnerExposureType, DeploymentStatusUpdated)
+	/// Client messages (Handshake, DeploymentStatusUpdated)
 	/// received from this runner.
 	pub client_msgs: Arc<Mutex<Vec<StreamRunnerDataForWorkspaceClientMsg>>>,
+	/// Whether the stream rejects this runner's token with a 401.
+	pub rejected: bool,
+	/// How many connection attempts were rejected with a 401.
+	pub rejected_attempts: usize,
 }
 
 /// Shared state for the test managed server.
@@ -73,9 +79,34 @@ impl ManagedServerState {
 			RunnerChannel {
 				server_tx: tx.clone(),
 				client_msgs: Arc::new(Mutex::new(Vec::new())),
+				rejected: false,
+				rejected_attempts: 0,
 			},
 		);
 		tx
+	}
+
+	/// Reject (or accept again) a runner's token on the stream. Rejecting also
+	/// drops the runner's live connection, as the API does when the token is
+	/// regenerated.
+	pub fn set_rejected(&self, runner_id: Uuid, rejected: bool) {
+		let mut runners = self.runners.lock().unwrap();
+		let channel = runners.get_mut(&runner_id).unwrap();
+		channel.rejected = rejected;
+		if rejected {
+			// Dropping the only sender ends the connection's write task.
+			channel.server_tx = broadcast::channel(64).0;
+		}
+	}
+
+	/// How many of a runner's connection attempts were rejected with a 401.
+	pub fn rejected_attempts(&self, runner_id: Uuid) -> usize {
+		self.runners
+			.lock()
+			.unwrap()
+			.get(&runner_id)
+			.map(|ch| ch.rejected_attempts)
+			.unwrap_or_default()
 	}
 
 	/// Send a server message to a specific runner's WS connection.
@@ -174,12 +205,31 @@ async fn ws_handler(
 	Path((_workspace_id, runner_id)): Path<(String, String)>,
 	State(state): State<Arc<ManagedServerState>>,
 	ws: WebSocketUpgrade,
-) -> impl IntoResponse {
+) -> Response {
 	let runner_id = Uuid::parse_str(&runner_id).unwrap();
 
 	// Register runner if not already registered.
 	if !state.runners.lock().unwrap().contains_key(&runner_id) {
 		state.register_runner(runner_id);
+	}
+
+	if let Some(channel) = state
+		.runners
+		.lock()
+		.unwrap()
+		.get_mut(&runner_id)
+		.filter(|channel| channel.rejected)
+	{
+		channel.rejected_attempts += 1;
+		return (
+			StatusCode::UNAUTHORIZED,
+			Json(ApiErrorResponseBody {
+				success: False,
+				error: ErrorType::Unauthorized,
+				message: "Token rejected".to_string(),
+			}),
+		)
+			.into_response();
 	}
 
 	let rx = state
@@ -200,6 +250,7 @@ async fn ws_handler(
 		.clone();
 
 	ws.on_upgrade(move |socket| handle_ws(socket, rx, client_msgs))
+		.into_response()
 }
 
 async fn handle_ws(
@@ -210,7 +261,7 @@ async fn handle_ws(
 	let (mut sink, mut stream) = socket.split();
 
 	// Forward server messages to the WS client.
-	let write_task = tokio::spawn(async move {
+	let mut write_task = tokio::spawn(async move {
 		while let Ok(msg) = server_rx.recv().await {
 			if sink
 				.send(Message::Binary(msg.into_bytes().into()))
@@ -223,7 +274,7 @@ async fn handle_ws(
 	});
 
 	// Collect client messages.
-	let read_task = tokio::spawn(async move {
+	let mut read_task = tokio::spawn(async move {
 		while let Some(Ok(msg)) = stream.next().await {
 			let data = match msg {
 				Message::Text(t) => t.to_string(),
@@ -238,9 +289,14 @@ async fn handle_ws(
 	});
 
 	tokio::select! {
-		_ = write_task => {}
-		_ = read_task => {}
+		_ = &mut write_task => {}
+		_ = &mut read_task => {}
 	}
+
+	// Each task holds half of the socket, so both must go for the connection
+	// to close.
+	write_task.abort();
+	read_task.abort();
 }
 
 async fn list_deployments_handler(
