@@ -463,3 +463,89 @@ async fn stopped_deployment_is_not_started_by_rotation() {
 		"a stopped deployment must not be started, not even briefly"
 	);
 }
+
+#[tokio::test]
+async fn rejected_token_keeps_retrying_without_touching_deployments() {
+	let (server_state, mock_state, database, _ws_id, runner_id, _tmp) = setup_managed().await;
+	let (dep_id, deployment, details) = test_deployment(runner_id);
+
+	// Upstream keeps the deployment, so the resync after recovering keeps it
+	// too.
+	server_state.add_deployment(WithId::new(dep_id, deployment.clone()), details.clone());
+	server_state.send_to_runner(
+		runner_id,
+		&StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
+			deployment: WithId::new(dep_id, deployment),
+			running_details: details,
+		},
+	);
+
+	let mock = mock_state.clone();
+	periodic_check(
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		Duration::from_secs(10),
+	)
+	.await;
+
+	// Report it as running so the status poll doesn't re-apply it.
+	mock_state
+		.statuses
+		.lock()
+		.unwrap()
+		.insert(dep_id, DeploymentStatus::Running);
+	mock_state.calls.lock().unwrap().clear();
+	let actor_id = ractor::registry::where_is(format!("deployment-{dep_id}"))
+		.expect("deployment actor should be running")
+		.get_id();
+	let handshakes = || {
+		server_state
+			.get_client_msgs(runner_id)
+			.iter()
+			.filter(|m| matches!(m, StreamRunnerDataForWorkspaceClientMsg::Handshake { .. }))
+			.count()
+	};
+	let handshakes_before = handshakes();
+
+	// The token is regenerated: upstream drops the stream and turns every
+	// reconnect away.
+	server_state.set_rejected(runner_id, true);
+
+	let state = server_state.clone();
+	periodic_check(
+		move || state.rejected_attempts(runner_id) >= 2,
+		Duration::from_secs(10),
+	)
+	.await;
+
+	let assert_untouched = async || {
+		let row = sqlx::query("SELECT id FROM deployment WHERE id = $1")
+			.bind(dep_id)
+			.fetch_optional(&database)
+			.await
+			.unwrap();
+		assert!(row.is_some(), "the deployment should still be in SQLite");
+		assert_eq!(
+			ractor::registry::where_is(format!("deployment-{dep_id}")).map(|cell| cell.get_id()),
+			Some(actor_id),
+			"the deployment actor should not have been restarted"
+		);
+		assert!(
+			!mock_state.has_call(|c| matches!(
+				c,
+				ExecutorCall::Upsert(id) | ExecutorCall::Delete(id) | ExecutorCall::Stop(id)
+					if *id == dep_id
+			)),
+			"the deployment should not have been touched"
+		);
+	};
+	assert_untouched().await;
+
+	// A new token is in place: the runner reconnects on its own.
+	server_state.set_rejected(runner_id, false);
+
+	periodic_check(|| handshakes() > handshakes_before, Duration::from_secs(20)).await;
+
+	// Give the resync that follows the reconnect time to land.
+	tokio::time::sleep(Duration::from_secs(2)).await;
+	assert_untouched().await;
+}
