@@ -1,6 +1,12 @@
 import { request as httpsRequest } from 'node:https';
 import { execa } from 'execa';
-import { HOST_API_PORT, HOST_REGISTRY_PORT, REGISTRY_HOST } from '@/helpers/urls';
+import {
+	HOST_API_PORT,
+	HOST_LOKI_PORT,
+	HOST_MIMIR_PORT,
+	HOST_REGISTRY_PORT,
+	REGISTRY_HOST,
+} from '@/helpers/urls';
 import { waitFor } from '@/helpers/process';
 
 export type IngressResponse = {
@@ -26,6 +32,10 @@ export type DockerVersion = '24' | '25' | '26';
 //   pull from `registry.patr.cloud` with no production code override; pushes go
 //   through the same daemon. `--insecure-registry registry.patr.cloud` lets
 //   dockerd use plain HTTP for the registry.
+// - The same socat setup forwards :3003 → host loki proxy and :3005 → host
+//   mimir proxy. The runner's Alloy service maps `host.docker.internal` to the
+//   DinD's bridge gateway, so its log and metric pushes land on these bridges
+//   rather than on the real host.
 // - port 2375 (dockerd API) and port 8080 (the Caddy ingress — the runner
 //   publishes it on 8080 not 80 so the swarm routing mesh doesn't shadow the
 //   registry bridge on :80/:443) are each published to an ephemeral host port so
@@ -60,6 +70,9 @@ export class DindHandle implements AsyncDisposable {
 			`docker:${version}-dind`,
 			'dockerd',
 			'--host=tcp://0.0.0.0:2375',
+			// The runner's Alloy service bind-mounts the daemon socket, so it has to
+			// exist alongside the TCP listener.
+			'--host=unix:///var/run/docker.sock',
 			`--insecure-registry=${REGISTRY_HOST}`,
 		]);
 
@@ -194,7 +207,9 @@ export class DindHandle implements AsyncDisposable {
 	}
 
 	async [Symbol.asyncDispose](): Promise<void> {
-		await execa('docker', ['rm', '-f', this.containerId]).catch(() => {});
+		// -v drops the daemon's anonymous /var/lib/docker volume, which otherwise
+		// outlives the container and holds every image the test pulled.
+		await execa('docker', ['rm', '-fv', this.containerId]).catch(() => {});
 	}
 }
 
@@ -211,6 +226,7 @@ async function resolvePort(containerId: string, containerPort: string): Promise<
 //     talking to a port-less insecure registry tries HTTPS on :443 and HTTP on
 //     :80, so both must bridge to the plain-HTTP registry.
 //   - :3000 → host API (the docker-login token realm, http://localhost:3000).
+//   - :3003 and :3005 → host loki and mimir proxies, for Alloy's pushes.
 // These ports are free inside the DinD because the swarm ingress is published on
 // 8080, not 80/443.
 async function setupRegistryBridge(containerId: string, version: DockerVersion): Promise<void> {
@@ -227,6 +243,8 @@ async function setupRegistryBridge(containerId: string, version: DockerVersion):
 	await bridge(80, HOST_REGISTRY_PORT);
 	await bridge(443, HOST_REGISTRY_PORT);
 	await bridge(HOST_API_PORT, HOST_API_PORT);
+	await bridge(HOST_LOKI_PORT, HOST_LOKI_PORT);
+	await bridge(HOST_MIMIR_PORT, HOST_MIMIR_PORT);
 
 	// Wait until the registry answers (401 over the bridge means it's reachable).
 	await waitFor(

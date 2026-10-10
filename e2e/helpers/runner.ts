@@ -33,9 +33,11 @@ export type RunnerOpts = {
 
 export class RunnerHandle implements AsyncDisposable {
 	private constructor(
-		private readonly proc: ChildProcess,
+		private proc: ChildProcess,
+		private readonly opts: RunnerOpts,
 		private readonly dind: DindHandle,
 		private readonly fauxEdge: FauxEdge,
+		private readonly dbPath: string,
 		public readonly runnerId: string,
 		public readonly workspaceId: string,
 		public readonly apiToken: string,
@@ -52,61 +54,13 @@ export class RunnerHandle implements AsyncDisposable {
 		const dind = await DindHandle.spawn(opts.dockerVersion);
 
 		try {
-			const { runnerId, serviceAccountToken, apiToken } = await provisionRunner(opts);
+			const { runnerId, runnerToken, apiToken } = await provisionRunner(opts);
 
 			const bindPort = allocateBindPort();
 			const workDir = mkdtempSync(join(tmpdir(), 'patr-e2e-runner-'));
 			const dbPath = join(workDir, 'runner.db');
 
-			const proc = spawn(RUNNER_BINARY, [], {
-				cwd: REPO_ROOT,
-				env: {
-					...process.env,
-					DOCKER_HOST: dind.dockerHost,
-					// Config keys use the `PATR__` prefix with `__` as the nesting
-					// separator; segment names are converted to camelCase to match the
-					// serde field names (see runners/common/src/utils/config.rs).
-					PATR__MODE: 'managed',
-					PATR__WORKSPACE_ID: opts.workspaceId,
-					PATR__RUNNER_ID: runnerId,
-					// The runner authenticates as its own service account, exactly
-					// as a real `patr runner setup` leaves it configured.
-					PATR__API_TOKEN: serviceAccountToken,
-					PATR__BIND_ADDRESS: `127.0.0.1:${bindPort}`,
-					PATR__DATABASE__FILE: dbPath,
-					PATR__DATABASE__CONNECTION_LIMIT: '5',
-					// The runner pulls from the hardcoded registry.patr.cloud, which the
-					// DinD resolves to the host registry via a socat bridge (see dind.ts).
-					// Publish the Caddy ingress on 8080 (not 80) so the swarm routing mesh
-					// leaves :80/:443 free for the in-DinD registry bridge (see dind.ts).
-					PATR__INGRESS_HTTP_LISTEN_PORT: '8080',
-					// A DinD swarm has no IPv6 address pool, so an IPv6-enabled overlay
-					// rejects every task; disable it on the deployment overlay here.
-					PATR__ENABLE_IPV6: 'false',
-				},
-				// Inherit stdout/stderr so the runner's logs stream straight to the test
-				// output (and CI), never to a file.
-				stdio: ['ignore', 'inherit', 'inherit'],
-			});
-
-			proc.once('exit', (code) => {
-				if (code !== null && code !== 0) {
-					console.error(`runner ${runnerId} exited early with code ${code}`);
-				}
-			});
-
-			try {
-				await waitFor(
-					async () => isRunnerConnected(opts.api, opts.user, opts.workspaceId, runnerId),
-					{
-						timeoutMs: 60_000,
-						label: `runner ${runnerId} connected`,
-					},
-				);
-			} catch (err) {
-				proc.kill('SIGKILL');
-				throw err;
-			}
+			const proc = await spawnRunner(opts, dind, runnerId, runnerToken, bindPort, dbPath);
 
 			// Stand up the faux edge (TLS terminator) in front of the ingress so tests
 			// reach deployments over the production topology, not Caddy directly.
@@ -120,8 +74,10 @@ export class RunnerHandle implements AsyncDisposable {
 
 			return new RunnerHandle(
 				proc,
+				opts,
 				dind,
 				fauxEdge,
+				dbPath,
 				runnerId,
 				opts.workspaceId,
 				apiToken,
@@ -133,6 +89,21 @@ export class RunnerHandle implements AsyncDisposable {
 		}
 	}
 
+	// Restart the runner on the same DinD and database with the given token, the
+	// way an operator restarts the service after `patr runner setup reconnect`.
+	async restart({ token }: { token: string }): Promise<void> {
+		this.proc.kill('SIGTERM');
+		await onExit(this.proc);
+		this.proc = await spawnRunner(
+			this.opts,
+			this.dind,
+			this.runnerId,
+			token,
+			this.bindPort,
+			this.dbPath,
+		);
+	}
+
 	async [Symbol.asyncDispose](): Promise<void> {
 		this.proc.kill('SIGTERM');
 		await onExit(this.proc);
@@ -141,19 +112,80 @@ export class RunnerHandle implements AsyncDisposable {
 	}
 }
 
+// Start the runner binary and wait for it to connect.
+async function spawnRunner(
+	opts: RunnerOpts,
+	dind: DindHandle,
+	runnerId: string,
+	token: string,
+	bindPort: number,
+	dbPath: string,
+): Promise<ChildProcess> {
+	const proc = spawn(RUNNER_BINARY, [], {
+		cwd: REPO_ROOT,
+		env: {
+			...process.env,
+			DOCKER_HOST: dind.dockerHost,
+			// Config keys use the `PATR__` prefix with `__` as the nesting
+			// separator; segment names are converted to camelCase to match the
+			// serde field names (see runners/common/src/utils/config.rs).
+			PATR__MODE: 'managed',
+			PATR__WORKSPACE_ID: opts.workspaceId,
+			PATR__RUNNER_ID: runnerId,
+			// The runner authenticates with its own runner token, exactly as
+			// a real `patr runner setup new` leaves it configured.
+			PATR__API_TOKEN: token,
+			PATR__BIND_ADDRESS: `127.0.0.1:${bindPort}`,
+			PATR__DATABASE__FILE: dbPath,
+			PATR__DATABASE__CONNECTION_LIMIT: '5',
+			// The runner pulls from the hardcoded registry.patr.cloud, which the
+			// DinD resolves to the host registry via a socat bridge (see dind.ts).
+			// Publish the Caddy ingress on 8080 (not 80) so the swarm routing mesh
+			// leaves :80/:443 free for the in-DinD registry bridge (see dind.ts).
+			PATR__INGRESS_HTTP_LISTEN_PORT: '8080',
+			// A DinD swarm has no IPv6 address pool, so an IPv6-enabled overlay
+			// rejects every task; disable it on the deployment overlay here.
+			PATR__ENABLE_IPV6: 'false',
+		},
+		// Inherit stdout/stderr so the runner's logs stream straight to the test
+		// output (and CI), never to a file.
+		stdio: ['ignore', 'inherit', 'inherit'],
+	});
+
+	proc.once('exit', (code) => {
+		if (code !== null && code !== 0) {
+			console.error(`runner ${runnerId} exited early with code ${code}`);
+		}
+	});
+
+	try {
+		await waitFor(
+			async () => isRunnerConnected(opts.api, opts.user, opts.workspaceId, runnerId),
+			{
+				timeoutMs: 60_000,
+				label: `runner ${runnerId} connected`,
+			},
+		);
+	} catch (err) {
+		proc.kill('SIGKILL');
+		throw err;
+	}
+
+	return proc;
+}
+
 async function provisionRunner(
 	opts: RunnerOpts,
-): Promise<{ runnerId: string; serviceAccountToken: string; apiToken: string }> {
+): Promise<{ runnerId: string; runnerToken: string; apiToken: string }> {
 	const name = opts.name ?? `e2e-runner-${crypto.randomUUID().slice(0, 8)}`;
-	// Go through the consent-link flow, which is the only way to mint a runner
-	// now. It hands back the runner's own service account token — the same
-	// credential a real `patr runner setup` writes to disk. Approve grants it
-	// "Runner: All Resource Reader" across the workspace plus "Runner: Execute"
-	// on this runner, which covers opening the stream and fetching images.
+	// Creating the runner hands back its runner token, the same credential
+	// `patr runner setup new` writes to disk. A runner is its own identity with
+	// a fixed set of permissions: read access across the workspace plus view and
+	// edit on itself, which covers opening the stream and pulling images.
 	const runner = await createRunnerAPI(opts.api, opts.user, opts.workspaceId, name);
 
 	// Pushing an image is a developer/CI action, not something the runner does —
-	// and the runner's service account deliberately has pull but not push. So
+	// and a runner token deliberately has pull but not push. So
 	// tests that push need a separate workspace-wide user token.
 	const pushToken = await createApiTokenAPI(opts.api, opts.user, {
 		superAdminOf: [opts.workspaceId],
@@ -161,7 +193,7 @@ async function provisionRunner(
 
 	return {
 		runnerId: runner.id,
-		serviceAccountToken: runner.token,
+		runnerToken: runner.token,
 		apiToken: pushToken.token,
 	};
 }

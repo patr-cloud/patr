@@ -30,7 +30,7 @@ const RunnerCard = (props: { item: WithId<Runner> }) => {
 		navigate({
 			to: "/runners/$id",
 			params: { id: props.item.id },
-			search: { tab: "metrics" },
+			search: { tab: "deployments" },
 		});
 
 	const lastSeenText = () =>
@@ -52,7 +52,9 @@ const RunnerCard = (props: { item: WithId<Runner> }) => {
 		>
 			<div class="flex justify-between items-start gap-2 mb-2">
 				<h3 class="font-medium text-white truncate min-w-0">{props.item.name}</h3>
-				<StatusChip status={props.item.connected ? "connected" : "unreachable"} />
+				<StatusChip
+					status={props.item.connected ? "connected" : props.item.lastSeen ? "unreachable" : "not set up"}
+				/>
 			</div>
 			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-grey">
 				<dt>Last Seen</dt>
@@ -182,7 +184,7 @@ const ListRunnersPage = () => {
 												navigate({
 													to: "/runners/$id",
 													params: { id: item.id },
-													search: { tab: "metrics" },
+													search: { tab: "deployments" },
 												});
 											const apiVersion = () => versionQuery.data?.version;
 											const versionUnknown = () => item.version === "0.0.0";
@@ -219,7 +221,13 @@ const ListRunnersPage = () => {
 														class="flex-2 flex items-center justify-center min-w-0"
 													>
 														<StatusChip
-															status={item.connected ? "connected" : "unreachable"}
+															status={
+																item.connected
+																	? "connected"
+																	: item.lastSeen
+																		? "unreachable"
+																		: "not set up"
+															}
 														/>
 													</td>
 													<td

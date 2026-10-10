@@ -15,11 +15,13 @@ import {
 	runnerRow,
 	emptyStateHeading,
 	openRunnerDetail,
+	deploymentsTab,
+	regenerateTokenButton,
 } from '@/helpers/ui/runner';
 import { noPermissionsHeading } from '@/helpers/ui/deployment';
 
 // Runner RBAC at the API layer (view/create/delete gating, Create≠View,
-// ingress-token takes only the runner's own token, membership-gated empty list, cross-workspace
+// ingress-token is runner-only, membership-gated empty list, cross-workspace
 // isolation, scoped API tokens) lives in the Rust API suite
 // (api/tests/api/workspace/rbac/permissions/runner.rs and
 // api/tests/api/user/api_token.rs). Here we cover dashboard control-visibility.
@@ -31,7 +33,8 @@ async function permId(api: ApiClient, owner: Owner, name: string): Promise<strin
 }
 
 // Control-visibility through the dashboard: the create CTA is gated on the
-// create permission, so a view-only member sees runners but no "Add Runner".
+// create permission, so a view-only member sees runners but no "Add Runner",
+// and Regenerate Token is gated on regenerateToken for that runner.
 test.describe('runner > RBAC [UI]', () => {
 	test('a view-only member sees runners but no Add Runner CTA', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
@@ -98,6 +101,48 @@ test.describe('runner > RBAC [UI]', () => {
 		try {
 			await openRunnerList(page);
 			await expect(emptyStateHeading(page)).toBeVisible({ timeout: 15_000 });
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('a view-only member gets no Regenerate Token action', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const runner = await createRunnerAPI(api, owner, owner.workspaceId);
+		const viewId = await permId(api, owner, 'runner::view');
+		await using member = await createSecondMemberWithRole(api, owner, [viewId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openRunnerDetail(page, runner.id);
+			await expect(deploymentsTab(page)).toBeVisible({ timeout: 15_000 });
+			await expect(regenerateTokenButton(page)).toHaveCount(0);
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('regenerateToken on just that runner shows the Regenerate Token action', async ({
+		browser,
+		api,
+	}) => {
+		await using owner = await createUserWithWorkspace(api);
+		const runner = await createRunnerAPI(api, owner, owner.workspaceId);
+		const viewId = await permId(api, owner, 'runner::view');
+		const regenerateId = await permId(api, owner, 'runner::regenerateToken');
+		await using member = await createSecondMemberWithRole(
+			api,
+			owner,
+			[viewId, regenerateId],
+			[runner.id],
+		);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openRunnerDetail(page, runner.id);
+			await expect(regenerateTokenButton(page)).toBeVisible({ timeout: 15_000 });
 		} finally {
 			await context.close();
 		}
