@@ -12,7 +12,7 @@ mod list;
 mod run;
 /// Systemd service lifecycle for the runner (install / uninstall / status)
 mod service;
-/// The command to setup the CLI's configuration settings for first time use.
+/// Set this host up to run a new or existing runner
 mod setup;
 
 /// A list of all the commands that can be called on a workspace.
@@ -30,8 +30,8 @@ pub enum RunnerCommand {
 #[derive(Debug, Clone, Subcommand)]
 #[command(rename_all = "kebab-case")]
 pub enum RunnerActionCommand {
-	/// Setup the CLI's configuration settings for first time use.
-	#[command(alias = "configure", alias = "create", alias = "new")]
+	/// Set this host up to run a new or existing runner
+	#[command(alias = "configure")]
 	Setup(setup::Args),
 	/// The command to list all runners for a specific workspace
 	#[command(alias = "ls")]
