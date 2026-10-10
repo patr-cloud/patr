@@ -1,5 +1,4 @@
 import type { ApiClient } from '@/helpers/api';
-import { createApiTokenAPI } from '@/helpers/api-token';
 import { API_DIRECT_URL, DASHBOARD_URL } from '@/helpers/urls';
 import { USER_AGENT } from '@/helpers/config';
 
@@ -11,7 +10,7 @@ type Creds = { accessToken: string; clientIp: string };
 
 const base = (ws: string) => `/workspace/${ws}/runner`;
 
-// Runner names go through RESOURCE_NAME_REGEX (4-255, allows upper/space/dot);
+// Runner names go through RESOURCE_NAME_REGEX (2-255, allows upper/space/dot);
 // unlike container repos there is NO stricter DB CHECK. Default fixture names
 // are simple and unique.
 export function randomRunnerName(prefix = 'e2e-runner'): string {
@@ -25,83 +24,8 @@ export type RunnerInfo = {
 	lastSeen: string | null;
 };
 
-type RunnerLink = {
-	userCode: string;
-	deviceCode: string;
-};
-
-// Open a consent link the way the CLI does. `create-link` is `[ApiToken]`-only,
-// so it must go to the direct entrypoint with a Bearer API token — the
-// dashboard proxy won't serve it.
-export async function openRunnerLinkAPI(
-	user: Creds,
-	workspaceId: string,
-	apiToken: string,
-	hostname?: string,
-): Promise<RunnerLink> {
-	const res = await fetch(`${API_DIRECT_URL}${base(workspaceId)}/link`, {
-		method: 'POST',
-		headers: {
-			'X-Real-IP': user.clientIp,
-			'User-Agent': USER_AGENT,
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${apiToken}`,
-		},
-		body: JSON.stringify({
-			version: '0.1.0',
-			os: 'linux',
-			arch: 'x86_64',
-			hostname: hostname ?? randomRunnerName('e2e-host'),
-			privateIp: '127.0.0.1',
-		}),
-	});
-	const text = await res.text();
-	if (!res.ok) {
-		throw new Error(`openRunnerLinkAPI → ${res.status}: ${text.slice(0, 300)}`);
-	}
-	return JSON.parse(text) as RunnerLink;
-}
-
-// Claim the credentials the way the CLI's verify poll does. Returns the
-// runner's service account token once the link has been approved.
-export async function verifyRunnerLinkAPI(
-	user: Creds,
-	workspaceId: string,
-	apiToken: string,
-	link: RunnerLink,
-): Promise<{ runnerId: string; token: string }> {
-	const res = await fetch(`${API_DIRECT_URL}${base(workspaceId)}/link/${link.userCode}/verify`, {
-		method: 'POST',
-		headers: {
-			'X-Real-IP': user.clientIp,
-			'User-Agent': USER_AGENT,
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${apiToken}`,
-		},
-		body: JSON.stringify({ deviceCode: link.deviceCode }),
-	});
-	const text = await res.text();
-	if (!res.ok) {
-		throw new Error(`verifyRunnerLinkAPI → ${res.status}: ${text.slice(0, 300)}`);
-	}
-	// The result enum is `#[serde(flatten)]`ed into the response, so the wire
-	// shape is `{status, runnerId, workspaceId, token}` — not nested under a
-	// `result` key.
-	const body = JSON.parse(text) as
-		{ status: 'approved'; runnerId: string; token: string } | { status: 'pending' };
-	if (body.status !== 'approved') {
-		throw new Error('verifyRunnerLinkAPI: link is still pending');
-	}
-	return { runnerId: body.runnerId, token: body.token };
-}
-
-// Create a runner end-to-end through the consent-link flow, the way the CLI +
-// browser do it. There is no longer a direct "create runner" endpoint: the
-// runner, its role and its service account are all minted by `approve`.
-//
-// `approve` is `[WebDashboard]`-only so it goes through the dashboard client on
-// the user's session, while `create-link` and `verify` are `[ApiToken]`-only
-// and need the API token minted here.
+// Create a runner the way `patr runner setup new` does. The response carries
+// the runner's own service account token, shown only once.
 export async function createRunnerAPI(
 	api: ApiClient,
 	user: Creds,
@@ -109,22 +33,27 @@ export async function createRunnerAPI(
 	name?: string,
 ): Promise<{ id: string; name: string; token: string }> {
 	const runnerName = name ?? randomRunnerName();
-
-	const apiToken = await createApiTokenAPI(api, user, {
-		superAdminOf: [workspaceId],
-	});
-
-	const link = await openRunnerLinkAPI(user, workspaceId, apiToken.token, runnerName);
-
-	await api.request('POST', `${base(workspaceId)}/link/${link.userCode}/approve`, {
+	const resp = await api.request<{ id: string; token: string }>('POST', base(workspaceId), {
 		token: user.accessToken,
 		clientIp: user.clientIp,
-		body: { runnerName },
+		body: { name: runnerName },
 	});
+	return { id: resp.id, name: runnerName, token: resp.token };
+}
 
-	const { runnerId, token } = await verifyRunnerLinkAPI(user, workspaceId, apiToken.token, link);
-
-	return { id: runnerId, name: runnerName, token };
+// Rotate a runner's service account token. The old token stops working at once.
+export async function regenerateRunnerTokenAPI(
+	api: ApiClient,
+	user: Creds,
+	workspaceId: string,
+	runnerId: string,
+): Promise<string> {
+	const resp = await api.request<{ token: string }>(
+		'POST',
+		`${base(workspaceId)}/${runnerId}/token`,
+		{ token: user.accessToken, clientIp: user.clientIp },
+	);
+	return resp.token;
 }
 
 export async function getRunnerInfoAPI(
@@ -178,18 +107,4 @@ export async function listRunnersAPI(
 	const header = res.headers.get('x-total-count');
 	const body = JSON.parse(text) as { runners: RunnerInfo[] };
 	return { runners: body.runners, totalCount: header === null ? null : Number(header) };
-}
-
-export async function getIngressTokenAPI(
-	api: ApiClient,
-	user: Creds,
-	workspaceId: string,
-	runnerId: string,
-): Promise<string> {
-	const resp = await api.request<{ token: string }>(
-		'GET',
-		`${base(workspaceId)}/${runnerId}/ingress-token`,
-		{ token: user.accessToken, clientIp: user.clientIp },
-	);
-	return resp.token;
 }

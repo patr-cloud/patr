@@ -6,6 +6,7 @@ import {
 	deploymentsTab,
 	metricsTab,
 	logsTab,
+	neverConnectedCallout,
 } from '@/helpers/ui/runner';
 
 // get-info anti-enum 401, delete→202/inaccessible and delete-already-deleted at
@@ -31,7 +32,7 @@ async function withDetail(
 }
 
 test.describe('runner > detail [UI]', () => {
-	test('detail shows the three tabs and an Unreachable badge for a fresh runner', async ({
+	test('detail shows the three tabs and a Not set up badge for a fresh runner', async ({
 		browser,
 		api,
 	}) => {
@@ -41,7 +42,23 @@ test.describe('runner > detail [UI]', () => {
 			await expect(deploymentsTab(page)).toBeVisible();
 			await expect(metricsTab(page)).toBeVisible();
 			await expect(logsTab(page)).toBeVisible();
-			await expect(statusBadge(page, 'Unreachable')).toBeVisible();
+			await expect(statusBadge(page, 'Not set up')).toBeVisible();
+		});
+	});
+
+	test('a never-connected runner points at the reconnect command', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		const runner = await createRunnerAPI(api, user, user.workspaceId);
+		await withDetail(browser, user, runner.id, undefined, async (page) => {
+			await expect(neverConnectedCallout(page)).toBeVisible({ timeout: 10_000 });
+			await expect(
+				page.getByText(
+					`patr -w ${user.workspaceId} runner setup reconnect --runner-id ${runner.id}`,
+					{ exact: true },
+				),
+			).toBeVisible();
+			// The owner can regenerate, so the callout says where the token comes from.
+			await expect(page.getByText(/use Regenerate Token above/)).toBeVisible();
 		});
 	});
 

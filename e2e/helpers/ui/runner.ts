@@ -1,15 +1,12 @@
 import type { Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { HYDRATION_TIMEOUT } from '@/helpers/config';
 
 // Frontend reference:
 //   frontend/src/routes/_logged-in/_workspaced/runners/index.tsx (list)
-//   frontend/src/routes/_logged-in/_workspaced/runners/new.tsx (CLI setup instructions)
-//   frontend/src/routes/_logged-in/_workspaced/runner/setup/ (consent page)
+//   frontend/src/routes/_logged-in/_workspaced/runners/new.tsx (create, then CLI setup steps)
 //   frontend/src/routes/_logged-in/_workspaced/runners/$id.tsx (detail: deployments/metrics/logs)
-
-async function waitForVisible(page: Page, selector: string): Promise<void> {
-	await page.locator(selector).first().waitFor({ state: 'visible', timeout: HYDRATION_TIMEOUT });
-}
+//   frontend/src/routes/_logged-in/profile/api-tokens/-components/regenerate-modal.tsx
 
 // ---------- List (/runners) ----------
 
@@ -32,103 +29,85 @@ export function runnerRow(page: Page, name: string) {
 	return page.getByRole('table').getByText(name, { exact: true });
 }
 
-// ---------- Setup instructions (/runners/new) ----------
+// ---------- Create (/runners/new) ----------
 //
-// There is no create form any more. `/runners/new` just tells the operator to
-// run the CLI; the runner is actually minted by approving a consent link.
+// A name form that calls CreateRunner, then an inline reveal of the CLI steps
+// on the same page. The token is only ever on screen, inside the reconnect
+// command.
 
-export async function openRunnerSetupInstructions(page: Page): Promise<void> {
+export async function openRunnerCreate(page: Page): Promise<void> {
 	await page.goto('/runners/new', { waitUntil: 'domcontentloaded' });
+	await page.locator('#runner-name').waitFor({ state: 'visible', timeout: HYDRATION_TIMEOUT });
 }
 
-// CopyableField renders the value in a <span>, not an <input>.
-export function setupCommandField(page: Page) {
-	return page.getByText('patr runner setup', { exact: true });
+export function runnerNameInput(page: Page) {
+	return page.locator('#runner-name');
 }
-
-// ---------- Consent page (/runner/setup) ----------
-
-export async function openRunnerSetup(page: Page, code?: string): Promise<void> {
-	const suffix = code === undefined ? '' : `?code=${code}`;
-	await page.goto(`/runner/setup${suffix}`, { waitUntil: 'domcontentloaded' });
-}
-
-export function codeEntryHeading(page: Page) {
-	return page.getByRole('heading', { name: 'Enter your setup code' });
-}
-
-// The 8 single-character boxes rendered by OtpInput.
-export function codeEntryBoxes(page: Page) {
-	return page.locator('input[name="runner-setup-code"]');
-}
-
-export async function fillSetupCode(page: Page, code: string): Promise<void> {
-	await codeEntryBoxes(page).first().fill(code[0]);
-	for (let i = 1; i < code.length; i += 1) {
-		await codeEntryBoxes(page).nth(i).fill(code[i]);
-	}
-}
-
-export function linkUnavailableHeading(page: Page) {
-	return page.getByRole('heading', { name: /This link can't be used/i });
-}
-
-// ---------- Consent page: mode choice ----------
-
-export function modeChoiceHeading(page: Page) {
-	return page.getByRole('heading', { name: 'What would you like to do?' });
-}
-
-export function newRunnerChoice(page: Page) {
-	return page.getByRole('button', { name: /New runner/ });
-}
-
-export function reconnectChoice(page: Page) {
-	return page.getByRole('button', { name: /Reconnect/ });
-}
-
-export async function chooseNewRunner(page: Page): Promise<void> {
-	await newRunnerChoice(page).click();
-	await waitForVisible(page, '#runner-name');
-}
-
-export async function chooseReconnect(page: Page): Promise<void> {
-	await reconnectChoice(page).click();
-}
-
-// ---------- Consent page: approve as a new runner ----------
 
 export async function fillRunnerName(page: Page, name: string): Promise<void> {
-	await page.locator('#runner-name').fill(name);
+	await runnerNameInput(page).fill(name);
 }
 
-export async function submitApprove(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /^(Approve|Approving\.\.\.)$/ }).click();
+export async function submitCreateRunner(page: Page): Promise<void> {
+	await page.getByRole('button', { name: /^(Create Runner|Creating Runner\.\.\.)$/ }).click();
 }
 
-export function nameErrorAlert(page: Page) {
+export function nameRequiredError(page: Page) {
 	return page.getByText('Runner name is required.', { exact: true });
 }
 
-export function approvedHeading(page: Page) {
-	return page.getByRole('heading', { name: 'Runner approved' });
+export function nameCharactersError(page: Page) {
+	return page.getByText(
+		'Runner name can only contain letters, numbers, spaces, dots (.), hyphens (-) and underscores (_).',
+		{ exact: true },
+	);
 }
 
-// ---------- Consent page: reconnect ----------
-
-export function rotationWarning(page: Page) {
-	return page.getByText(/Reconnecting rotates this runner's credentials/i);
+export function nameTakenError(page: Page, name: string) {
+	return page.getByText(`A runner named "${name}" already exists`, { exact: true });
 }
 
-// Each candidate runner is a role="radio" button; connected ones are disabled.
-export function reconnectRunnerOption(page: Page, name: string) {
-	return page.getByRole('radio', {
-		name: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+// CopyableField renders the value in a <span>, not an <input>.
+export function setupCommand(page: Page, command: string) {
+	return page.getByText(command, { exact: true });
+}
+
+export function tokenShownOnceAlert(page: Page) {
+	return page.getByText("Copy the runner's token now. It won't be shown again.", {
+		exact: true,
 	});
 }
 
-export function submitReconnect(page: Page) {
-	return page.getByRole('button', { name: /^(Reconnect|Reconnecting\.\.\.)$/ });
+// The token on its own, above the setup steps.
+export function runnerTokenField(page: Page, token: string) {
+	return page.getByText(token, { exact: true });
+}
+
+// The copy button next to the token.
+export function copyRunnerTokenButton(page: Page, token: string) {
+	return runnerTokenField(page, token).locator('xpath=..').getByRole('button', { name: 'Copy' });
+}
+
+export function reconnectCommand(page: Page, workspaceId: string, runnerId: string, token: string) {
+	return setupCommand(
+		page,
+		`patr -w ${workspaceId} runner setup reconnect --runner-id ${runnerId} --runner-token ${token}`,
+	);
+}
+
+export function goToRunnerButton(page: Page) {
+	return page.getByRole('button', { name: 'Go to Runner', exact: true });
+}
+
+// The "Runners" crumb in the page head, a router link back to the list.
+export function runnersBreadcrumb(page: Page) {
+	return page.getByRole('heading', { name: 'Runners', exact: true }).getByRole('link');
+}
+
+// The UnsavedChangesGuard modal while the token is on screen. Buttons are
+// "Stay" and "Leave".
+export function leaveWithoutTokenModal(page: Page) {
+	return page.getByText("Leave without the runner's token?", { exact: true });
 }
 
 // ---------- Detail (/runners/{id}) ----------
@@ -144,9 +123,72 @@ export async function openRunnerDetail(page: Page, id: string, tab?: string): Pr
 // spec does.
 // Anchored: the metrics tab (the default) has a "Last Connected" label that an
 // unanchored /connected/i would match ahead of the chip.
-export function statusBadge(page: Page, state: 'Online' | 'Unreachable') {
-	const pattern = state === 'Online' ? /^connected$/i : /^unreachable$/i;
+export function statusBadge(page: Page, state: 'Online' | 'Unreachable' | 'Not set up') {
+	const pattern = {
+		Online: /^connected$/i,
+		Unreachable: /^unreachable$/i,
+		'Not set up': /^not set up$/i,
+	}[state];
 	return page.getByText(pattern).first();
+}
+
+export function neverConnectedCallout(page: Page) {
+	return page.getByText("This runner hasn't connected yet.", { exact: true });
+}
+
+// ---------- Detail: regenerate token ----------
+
+export function regenerateTokenButton(page: Page) {
+	return page.getByRole('button', { name: 'Regenerate Token', exact: true });
+}
+
+function regenerateForm(page: Page) {
+	return page.locator('form').filter({ hasText: /Regenerate Runner Token/i });
+}
+
+export function regenerateSubmit(page: Page) {
+	return regenerateForm(page).getByRole('button', { name: /^REGENERATE$/ });
+}
+
+export async function regenerateToken(page: Page, runnerName: string): Promise<void> {
+	await regenerateTokenButton(page).click();
+	await regenerateForm(page).locator('input[type="text"]').fill(runnerName);
+	await expect(regenerateSubmit(page)).toBeEnabled({ timeout: 5_000 });
+	await regenerateSubmit(page).click();
+}
+
+export async function readNewRunnerToken(page: Page): Promise<string> {
+	await expect(newRunnerTokenHeading(page)).toBeVisible({ timeout: 15_000 });
+	const token = await newRunnerTokenDialog(page)
+		.getByText(/^patr_sa_\S+$/)
+		.innerText();
+	return token.trim();
+}
+
+export function newRunnerTokenHeading(page: Page) {
+	return page.getByText('New Runner Token', { exact: true });
+}
+
+export function newRunnerTokenDialog(page: Page) {
+	return newRunnerTokenHeading(page).locator('xpath=..');
+}
+
+// The reconnect command in the dialog carries the new token.
+export function newRunnerTokenCommand(
+	page: Page,
+	workspaceId: string,
+	runnerId: string,
+	token: string,
+) {
+	return newRunnerTokenDialog(page).getByText(
+		`patr -w ${workspaceId} runner setup reconnect --runner-id ${runnerId} --runner-token ${token}`,
+		{ exact: true },
+	);
+}
+
+// ModalContainer's close (X) button is the first button in the dialog.
+export async function closeNewRunnerTokenDialog(page: Page): Promise<void> {
+	await newRunnerTokenDialog(page).getByRole('button').first().click();
 }
 
 export function deploymentsTab(page: Page) {

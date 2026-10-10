@@ -84,8 +84,7 @@ test.describe('api token > permissions [UI]', () => {
 	test('a resource-scoped ceiling grant clamps the token to those resources', async ({ api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		// Two runners; the ceiling grants runner::view on only one of them.
-		const mkRunner = (name: string) =>
-			createRunnerAPI(api, owner, owner.workspaceId, name);
+		const mkRunner = (name: string) => createRunnerAPI(api, owner, owner.workspaceId, name);
 		const allowed = await mkRunner(`allowed-${Date.now().toString(36)}`);
 		const denied = await mkRunner(`denied-${Date.now().toString(36)}`);
 		const runnerViewId = await permId(api, owner, 'runner::view');
