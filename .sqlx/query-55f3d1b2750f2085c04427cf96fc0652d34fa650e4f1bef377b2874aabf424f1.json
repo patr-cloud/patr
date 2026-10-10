@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT cloudflare_tunnel_id FROM runner WHERE id = $1;",
+  "query": "SELECT cloudflare_tunnel_id FROM runner WHERE id = $1 AND workspace_id = $2 AND deleted IS NULL FOR UPDATE;",
   "describe": {
     "columns": [
       {
@@ -11,6 +11,7 @@
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Uuid"
       ]
     },
@@ -18,5 +19,5 @@
       false
     ]
   },
-  "hash": "e2f9541cb2b572866e10f075d757dd477d9a3a8b7b5f39a60af644445f053dbd"
+  "hash": "55f3d1b2750f2085c04427cf96fc0652d34fa650e4f1bef377b2874aabf424f1"
 }

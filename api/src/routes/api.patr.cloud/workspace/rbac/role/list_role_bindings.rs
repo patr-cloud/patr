@@ -64,7 +64,8 @@ pub async fn list_role_bindings(
 			"user".last_name AS "last_name?",
 			"user".email AS "email?",
 			service_account.name AS "service_account_name?",
-			service_account.description AS "service_account_description?"
+			service_account.description AS "service_account_description?",
+			service_account.is_immutable AS "service_account_is_immutable?"
 		FROM
 			role_binding
 		INNER JOIN
@@ -120,6 +121,9 @@ pub async fn list_role_bindings(
 						ErrorType::server_error("service account name in db is NULL")
 					})?,
 					description: row.service_account_description,
+					is_immutable: row.service_account_is_immutable.ok_or_else(|| {
+						ErrorType::server_error("service account is_immutable in db is NULL")
+					})?,
 				}),
 			),
 		};

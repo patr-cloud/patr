@@ -468,9 +468,12 @@ fn default_roles() -> Vec<DefaultRole> {
 	});
 	roles.push(DefaultRole {
 		name: "Runner: Execute",
-		description: "Default role: lets a runner act on deployments assigned to it. \
-			Granted to a runner's service account, scoped to that one runner.",
-		permissions: vec![Runner(RunnerPermission::Execute)],
+		description: "Default role: lets a runner view itself and act on deployments assigned \
+			to it. Granted to a runner's service account, scoped to that one runner.",
+		permissions: vec![
+			Runner(RunnerPermission::Execute),
+			Runner(RunnerPermission::View),
+		],
 	});
 
 	roles

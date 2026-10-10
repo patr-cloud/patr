@@ -1,0 +1,37 @@
+use crate::prelude::*;
+
+macros::declare_api_endpoint!(
+	/// Route to regenerate a runner's token. The old token is immediately
+	/// invalidated, and a runner connected with it is disconnected. The new
+	/// token is returned and shown only once.
+	RegenerateRunnerToken,
+	POST "/workspace/{workspace_id}/runner/{runner_id}/token" {
+		/// The ID of the workspace
+		pub workspace_id: Uuid,
+		/// The ID of the runner
+		pub runner_id: Uuid,
+	},
+	request_headers = {
+		/// Token used to authorize user
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
+	},
+	authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
+			extract_resource_id: |req| req.path.runner_id,
+			extract_workspace_id: |req| req.path.workspace_id,
+			permission: Permission::Runner(RunnerPermission::RegenerateToken),
+		}
+	},
+	response = {
+		/// The new token (shown only once)
+		pub token: String,
+	},
+	client_type = [WebLogin, ApiToken],
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceUpdated,
+		resource_type: ResourceType::Runner,
+		extract_resource_id: ResourceIdExtractor::FromRequest(|req| req.path.runner_id),
+	},
+);

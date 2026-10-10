@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX runner_uq_service_account_id ON runner(service_account_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9a15af8fb7a6fce6f2fa799d556422575ec77822c7729160aaa31232ef91452e"
+}

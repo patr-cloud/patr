@@ -43,6 +43,7 @@ pub async fn list_service_accounts(
 			service_account.id AS "id: Uuid",
 			service_account.name,
 			service_account.description,
+			service_account.is_immutable,
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			service_account
@@ -82,6 +83,7 @@ pub async fn list_service_accounts(
 						ServiceAccount {
 							name: row.name,
 							description: row.description,
+							is_immutable: row.is_immutable,
 						},
 					)
 				})

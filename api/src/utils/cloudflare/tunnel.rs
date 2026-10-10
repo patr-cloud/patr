@@ -50,7 +50,9 @@ pub async fn create_tunnel_with_config(
 		params: create_tunnel::Params {
 			config_src: &ConfigurationSrc::Cloudflare,
 			name: &format!("Runner: {}", runner_id),
-			tunnel_secret: &b"default".to_vec(),
+			// Never stored: the runner gets its connector token from
+			// `cfd_tunnel/{id}/token` instead
+			tunnel_secret: &rand::random::<[u8; 32]>().to_vec(),
 			metadata: None,
 		},
 	})

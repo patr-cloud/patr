@@ -11,57 +11,35 @@ use cloudflare::{
 #[cfg(feature = "cloud")]
 use models::cloudflare::kv::*;
 use models::{api::workspace::runner::*, prelude::*};
-use rustis::commands::StringCommands;
 use sha2::{Digest as _, Sha256};
 
-use crate::{
-	models::{
-		permissions,
-		redis::{RunnerApprovedSetupData, RunnerSetupDataEntry},
-	},
-	prelude::*,
-};
+use crate::{models::permissions, prelude::*};
 
-pub async fn approve_runner_link(
+pub async fn create_runner(
 	AuthenticatedAppRequest {
 		request:
 			ProcessedApiRequest {
-				path: ApproveRunnerLinkPath {
-					workspace_id,
-					user_code,
-				},
+				path: CreateRunnerPath { workspace_id },
 				query: (),
 				headers:
-					ApproveRunnerLinkRequestHeaders {
+					CreateRunnerRequestHeaders {
 						authorization: _,
 						user_agent: _,
 					},
-				body: ApproveRunnerLinkRequestProcessed { runner_name },
+				body: CreateRunnerRequestProcessed { name },
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		actor_data,
 		state,
-	}: AuthenticatedAppRequest<'_, ApproveRunnerLinkRequest>,
-) -> Result<AppResponse<ApproveRunnerLinkRequest>, ErrorType> {
-	let key = redis::keys::runner_setup_data(workspace_id, &user_code);
+	}: AuthenticatedAppRequest<'_, CreateRunnerRequest>,
+) -> Result<AppResponse<CreateRunnerRequest>, ErrorType> {
+	info!("Creating runner with name: `{name}`");
 
-	let Some(raw) = redis.get::<Option<String>>(&key).await? else {
-		return Err(ErrorType::ResourceDoesNotExist);
-	};
-	let entry = serde_json::from_str::<RunnerSetupDataEntry>(&raw)?;
-
-	if entry.approved.is_some() {
-		// Already approved by someone (or this user in another tab). The CLI
-		// will pick up the existing credentials on its next verify poll.
-		return Err(ErrorType::ResourceAlreadyExists);
-	}
-
-	// Reject a taken name up front. The insert below is also guarded against
-	// the unique violation, but creating the Cloudflare tunnel happens first
-	// and is an external side effect the transaction rollback cannot undo — so
-	// the common duplicate-name case must never get that far.
+	// Reject a taken name before writing anything. The runner insert below is
+	// also guarded against the unique violation, for two creates racing past
+	// this check.
 	let name_taken = query!(
 		r#"
 		SELECT
@@ -74,7 +52,7 @@ pub async fn approve_runner_link(
 			deleted IS NULL;
 		"#,
 		workspace_id as _,
-		runner_name.as_ref(),
+		name.as_ref(),
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -180,15 +158,16 @@ pub async fn approve_runner_link(
 				workspace_id,
 				created,
 				description,
-				token_hash
+				token_hash,
+				is_immutable
 			)
 		VALUES
-			($1, $2, $3, NOW(), $4, $5);
+			($1, $2, $3, NOW(), $4, $5, TRUE);
 		"#,
 		sa_id as _,
 		format!("runner-{runner_id}"),
 		workspace_id as _,
-		Some(format!("Service account for runner '{runner_name}'")),
+		Some(format!("Service account for runner '{name}'")),
 		&token_hash,
 	)
 	.execute(&mut **database)
@@ -242,18 +221,9 @@ pub async fn approve_runner_link(
 		.await?;
 	}
 
-	// Cloudflare tunnel for the runner. Self-hosted has no Cloudflare account to
-	// create one on, so the column is left empty there.
-	cfg_if! {
-		if #[cfg(feature = "cloud")] {
-			let tunnel_id =
-				utils::cloudflare::create_tunnel_with_config(runner_id, &state.config).await?;
-		} else {
-			let tunnel_id = String::new();
-		}
-	}
-
-	// Runner row, now that the SA exists for the FK
+	// Runner row, now that the SA exists for the FK. The Cloudflare tunnel is
+	// created on the runner's first ingress token fetch, so a failure here
+	// can't leave one behind.
 	query!(
 		r#"
 		INSERT INTO
@@ -267,18 +237,16 @@ pub async fn approve_runner_link(
 				service_account_id
 			)
 		VALUES
-			($1, $2, FALSE, $3, $4, '0.0.0', $5);
+			($1, $2, FALSE, $3, '', '0.0.0', $4);
 		"#,
 		runner_id as _,
-		runner_name.as_ref(),
+		name.as_ref(),
 		workspace_id as _,
-		tunnel_id,
 		sa_id as _,
 	)
 	.execute(&mut **database)
 	.await
 	.map_err(|err| match err {
-		// Backstop for two approvals racing past the check above.
 		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
 		err => err.into(),
 	})?;
@@ -309,29 +277,13 @@ pub async fn approve_runner_link(
 		}
 	}
 
-	// Mark the link approved in Redis. CLI's next verify poll picks this up and
-	// one-shot deletes the entry.
-	redis
-		.setex(
-			&key,
-			constants::RUNNER_LINK_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
-			serde_json::to_string(&RunnerSetupDataEntry {
-				approved: Some(RunnerApprovedSetupData {
-					runner_id,
-					workspace_id,
-					token,
-				}),
-				..entry
-			})?,
-		)
-		.await?;
-
 	AppResponse::builder()
-		.body(ApproveRunnerLinkResponse)
+		.body(CreateRunnerResponse {
+			id: WithId::from(runner_id),
+			token,
+		})
 		.headers(())
-		.status_code(StatusCode::OK)
+		.status_code(StatusCode::CREATED)
 		.build()
 		.into_result()
 }

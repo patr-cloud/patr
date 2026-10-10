@@ -96,6 +96,9 @@ pub enum ErrorType {
 	RoleInUse,
 	/// The role is a seeded default role and cannot be edited or deleted
 	RoleIsImmutable,
+	/// The service account belongs to a runner and can only be changed through
+	/// the runner
+	ServiceAccountIsImmutable,
 	/// Another instance of the same runner ID is already connected
 	RunnerAlreadyConnected,
 	/// The operation is not allowed in the current runner mode
@@ -180,6 +183,7 @@ impl ErrorType {
 			Self::ApiTokenAlreadyExists => StatusCode::CONFLICT,
 			Self::RoleInUse => StatusCode::CONFLICT,
 			Self::RoleIsImmutable => StatusCode::FORBIDDEN,
+			Self::ServiceAccountIsImmutable => StatusCode::FORBIDDEN,
 			Self::RunnerAlreadyConnected => StatusCode::CONFLICT,
 			Self::InvalidRunnerMode => StatusCode::FORBIDDEN,
 			Self::NotRootDomain => StatusCode::BAD_REQUEST,
@@ -248,6 +252,9 @@ impl ErrorType {
 			Self::ApiTokenAlreadyExists => "An API token with that name already exists",
 			Self::RoleInUse => "The role is currently assigned to users and cannot be deleted",
 			Self::RoleIsImmutable => "Default roles cannot be edited or deleted",
+			Self::ServiceAccountIsImmutable => {
+				"A runner's service account can only be changed through the runner"
+			}
 			Self::RunnerAlreadyConnected => {
 				"Another instance of the same runner ID is already connected"
 			}

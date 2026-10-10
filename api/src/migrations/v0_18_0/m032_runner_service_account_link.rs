@@ -4,19 +4,24 @@
 //! gets a service account that is its own actor and its own client, plus the
 //! two grants the new setup flow issues: `Runner: All Resource Reader` across
 //! the workspace, and `Runner: Execute` scoped to that one runner. Two
-//! bindings
-//! rather than one because a binding carries a single scope — binding the
-//! execute role workspace-wide would let every runner act on every other.
+//! bindings rather than one because a binding carries a single scope —
+//! binding the execute role workspace-wide would let every runner act on
+//! every other.
+//!
+//! A runner's service account is marked immutable (the new
+//! `service_account.is_immutable`), so the service account routes can read it
+//! but only the runner routes change it, and no two runners share one.
 //!
 //! Both roles are seeded here for workspaces that predate them, marked
 //! immutable like the rest of the default catalogue. The permission names are
 //! frozen copies: a migration must keep deciding what it decided the day it
 //! ran, so renaming a permission later must not change what this granted.
 //!
-//! The orphan account's `token_hash` is the SHA-256 of a random value that is
-//! never recorded, so no token can ever match it. The runner keeps working
-//! off its existing user API token; to move onto the service account an
-//! operator must call `regenerateServiceAccountToken`.
+//! The backfilled account's `token_hash` is the SHA-256 of a random value that
+//! is never recorded, so no token can ever match it. The runner stream only
+//! takes service account tokens, so an existing runner stops connecting on its
+//! user API token: an operator regenerates the runner's token
+//! (`regenerateRunnerToken`) and points the runner at the new one.
 
 use sha2::{Digest, Sha256};
 use sqlx::{Row, types::Uuid};
@@ -35,8 +40,8 @@ const ALL_RESOURCE_READ_PERMISSIONS: &[&str] = &[
 	"secret::view",
 ];
 
-/// The one permission a runner holds on itself.
-const EXECUTE_PERMISSIONS: &[&str] = &["runner::execute"];
+/// What a runner holds on itself.
+const EXECUTE_PERMISSIONS: &[&str] = &["runner::execute", "runner::view"];
 
 /// The roles seeded here, as they were defined when this migration was
 /// written.
@@ -48,7 +53,7 @@ const RUNNER_ROLES: &[(&str, &str, &[&str])] = &[
 	),
 	(
 		"Runner: Execute",
-		"Default role: lets a runner act on deployments assigned to it. Granted to a runner's service account, scoped to that one runner.",
+		"Default role: lets a runner view itself and act on deployments assigned to it. Granted to a runner's service account, scoped to that one runner.",
 		EXECUTE_PERMISSIONS,
 	),
 ];
@@ -59,6 +64,24 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		r#"
 		ALTER TABLE runner
 		ADD COLUMN service_account_id UUID;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE service_account
+		ADD COLUMN is_immutable BOOLEAN NOT NULL DEFAULT FALSE;
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		ALTER TABLE service_account
+		ALTER COLUMN is_immutable DROP DEFAULT;
 		"#,
 	)
 	.execute(&mut *connection)
@@ -232,18 +255,19 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 					name,
 					description,
 					token_hash,
-					created
+					created,
+					is_immutable
 				)
 			VALUES
-				($1, $2, $3, $4, $5, NOW());
+				($1, $2, $3, $4, $5, NOW(), TRUE);
 			"#,
 		)
 		.bind(service_account_id)
 		.bind(workspace_id)
-		.bind(format!("runner-{runner_id}"))
+		.bind(format!("runner-{}", runner_id.simple()))
 		.bind(format!(
 			"Auto-generated service account for runner '{runner_name}'. \
-			Regenerate the token to start using it."
+			Regenerate the runner's token to start using it."
 		))
 		.bind(&token_hash)
 		.execute(&mut *connection)
@@ -325,6 +349,17 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		ALTER TABLE runner
 		ADD CONSTRAINT runner_fk_service_account_id
 			FOREIGN KEY (service_account_id) REFERENCES service_account(id);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	sqlx::query(
+		r#"
+		CREATE UNIQUE INDEX
+			runner_uq_service_account_id
+		ON
+			runner(service_account_id);
 		"#,
 	)
 	.execute(&mut *connection)

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id AS \"id: Uuid\", name, description FROM service_account WHERE id = $1 AND deleted IS NULL;",
+  "query": "SELECT id AS \"id: Uuid\", name, description, is_immutable FROM service_account WHERE id = $1 AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -17,6 +17,11 @@
         "ordinal": 2,
         "name": "description",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_immutable",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
@@ -27,8 +32,9 @@
     "nullable": [
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "fdfefb758976cb8b60e93ed953cdba875bed339457343dc0f5924ff98349746e"
+  "hash": "fa1b79f668726244da9b2af073b48ee1a1a105f7ba4f2bb85d29bce9861e6cc0"
 }

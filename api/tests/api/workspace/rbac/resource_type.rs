@@ -95,6 +95,22 @@ async fn typed_deletes_refuse_an_id_of_another_type() {
 
 	let response = setup
 		.make_web_dashboard_call(
+			ApiRequest::<RegenerateRunnerTokenRequest>::builder()
+				.path(RegenerateRunnerTokenPath {
+					workspace_id: workspace.id,
+					runner_id: deployment.id,
+				})
+				.headers(RegenerateRunnerTokenRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	statuses.push(("runner token", response.status_code()));
+
+	let response = setup
+		.make_web_dashboard_call(
 			ApiRequest::<DeleteDeploymentRequest>::builder()
 				.path(DeleteDeploymentPath {
 					workspace_id: workspace.id,

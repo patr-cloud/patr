@@ -1,0 +1,43 @@
+use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+
+macros::declare_api_endpoint!(
+	/// Route to create a runner in a workspace. Creates the runner's service
+	/// account along with it, and returns the account's token (shown only
+	/// once), which the runner connects with.
+	CreateRunner,
+	POST "/workspace/{workspace_id}/runner" {
+		/// The ID of the workspace
+		pub workspace_id: Uuid,
+	},
+	request_headers = {
+		/// Token used to authorize user
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
+	},
+	authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
+			extract_resource_id: |req| req.path.workspace_id,
+			extract_workspace_id: |req| req.path.workspace_id,
+			permission: Permission::Runner(RunnerPermission::Create),
+		}
+	},
+	request = {
+		/// Name of the runner
+		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
+		pub name: String,
+	},
+	response = {
+		/// The ID of the created runner
+		#[serde(flatten)]
+		pub id: OnlyId,
+		/// The runner's token (shown only once)
+		pub token: String,
+	},
+	client_type = [WebLogin, ApiToken],
+	audit_log = AppAuditLogger {
+		audit_log_type: AuditLogType::ResourceCreated,
+		resource_type: ResourceType::Runner,
+		extract_resource_id: ResourceIdExtractor::FromResponse(|res| res.body.id.id),
+	},
+);

@@ -26,7 +26,8 @@ pub async fn initialize_service_account_tables(
 			actor_type WORKSPACE_ACTOR_TYPE NOT NULL
 				GENERATED ALWAYS AS ('service_account') STORED,
 			actor_client_type ACTOR_CLIENT_TYPE NOT NULL
-				GENERATED ALWAYS AS ('service_account') STORED
+				GENERATED ALWAYS AS ('service_account') STORED,
+			is_immutable BOOLEAN NOT NULL
 		);
 		"#
 	)

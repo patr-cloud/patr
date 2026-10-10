@@ -40,4 +40,9 @@ pub struct ServiceAccount {
 	#[preprocess(none)]
 	#[ts(type = "string | null")]
 	pub description: Option<String>,
+	/// Whether the service account belongs to a runner, and so can only be
+	/// changed through the runner
+	#[search(skip)]
+	#[serde(default)]
+	pub is_immutable: bool,
 }

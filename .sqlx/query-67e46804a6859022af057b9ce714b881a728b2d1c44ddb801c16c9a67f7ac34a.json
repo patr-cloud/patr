@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT service_account_id AS \"service_account_id: Uuid\", cloudflare_tunnel_id FROM runner WHERE id = $1 AND workspace_id = $2 AND deleted IS NULL FOR UPDATE;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "service_account_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "cloudflare_tunnel_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "67e46804a6859022af057b9ce714b881a728b2d1c44ddb801c16c9a67f7ac34a"
+}

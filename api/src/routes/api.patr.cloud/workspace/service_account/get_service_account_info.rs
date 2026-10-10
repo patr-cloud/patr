@@ -32,7 +32,8 @@ pub async fn get_service_account_info(
 		SELECT
 			id AS "id: Uuid",
 			name,
-			description
+			description,
+			is_immutable
 		FROM
 			service_account
 		WHERE
@@ -73,6 +74,7 @@ pub async fn get_service_account_info(
 				ServiceAccount {
 					name: service_account.name,
 					description: service_account.description,
+					is_immutable: service_account.is_immutable,
 				},
 			),
 			role_bindings,

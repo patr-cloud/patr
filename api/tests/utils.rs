@@ -56,8 +56,7 @@ pub struct TestWorkspace {
 pub struct TestRunner {
 	pub id: Uuid,
 	pub name: String,
-	/// The runner's service account token (`patr_sa_…`), issued
-	/// when the consent link was verified.
+	/// The runner's service account token (`patr_sa_…`).
 	pub token: String,
 }
 
@@ -249,97 +248,29 @@ impl TestSetup {
 		}
 	}
 
-	/// Create a runner via the consent-link flow, returning its ID, name, and
-	/// service account token.
-	///
-	/// Mirrors what the CLI + browser do: an API token drives `create_link` and
-	/// `verify` (both `[ApiToken]`-only), while the passed `token` (a web
-	/// dashboard session) drives `approve` (`[WebDashboard]`-only). The runner,
-	/// its role, and its service account are all created by the approve step.
+	/// Create a runner, returning its ID, name, and service account token.
 	pub async fn create_test_runner(&self, token: &BearerToken, workspace_id: Uuid) -> TestRunner {
 		let name = random_name(8);
 
-		// The CLI half of the flow authenticates with an API token.
-		let api_token = self
-			.create_test_api_token(
-				token,
-				BTreeMap::from([(workspace_id, WorkspacePermission::SuperAdmin)]),
-			)
-			.await;
-		let api_token = BearerToken::from_str(&api_token.token).unwrap();
-
-		let link = self
-			.make_api_call(
-				ApiRequest::<CreateRunnerLinkRequest>::builder()
-					.path(CreateRunnerLinkPath { workspace_id })
-					.headers(CreateRunnerLinkRequestHeaders {
-						authorization: api_token.clone(),
+		let response = self
+			.make_web_dashboard_call(
+				ApiRequest::<CreateRunnerRequest>::builder()
+					.path(CreateRunnerPath { workspace_id })
+					.headers(CreateRunnerRequestHeaders {
+						authorization: token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
-					.body(CreateRunnerLinkRequest {
-						version: "0.1.0".parse().unwrap(),
-						os: "linux".to_string(),
-						arch: "x86_64".to_string(),
-						hostname: name.clone(),
-						private_ip: "127.0.0.1".parse().unwrap(),
-					})
+					.body(CreateRunnerRequest { name: name.clone() })
 					.build(),
 			)
 			.await
-			.json::<ApiSuccessResponseBody<CreateRunnerLinkResponse>>()
+			.json::<ApiSuccessResponseBody<CreateRunnerResponse>>()
 			.response;
-
-		// The browser half approves it, creating the runner + service account.
-		self.make_web_dashboard_call(
-			ApiRequest::<ApproveRunnerLinkRequest>::builder()
-				.path(ApproveRunnerLinkPath {
-					workspace_id,
-					user_code: link.user_code.clone(),
-				})
-				.headers(ApproveRunnerLinkRequestHeaders {
-					authorization: token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.body(ApproveRunnerLinkRequest {
-					runner_name: name.clone(),
-				})
-				.build(),
-		)
-		.await
-		.assert_json(&ApiSuccessResponseBody::new(ApproveRunnerLinkResponse));
-
-		// The CLI claims the issued credentials.
-		let verify = self
-			.make_api_call(
-				ApiRequest::<VerifyRunnerLinkRequest>::builder()
-					.path(VerifyRunnerLinkPath {
-						workspace_id,
-						user_code: link.user_code,
-					})
-					.headers(VerifyRunnerLinkRequestHeaders {
-						authorization: api_token,
-						user_agent: TEST_USER_AGENT,
-					})
-					.body(VerifyRunnerLinkRequest {
-						device_code: link.device_code,
-					})
-					.build(),
-			)
-			.await
-			.json::<ApiSuccessResponseBody<VerifyRunnerLinkResponse>>()
-			.response;
-
-		let (id, runner_token) = match verify.result {
-			VerifyRunnerLinkResult::Approved {
-				runner_id, token, ..
-			} => (runner_id, token),
-			VerifyRunnerLinkResult::Pending => panic!("runner link should be approved by now"),
-		};
 
 		TestRunner {
-			id,
+			id: response.id.id,
 			name,
-			token: runner_token,
+			token: response.token,
 		}
 	}
 
@@ -365,6 +296,7 @@ impl TestSetup {
 						service_account: ServiceAccount {
 							name: name.clone(),
 							description: None,
+							is_immutable: false,
 						},
 						role_bindings,
 					})

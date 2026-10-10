@@ -57,6 +57,18 @@ pub async fn initialize_runner_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	// Every runner has its own service account.
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			runner_uq_service_account_id
+		ON
+			runner(service_account_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
