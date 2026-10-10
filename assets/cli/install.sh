@@ -3,9 +3,9 @@
 # Patr CLI installer.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/patr-cloud/patr/master/assets/cli/install.sh | sh
-#   curl -fsSL https://raw.githubusercontent.com/patr-cloud/patr/master/assets/cli/install.sh | sh -s -- --channel beta
-#   curl -fsSL https://raw.githubusercontent.com/patr-cloud/patr/master/assets/cli/install.sh | sh -s -- --prefix $HOME/.local/bin
+#   curl -fsSL https://raw.githubusercontent.com/patr-cloud/patr/develop/assets/cli/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/patr-cloud/patr/develop/assets/cli/install.sh | sh -s -- --channel beta
+#   curl -fsSL https://raw.githubusercontent.com/patr-cloud/patr/develop/assets/cli/install.sh | sh -s -- --prefix $HOME/.local/bin
 
 set -eu
 

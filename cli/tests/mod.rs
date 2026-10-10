@@ -11,3 +11,5 @@ pub mod setup;
 
 /// Tests for `patr apply`.
 pub mod apply;
+/// Tests for `patr runner`.
+pub mod runner;
