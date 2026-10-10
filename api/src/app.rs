@@ -105,7 +105,11 @@ pub async fn serve(state: &AppState) {
 						api_listener,
 						crate::routes::api_patr_cloud::setup_routes(
 							state,
-							&[ActorClientType::UserLogin(UserLoginType::ApiToken), ActorClientType::ServiceAccount],
+							&[
+								ActorClientType::UserLogin(UserLoginType::ApiToken),
+								ActorClientType::ServiceAccount,
+								ActorClientType::Runner,
+							],
 						)
 						.await
 						.into_make_service_with_connect_info::<SocketAddr>(),

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX runner_uq_token_hash ON runner(token_hash);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c3530e23aaed941ba538e56df3fe5aef110103f6eaa1cffe3c364ee6dc45ac04"
+}

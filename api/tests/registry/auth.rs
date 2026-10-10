@@ -460,3 +460,98 @@ async fn head_blob_with_push_only_token_is_allowed() {
 	);
 	assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }
+
+/// A runner pulls images from its own workspace to run its deployments, but
+/// can't push to them, and can't pull from another workspace.
+#[tokio::test]
+async fn runner_token_pulls_only_from_its_own_workspace() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let other_workspace = setup.create_test_workspace(&user.access_token).await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([
+				(workspace.id, WorkspacePermission::SuperAdmin),
+				(other_workspace.id, WorkspacePermission::SuperAdmin),
+			]),
+		)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let other_repo = setup
+		.create_test_container_repo(&user.access_token, other_workspace.id)
+		.await;
+	setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "latest")
+		.await;
+	setup
+		.push_test_image(
+			&api_token.token,
+			&other_workspace.id,
+			&other_repo.name,
+			"latest",
+		)
+		.await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let pull = |workspace_id, repo_name: &str| {
+		setup.make_registry_call(RegistryUnprocessedApiRequest::<GetManifestPath> {
+			path: GetManifestPath {
+				workspace_id,
+				repo_name: repo_name.to_string(),
+				reference: "latest".to_string(),
+			},
+			query: (),
+			headers: GetManifestRequestHeaders {
+				authorization: BearerToken::from_str(&runner.token).unwrap(),
+			},
+			body: Body::empty(),
+		})
+	};
+
+	assert_eq!(
+		StatusCode::OK,
+		pull(workspace.id, &repo.name).await.status_code(),
+		"a runner should pull from its own workspace"
+	);
+
+	let data = (0..64u8).collect::<Vec<_>>();
+	let push = setup
+		.make_registry_call(RegistryUnprocessedApiRequest::<InitiateBlobUploadPath> {
+			path: InitiateBlobUploadPath {
+				workspace_id: workspace.id,
+				repo_name: repo.name.clone(),
+			},
+			query: InitiateBlobUploadQuery {
+				mount: None,
+				from: None,
+				digest: Some(sha256_digest(&data)),
+			},
+			headers: InitiateBlobUploadRequestHeaders {
+				authorization: BearerToken::from_str(&runner.token).unwrap(),
+				content_length: OptionalHeader::new(Some(ContentLength(data.len() as u64))),
+				content_type: OptionalHeader::new(Some(ContentType::octet_stream())),
+			},
+			body: Body::from(data),
+		})
+		.await;
+	// The runner is a member of the workspace, so it's told it can't push
+	// rather than that the repository doesn't exist.
+	assert_eq!(
+		StatusCode::FORBIDDEN,
+		push.status_code(),
+		"a runner should not push"
+	);
+
+	assert_eq!(
+		StatusCode::NOT_FOUND,
+		pull(other_workspace.id, &other_repo.name)
+			.await
+			.status_code(),
+		"a runner should not pull from another workspace"
+	);
+}

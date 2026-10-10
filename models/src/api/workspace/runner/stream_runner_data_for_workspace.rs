@@ -92,7 +92,7 @@ macros::declare_stream_endpoint!(
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.runner_id,
 			extract_workspace_id: |req| req.path.workspace_id,
-			permission: Permission::Runner(RunnerPermission::Execute),
+			permission: Permission::Runner(RunnerPermission::Edit),
 		}
 	},
 	server_msg = {
@@ -177,7 +177,7 @@ macros::declare_stream_endpoint!(
 			status: DeploymentStatus,
 		},
 	},
-	client_type = [ServiceAccount],
+	client_type = [Runner],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::Runner,

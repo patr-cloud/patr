@@ -55,6 +55,8 @@ pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Pe
 
 /// Loads the auth data of a user API token.
 mod api_token;
+/// Loads the auth data of a runner.
+mod runner;
 /// Loads the auth data of a service account.
 mod service_account;
 /// Loads the auth data of a web dashboard session.
@@ -73,12 +75,12 @@ pub use self::cache::{
 
 /// Authenticate a bearer token and return who is making the request.
 ///
-/// A token is either a JWT ([`authenticate_jwt`]) or an opaque API token or
-/// service account token ([`authenticate_opaque_token`]). Both are cached —
-/// JWTs by their login ID, opaque tokens by their hash — so a hit costs no
-/// database round trip; a miss looks the login up, verifies it, loads its
-/// permissions and caches the lot until the token expires or something marks
-/// it stale (see [`cache`]).
+/// A token is either a JWT ([`authenticate_jwt`]) or an opaque API token,
+/// service account token or runner token ([`authenticate_opaque_token`]).
+/// Both are cached — JWTs by their login ID, opaque tokens by their hash — so
+/// a hit costs no database round trip; a miss looks the login up, verifies
+/// it, loads its permissions and caches the lot until the token expires or
+/// something marks it stale (see [`cache`]).
 ///
 /// `accepted_client_types` is who the caller serves. Kinds outside it aren't
 /// even parsed: a JWT sent to a route that only takes API tokens is a
@@ -97,7 +99,8 @@ pub async fn authenticate(
 		accepted_client_types.contains(&ActorClientType::UserLogin(UserLoginType::WebLogin));
 	let accepts_opaque_token = accepted_client_types
 		.contains(&ActorClientType::UserLogin(UserLoginType::ApiToken)) ||
-		accepted_client_types.contains(&ActorClientType::ServiceAccount);
+		accepted_client_types.contains(&ActorClientType::ServiceAccount) ||
+		accepted_client_types.contains(&ActorClientType::Runner);
 
 	if accepts_jwt && let Ok(claims) = AccessTokenData::decode(token, &config.jwt_secret) {
 		return authenticate_jwt(database, redis, claims).await;
@@ -140,6 +143,28 @@ pub fn generate_service_account_token() -> String {
 	let body = format!(
 		"{}{}",
 		constants::SERVICE_ACCOUNT_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
+
+	format!(
+		"{body}{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	)
+}
+
+/// Generates a new runner token:
+/// [`RUNNER_TOKEN_PREFIX`][constants::RUNNER_TOKEN_PREFIX],
+/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
+/// base62 characters, and a checksum of both.
+pub fn generate_runner_token() -> String {
+	let body = format!(
+		"{}{}",
+		constants::RUNNER_TOKEN_PREFIX,
 		rand::rng()
 			.sample_iter(Alphanumeric)
 			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
@@ -255,11 +280,11 @@ async fn authenticate_jwt(
 		.build())
 }
 
-/// Authenticate an opaque token: a user API token (`patr_at_…`) or a service
-/// account token (`patr_sa_…`). The prefix says which, so a kind this route
-/// doesn't take is turned away before anything is looked up. The token is
-/// found by its SHA-256, in the cache and then in the database, so finding it
-/// is itself the proof that it's genuine.
+/// Authenticate an opaque token: a user API token (`patr_at_…`), a service
+/// account token (`patr_sa_…`) or a runner token (`patr_rn_…`). The prefix
+/// says which, so a kind this route doesn't take is turned away before
+/// anything is looked up. The token is found by its SHA-256, in the cache and
+/// then in the database, so finding it is itself the proof that it's genuine.
 async fn authenticate_opaque_token(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
@@ -273,6 +298,8 @@ async fn authenticate_opaque_token(
 		ActorClientType::UserLogin(UserLoginType::ApiToken)
 	} else if token.starts_with(constants::SERVICE_ACCOUNT_TOKEN_PREFIX) {
 		ActorClientType::ServiceAccount
+	} else if token.starts_with(constants::RUNNER_TOKEN_PREFIX) {
+		ActorClientType::Runner
 	} else {
 		warn!("Authentication header is neither a JWT nor an opaque token");
 		return Err(ErrorType::MalformedApiToken);
@@ -316,6 +343,9 @@ async fn authenticate_opaque_token(
 			ActorClientType::ServiceAccount => {
 				service_account::load_actor_auth_data(&mut *database, &token_hash).await?
 			}
+			ActorClientType::Runner => {
+				runner::load_actor_auth_data(&mut *database, &token_hash).await?
+			}
 			ActorClientType::UserLogin(UserLoginType::WebLogin) => {
 				unreachable!("only the opaque token prefixes are parsed above")
 			}
@@ -357,6 +387,7 @@ async fn authenticate_opaque_token(
 		ActorAuthDataCacheKind::ServiceAccount { name, created } => {
 			(ActorData::ServiceAccount { name }, created)
 		}
+		ActorAuthDataCacheKind::Runner { name, created } => (ActorData::Runner { name }, created),
 		ActorAuthDataCacheKind::WebLogin { .. } => {
 			error!("A web login's cache entry was found under an opaque token's hash");
 			return Err(ErrorType::server_error(

@@ -1,7 +1,6 @@
-use std::{collections::BTreeMap, net::IpAddr};
+use std::collections::BTreeMap;
 
 use models::rbac::WorkspacePermission;
-use semver::Version;
 use serde::{Deserialize, Serialize};
 use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
@@ -11,18 +10,20 @@ use crate::prelude::*;
 /// Everything an authenticated request needs to know about the actor behind
 /// a login, as cached in Redis under
 /// [`auth_data_for_login_id`][redis::keys::auth_data_for_login_id] (web logins)
-/// or [`auth_data_for_token`][redis::keys::auth_data_for_token] (API tokens and
-/// service accounts). A cache hit builds the request's [`RequestActorData`]
-/// from this alone, without touching the database.
+/// or [`auth_data_for_token`][redis::keys::auth_data_for_token] (API tokens,
+/// service accounts and runners). A cache hit builds the request's
+/// [`RequestActorData`] from this alone, without touching the database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorAuthDataCache {
 	/// The login this entry is for: the web login ID, the API token ID, or —
-	/// for a service account, which is its own single credential — the
-	/// service account ID. Not always the cache key (tokens are keyed by their
-	/// hash), so it's kept here for the login's stale-since stamp.
+	/// for a service account or a runner, each its own single credential —
+	/// the service account ID or the runner ID. Not always the cache key
+	/// (tokens are keyed by their hash), so it's kept here for the login's
+	/// stale-since stamp.
 	pub login_id: Uuid,
-	/// The actor behind the login: the user ID or the service account ID.
+	/// The actor behind the login: the user ID, the service account ID or the
+	/// runner ID.
 	pub actor_id: Uuid,
 	/// Which kind of login this is, and what it carries.
 	pub kind: ActorAuthDataCacheKind,
@@ -75,54 +76,12 @@ pub enum ActorAuthDataCacheKind {
 		/// When the service account was created.
 		created: OffsetDateTime,
 	},
-}
-
-/// State for an in-flight runner setup, stored in Redis keyed by
-/// [`crate::redis::keys::runner_setup_data`]. The CLI creates the entry,
-/// the browser approves it, the CLI claims credentials on its next verify
-/// poll.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RunnerSetupDataEntry {
-	/// 32-byte opaque secret. Constant-time-compared against the value the
-	/// CLI sends on `POST /runner/verify`.
-	pub device_code: String,
-	/// CLI-reported runner version (semver).
-	pub version: Version,
-	/// CLI-reported OS string.
-	pub os: String,
-	/// CLI-reported CPU architecture.
-	pub arch: String,
-	/// CLI-reported hostname.
-	pub hostname: String,
-	/// Public IP the server saw on the create request.
-	pub public_ip: IpAddr,
-	/// CLI-reported private IP.
-	pub private_ip: IpAddr,
-	/// City resolved from the public IP via ipinfo (None on lookup failure).
-	pub city: Option<String>,
-	/// Country resolved from the public IP via ipinfo.
-	pub country: Option<String>,
-	/// Latitude resolved from the public IP via ipinfo.
-	pub latitude: Option<f64>,
-	/// Longitude resolved from the public IP via ipinfo.
-	pub longitude: Option<f64>,
-	/// When the link was created.
-	pub created_at: OffsetDateTime,
-	/// Set by the browser approve handler. Until then, verify polls return
-	/// `Pending`. Once set, the next verify poll returns `Approved` and
-	/// deletes the entry.
-	pub approved: Option<RunnerApprovedSetupData>,
-}
-
-/// Credentials issued when a runner setup is approved.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RunnerApprovedSetupData {
-	/// ID of the runner that was created.
-	pub runner_id: Uuid,
-	/// Workspace the runner was added to.
-	pub workspace_id: Uuid,
-	/// Service account token (`patr_sa_…`).
-	pub token: String,
+	/// A runner's token.
+	#[serde(rename_all = "camelCase")]
+	Runner {
+		/// The runner's name.
+		name: String,
+		/// When the runner was created.
+		created: OffsetDateTime,
+	},
 }

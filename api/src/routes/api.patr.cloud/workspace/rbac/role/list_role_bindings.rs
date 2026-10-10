@@ -1,9 +1,12 @@
 use axum::http::StatusCode;
-use models::api::{
-	WithId,
-	workspace::{
-		rbac::{role::*, user::WorkspaceUserInfo},
-		service_account::ServiceAccount,
+use models::{
+	ActorType,
+	api::{
+		WithId,
+		workspace::{
+			rbac::{role::*, user::WorkspaceUserInfo},
+			service_account::ServiceAccount,
+		},
 	},
 };
 
@@ -98,7 +101,7 @@ pub async fn list_role_bindings(
 	.into_iter()
 	.map(|row| {
 		let actor = match row.actor_type {
-			WorkspaceActorDiscriminant::User => WithId::new(
+			ActorType::User => WithId::new(
 				row.user_id
 					.ok_or_else(|| ErrorType::server_error("user_id in db is NULL"))?,
 				WorkspaceActor::User(WorkspaceUserInfo {
@@ -113,7 +116,7 @@ pub async fn list_role_bindings(
 						.ok_or_else(|| ErrorType::server_error("email in db is NULL"))?,
 				}),
 			),
-			WorkspaceActorDiscriminant::ServiceAccount => WithId::new(
+			ActorType::ServiceAccount => WithId::new(
 				row.actor_id,
 				WorkspaceActor::ServiceAccount(ServiceAccount {
 					name: row.service_account_name.ok_or_else(|| {
@@ -122,6 +125,11 @@ pub async fn list_role_bindings(
 					description: row.service_account_description,
 				}),
 			),
+			ActorType::Runner => {
+				return Err(ErrorType::server_error(
+					"a runner can't be a workspace actor",
+				));
+			}
 		};
 
 		Ok(RoleBinding {

@@ -118,6 +118,7 @@ where
 				&[
 					ActorClientType::UserLogin(UserLoginType::ApiToken),
 					ActorClientType::ServiceAccount,
+					ActorClientType::Runner,
 				],
 			)
 			.await

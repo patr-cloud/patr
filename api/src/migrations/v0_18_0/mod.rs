@@ -32,5 +32,5 @@ mod m029_add_service_accounts;
 mod m030_index_token_hashes;
 mod m031_actor_registry;
 mod m032_runner_version;
-mod m033_runner_service_account_link;
+mod m033_runner_identity;
 mod m034_seed_runner_regenerate_token_permission;

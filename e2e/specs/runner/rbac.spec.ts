@@ -19,7 +19,7 @@ import {
 import { noPermissionsHeading } from '@/helpers/ui/deployment';
 
 // Runner RBAC at the API layer (view/create/delete gating, Create≠View,
-// ingress-token requires Execute, membership-gated empty list, cross-workspace
+// ingress-token takes only the runner's own token, membership-gated empty list, cross-workspace
 // isolation, scoped API tokens) lives in the Rust API suite
 // (api/tests/api/workspace/rbac/permissions/runner.rs and
 // api/tests/api/user/api_token.rs). Here we cover dashboard control-visibility.

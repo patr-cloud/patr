@@ -334,7 +334,6 @@ fn default_roles() -> Vec<DefaultRole> {
 		p.extend([
 			Runner(RunnerPermission::Create),
 			Runner(RunnerPermission::Edit),
-			Runner(RunnerPermission::Execute),
 			Runner(RunnerPermission::RegenerateToken),
 		]);
 		p
@@ -351,7 +350,7 @@ fn default_roles() -> Vec<DefaultRole> {
 	});
 	roles.push(DefaultRole {
 		name: "Runner: Editor",
-		description: "Default role: create, edit, execute, and regenerate tokens on runners.",
+		description: "Default role: create, edit, and regenerate tokens on runners.",
 		permissions: edit_runner,
 	});
 	roles.push(DefaultRole {
@@ -479,30 +478,6 @@ fn default_roles() -> Vec<DefaultRole> {
 		name: "Workspace: Admin",
 		description: "Default role: full workspace control, including role and workspace settings management.",
 		permissions: admin_workspace,
-	});
-
-	// The two roles a runner's own service account is granted. Split because a
-	// binding carries one scope: a runner reads across the whole workspace,
-	// but may only execute on itself.
-	roles.push(DefaultRole {
-		name: "Runner: All Resource Reader",
-		description: "Default role: read-only access to every resource a runner needs to run \
-			a deployment. Granted to a runner's service account across the workspace. \
-			Deliberately excludes billing, roles, service accounts and other runners.",
-		permissions: vec![
-			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View),
-			ContainerRegistryRepository(ContainerRegistryRepositoryPermission::Pull),
-			Deployment(DeploymentPermission::View),
-			Domain(DomainPermission::View),
-			ManagedURL(ManagedURLPermission::View),
-			Secret(SecretPermission::View),
-		],
-	});
-	roles.push(DefaultRole {
-		name: "Runner: Execute",
-		description: "Default role: lets a runner act on deployments assigned to it. \
-			Granted to a runner's service account, scoped to that one runner.",
-		permissions: vec![Runner(RunnerPermission::Execute)],
 	});
 
 	roles

@@ -19,13 +19,13 @@ macros::declare_api_endpoint!(
 		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
 			extract_resource_id: |req| req.path.runner_id,
 			extract_workspace_id: |req| req.path.workspace_id,
-			permission: Permission::Runner(RunnerPermission::Execute),
+			permission: Permission::Runner(RunnerPermission::Edit),
 		}
 	},
 	response = {
 		/// The runner ingress token
 		pub token: String,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [Runner],
 	audit_log = NoAuditLogger,
 );

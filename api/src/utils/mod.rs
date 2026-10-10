@@ -80,6 +80,9 @@ pub mod constants {
 	/// The prefix of a service account token. See [`API_TOKEN_PREFIX`].
 	pub const SERVICE_ACCOUNT_TOKEN_PREFIX: &str = "patr_sa_";
 
+	/// The prefix of a runner token. See [`API_TOKEN_PREFIX`].
+	pub const RUNNER_TOKEN_PREFIX: &str = "patr_rn_";
+
 	/// The number of random base62 characters after an opaque token's prefix:
 	/// about 190 bits of entropy.
 	pub const OPAQUE_TOKEN_SECRET_LENGTH: usize = 32;
@@ -159,23 +162,6 @@ pub mod constants {
 	/// that are consistently failing, which can help reduce costs and
 	/// unnecessary load on the IP lookup service.
 	pub const IP_LOOKUP_FAILURE_VALIDITY: time::Duration = time::Duration::days(1);
-
-	/// How long a runner consent link stays alive in Redis from creation. The
-	/// CLI must complete the browser approval and claim credentials within
-	/// this window.
-	pub const RUNNER_LINK_VALIDITY: time::Duration = time::Duration::minutes(5);
-
-	/// How often the CLI should poll `POST /runner/verify` while waiting for
-	/// the user to approve the link in the browser.
-	pub const RUNNER_LINK_POLL_INTERVAL: time::Duration = time::Duration::seconds(2);
-
-	/// Base URL for the web dashboard. Used to build user-facing URLs like
-	/// the runner consent page returned by `POST /runner/link`.
-	pub const FRONTEND_BASE_URL: &str = if cfg!(debug_assertions) {
-		"http://localhost:3001"
-	} else {
-		"https://app.patr.cloud"
-	};
 
 	// -------------------All Registry Related Constants-------------------
 

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE ACTOR_TYPE AS ENUM('user', 'service_account', 'runner');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6ce3984b807ecae41a25ddf8c554898767c27cbace6bc24ba06c5f3ece4752ab"
+}

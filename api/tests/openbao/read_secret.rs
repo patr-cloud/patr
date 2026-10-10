@@ -52,7 +52,7 @@ async fn read_secret_invalid_token_returns_401() {
 			&secret_path(&workspace.id, &secret.id),
 			vec![(
 				http::header::AUTHORIZATION,
-				&basic_auth(&runner.id, &permissions::generate_service_account_token()),
+				&basic_auth(&runner.id, &permissions::generate_runner_token()),
 			)],
 		)
 		.await;
@@ -97,8 +97,45 @@ async fn read_secret_returns_openbao_shaped_value() {
 	);
 }
 
+/// A runner's token reads secrets as that runner only, never as another
+/// runner in the same workspace.
 #[tokio::test]
-async fn read_secret_without_execute_is_denied() {
+async fn read_secret_as_another_runner_is_denied() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let other_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_openbao_call(
+			http::Method::GET,
+			&secret_path(&workspace.id, &secret.id),
+			vec![(
+				http::header::AUTHORIZATION,
+				&basic_auth(&other_runner.id, &runner.token),
+			)],
+		)
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::FORBIDDEN,
+		"a runner must not read a value as another runner"
+	);
+}
+
+/// Only a runner's own token may read secret values. A service account that
+/// can view every secret fails authentication outright.
+#[tokio::test]
+async fn read_secret_service_account_returns_401() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -108,8 +145,6 @@ async fn read_secret_without_execute_is_denied() {
 	let secret = setup
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
-
-	// A service account that can view every secret but has no Runner::Execute.
 	let role = setup
 		.create_role_with_permissions(
 			&user.access_token,
@@ -139,8 +174,8 @@ async fn read_secret_without_execute_is_denied() {
 
 	assert_eq!(
 		response.status_code(),
-		StatusCode::FORBIDDEN,
-		"secret::view without runner::execute must not read a value"
+		StatusCode::UNAUTHORIZED,
+		"a service account must not read secret values"
 	);
 }
 
@@ -214,8 +249,8 @@ async fn read_secret_refusals_do_not_reveal_existence() {
 	);
 }
 
-/// Secret values are read by runners, which authenticate as their own service
-/// account. A user's API token is refused outright, however privileged it is.
+/// Secret values are read by runners, with their own runner tokens. A user's
+/// API token is refused outright, however privileged it is.
 #[tokio::test]
 async fn read_secret_user_api_token_returns_401() {
 	let setup = setup().await.expect("failed to setup test server");

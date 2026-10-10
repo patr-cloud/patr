@@ -24,6 +24,6 @@ macros::declare_api_endpoint!(
 		/// The token (alias for access token) generated for the user
 		pub token: String,
 	},
-	client_type = [ApiToken, ServiceAccount],
+	client_type = [ApiToken, ServiceAccount, Runner],
 	audit_log = NoAuditLogger,
 );
