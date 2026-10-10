@@ -1,5 +1,5 @@
 [workspace]
-members              = ["api", "cli", "ingress", "macros", "models", "runners/common", "runners/docker"]
+members = ["api", "cli", "ingress", "macros", "models", "runners/common", "runners/docker"]
 # Kept in-tree as a reference implementation only — it predates the
 # common/actor design, doesn't implement `RunnerExecutor`, and is not built.
 exclude              = ["runners/kubernetes"]
@@ -20,8 +20,6 @@ cast_possible_truncation      = "warn"
 cast_possible_wrap            = "warn"
 cast_sign_loss                = "warn"
 missing_docs_in_private_items = "warn"
-# `ErrorType::server_error` logs when it's constructed, so an eager
-# `.ok_or(ErrorType::server_error(..))` logs an error even on the success path.
 or_fun_call                   = "warn"
 
 [workspace.dependencies]
@@ -39,6 +37,7 @@ axum-extra                     = { default-features = false, version = "0.12" }
 axum-test                      = { default-features = false, version = "21" }
 axum-typed-websockets          = { default-features = false, git = "https://github.com/cachix/axum-typed-websockets" }
 base32                         = { default-features = false, version = "0.5" }
+base62                         = { default-features = false, version = "2" }
 base64                         = { default-features = false, version = "0.22" }
 bollard                        = { default-features = false, version = "0.21" }
 build-print                    = { default-features = false, version = "1" }
@@ -51,6 +50,7 @@ config                         = { default-features = false, version = "0.15" }
 console-subscriber             = { default-features = false, version = "0.5" }
 console_error_panic_hook       = { default-features = false, version = "0.1" }
 convert_case                   = { default-features = false, version = "0.11" }
+crc32fast                      = { default-features = false, version = "1" }
 cron                           = { default-features = false, version = "0.16" }
 crossterm                      = { default-features = false, version = "0.29" }
 dashmap                        = { default-features = false, version = "6" }
@@ -143,8 +143,8 @@ uzers                          = { default-features = false, version = "0.12" }
 wiremock                       = { default-features = false, version = "0.6" }
 woothee                        = { default-features = false, version = "0.13" }
 worker                         = { default-features = false, version = "0.8" }
-zip                            = { default-features = false, version = "8" }
 zeroize                        = { default-features = false, version = "1" }
+zip                            = { default-features = false, version = "8" }
 
 [workspace.dev-dependencies]
 models = { features = ["default"] }

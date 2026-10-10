@@ -1,9 +1,17 @@
+use api::redis::keys;
 use models::{
 	ApiSuccessResponseBody,
-	api::workspace::{rbac::user::RoleBindingGrant, service_account::*},
+	api::workspace::{
+		GetWorkspaceInfoPath,
+		GetWorkspaceInfoRequest,
+		GetWorkspaceInfoRequestHeaders,
+		rbac::user::RoleBindingGrant,
+		service_account::*,
+	},
 	rbac::Permission,
 	utils::Uuid,
 };
+use sha2::{Digest as _, Sha256};
 
 use crate::prelude::*;
 
@@ -21,8 +29,8 @@ async fn create_service_account_works() {
 
 	assert!(!sa.name.is_empty());
 	assert!(
-		sa.token.starts_with("patrv1."),
-		"token should start with patrv1."
+		sa.token.starts_with("patr_sa_"),
+		"token should start with patr_sa_"
 	);
 }
 
@@ -500,8 +508,8 @@ async fn regenerate_token_works() {
 
 	let new_token = &response.response.token;
 	assert!(
-		new_token.starts_with("patrv1."),
-		"new token should start with patrv1."
+		new_token.starts_with("patr_sa_"),
+		"new token should start with patr_sa_"
 	);
 	assert_ne!(
 		&sa.token, new_token,
@@ -509,14 +517,143 @@ async fn regenerate_token_works() {
 	);
 }
 
-// NOTE: The following tests require a ActorClientType::UserLogin(UserLoginType::ApiToken) test
-// server, which the test infra doesn't currently support (it only runs WebDashboard mode).
-// See api/tests/TODOs.md for tracking:
-// - service_account_token_authenticates
-// - service_account_token_deleted_sa_fails
-// - sa_without_runner_permission_denied
-// - user_api_token_still_works_after_sa_feature
-// - regenerate_token_invalidates_old (the invalidation check)
+/// A regenerated service account's old token stops working at once, even
+/// once cached, and its cached entry is dropped.
+#[tokio::test]
+async fn regenerated_service_account_old_token_is_rejected_immediately() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let sa = setup
+		.create_test_service_account(&user.access_token, workspace.id, vec![])
+		.await;
+	let get_workspace_info = |token: &str| {
+		setup.make_api_call(
+			ApiRequest::<GetWorkspaceInfoRequest>::builder()
+				.path(GetWorkspaceInfoPath {
+					workspace_id: workspace.id,
+				})
+				.headers(GetWorkspaceInfoRequestHeaders {
+					authorization: BearerToken::from_str(token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+
+	assert!(
+		get_workspace_info(&sa.token)
+			.await
+			.status_code()
+			.is_success(),
+		"the token should work before it is regenerated"
+	);
+	let cache_key = keys::auth_data_for_token(&hex::encode(Sha256::digest(&sa.token)));
+	assert!(
+		setup.get_redis_value(&cache_key).await.is_some(),
+		"the token should be cached"
+	);
+
+	let new_token = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RegenerateServiceAccountTokenRequest>::builder()
+				.path(RegenerateServiceAccountTokenPath {
+					workspace_id: workspace.id,
+					service_account_id: sa.id,
+				})
+				.headers(RegenerateServiceAccountTokenRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<RegenerateServiceAccountTokenResponse>>()
+		.response
+		.token;
+
+	assert!(
+		setup.get_redis_value(&cache_key).await.is_none(),
+		"regenerating should drop the old token's cached entry"
+	);
+	assert_eq!(
+		401,
+		get_workspace_info(&sa.token).await.status_code().as_u16(),
+		"the old token should be rejected with 401"
+	);
+	assert!(
+		get_workspace_info(&new_token)
+			.await
+			.status_code()
+			.is_success(),
+		"the regenerated token should work"
+	);
+}
+
+/// A deleted service account's token stops working at once, even once cached,
+/// and its cached entry is dropped.
+#[tokio::test]
+async fn deleted_service_account_token_is_rejected_immediately() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let sa = setup
+		.create_test_service_account(&user.access_token, workspace.id, vec![])
+		.await;
+	let get_workspace_info = || {
+		setup.make_api_call(
+			ApiRequest::<GetWorkspaceInfoRequest>::builder()
+				.path(GetWorkspaceInfoPath {
+					workspace_id: workspace.id,
+				})
+				.headers(GetWorkspaceInfoRequestHeaders {
+					authorization: BearerToken::from_str(&sa.token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+
+	assert!(
+		get_workspace_info().await.status_code().is_success(),
+		"the token should work before the account is deleted"
+	);
+	let cache_key = keys::auth_data_for_token(&hex::encode(Sha256::digest(&sa.token)));
+	assert!(
+		setup.get_redis_value(&cache_key).await.is_some(),
+		"the token should be cached"
+	);
+
+	assert!(
+		setup
+			.make_web_dashboard_call(
+				ApiRequest::<DeleteServiceAccountRequest>::builder()
+					.path(DeleteServiceAccountPath {
+						workspace_id: workspace.id,
+						service_account_id: sa.id,
+					})
+					.headers(DeleteServiceAccountRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await
+			.status_code()
+			.is_success(),
+		"deleting the account should succeed"
+	);
+
+	assert!(
+		setup.get_redis_value(&cache_key).await.is_none(),
+		"deleting should drop the cached entry"
+	);
+	assert_eq!(
+		401,
+		get_workspace_info().await.status_code().as_u16(),
+		"a deleted account's token should be rejected with 401"
+	);
+}
 
 // ── Unauthorized ────────────────────────────────────────────────────────
 

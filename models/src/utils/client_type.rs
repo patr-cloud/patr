@@ -16,9 +16,9 @@ use crate::UserLoginType;
 /// - [`UserLogin`][Self::UserLogin]`(`[`WebLogin`][UserLoginType::WebLogin]`)`: the web dashboard,
 ///   authenticated via JWT.
 /// - [`UserLogin`][Self::UserLogin]`(`[`ApiToken`][UserLoginType::ApiToken]`)`: third-party
-///   applications, authenticated via user API tokens (`patrv1.*`).
+///   applications, authenticated via user API tokens (`patr_at_…`).
 /// - [`ServiceAccount`][Self::ServiceAccount]: non-human identities like runners, authenticated via
-///   service account tokens (`patrv1.*`).
+///   service account tokens (`patr_sa_…`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumDiscriminants)]
 #[serde(rename_all = "camelCase")]
 #[strum_discriminants(

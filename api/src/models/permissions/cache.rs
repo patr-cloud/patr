@@ -1,6 +1,7 @@
-//! The Redis cache of authenticated actors, keyed by login ID.
+//! The Redis cache of authenticated actors, keyed by login ID for web logins
+//! and by token hash for opaque tokens.
 //!
-//! One entry per login ([`ActorAuthDataCache`]) holds everything a request
+//! One entry per credential ([`ActorAuthDataCache`]) holds everything a request
 //! needs, so a hit costs no database round trip. Entries are never updated in
 //! place: anything that changes what an entry would contain bumps a
 //! `*_cache_stale_since` stamp for its scope instead, and the next read of an
@@ -21,32 +22,26 @@ use time::OffsetDateTime;
 
 use crate::{models::redis::ActorAuthDataCache, prelude::*};
 
-/// Read the cached entry for `login_id`, if there is one and no stamp covering
-/// it is newer than it. Two round trips: the entry, then — since the entry
-/// says which actor and workspaces it spans — every stamp that covers it.
+/// Read the cached entry at `key`, if there is one and no stamp covering it
+/// is newer than it. Two round trips: the entry, then — since the entry says
+/// which login, actor and workspaces it spans — every stamp that covers it.
 ///
 /// A Redis error or an undecodable entry is a miss, not an error: the caller
 /// falls back to the database and the next request tries again.
-pub(super) async fn read(redis: &mut RedisClient, login_id: &Uuid) -> Option<ActorAuthDataCache> {
-	let entry_key = redis::keys::auth_data_for_login_id(login_id);
-
+pub(super) async fn read(redis: &mut RedisClient, key: &str) -> Option<ActorAuthDataCache> {
 	let entry = redis
-		.get::<Option<String>>(&entry_key)
+		.get::<Option<String>>(key)
 		.await
-		.inspect_err(|err| {
-			error!("Error reading the cached auth data for login `{login_id}`: `{err}`")
-		})
+		.inspect_err(|err| error!("Error reading cached auth data: `{err}`"))
 		.ok()??;
 	let entry = serde_json::from_str::<ActorAuthDataCache>(&entry)
-		.inspect_err(|err| {
-			warn!("Discarding an undecodable cache entry for login `{login_id}`: `{err}`");
-		})
+		.inspect_err(|err| warn!("Discarding an undecodable auth data entry: `{err}`"))
 		.ok()?;
 
 	let stale = redis
 		.mget::<Vec<Option<String>>>(
 			[
-				redis::keys::login_cache_stale_since(login_id),
+				redis::keys::login_cache_stale_since(&entry.login_id),
 				redis::keys::all_cache_stale_since(),
 				redis::keys::actor_cache_stale_since(&entry.actor_id),
 			]
@@ -61,58 +56,63 @@ pub(super) async fn read(redis: &mut RedisClient, login_id: &Uuid) -> Option<Act
 		)
 		.await
 		.inspect_err(|err| {
-			error!("Error reading the stale-since stamps for login `{login_id}`: `{err}`")
+			error!(
+				"Error reading the stale-since stamps for login `{}`: `{err}`",
+				entry.login_id
+			)
 		})
 		.ok()?
 		.into_iter()
-		// Flatten all timestamps to get only the ones that actually exist (Option is an iterator)
 		.flatten()
 		.filter_map(|stamp| stamp.parse::<i128>().ok())
 		.filter_map(|nanos| OffsetDateTime::from_unix_timestamp_nanos(nanos).ok())
-		// If any of them is stale, the entire entry is stale
 		.any(|stamp| entry.created_at < stamp);
 
 	if stale {
-		trace!("Cached auth data for login `{login_id}` is stale");
+		trace!("Cached auth data for login `{}` is stale", entry.login_id);
 		// Tidy up so requests that keep failing to refetch (say, a revoked
 		// token) don't keep paying for the stamp reads.
-		_ = redis.del(&entry_key).await;
+		_ = redis.del(key).await;
 		return None;
 	}
 
 	Some(entry)
 }
 
-/// Cache `entry` under `login_id` for `ttl`. Overwrites whatever is there.
+/// Cache `entry` at `key` for `ttl`. Overwrites whatever is there.
 ///
 /// A Redis error is logged and dropped: the request proceeds uncached and the
 /// next one writes again.
 pub(super) async fn write(
 	redis: &mut RedisClient,
-	login_id: &Uuid,
+	key: &str,
 	entry: &ActorAuthDataCache,
 	ttl: time::Duration,
 ) {
 	let Ok(value) = serde_json::to_string(entry).inspect_err(|err| {
-		error!("Error serialising the auth data for login `{login_id}`: `{err}`")
+		error!(
+			"Error serialising the auth data for login `{}`: `{err}`",
+			entry.login_id
+		)
 	}) else {
 		return;
 	};
 
 	_ = redis
-		.setex(
-			redis::keys::auth_data_for_login_id(login_id),
-			ttl.whole_seconds().unsigned_abs(),
-			value,
-		)
+		.setex(key, ttl.whole_seconds().unsigned_abs(), value)
 		.await
-		.inspect_err(|err| error!("Error caching the auth data for login `{login_id}`: `{err}`"));
+		.inspect_err(|err| {
+			error!(
+				"Error caching the auth data for login `{}`: `{err}`",
+				entry.login_id
+			)
+		});
 }
 
-/// Stamp one login's cached entry as stale, and drop the entry itself. For
-/// changes to the credential: revoked, regenerated, updated, logged out.
+/// Stamp one web login's cached entry as stale, and drop the entry itself. For
+/// a logout or a deleted web login.
 ///
-/// This is the one scope whose entry key is known, so the entry is deleted
+/// This is a scope whose entry key is known, so the entry is deleted
 /// outright and revocation doesn't rest on the stamp alone. The stamp still
 /// matters for a request that missed the cache before the change and writes
 /// its (now stale) entry after it.
@@ -123,6 +123,25 @@ pub async fn mark_login_stale(redis: &mut RedisClient, login_id: &Uuid) -> Resul
 		.await
 		.inspect_err(|err| {
 			error!("Error deleting the cached auth data for login `{login_id}`: `{err}`")
+		})?;
+	Ok(())
+}
+
+/// Stamp an opaque token's login as stale, and drop the token's cached
+/// entry. For API tokens and service account tokens, whose entries are keyed
+/// by the token's hash rather than the login ID: the caller reads that hash
+/// back from the row it changed (the old one, when the token is regenerated).
+pub async fn mark_token_stale(
+	redis: &mut RedisClient,
+	login_id: &Uuid,
+	token_hash: &str,
+) -> Result<(), ErrorType> {
+	mark_stale_in_redis(redis, redis::keys::login_cache_stale_since(login_id)).await?;
+	redis
+		.del(redis::keys::auth_data_for_token(token_hash))
+		.await
+		.inspect_err(|err| {
+			error!("Error deleting the cached auth data for token login `{login_id}`: `{err}`")
 		})?;
 	Ok(())
 }

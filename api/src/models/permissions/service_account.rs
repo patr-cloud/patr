@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use models::rbac::WorkspacePermission;
+use sqlx::Connection as _;
 use time::{Duration, OffsetDateTime};
 
 use crate::{
@@ -8,10 +9,10 @@ use crate::{
 	prelude::*,
 };
 
-/// Load everything the cache holds for the service account
-/// `service_account_id`: the account itself and its permissions. A service
-/// account holds a single, non-rotating credential rather than a set of
-/// logins, so it is its own login ID and its own actor ID.
+/// Load everything the cache holds for the service account whose token hashes
+/// to `token_hash`: the account itself and its permissions. A service account
+/// holds a single credential rather than a set of logins, so it is its own
+/// login ID and its own actor ID.
 ///
 /// A service account is its own actor, so there is no membership row to go
 /// through: its bindings hang directly off its id. It belongs to exactly one
@@ -21,31 +22,37 @@ use crate::{
 /// [`WorkspacePermission::Member`].
 pub(super) async fn load_actor_auth_data(
 	database: &mut DatabaseConnection,
-	service_account_id: &Uuid,
+	token_hash: &str,
 ) -> Result<(ActorAuthDataCache, Duration), ErrorType> {
 	// Taken before the lookup, so a stamp written while the lookup is in
 	// flight still marks this entry stale.
 	let created_at = OffsetDateTime::now_utc();
 
-	let Some(service_account) = query!(
+	// Waits out an uncommitted regenerate or delete of the row, then releases
+	// the lock right away so a long request doesn't hold it.
+	let mut savepoint = database.begin().await?;
+	let service_account = query!(
 		r#"
 		SELECT
+			id AS "id: Uuid",
 			workspace_id AS "workspace_id: Uuid",
 			name,
-			token_hash,
 			created
 		FROM
 			service_account
 		WHERE
-			id = $1 AND
-			deleted IS NULL;
+			token_hash = $1 AND
+			deleted IS NULL
+		FOR SHARE;
 		"#,
-		service_account_id as _,
+		token_hash,
 	)
-	.fetch_optional(&mut *database)
-	.await?
-	else {
-		warn!("The service account has been deleted");
+	.fetch_optional(&mut *savepoint)
+	.await?;
+	savepoint.rollback().await?;
+
+	let Some(service_account) = service_account else {
+		warn!("No live service account with this token hash");
 		return Err(ErrorType::AuthorizationTokenInvalid);
 	};
 
@@ -76,7 +83,7 @@ pub(super) async fn load_actor_auth_data(
 		WHERE
 			role_binding.actor_id = $1;
 		"#,
-		service_account_id as _,
+		service_account.id as _,
 	)
 	.fetch_all(&mut *database)
 	.await?
@@ -93,7 +100,7 @@ pub(super) async fn load_actor_auth_data(
 					"Service account `{}` has a role binding in ",
 					"workspace `{}` outside its own workspace `{}`"
 				),
-				service_account_id, row.workspace_id, service_account.workspace_id
+				service_account.id, row.workspace_id, service_account.workspace_id
 			);
 			return Err(ErrorType::server_error(
 				"service account bound outside its workspace",
@@ -110,11 +117,11 @@ pub(super) async fn load_actor_auth_data(
 
 	Ok((
 		ActorAuthDataCache {
-			actor_id: *service_account_id,
+			login_id: service_account.id,
+			actor_id: service_account.id,
 			kind: ActorAuthDataCacheKind::ServiceAccount {
 				name: service_account.name,
 				created: service_account.created,
-				token_hash: service_account.token_hash,
 			},
 			permissions,
 			created_at,
