@@ -7,6 +7,7 @@ Runners reconcile Patr resources (deployments + managed URLs) onto a backend. Se
 - `runners/common` is the framework; a concrete runner (docker) is a thin binary that implements the single **`RunnerExecutor`** trait (`common/src/executor.rs`) and calls `Runner::<E>::init().await?.run().await`.
 - State lives in a local **SQLite** DB (desired state); the executor reports actual state; the runner reconciles.
 - Two modes: **Managed** (connects to the Patr API over WebSocket) and **SelfHosted** (standalone, serves its own auth + workspace HTTP API + embedded UI). SelfHosted is legacy and being removed — see below.
+- A Managed runner is **its own service account**: config `apiToken` is its `patr_sa_…` token (Bearer to the API and WebSocket, Basic password to loki/mimir/openbao). It holds only `Runner: Execute` on itself and `Runner: All Resource Reader` on the workspace. A new API call from the runner therefore needs `ServiceAccount` in the endpoint's `client_type` and a permission one of those roles grants, plus a migration for existing workspaces. A rejected token or `RunnerAlreadyConnected` is logged with the `patr runner setup reconnect` fix and retried, never fatal.
 - Architecture is a **ractor actor tree**: `RunnerSupervisor → ResourceSupervisor + WebSocketActor → DeploymentActor`. Deployments are actor-backed; managed URLs are reconciled statelessly. (This actor refactor is done, not pending.)
 
 ## Adding a runner

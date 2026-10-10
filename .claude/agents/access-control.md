@@ -42,7 +42,7 @@ For the feature in front of you:
    - Lists only return what the caller is allowed to view.
    - Handlers confirm a path ID is their own resource type before acting on it.
    - New permissions are granted to the right default roles in **both** places: `default_roles()` for new workspaces, and a migration for every existing workspace. Missing either one leaves some users unable to use the feature.
-   - Whether API tokens are allowed on it (`API_ALLOWED`) is a deliberate choice, and tokens can be scoped to it like its siblings.
+   - Which clients it accepts (`client_type`: `WebLogin`, `ApiToken`, `ServiceAccount`) is a deliberate choice, and tokens can be scoped to it like its siblings.
    - Every state-changing endpoint writes an audit-log entry with the right type and resource. Reads don't.
 3. For a new kind of principal, sweep every place principals appear. Each one must handle the new kind or deliberately reject it:
    - endpoints and DTOs that return or accept them (role bindings, member lists, invites);
@@ -52,13 +52,15 @@ For the feature in front of you:
    - permission-cache keys and revocation.
    
    This is where a list of principals that's really a list of users gets caught.
-4. For a new way to authenticate, check the whole lifecycle: issuance, expiry, revocation reaching the cached permission map, how it interacts with MFA, and rate limiting.
+4. For a new way to authenticate, check the whole lifecycle: issuance, expiry, revocation reaching the cached permission map (including requests already past the authenticator when it lands; one that waits on a lock the revoke holds must authenticate again once it has it), how it interacts with MFA, and rate limiting.
 5. Then look sideways:
    - A changed permission or role has to invalidate cached permission maps.
    - The role ladder has to stay ordered.
    - An owner can never lock themselves out.
    - Leaving or deleting a workspace has to clean up the feature's bindings.
    - The frontend's permission checks have to match, which is the frontend agent's to change. Flag it.
+   - Default roles and runners' service accounts are immutable. A new route that writes a role or a service account must refuse them (`RoleIsImmutable`, `ServiceAccountIsImmutable`).
+   - A runner's service account holds only `Runner: Execute` and `Runner: All Resource Reader`. Anything the runner calls with its token, or a CLI command run with it, must be granted by one of them, in `default_roles()` and a migration.
 6. Tests: `api/tests/api/workspace/rbac/` should cover the denied cases, the wrong-type case, and scoped visibility for the new surface.
 
 ## Scoping mode
