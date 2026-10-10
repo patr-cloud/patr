@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT runner.id AS \"id: Uuid\", runner.workspace_id AS \"workspace_id: Uuid\", runner.name, resource.created FROM runner INNER JOIN resource ON resource.id = runner.id WHERE runner.token_hash = $1 AND runner.deleted IS NULL FOR SHARE OF runner;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "created",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "00090a2c5f367b6a6da9c5843d5b9463f8f6ba27598b1685e7c48842d79c680c"
+}

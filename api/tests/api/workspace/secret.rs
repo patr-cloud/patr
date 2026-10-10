@@ -1,12 +1,8 @@
-use std::{
-	collections::{BTreeMap, BTreeSet},
-	str::FromStr,
-};
+use std::str::FromStr;
 
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::secret::*,
-	rbac::{Permission, RunnerPermission, WorkspacePermission},
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -266,8 +262,8 @@ async fn list_secrets_filters_by_name() {
 	);
 }
 
-/// A runner lists secrets during its full resync to catch rotations it
-/// missed, using a token scoped to nothing but `Runner::Execute`.
+/// A runner lists secrets with its own token during its full resync, to catch
+/// rotations it missed.
 #[tokio::test]
 async fn list_secrets_works_with_runner_token() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -279,21 +275,6 @@ async fn list_secrets_works_with_runner_token() {
 	let secret = setup
 		.create_test_secret(&user.access_token, workspace.id)
 		.await;
-	let token = setup
-		.create_test_api_token(
-			&user.access_token,
-			BTreeMap::from([(
-				workspace.id,
-				WorkspacePermission::Member {
-					permissions: BTreeMap::from([(
-						setup.get_permission_id(Permission::Runner(RunnerPermission::Execute)),
-						BTreeSet::from([runner.id]),
-					)]),
-				},
-			)]),
-		)
-		.await
-		.token;
 
 	let response = setup
 		.make_api_call(
@@ -302,7 +283,7 @@ async fn list_secrets_works_with_runner_token() {
 					workspace_id: workspace.id,
 				})
 				.headers(ListSecretsForWorkspaceRequestHeaders {
-					authorization: BearerToken::from_str(&token).unwrap(),
+					authorization: BearerToken::from_str(&runner.token).unwrap(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.query(ListResourceQuery {

@@ -186,10 +186,13 @@ impl Parse for ApiEndpoint {
 							"ServiceAccount" => Ok(quote::quote! {
 								models::utils::ActorClientType::ServiceAccount
 							}),
+							"Runner" => Ok(quote::quote! {
+								models::utils::ActorClientType::Runner
+							}),
 							_ => Err(Error::new(
 								name.span(),
-								"unknown client type: expected `WebLogin`, `ApiToken` or \
-								 `ServiceAccount`",
+								"unknown client type: expected `WebLogin`, `ApiToken`, \
+								 `ServiceAccount` or `Runner`",
 							)),
 						})
 						.collect::<Result<Vec<_>, _>>()?;

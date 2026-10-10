@@ -58,18 +58,53 @@ async fn loki_push_invalid_token_returns_401() {
 	);
 }
 
+/// A runner's token pushes as that runner only, never as another runner in
+/// the same workspace.
 #[tokio::test]
-async fn loki_push_no_execute_permission_returns_403() {
+async fn loki_push_as_another_runner_returns_403() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&admin.access_token).await;
 	let runner = setup
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
+	let other_runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
 
-	// A service account with no roles at all, so it authenticates fine but
-	// holds no Runner::Execute on this (or any) runner. Using the runner's own
-	// service account would pass, since approve grants it Execute on itself.
+	let body = make_loki_push_body(r#"{job="test"}"#, &["hello"]);
+	let response = setup
+		.make_loki_call(
+			http::Method::POST,
+			"/loki/api/v1/push",
+			vec![
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
+				(
+					http::header::AUTHORIZATION,
+					&basic_auth(&other_runner.id, &runner.token),
+				),
+			],
+			body,
+		)
+		.await;
+
+	assert_eq!(
+		response.status_code(),
+		StatusCode::FORBIDDEN,
+		"expected 403 for a runner pushing as another runner"
+	);
+}
+
+/// Only a runner's own token may push. A service account fails
+/// authentication outright, whatever it holds.
+#[tokio::test]
+async fn loki_push_service_account_returns_401() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
 	let service_account = setup
 		.create_test_service_account(&admin.access_token, workspace.id, Vec::new())
 		.await;
@@ -92,8 +127,8 @@ async fn loki_push_no_execute_permission_returns_403() {
 
 	assert_eq!(
 		response.status_code(),
-		StatusCode::FORBIDDEN,
-		"expected 403 without Runner::Execute permission"
+		StatusCode::UNAUTHORIZED,
+		"log push must be rejected for a service account"
 	);
 }
 
@@ -107,9 +142,9 @@ async fn loki_push_user_api_token_returns_401() {
 		.await;
 
 	// A workspace super-admin API token has every permission, but log push is
-	// restricted to service accounts (runners) — a human credential must not
-	// be able to write logs on a runner's behalf. The route only authenticates
-	// service accounts, so an API token fails authentication outright.
+	// restricted to runners — a human credential must not be able to write
+	// logs on a runner's behalf. The route only authenticates runners, so an
+	// API token fails authentication outright.
 	let api_token = setup
 		.create_test_api_token(
 			&admin.access_token,
@@ -136,7 +171,7 @@ async fn loki_push_user_api_token_returns_401() {
 	assert_eq!(
 		response.status_code(),
 		StatusCode::UNAUTHORIZED,
-		"log push must be rejected for non-service-account clients"
+		"log push must be rejected for non-runner clients"
 	);
 }
 
@@ -154,8 +189,8 @@ async fn loki_push_unknown_runner_matches_missing_permission() {
 		.create_test_runner(&admin.access_token, workspace.id)
 		.await;
 
-	// `runner`'s own service account holds Runner::Execute on `runner` only,
-	// so `other_runner` exists but is denied.
+	// `runner`'s token may act as `runner` only, so `other_runner` exists but
+	// is denied.
 	let mut responses = Vec::new();
 	for runner_id in [other_runner.id, Uuid::new_v4()] {
 		let response = setup

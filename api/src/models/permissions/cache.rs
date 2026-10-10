@@ -133,7 +133,7 @@ pub async fn mark_login_stale(redis: &mut RedisClient, login_id: &Uuid) -> Resul
 }
 
 /// Stamp an opaque token's login as stale, and drop the token's cached
-/// entry. For API tokens and service account tokens, whose entries are keyed
+/// entry. For API, service account and runner tokens, whose entries are keyed
 /// by the token's hash rather than the login ID: the caller reads that hash
 /// back from the row it changed (the old one, when the token is regenerated).
 pub async fn mark_token_stale(
@@ -151,8 +151,9 @@ pub async fn mark_token_stale(
 	Ok(())
 }
 
-/// Stamp every login of one actor (user or service account) as stale. For
-/// changes every login inherits: password, MFA, roles, workspace membership.
+/// Stamp every login of one actor (user, service account or runner) as stale.
+/// For changes every login inherits: password, MFA, roles, workspace
+/// membership.
 pub async fn mark_actor_stale(redis: &mut RedisClient, actor_id: &Uuid) -> Result<(), ErrorType> {
 	mark_stale_in_redis(redis, redis::keys::actor_cache_stale_since(actor_id)).await
 }

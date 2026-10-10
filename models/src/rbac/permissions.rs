@@ -107,10 +107,10 @@ pub enum ManagedURLPermission {
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum RunnerPermission {
-	/// This permission allows the user to create a new runner in a workspace.
-	/// The user will be able to create a new runner, but not view, edit, or
-	/// delete it. This permission is useful for users or API tokens that need
-	/// to create a runner, but not do anything else with it.
+	/// This permission allows the user to create a new runner in a workspace,
+	/// but not view, edit, or delete it. Creating a runner mints its token,
+	/// which can read every secret, container image and deployment in the
+	/// workspace, so this permission effectively grants all of that as well.
 	Create,
 	/// This permission allows the user to only view the runner and it's
 	/// details.
@@ -123,12 +123,10 @@ pub enum RunnerPermission {
 	/// only delete runners.
 	Delete,
 	/// This permission allows the user to regenerate the runner token, but not
-	/// view it, edit it, or delete it. This permission is useful for users or
-	/// API tokens that need to only regenerate the runner token.
+	/// view it, edit it, or delete it. The new token can read every secret,
+	/// container image and deployment in the workspace, so this permission
+	/// effectively grants all of that as well.
 	RegenerateToken,
-	/// This permission allows the user to execute runner operations, including
-	/// streaming runner data and pushing logs to the logging backend.
-	Execute,
 }
 
 /// A list of all permissions that can be granted on a deployment

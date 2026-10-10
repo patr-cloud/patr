@@ -2,8 +2,8 @@ use crate::prelude::*;
 
 /// Initializes the actor tables.
 ///
-/// An actor is the accountable "who": one system-wide unique id per user or
-/// service account, shared with its row in the subtype table. Every
+/// An actor is the accountable "who": one system-wide unique id per user,
+/// service account or runner, shared with its row in the subtype table. Every
 /// credential in `actor_client` names the actor that owns it, so a credential
 /// can always be traced back to its owner. Actors are never deleted; the
 /// subtype tables carry deletion.
@@ -16,7 +16,8 @@ pub async fn initialize_actor_tables(
 		r#"
 		CREATE TYPE ACTOR_TYPE AS ENUM(
 			'user',
-			'service_account'
+			'service_account',
+			'runner'
 		);
 		"#
 	)

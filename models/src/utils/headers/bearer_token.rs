@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Debug, str::FromStr};
 
 use headers::{
 	Authorization,
@@ -14,8 +14,17 @@ use serde::{Deserialize, Serialize};
 ///
 /// This is a wrapper around [`Bearer`].
 /// Example: Authorization: Bearer *token*
-#[derive(Debug, Clone, PartialEq)]
+///
+/// Its [`Debug`] output never shows the token, so a request can be logged
+/// whole.
+#[derive(Clone, PartialEq)]
 pub struct BearerToken(pub Bearer);
+
+impl Debug for BearerToken {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "BearerToken(***)")
+	}
+}
 
 impl FromStr for BearerToken {
 	type Err = headers::Error;
@@ -61,7 +70,9 @@ impl Header for BearerToken {
 	where
 		E: Extend<HeaderValue>,
 	{
-		values.extend(std::iter::once(self.0.encode()));
+		let mut value = self.0.encode();
+		value.set_sensitive(true);
+		values.extend(std::iter::once(value));
 	}
 }
 
@@ -115,5 +126,15 @@ mod tests {
 		// `.token()` is the method that panics on a malformed value; a valid
 		// token round-trips without stripping into out-of-bounds territory.
 		assert_eq!(bearer.token(), "patrv1.abc.def");
+	}
+
+	#[test]
+	fn never_shows_the_token() {
+		let token = decode("Bearer patrv1.abc.def").unwrap();
+		assert_eq!(format!("{token:?}"), "BearerToken(***)");
+
+		let mut values = Vec::new();
+		token.encode(&mut values);
+		assert!(values[0].is_sensitive());
 	}
 }
