@@ -11,6 +11,7 @@ mod list_runners_for_workspace;
 mod remove_runner_from_workspace;
 mod stream_runner_data_for_workspace;
 mod stream_runner_logs;
+mod update_runner;
 
 use self::{
 	add_runner_to_workspace::*,
@@ -22,6 +23,7 @@ use self::{
 	remove_runner_from_workspace::*,
 	stream_runner_data_for_workspace::*,
 	stream_runner_logs::*,
+	update_runner::*,
 };
 
 #[instrument(skip(state))]
@@ -32,6 +34,7 @@ pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> 
 		.mount_auth_endpoint(get_runner_info, state, allowed_client_type)
 		.mount_auth_endpoint(list_runners_for_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(remove_runner_from_workspace, state, allowed_client_type)
+		.mount_auth_endpoint(update_runner, state, allowed_client_type)
 		.mount_auth_endpoint(stream_runner_data_for_workspace, state, allowed_client_type)
 		.mount_auth_endpoint(get_runner_logs, state, allowed_client_type)
 		.mount_auth_endpoint(get_runner_metrics, state, allowed_client_type)

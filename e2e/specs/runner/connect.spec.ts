@@ -32,13 +32,13 @@ test.describe('@docker runner connection lifecycle', () => {
 			dockerVersion: dv(testInfo),
 		});
 
-		// The detail UI shows the Online badge.
+		// The detail UI shows the Connected chip.
 		const context = await newContext(browser, user.clientIp);
 		await loginAs(context, user, { workspaceId: user.workspaceId });
 		const page = await context.newPage();
 		try {
 			await openRunnerDetail(page, runner.runnerId, undefined);
-			await expect(statusBadge(page, 'Online')).toBeVisible({ timeout: 15_000 });
+			await expect(statusBadge(page, 'Connected')).toBeVisible({ timeout: 15_000 });
 
 			// Stable: still connected after a settle period well past the debug lock
 			// TTL (5s) — i.e. the renewal loop is holding the connection, not a stale

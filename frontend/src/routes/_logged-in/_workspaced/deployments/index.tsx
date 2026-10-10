@@ -20,7 +20,6 @@ import {
 } from "~/components";
 import { useDeploymentsQuery, useRunnersQuery } from "~/hooks/fetch";
 import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
-import DeploymentImageName from "~/components/deployment-image-name";
 
 const DeploymentCard = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
@@ -47,10 +46,6 @@ const DeploymentCard = (props: { item: WithId<Deployment>; runnerName: string })
 			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-grey">
 				<dt>Runner</dt>
 				<dd class="text-white truncate">{props.runnerName}</dd>
-				<dt>Image</dt>
-				<dd class="text-white truncate">
-					<DeploymentImageName item={props.item} />
-				</dd>
 				<dt>ID</dt>
 				<dd class="min-w-0" onClick={(e) => e.stopPropagation()}>
 					<CopyableField
@@ -83,19 +78,16 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 			}}
 			class="table-row cursor-pointer focus-visible:outline-primary"
 		>
-			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
+			<td role="cell" class="flex-4 flex items-center justify-start min-w-0">
 				<span class="truncate font-medium text-white">{props.item.name}</span>
 			</td>
 			<td role="cell" class="flex-2 flex items-center justify-center min-w-0">
 				<StatusChip status={props.item.status} />
 			</td>
-			<td role="cell" class="flex-2 flex items-center justify-start min-w-0">
+			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
 				<span class="truncate">{props.runnerName}</span>
 			</td>
 			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
-				<DeploymentImageName item={props.item} />
-			</td>
-			<td role="cell" class="flex-2 flex items-center justify-start min-w-0">
 				<CopyableField
 					variant={CopyableFieldVariant.Text}
 					value={props.item.id}
@@ -219,9 +211,9 @@ const ListDeploymentsPage = () => {
 								</div>
 								<div class="hidden md:block">
 									<Table
-										column_grids={["flex-3", "flex-2", "flex-2", "flex-3", "flex-2"]}
+										column_grids={["flex-4", "flex-2", "flex-3", "flex-3"]}
 										rows={deploymentsQuery.data?.deployments || []}
-										headings={["Name", "Status", "Runner", "Image", "ID"]}
+										headings={["Name", "Status", "Runner", "ID"]}
 										renderRow={(item) => (
 											<DeploymentListRow
 												item={item}

@@ -37,6 +37,12 @@ interface InputDropdownProps {
 	endIcon?: () => JSX.Element;
 	/** @deprecated Ignored. */
 	onClickEndIcon?: () => void;
+	/** Called when the user scrolls near the bottom of the dropdown */
+	onLoadMore?: () => void;
+	/** Whether more options are currently being loaded */
+	isLoadingMore?: MaybeAccessor<boolean>;
+	/** Called with the text typed into the dropdown, debounced, to search on the server */
+	onSearch?: (text: string) => void;
 }
 
 const InputDropdown = (props: InputDropdownProps) => (
@@ -52,6 +58,9 @@ const InputDropdown = (props: InputDropdownProps) => (
 		required={props.required}
 		id={props.id}
 		name={props.name}
+		onLoadMore={props.onLoadMore}
+		isLoadingMore={props.isLoadingMore}
+		onSearch={props.onSearch}
 	/>
 );
 
