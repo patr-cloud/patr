@@ -4,7 +4,7 @@ import { HYDRATION_TIMEOUT } from '@/helpers/config';
 // Frontend reference:
 //   frontend/src/routes/_logged-in/_workspaced/runners/index.tsx (list)
 //   frontend/src/routes/_logged-in/_workspaced/runners/new.tsx (create)
-//   frontend/src/routes/_logged-in/_workspaced/runners/$id.tsx (detail: info/metrics/logs)
+//   frontend/src/routes/_logged-in/_workspaced/runners/$id.tsx (detail: deployments/info/metrics/logs)
 
 async function waitForVisible(page: Page, selector: string): Promise<void> {
 	await page.locator(selector).first().waitFor({ state: 'visible', timeout: HYDRATION_TIMEOUT });
@@ -61,6 +61,10 @@ export async function openRunnerDetail(page: Page, id: string, tab?: string): Pr
 // text is lowercase (the chip capitalizes it with CSS), so match case-insensitively.
 export function statusBadge(page: Page, text: 'Connected' | 'Unreachable') {
 	return page.getByText(new RegExp(`^${text}$`, 'i'));
+}
+
+export function deploymentsTab(page: Page) {
+	return page.getByRole('button', { name: 'Deployments', exact: true });
 }
 
 export function infoTab(page: Page) {

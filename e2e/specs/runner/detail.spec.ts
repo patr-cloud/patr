@@ -3,6 +3,7 @@ import { createRunnerAPI } from '@/helpers/runner-api';
 import {
 	openRunnerDetail,
 	statusBadge,
+	deploymentsTab,
 	infoTab,
 	metricsTab,
 	logsTab,
@@ -32,13 +33,14 @@ async function withDetail(
 }
 
 test.describe('runner > detail [UI]', () => {
-	test('detail shows the three tabs and an Unreachable badge for a fresh runner', async ({
+	test('detail shows the four tabs and an Unreachable badge for a fresh runner', async ({
 		browser,
 		api,
 	}) => {
 		await using user = await createUserWithWorkspace(api);
 		const runner = await createRunnerAPI(api, user, user.workspaceId);
 		await withDetail(browser, user, runner.id, undefined, async (page) => {
+			await expect(deploymentsTab(page)).toBeVisible();
 			await expect(infoTab(page)).toBeVisible();
 			await expect(metricsTab(page)).toBeVisible();
 			await expect(logsTab(page)).toBeVisible();
@@ -53,7 +55,7 @@ test.describe('runner > detail [UI]', () => {
 		await using user = await createUserWithWorkspace(api);
 		const runner = await createRunnerAPI(api, user, user.workspaceId);
 		await withDetail(browser, user, runner.id, undefined, async (page) => {
-			await expect(infoTab(page)).toBeVisible();
+			await expect(deploymentsTab(page)).toBeVisible();
 			await expect(deleteRunnerButton(page)).toBeVisible();
 		});
 	});

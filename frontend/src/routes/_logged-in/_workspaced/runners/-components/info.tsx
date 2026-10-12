@@ -92,27 +92,37 @@ const RunnerInfo = (props: RunnerInfoProps) => {
 		<form noValidate onSubmit={onSubmit} class="flex flex-col gap-8 w-full">
 			<div class="flex flex-col gap-4 w-full">
 				<div class="flex gap-8 items-start w-full">
-					<Label parentClass="flex-2 pt-2.5" for="runner-name" label="Runner" />
-					<div class="flex-10 flex items-center gap-4 w-full">
+					<Label parentClass="flex-2 pt-2.5" label="ID" />
+					<div class="flex-10 min-w-0">
 						<CopyableField
 							value={props.runnerId}
 							variant={CopyableFieldVariant.Input}
 							buttonPosition="start"
-							class="flex-4 min-w-0"
+							class="w-full"
 						/>
+					</div>
+				</div>
 
+				<div class="flex gap-8 items-start w-full">
+					<Label parentClass="flex-2 pt-2.5" for="runner-name" label="Name" />
+					<div class="flex-10">
 						<Input
 							id="runner-name"
 							name="runner-name"
-							class="flex-4"
+							class="w-full"
 							placeholder="Runner Name"
 							type={InputType.Text}
 							value={name() ?? ""}
 							disabled={!runnerPermissions().edit}
 							onInput={(e) => setName(e.currentTarget.value)}
 						/>
+					</div>
+				</div>
 
-						<Input class="flex-2" disabled={true} type={InputType.Text} value={lastSeenText()} />
+				<div class="flex gap-8 items-start w-full">
+					<Label parentClass="flex-2 pt-2.5" label="Last Seen" />
+					<div class="flex-10">
+						<Input class="w-full" disabled={true} type={InputType.Text} value={lastSeenText()} />
 					</div>
 				</div>
 			</div>
