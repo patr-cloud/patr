@@ -240,6 +240,16 @@ const DeploymentInfo = () => {
 														e.preventDefault();
 														deleteDeployment();
 													}}
+													renderTrigger={(open) => (
+														<Button
+															class="h-10"
+															onClick={() => open?.(true)}
+															variant={ButtonVariant.Outlined}
+															color={Color.Error}
+														>
+															Delete
+														</Button>
+													)}
 												/>
 											)}
 									</div>

@@ -4,8 +4,10 @@ import {
 	openRunnerDetail,
 	statusBadge,
 	deploymentsTab,
+	infoTab,
 	metricsTab,
 	logsTab,
+	deleteRunnerButton,
 } from '@/helpers/ui/runner';
 
 // get-info anti-enum 401, delete→202/inaccessible and delete-already-deleted at
@@ -31,7 +33,7 @@ async function withDetail(
 }
 
 test.describe('runner > detail [UI]', () => {
-	test('detail shows the three tabs and an Unreachable badge for a fresh runner', async ({
+	test('detail shows the four tabs and an Unreachable badge for a fresh runner', async ({
 		browser,
 		api,
 	}) => {
@@ -39,19 +41,22 @@ test.describe('runner > detail [UI]', () => {
 		const runner = await createRunnerAPI(api, user, user.workspaceId);
 		await withDetail(browser, user, runner.id, undefined, async (page) => {
 			await expect(deploymentsTab(page)).toBeVisible();
+			await expect(infoTab(page)).toBeVisible();
 			await expect(metricsTab(page)).toBeVisible();
 			await expect(logsTab(page)).toBeVisible();
 			await expect(statusBadge(page, 'Unreachable')).toBeVisible();
 		});
 	});
 
-	test('no delete control is rendered on the runner detail', async ({ browser, api }) => {
+	test('the workspace owner sees a delete control on the runner detail', async ({
+		browser,
+		api,
+	}) => {
 		await using user = await createUserWithWorkspace(api);
 		const runner = await createRunnerAPI(api, user, user.workspaceId);
 		await withDetail(browser, user, runner.id, undefined, async (page) => {
-			// Runner deletion is API-only; the UI exposes no delete affordance.
 			await expect(deploymentsTab(page)).toBeVisible();
-			await expect(page.getByRole('button', { name: /^Delete$/ })).toHaveCount(0);
+			await expect(deleteRunnerButton(page)).toBeVisible();
 		});
 	});
 

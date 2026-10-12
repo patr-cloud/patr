@@ -1,5 +1,6 @@
 import { FiLock, FiTrash2, FiUpload } from "solid-icons/fi";
-import { createEffect, createMemo, createSignal, onCleanup, Show } from "solid-js";
+import { debounce } from "@solid-primitives/scheduled";
+import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import { EnvironmentVariableValue } from "~/bindings";
 import { Alert, Button, ButtonVariant } from "~/components";
@@ -134,17 +135,19 @@ const EnvList = (props: EnvListProps) => {
 	// Linting is async and the preset is a lazy chunk, so it runs on a trailing
 	// debounce rather than on every keystroke. Only plain values are linted —
 	// a value that is already a secret reference has nothing to find.
+	const lintDebounced = debounce((entries: ReturnType<typeof convertible>) => {
+		void Promise.all(
+			entries.map(async (entry) => [entry.key, await lintEnvVar(entry.key, entry.value)] as const)
+		).then((results) => setFindings(Object.fromEntries(results)));
+	}, LINT_DEBOUNCE_MS);
+
 	createEffect(() => {
 		const entries = convertible();
-		if (isServer || get(props.disabled)) return;
-
-		const timer = setTimeout(() => {
-			void Promise.all(
-				entries.map(async (entry) => [entry.key, await lintEnvVar(entry.key, entry.value)] as const)
-			).then((results) => setFindings(Object.fromEntries(results)));
-		}, LINT_DEBOUNCE_MS);
-
-		onCleanup(() => clearTimeout(timer));
+		if (isServer || get(props.disabled)) {
+			lintDebounced.clear();
+			return;
+		}
+		lintDebounced(entries);
 	});
 
 	/**

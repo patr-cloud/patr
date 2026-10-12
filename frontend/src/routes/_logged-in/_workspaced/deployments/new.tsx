@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
+import { debounce } from "@solid-primitives/scheduled";
 import { createEffect, createSignal, Show } from "solid-js";
 import {
 	PageContainer,
@@ -28,7 +29,7 @@ import {
 import PortInput from "./-components/port";
 import { createFormAction } from "~/hooks";
 import { Uuid } from "~/utils/func";
-import { useRunnersQuery, useContainerRegistriesQuery, useContainerTagsQuery } from "~/hooks/fetch";
+import { useRunnersInfiniteQuery, useContainerRegistriesInfiniteQuery, useContainerTagsQuery } from "~/hooks/fetch";
 import { REGISTRY_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import ProbeInput from "./-components/probe-input";
@@ -39,11 +40,10 @@ import { useNavigate } from "@tanstack/solid-router";
 const CreateDeploymentPage = () => {
 	const toast = useToast();
 
-	const runnersQuery = useRunnersQuery();
-	const repositoriesQuery = useContainerRegistriesQuery(
-		() => undefined,
-		() => undefined
-	);
+	const [runnerSearch, setRunnerSearch] = createSignal("");
+	const [repositorySearch, setRepositorySearch] = createSignal("");
+	const runnersQuery = useRunnersInfiniteQuery(runnerSearch);
+	const repositoriesQuery = useContainerRegistriesInfiniteQuery(repositorySearch);
 
 	const navigate = useNavigate();
 	const [name, setName] = createSignal<string>("");
@@ -81,11 +81,7 @@ const CreateDeploymentPage = () => {
 	const isPatrRegistry = () => REGISTRY_DOMAIN !== undefined && registry() === REGISTRY_DOMAIN;
 
 	// Debounce tag filter updates to avoid hammering the API on every keystroke
-	let tagFilterTimer: ReturnType<typeof setTimeout> | undefined;
-	const debouncedSetTagFilter = (value: string) => {
-		clearTimeout(tagFilterTimer);
-		tagFilterTimer = setTimeout(() => setTagFilter(value), 300);
-	};
+	const debouncedSetTagFilter = debounce((value: string) => setTagFilter(value), 300);
 
 	const tagsQuery = useContainerTagsQuery(
 		() => repositoryId(),
@@ -95,7 +91,13 @@ const CreateDeploymentPage = () => {
 	const tagSuggestions = () => tagsQuery.data?.tags.map((t) => ({ label: t.tag, value: t.tag })) ?? [];
 
 	const repoSuggestions = () =>
-		repositoriesQuery.data?.repositories.map((r) => ({ label: r.name, value: r.id })) ?? [];
+		repositoriesQuery.data?.pages
+			.flatMap((page) => page.repositories)
+			.map((r) => ({ label: r.name, value: r.id })) ?? [];
+	const runnerOptions = () =>
+		runnersQuery.data?.pages
+			.flatMap((page) => page.runners)
+			.map((runner) => ({ value: runner.id, label: runner.name })) ?? [];
 
 	const { onSubmit, isLoading } = createFormAction(async ({ workspaceId }) => {
 		if (!envValid() || !portsValid() || !configMountsValid() || !volumesValid()) {
@@ -218,6 +220,16 @@ const CreateDeploymentPage = () => {
 											class="flex-6"
 											placeholder="Select Repository"
 											suggestions={repoSuggestions()}
+											onLoadMore={
+												repositoriesQuery.hasNextPage
+													? () => repositoriesQuery.fetchNextPage()
+													: undefined
+											}
+											isLoadingMore={() =>
+												repositoriesQuery.isFetchingNextPage ||
+												repositoriesQuery.isPlaceholderData
+											}
+											onSearch={setRepositorySearch}
 											allowCustomValue={false}
 											value={repositoryId()}
 											onSelect={(id) => {
@@ -260,12 +272,14 @@ const CreateDeploymentPage = () => {
 								<Label parentClass="flex-2" for="deployment-runner" label="Runner" />
 								<div class="flex-10 flex items-center gap-4 w-full">
 									<InputDropdown
-										options={
-											runnersQuery.data?.runners.map((runner) => ({
-												value: runner.id,
-												label: runner.name,
-											})) ?? []
+										options={runnerOptions()}
+										onLoadMore={
+											runnersQuery.hasNextPage ? () => runnersQuery.fetchNextPage() : undefined
 										}
+										isLoadingMore={() =>
+											runnersQuery.isFetchingNextPage || runnersQuery.isPlaceholderData
+										}
+										onSearch={setRunnerSearch}
 										value={runner()}
 										onSelect={setRunner}
 										class="flex-4"

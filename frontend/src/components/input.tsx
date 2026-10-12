@@ -1,4 +1,5 @@
 import { FiChevronDown, FiEye, FiEyeOff } from "solid-icons/fi";
+import { debounce } from "@solid-primitives/scheduled";
 import { createSignal, For, mergeProps, Show, JSX } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useClickOutside } from "~/hooks";
@@ -196,7 +197,20 @@ interface InputProps {
 	 * Receives the suggestion's `value` (not label).
 	 */
 	onSelect?: (value: string) => void;
+	/** Called when the user scrolls near the bottom of the suggestions dropdown */
+	onLoadMore?: () => void;
+	/** Whether more suggestions are currently being loaded */
+	isLoadingMore?: MaybeAccessor<boolean>;
+	/**
+	 * Called with the text typed into the suggestions dropdown, so the caller
+	 * can search on the server. Typing is debounced; clearing the text (when
+	 * the dropdown opens or closes) is reported straight away.
+	 */
+	onSearch?: (text: string) => void;
 }
+
+/** How long typing has to pause before the text is reported to `onSearch`. */
+const SEARCH_DEBOUNCE_MS = 300;
 
 const Input = (rawProps: InputProps) => {
 	const props = mergeProps(
@@ -216,17 +230,46 @@ const Input = (rawProps: InputProps) => {
 	const [containerRef, setContainerRef] = createSignal<HTMLDivElement>();
 	const [dropdownRef, setDropdownRef] = createSignal<HTMLDivElement>();
 	const dropdownRect = createDropdownPosition(containerRef, showDropdown);
+	// The last suggestion picked. Searching or paging can drop it from
+	// `suggestions`, and its label is still needed to show the committed value.
+	const [pickedSuggestion, setPickedSuggestion] = createSignal<AutocompleteSuggestion>();
+
+	let lastSearch = "";
+
+	/** Reports typed text to `onSearch` once typing pauses. */
+	const searchDebounced = debounce((onSearch: (text: string) => void, text: string) => {
+		lastSearch = text;
+		onSearch(text);
+	}, SEARCH_DEBOUNCE_MS);
+
+	/** Clears the search straight away, skipping it if it's already clear. */
+	const clearSearch = () => {
+		if (!props.onSearch) return;
+		searchDebounced.clear();
+		if (lastSearch === "") return;
+		lastSearch = "";
+		props.onSearch("");
+	};
+
+	/** The label of the committed value, for showing when the dropdown is closed. */
+	const committedLabel = () => {
+		const committed = get(props.value) as string | undefined;
+		const suggestions = get(props.suggestions) ?? [];
+		const found = suggestions.find((s) => s.value === committed);
+		if (found) return found.label;
+		const picked = pickedSuggestion();
+		return picked && picked.value === committed ? picked.label : "";
+	};
 
 	useClickOutside(containerRef, (event) => {
 		const dd = dropdownRef();
 		if (dd && dd.contains(event.target as Node)) return;
 		setShowDropdown(false);
 		setHighlightedIndex(-1);
+		clearSearch();
 		if (!props.allowCustomValue) {
 			// Reset display text to the committed value's label
-			const suggestions = get(props.suggestions) ?? [];
-			const committed = get(props.value) as string | undefined;
-			setInputText(suggestions.find((s) => s.value === committed)?.label ?? "");
+			setInputText(committedLabel());
 		}
 	});
 
@@ -247,19 +290,19 @@ const Input = (rawProps: InputProps) => {
 		if (showDropdown()) return inputText();
 		if (!props.allowCustomValue) {
 			// Show the label of the currently committed value
-			const suggestions = get(props.suggestions) ?? [];
-			const committed = get(props.value) as string | undefined;
-			return suggestions.find((s) => s.value === committed)?.label ?? "";
+			return committedLabel();
 		}
 		// allowCustomValue=true: value IS the text
 		return (get(props.value) as string | undefined) ?? "";
 	};
 
 	const selectSuggestion = (suggestion: AutocompleteSuggestion) => {
+		setPickedSuggestion(suggestion);
 		props.onSelect?.(suggestion.value);
 		setInputText(suggestion.label);
 		setShowDropdown(false);
 		setHighlightedIndex(-1);
+		clearSearch();
 	};
 
 	const onAutocompleteKeyDown = (e: KeyboardEvent) => {
@@ -293,10 +336,9 @@ const Input = (rawProps: InputProps) => {
 				e.preventDefault();
 				setShowDropdown(false);
 				setHighlightedIndex(-1);
+				clearSearch();
 				if (!props.allowCustomValue) {
-					const suggestions = get(props.suggestions) ?? [];
-					const committed = get(props.value) as string | undefined;
-					setInputText(suggestions.find((s) => s.value === committed)?.label ?? "");
+					setInputText(committedLabel());
 				}
 				break;
 			case "Home":
@@ -352,6 +394,7 @@ const Input = (rawProps: InputProps) => {
 						setInputText(e.currentTarget.value);
 						setShowDropdown(true);
 						setHighlightedIndex(-1);
+						if (props.onSearch) searchDebounced(props.onSearch, e.currentTarget.value);
 						if (props.allowCustomValue) {
 							props.onInput?.(e);
 						}
@@ -371,12 +414,14 @@ const Input = (rawProps: InputProps) => {
 					if (hasSuggestions()) {
 						setInputText("");
 						setShowDropdown(true);
+						clearSearch();
 					}
 				}}
 				onClick={() => {
 					if (hasSuggestions()) {
 						setInputText("");
 						setShowDropdown(true);
+						clearSearch();
 					}
 				}}
 				onPaste={(e) => props.onPaste?.(e)}
@@ -419,6 +464,13 @@ const Input = (rawProps: InputProps) => {
 						)} border border-border-color z-50 rounded-xs shadow-lg overflow-y-auto ${
 							dropdownRect().direction === "up" ? "rounded-b-none" : "rounded-t-none"
 						}`}
+						onScroll={(e) => {
+							if (!props.onLoadMore) return;
+							const el = e.currentTarget;
+							if (el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
+								props.onLoadMore();
+							}
+						}}
 					>
 						<For each={filteredSuggestions()}>
 							{(suggestion, index) => (
@@ -436,8 +488,13 @@ const Input = (rawProps: InputProps) => {
 								</div>
 							)}
 						</For>
-						<Show when={filteredSuggestions().length === 0}>
+						<Show when={filteredSuggestions().length === 0 && !get(props.isLoadingMore)}>
 							<div class="px-xl py-sm text-grey text-sm">No options available.</div>
+						</Show>
+						<Show when={get(props.isLoadingMore)}>
+							<div class="flex items-center justify-center py-sm">
+								<div class="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+							</div>
 						</Show>
 					</div>
 				</Portal>

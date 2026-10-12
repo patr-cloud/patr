@@ -1,19 +1,31 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { ErrorBoundary, Match, Show, Switch } from "solid-js";
+import { useQueryClient } from "@tanstack/solid-query";
+import { createSignal, ErrorBoundary, Match, Show, Switch } from "solid-js";
 import {
+	Button,
+	ButtonVariant,
+	DeleteModal,
 	HeadTab,
 	LoadingSpinner,
 	NoPermissionsPage,
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	StatusChip,
+	useToast,
 } from "~/components";
-import useIsAllowed from "~/hooks/is-allowed";
+import { createAuthenticatedAction } from "~/hooks";
+import useIsAllowed, { useGetPermissions } from "~/hooks/is-allowed";
 import { useRunnerInfoQuery } from "~/hooks/fetch";
+import { runnerKeys } from "~/hooks/query-keys";
+import { DeleteRunnerResponse } from "~/bindings";
+import { httpRequest } from "~/utils/http-request";
+import { Color } from "~/utils/color";
 import RunnerDeployments from "./-components/deployments";
 import RunnerMetrics from "./-components/metrics";
 import RunnerLogs from "./-components/logs";
+import RunnerInfo from "./-components/info";
 
 const RunnerDetail = () => {
 	const params = Route.useParams();
@@ -21,10 +33,36 @@ const RunnerDetail = () => {
 	const tab = () => search().tab;
 
 	const navigate = useNavigate();
+	const toast = useToast();
+	const queryClient = useQueryClient();
+	const [isDeleteModalOpen, setIsDeleteModalOpen] = createSignal(false);
 
 	const isAllowedResource = useIsAllowed("runner", "view", params().id);
+	const runnerPermissions = useGetPermissions("runner", () => params().id);
 
 	const runnerQuery = useRunnerInfoQuery(() => params().id);
+
+	const { execute: deleteRunner, isLoading: isDeletingRunner } = createAuthenticatedAction(
+		async ({ workspaceId: wsId }) => {
+			const response = await httpRequest<DeleteRunnerResponse>(
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/runner/${params().id}`,
+				{ method: "DELETE" }
+			);
+
+			if (!response.ok) {
+				if (response.data.error === "resourceInUse") {
+					toast("Cannot delete runner: it still has deployments", "error");
+					return;
+				}
+				toast("Failed to delete runner", "error");
+				return;
+			}
+
+			queryClient.invalidateQueries({ queryKey: runnerKeys.all(wsId) });
+			toast("Runner deleted successfully", "success");
+			navigate({ to: "/runners" });
+		}
+	);
 
 	return (
 		<>
@@ -69,21 +107,34 @@ const RunnerDetail = () => {
 								subText="View deployments, system metrics, and logs for this runner."
 								class="justify-between items-center"
 								actions={() => (
-									<div class="flex items-center gap-sm">
-										<span
-											class={`inline-flex items-center gap-xxs text-xs font-medium px-sm py-1 rounded-xl ${
-												runnerQuery.data?.runner.connected
-													? "bg-success/15 text-success"
-													: "bg-error/15 text-error"
-											}`}
-										>
-											<span
-												class={`inline-block w-1.5 h-1.5 rounded-full ${
-													runnerQuery.data?.runner.connected ? "bg-success" : "bg-error"
-												}`}
+									<div class="flex items-center gap-4">
+										<StatusChip
+											status={runnerQuery.data?.runner.connected ? "connected" : "unreachable"}
+											size="md"
+										/>
+										<Show when={runnerPermissions().delete && runnerQuery.data?.runner.name}>
+											<DeleteModal
+												isLoading={isDeletingRunner()}
+												title="Do You Really Want to Delete This Runner?"
+												resourceName={runnerQuery.data!.runner.name}
+												isOpen={isDeleteModalOpen}
+												setIsOpen={setIsDeleteModalOpen}
+												onClickDelete={(e) => {
+													e.preventDefault();
+													deleteRunner();
+												}}
+												renderTrigger={(open) => (
+													<Button
+														class="h-10"
+														onClick={() => open?.(true)}
+														variant={ButtonVariant.Outlined}
+														color={Color.Error}
+													>
+														Delete
+													</Button>
+												)}
 											/>
-											{runnerQuery.data?.runner.connected ? "Online" : "Unreachable"}
-										</span>
+										</Show>
 									</div>
 								)}
 								bottomContent={() => (
@@ -93,6 +144,16 @@ const RunnerDetail = () => {
 											{
 												label: "Deployments",
 												value: "deployments",
+												onClick: (value) =>
+													navigate({
+														to: "/runners/$id",
+														params: { id: params().id },
+														search: { tab: value },
+													}),
+											},
+											{
+												label: "Info",
+												value: "info",
 												onClick: (value) =>
 													navigate({
 														to: "/runners/$id",
@@ -129,6 +190,9 @@ const RunnerDetail = () => {
 								<Switch fallback={<div class="text-grey text-sm py-8 text-center">No such tab</div>}>
 									<Match when={tab() === "deployments"}>
 										<RunnerDeployments runnerId={params().id} />
+									</Match>
+									<Match when={tab() === "info"}>
+										<RunnerInfo runnerId={params().id} />
 									</Match>
 									<Match when={tab() === "metrics"}>
 										<RunnerMetrics runnerId={params().id} />

@@ -16,6 +16,8 @@ mod remove_runner_from_workspace;
 mod stream_runner_data_for_workspace;
 /// The endpoint to stream runner process logs in real time
 mod stream_runner_logs;
+/// The endpoint to update a runner in a workspace
+mod update_runner;
 
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -31,6 +33,7 @@ pub use self::{
 	remove_runner_from_workspace::*,
 	stream_runner_data_for_workspace::*,
 	stream_runner_logs::*,
+	update_runner::*,
 };
 use crate::prelude::*;
 

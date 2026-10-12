@@ -1,8 +1,13 @@
+import { get } from "~/utils/func";
+import { MaybeAccessor } from "~/utils/types";
+
 interface StatusChipProps {
 	/** The status text to display */
 	status: string;
 	/** Size variant - "sm" for tables/inline, "md" for headers/detail pages. Defaults to "sm" */
 	size?: "sm" | "md";
+	/** Additional classes for the chip */
+	class?: MaybeAccessor<string | undefined>;
 }
 
 /** A colored status badge with dot indicator for displaying deployment/resource status. */
@@ -74,7 +79,7 @@ const StatusChip = (props: StatusChipProps) => {
 
 	return (
 		<span
-			class={`inline-flex items-center gap-1.5 font-medium rounded-xs border capitalize tracking-wide ${sizeClasses()} ${config().bg} ${config().border} ${config().text}`}
+			class={`inline-flex items-center gap-1.5 font-medium rounded-xs border capitalize tracking-wide ${sizeClasses()} ${config().bg} ${config().border} ${config().text} ${get(props.class) ?? ""}`}
 			style={chipAnimation()}
 		>
 			<span class={`rounded-full shrink-0 ${dotSize()} ${config().dot}`} style={dotAnimation()} />

@@ -1,6 +1,7 @@
-import { createQuery } from "@tanstack/solid-query";
+import { createInfiniteQuery, createQuery, keepPreviousData } from "@tanstack/solid-query";
 import { Accessor } from "solid-js";
 import {
+	ContainerRepository,
 	GetContainerRegistryUsageResponse,
 	GetContainerRepositoryExposedPortsResponse,
 	GetContainerRepositoryInfoResponse,
@@ -8,6 +9,7 @@ import {
 	ListContainerRepositoriesResponse,
 	ListContainerRepositoryManifestsResponse,
 	ListContainerRepositoryTagsResponse,
+	WithId,
 } from "~/bindings";
 
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -49,6 +51,62 @@ export const useContainerRegistriesQuery = (
 					repositories: response.data.repositories,
 					totalCount: Number(response.headers.get("x-total-count") ?? 0),
 				};
+			},
+		};
+	});
+};
+
+/** How many repositories a picker loads per page as it's scrolled. */
+const REPOSITORY_PICKER_PAGE_SIZE = 20;
+
+/** One page of repositories, with the total so the next page can be worked out. */
+type RepositoryPage = {
+	repositories: WithId<ContainerRepository>[];
+	totalCount: number;
+	page: number;
+};
+
+/**
+ * Loads a workspace's repositories a page at a time, for pickers that load
+ * the next page as they're scrolled. An optional [search] narrows them by name
+ * on the server. List pages use [useContainerRegistriesQuery].
+ */
+export const useContainerRegistriesInfiniteQuery = (search?: Accessor<string>) => {
+	const [authState] = useAuthState();
+	const [workspaceId] = useLastWorkspaceId();
+
+	return createInfiniteQuery(() => {
+		const auth = authState();
+		const wsId = workspaceId();
+		const s = search?.() ?? "";
+		const searchParam = s ? `&search[name]=${encodeURIComponent(s)}` : "";
+		return {
+			queryKey: containerRegistryKeys.infiniteList(wsId ?? "", s),
+			// A new search re-keys this. Keep the previous results up until the
+			// new ones land, rather than blanking the open picker.
+			placeholderData: keepPreviousData,
+			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
+			meta: { errorMessage: "Failed to fetch container registries" },
+			initialPageParam: 0,
+			queryFn: async ({ pageParam }: { pageParam: number }): Promise<RepositoryPage> => {
+				const response = await httpRequest<ListContainerRepositoriesResponse>(
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/container-registry?page=${pageParam}&count=${REPOSITORY_PICKER_PAGE_SIZE}${searchParam}`,
+					{ method: "GET" }
+				);
+
+				if (!response.ok) {
+					throw new Error(response.data.error);
+				}
+
+				return {
+					repositories: response.data.repositories,
+					totalCount: Number(response.headers.get("x-total-count") ?? 0),
+					page: pageParam,
+				};
+			},
+			getNextPageParam: (lastPage: RepositoryPage): number | undefined => {
+				const loaded = (lastPage.page + 1) * REPOSITORY_PICKER_PAGE_SIZE;
+				return loaded < lastPage.totalCount ? lastPage.page + 1 : undefined;
 			},
 		};
 	});

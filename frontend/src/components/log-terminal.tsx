@@ -1,3 +1,4 @@
+import { debounce } from "@solid-primitives/scheduled";
 import { createWS } from "@solid-primitives/websocket";
 import { FiDownload } from "solid-icons/fi";
 import { createEffect, createSignal, For, on, onCleanup, onMount, Show } from "solid-js";
@@ -29,13 +30,8 @@ interface LogsResponse {
 /** Debounce a value by `ms` milliseconds */
 const useDebounce = (value: () => string, ms: number) => {
 	const [debounced, setDebounced] = createSignal(value());
-	let timer: ReturnType<typeof setTimeout>;
-	createEffect(() => {
-		const v = value();
-		clearTimeout(timer);
-		timer = setTimeout(() => setDebounced(v), ms);
-	});
-	onCleanup(() => clearTimeout(timer));
+	const update = debounce((v: string) => setDebounced(v), ms);
+	createEffect(() => update(value()));
 	return debounced;
 };
 

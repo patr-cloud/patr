@@ -4,7 +4,13 @@ import useResourcesInfoQuery from "./resources";
 import useWorkspacesQuery from "./workspaces";
 import useUserPermissionsQuery from "./user-permissions";
 import { useDeploymentsQuery, useDeploymentInfoQuery } from "./deployments";
-import { useRunnersQuery, useRunnerInfoQuery, useRunnersListQuery, useRunnerDeploymentsQuery } from "./runners";
+import {
+	useRunnersQuery,
+	useRunnersInfiniteQuery,
+	useRunnerInfoQuery,
+	useRunnersListQuery,
+	useRunnerDeploymentsQuery,
+} from "./runners";
 import { useWorkspaceInfoQuery } from "./workspace";
 import { useRolesQuery, useAllRolesQuery, useRoleInfoQuery, useRoleUsersQuery } from "./roles";
 import { useMembersQuery } from "./members";
@@ -12,6 +18,7 @@ import { useInvitesQuery } from "./invitations";
 import { useApiTokensQuery, useApiTokenInfoQuery } from "./api-tokens";
 import {
 	useContainerRegistriesQuery,
+	useContainerRegistriesInfiniteQuery,
 	useContainerRegistryInfoQuery,
 	useContainerManifestsQuery,
 	useContainerManifestDetailsQuery,
@@ -31,6 +38,7 @@ export {
 	useDeploymentInfoQuery,
 	useDeploymentMetricsQuery,
 	useRunnersQuery,
+	useRunnersInfiniteQuery,
 	useRunnerInfoQuery,
 	useRunnersListQuery,
 	useRunnerDeploymentsQuery,
@@ -49,6 +57,7 @@ export {
 	useApiTokensQuery,
 	useApiTokenInfoQuery,
 	useContainerRegistriesQuery,
+	useContainerRegistriesInfiniteQuery,
 	useContainerRegistryInfoQuery,
 	useContainerManifestsQuery,
 	useContainerManifestDetailsQuery,

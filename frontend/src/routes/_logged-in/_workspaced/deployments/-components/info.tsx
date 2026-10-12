@@ -17,7 +17,7 @@ import {
 import { useAuthState } from "~/hooks";
 import { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useDeploymentInfoQuery, useRunnersQuery } from "~/hooks/fetch";
+import { useDeploymentInfoQuery, useRunnerInfoQuery, useRunnersInfiniteQuery } from "~/hooks/fetch";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { REGISTRY_DOMAIN } from "~/utils/env";
@@ -37,7 +37,8 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const queryClient = useQueryClient();
 
 	const deploymentQuery = useDeploymentInfoQuery(() => props.deploymentId);
-	const runnersQuery = useRunnersQuery();
+	const [runnerSearch, setRunnerSearch] = createSignal("");
+	const runnersQuery = useRunnersInfiniteQuery(runnerSearch);
 
 	// Local signal for form editing — initialized from query data and kept in sync
 	const [localInfo, setLocalInfo] = createSignal<GetDeploymentInfoResponse | undefined>(undefined);
@@ -47,6 +48,26 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			setLocalInfo(deploymentQuery.data);
 		}
 	});
+
+	const loadedRunners = () => runnersQuery.data?.pages.flatMap((page) => page.runners) ?? [];
+
+	// The picker only holds the pages scrolled so far, so the selected runner
+	// may not be among them yet. Fetch it on its own so the field isn't blank.
+	const missingRunnerId = () => {
+		const id = localInfo()?.runner;
+		return id && !loadedRunners().some((runner) => runner.id === id) ? id : "";
+	};
+	const missingRunnerQuery = useRunnerInfoQuery(missingRunnerId);
+
+	const runnerOptions = () => {
+		const options = loadedRunners().map((runner) => ({ value: runner.id, label: runner.name }));
+		// Read through `isSuccess` so a pending fetch doesn't suspend the form.
+		const missing = missingRunnerQuery.isSuccess ? missingRunnerQuery.data?.runner : undefined;
+		if (missing && missingRunnerId() === missing.id) {
+			options.unshift({ value: missing.id, label: missing.name });
+		}
+		return options;
+	};
 
 	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentId);
 
@@ -204,12 +225,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 								<FiChevronDown size={16} />
 							</button>
 						)}
-						options={
-							runnersQuery.data?.runners.map((runner) => ({
-								value: runner.id,
-								label: runner.name,
-							})) ?? []
-						}
+						options={runnerOptions()}
+						onLoadMore={runnersQuery.hasNextPage ? () => runnersQuery.fetchNextPage() : undefined}
+						isLoadingMore={() => runnersQuery.isFetchingNextPage || runnersQuery.isPlaceholderData}
+						onSearch={setRunnerSearch}
 						onSelect={(runnerId) => {
 							updateLocal((prev) => (prev ? { ...prev, runner: runnerId } : undefined));
 						}}
