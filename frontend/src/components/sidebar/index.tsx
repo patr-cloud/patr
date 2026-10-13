@@ -141,7 +141,7 @@ const Sidebar: Component = () => {
 			</nav>
 
 			{WorkspaceSwitcher && (
-				<div class="block md:hidden lg:block px-4 py-8 border-t border-white/5">
+				<div class="block md:hidden lg:block p-4 border-t border-white/5">
 					<WorkspaceSwitcher />
 				</div>
 			)}

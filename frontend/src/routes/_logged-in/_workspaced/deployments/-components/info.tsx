@@ -1,5 +1,6 @@
-import { FiChevronDown } from "solid-icons/fi";
+import { FiChevronDown, FiLink } from "solid-icons/fi";
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
+import { useNavigate } from "@tanstack/solid-router";
 import { ExposedPortType, GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
 import {
 	Button,
@@ -35,6 +36,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const queryClient = useQueryClient();
+	const navigate = useNavigate();
 
 	const deploymentQuery = useDeploymentInfoQuery(() => props.deploymentId);
 	const [runnerSearch, setRunnerSearch] = createSignal("");
@@ -220,6 +222,29 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						placeholder="Select Runner"
 						disabled={!deploymentPermissions().edit}
 						value={localInfo()?.runner ?? ""}
+						startIcon={() => (
+							// Follows the selected runner, saved or not, so it matches the field.
+							<Show when={localInfo()?.runner}>
+								{(runnerId) => (
+									<button
+										type="button"
+										aria-label="Open runner"
+										class="text-primary flex items-center justify-center pl-md cursor-pointer"
+										// Keep the input from taking focus and opening the options.
+										onMouseDown={(e) => e.preventDefault()}
+										onClick={() =>
+											navigate({
+												to: "/runners/$id",
+												params: { id: runnerId() },
+												search: { tab: "deployments" },
+											})
+										}
+									>
+										<FiLink size={16} />
+									</button>
+								)}
+							</Show>
+						)}
 						endIcon={() => (
 							<button>
 								<FiChevronDown size={16} />
