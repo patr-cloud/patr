@@ -352,7 +352,7 @@ pub(crate) async fn upsert(
 					(String::from("patr.deploymentName"), name.clone()),
 				])),
 				health_check,
-				hosts: Some(vec![format!("host.docker.internal:{host_ip}")]),
+				hosts: Some(vec![format!("{host_ip} host.docker.internal")]),
 				mounts: if volume_mounts.is_empty() {
 					None
 				} else {
