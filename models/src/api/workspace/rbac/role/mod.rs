@@ -54,7 +54,7 @@ pub struct Role {
 	cfg_attr(
 		not(target_arch = "wasm32"),
 		derive(sqlx::Type),
-		sqlx(type_name = "WORKSPACE_ACTOR_TYPE", rename_all = "snake_case"),
+		sqlx(type_name = "ACTOR_TYPE", rename_all = "snake_case"),
 	),
 	doc = "Workspace actor types"
 )]

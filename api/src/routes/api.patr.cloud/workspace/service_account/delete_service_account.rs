@@ -40,10 +40,11 @@ pub async fn delete_service_account(
 	.execute(&mut **database)
 	.await?;
 
-	// Hard-delete the service account row, then its actor. The account
-	// references the actor, so the order matters. The `actor_client` row
-	// deliberately stays — `audit_log` points at it, and removing it would
-	// erase the trail of what this account did.
+	// Hard-delete the service account row, then its workspace actor. The
+	// account references the workspace actor, so the order matters. The
+	// `actor_client` and `actor` rows deliberately stay — `audit_log` points
+	// at the `actor_client`, which names the `actor`, and removing either
+	// would erase the trail of what this account did.
 	let Some(deleted) = query!(
 		r#"
 		DELETE FROM

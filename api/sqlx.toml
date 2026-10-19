@@ -1,6 +1,7 @@
 [macros.type-overrides]
 'UUID'                             = "models::prelude::Uuid"
 'actor_client_type'                = "models::utils::ActorClientTypeDiscriminant"
+'actor_type'                       = "models::api::workspace::rbac::role::WorkspaceActorDiscriminant"
 'audit_log_type'                   = "models::utils::AuditLogType"
 'container_registry_manifest_kind' = "models::api::workspace::container_registry::ManifestKind"
 'deployment_status'                = "models::api::workspace::deployment::DeploymentStatus"
@@ -8,4 +9,3 @@
 'managed_url_type'                 = "models::api::workspace::managed_url::ManagedUrlType"
 'social_login_provider'            = "models::api::auth::SocialLoginProvider"
 'user_login_type'                  = "models::UserLoginType"
-'workspace_actor_type'             = "models::api::workspace::rbac::role::WorkspaceActorDiscriminant"
