@@ -80,9 +80,9 @@ pub async fn initialize_user_login_constraints(
 		ALTER TABLE user_login
 			ADD CONSTRAINT user_login_fk_user_id
 				FOREIGN KEY(user_id) REFERENCES "user"(id),
-			ADD CONSTRAINT user_login_fk_login_id_actor_client_type
-				FOREIGN KEY(login_id, actor_client_type)
-					REFERENCES actor_client(id, actor_client_type);
+			ADD CONSTRAINT user_login_fk_login_id_actor_client_type_user_id
+				FOREIGN KEY(login_id, actor_client_type, user_id)
+					REFERENCES actor_client(id, actor_client_type, actor_id);
 		"#
 	)
 	.execute(&mut *connection)

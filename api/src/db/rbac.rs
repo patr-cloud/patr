@@ -81,21 +81,10 @@ pub async fn initialize_rbac_tables(
 	// One actor per principal per workspace.
 	query!(
 		r#"
-		CREATE TYPE WORKSPACE_ACTOR_TYPE AS ENUM(
-			'user',
-			'service_account'
-		);
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	query!(
-		r#"
 		CREATE TABLE workspace_actor(
 			id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
-			actor_type WORKSPACE_ACTOR_TYPE NOT NULL
+			actor_type ACTOR_TYPE NOT NULL
 		);
 		"#
 	)
@@ -128,7 +117,7 @@ pub async fn initialize_rbac_tables(
 			user_id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
 			actor_id UUID NOT NULL,
-			actor_type WORKSPACE_ACTOR_TYPE NOT NULL
+			actor_type ACTOR_TYPE NOT NULL
 				GENERATED ALWAYS AS ('user') STORED
 		);
 		"#
@@ -364,7 +353,7 @@ pub async fn initialize_rbac_constraints(
 			ADD CONSTRAINT role_binding_fk_scope_id_workspace_id
 				FOREIGN KEY(scope_id, workspace_id) REFERENCES resource(id, workspace_id),
 			ADD CONSTRAINT role_binding_fk_created_by
-				FOREIGN KEY(created_by) REFERENCES "user"(id);
+				FOREIGN KEY(created_by) REFERENCES actor(id);
 		"#
 	)
 	.execute(&mut *connection)

@@ -370,6 +370,59 @@ async fn delete_web_login_of_another_user_is_not_found() {
 	);
 }
 
+/// An audit entry still names its user after the login that made it is gone:
+/// the `actor_client` it points at outlives the `user_login` row and names
+/// its owning actor.
+#[tokio::test]
+async fn audit_entry_resolves_to_user_after_logout() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let (other_access, other_refresh) = setup.login_test_user(&user.email, &user.password).await;
+	let other_access = BearerToken::from_str(&other_access).unwrap();
+	// The refresh token is `{login_id}.{secret}`.
+	let other_login_id = Uuid::parse_str(other_refresh.split_once('.').unwrap().0).unwrap();
+
+	// Creating a workspace is audited against the login that made it.
+	let workspace = setup.create_test_workspace(&other_access).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteWebLoginRequest>::builder()
+				.path(DeleteWebLoginPath {
+					login_id: other_login_id,
+				})
+				.headers(DeleteWebLoginRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(DeleteWebLoginResponse));
+
+	let login_exists: bool =
+		sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM user_login WHERE login_id = $1)")
+			.bind(other_login_id)
+			.fetch_one(setup.database())
+			.await
+			.expect("user_login query");
+	assert!(!login_exists, "the login should be gone");
+
+	let actor_id: Uuid = sqlx::query_scalar(
+		"SELECT actor.id FROM audit_log \
+		 JOIN actor_client ON actor_client.id = audit_log.actor_client_id \
+		 JOIN actor ON actor.id = actor_client.actor_id \
+		 WHERE audit_log.resource_id = $1 AND audit_log.actor_client_id = $2 AND \
+		 actor.actor_type = 'user'",
+	)
+	.bind(workspace.id)
+	.bind(other_login_id)
+	.fetch_one(setup.database())
+	.await
+	.expect("audit entry should resolve to an actor");
+	assert_eq!(user.user_id, actor_id);
+}
+
 // ---------------------------------------------------------------------------
 // Which kinds of client a route accepts
 // ---------------------------------------------------------------------------

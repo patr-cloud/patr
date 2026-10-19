@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE actor_client ADD CONSTRAINT actor_client_fk_actor_id FOREIGN KEY(actor_id) REFERENCES actor(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "46f7eaf727f73770dfd42d6e4c50ed380127f8cb922a1aeac8a9dd3ad0338568"
+}

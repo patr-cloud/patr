@@ -30,7 +30,7 @@
         "name": "actor_type",
         "type_info": {
           "Custom": {
-            "name": "workspace_actor_type",
+            "name": "actor_type",
             "kind": {
               "Enum": [
                 "user",
