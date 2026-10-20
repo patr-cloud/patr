@@ -7,7 +7,7 @@
       "Left": [
         "Uuid",
         "Uuid",
-        "Varchar",
+        "Text",
         "Text",
         "Text"
       ]

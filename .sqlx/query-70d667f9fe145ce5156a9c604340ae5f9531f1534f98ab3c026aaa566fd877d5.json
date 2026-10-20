@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT actor_client.actor_client_type AS \"actor_client_type: ActorClientTypeDiscriminant\", user_login.login_type AS \"login_type?: UserLoginType\" FROM actor_client LEFT JOIN user_login ON user_login.login_id = actor_client.id WHERE actor_client.id = $1;",
+  "query": "SELECT actor_client.actor_client_type, user_login.login_type AS \"login_type?\" FROM actor_client LEFT JOIN user_login ON user_login.login_id = actor_client.id WHERE actor_client.id = $1;",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "actor_client_type: ActorClientTypeDiscriminant",
+        "name": "actor_client_type",
         "type_info": {
           "Custom": {
             "name": "actor_client_type",
@@ -16,11 +16,17 @@
               ]
             }
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "actor_client",
+            "name": "actor_client_type"
+          }
         }
       },
       {
         "ordinal": 1,
-        "name": "login_type?: UserLoginType",
+        "name": "login_type?",
         "type_info": {
           "Custom": {
             "name": "user_login_type",
@@ -30,6 +36,12 @@
                 "web_login"
               ]
             }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "user_login",
+            "name": "login_type"
           }
         }
       }
@@ -41,8 +53,8 @@
     },
     "nullable": [
       false,
-      false
+      true
     ]
   },
-  "hash": "da418cd9977fe7b2dae9cd1c6d80b680e51625cfbee60759be615ca3018974b5"
+  "hash": "70d667f9fe145ce5156a9c604340ae5f9531f1534f98ab3c026aaa566fd877d5"
 }

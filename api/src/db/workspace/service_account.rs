@@ -18,7 +18,7 @@ pub async fn initialize_service_account_tables(
 		CREATE TABLE service_account(
 			id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
-			name VARCHAR(100) NOT NULL,
+			name TEXT NOT NULL,
 			description TEXT,
 			token_hash TEXT NOT NULL,
 			created TIMESTAMPTZ NOT NULL,

@@ -18,8 +18,55 @@
 //! it. Swapping the type out — drop the dependent generated columns and their
 //! foreign keys, retype the supertype column, put them back — is the only
 //! form that works without committing mid-migration.
+//!
+//! Every existing workspace also gets the service account tiers a new one is
+//! seeded with, as immutable roles. Custom role names can't contain `:`, so
+//! no workspace already has a role by any of these names.
 
 use crate::prelude::*;
+
+/// A default role this migration seeds into every workspace.
+struct FrozenRole {
+	/// The role's name, unique within its workspace.
+	name: &'static str,
+	/// The role's description.
+	description: &'static str,
+	/// Its permission names.
+	permissions: &'static [&'static str],
+}
+
+/// The service account tiers as `create_workspace` seeded them when this
+/// migration was written. Frozen, like
+/// [`super::m020_backfill_role_bindings::default_roles`]: a later edit to the
+/// live seed must not change what this migration does.
+const DEFAULT_ROLES: &[FrozenRole] = &[
+	FrozenRole {
+		name: "Service Account: Viewer",
+		description: "Default role: read-only access to service accounts.",
+		permissions: &["serviceAccount::view"],
+	},
+	FrozenRole {
+		name: "Service Account: Editor",
+		description: "Default role: create, edit, and regenerate tokens on service accounts.",
+		permissions: &[
+			"serviceAccount::create",
+			"serviceAccount::edit",
+			"serviceAccount::regenerateToken",
+			"serviceAccount::view",
+		],
+	},
+	FrozenRole {
+		name: "Service Account: Admin",
+		description: "Default role: full control over service accounts, including delete.",
+		permissions: &[
+			"serviceAccount::create",
+			"serviceAccount::delete",
+			"serviceAccount::edit",
+			"serviceAccount::regenerateToken",
+			"serviceAccount::view",
+		],
+	},
+];
 
 #[macros::migration]
 async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
@@ -182,7 +229,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		CREATE TABLE service_account(
 			id UUID NOT NULL,
 			workspace_id UUID NOT NULL,
-			name VARCHAR(100) NOT NULL,
+			name TEXT NOT NULL,
 			description TEXT,
 			token_hash TEXT NOT NULL,
 			created TIMESTAMPTZ NOT NULL,
@@ -250,7 +297,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 			(
 				GEN_RANDOM_UUID(),
 				'serviceAccount',
-				'A non-human identity within a workspace, used to authenticate runners and other automated processes. It holds a single token and is granted access through role bindings like any other actor.'
+				'A service account (bot account) within a workspace. A service account is a non-human identity for CI pipelines and other automation. It has a single token and is granted access through role bindings, the same way a member is.'
 			);
 		"#,
 	)
@@ -260,7 +307,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 	for (name, description) in [
 		(
 			"serviceAccount::create",
-			"This permission allows the user to create a new service account in a workspace.",
+			"This permission allows the user to create a new service account in a workspace. Creating a service account can bind any role in the workspace to its token, so this permission effectively grants every permission in the workspace.",
 		),
 		(
 			"serviceAccount::view",
@@ -268,7 +315,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		),
 		(
 			"serviceAccount::edit",
-			"This permission allows the user to edit the service account, but not delete it or create a new one.",
+			"This permission allows the user to edit the service account, but not delete it or create a new one. Editing a service account can bind any role in the workspace to its token, so this permission effectively grants every permission in the workspace.",
 		),
 		(
 			"serviceAccount::delete",
@@ -276,7 +323,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		),
 		(
 			"serviceAccount::regenerateToken",
-			"This permission allows the user to regenerate the service account token.",
+			"This permission allows the user to regenerate the service account token. The new token acts as the service account, so this permission effectively grants everything the account's roles allow.",
 		),
 	] {
 		sqlx::query(
@@ -291,6 +338,68 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		.bind(description)
 		.execute(&mut *connection)
 		.await?;
+	}
+
+	let workspaces = sqlx::query_as::<_, (Uuid,)>("SELECT id FROM workspace;")
+		.fetch_all(&mut *connection)
+		.await?;
+
+	for (workspace_id,) in workspaces {
+		for role in DEFAULT_ROLES {
+			// A role is a resource, so it needs a `resource` row before the
+			// `role` row can point at it.
+			let (role_id,) = sqlx::query_as::<_, (Uuid,)>(
+				r#"
+				INSERT INTO
+					resource(id, resource_type_id, workspace_id, created, deleted)
+				VALUES
+					(
+						GENERATE_RESOURCE_ID(),
+						(SELECT id FROM resource_type WHERE name = 'role'),
+						$1,
+						NOW(),
+						NULL
+					)
+				RETURNING id;
+				"#,
+			)
+			.bind(workspace_id)
+			.fetch_one(&mut *connection)
+			.await?;
+
+			sqlx::query(
+				r#"
+				INSERT INTO
+					role(id, workspace_id, name, description, is_immutable)
+				VALUES
+					($1, $2, $3, $4, TRUE);
+				"#,
+			)
+			.bind(role_id)
+			.bind(workspace_id)
+			.bind(role.name)
+			.bind(role.description)
+			.execute(&mut *connection)
+			.await?;
+
+			sqlx::query(
+				r#"
+				INSERT INTO
+					role_permission(role_id, permission_id)
+				SELECT
+					$1,
+					permission.id
+				FROM
+					permission
+				WHERE
+					permission.name::TEXT = ANY($2);
+				"#,
+			)
+			.bind(role_id)
+			.bind(role.permissions)
+			.execute(&mut *connection)
+			.await?;
+		}
 	}
 
 	// Dropped, not replaced: the function is created by m014 and rewritten by

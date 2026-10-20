@@ -7,10 +7,10 @@ import { HYDRATION_TIMEOUT } from '@/helpers/config';
 //   .../roles/-components/{permission-picker,edit,users,role-header}.tsx
 
 export async function openRolesList(page: Page): Promise<void> {
-	// Fresh workspaces already have 36 seeded roles; use a high count so any
+	// Fresh workspaces already have 28 seeded roles; use a high count so any
 	// role we just created via API is visible on the first page.
 	await page.goto('/workspace/roles?count=100', { waitUntil: 'domcontentloaded' });
-	// The seeded 36 default roles always exist, so the table row header is the
+	// The seeded 28 default roles always exist, so the table row header is the
 	// stable hydration anchor; fall back to the empty-state heading just in case.
 	await page
 		.locator('text=/Role Name|No Roles Created/i')

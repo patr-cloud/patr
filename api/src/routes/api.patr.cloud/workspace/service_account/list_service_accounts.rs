@@ -37,7 +37,7 @@ pub async fn list_service_accounts(
 	info!("Listing service accounts in workspace `{}`", workspace_id);
 
 	let mut total_count = 0;
-	let rows = query!(
+	let service_accounts = query!(
 		r#"
 		SELECT
 			service_account.id,
@@ -69,24 +69,26 @@ pub async fn list_service_accounts(
 		(count * page) as i32,
 	)
 	.fetch_all(&mut **database)
-	.await?;
+	.await?
+	.into_iter()
+	.map(|row| {
+		total_count = row.total_count;
+		WithId::new(
+			row.id,
+			ServiceAccount {
+				name: row.name,
+				description: row.description,
+			},
+		)
+	})
+	.collect();
+
+	if page != 0 && total_count == 0 {
+		return Err(ErrorType::PageOutOfBounds);
+	}
 
 	AppResponse::builder()
-		.body(ListServiceAccountsResponse {
-			service_accounts: rows
-				.into_iter()
-				.map(|row| {
-					total_count = row.total_count;
-					WithId::new(
-						row.id,
-						ServiceAccount {
-							name: row.name,
-							description: row.description,
-						},
-					)
-				})
-				.collect(),
-		})
+		.body(ListServiceAccountsResponse { service_accounts })
 		.headers(ListServiceAccountsResponseHeaders {
 			total_count: TotalCountHeader(total_count as _),
 		})

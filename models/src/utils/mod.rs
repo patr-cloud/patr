@@ -238,7 +238,7 @@ pub mod constants {
 	/// real people actually have.
 	pub const USER_NAME_REGEX: &str = macros::verify_regex!(r"^[^<>&\n\r\t\x00-\x1f]{1,100}$");
 
-	/// The Regex to validate a role description.
+	/// The Regex to validate a role or service account description.
 	///
 	/// Same metacharacter restrictions as [`USER_NAME_REGEX`], but allows
 	/// empty (length 0–500). The role create/update handler substitutes a

@@ -51,7 +51,8 @@ pub async fn get_resources_info(
 				container_registry_repository.name,
 				secret.name::TEXT,
 				workspace_domain.name || '.' || workspace_domain.tld,
-				runner.name
+				runner.name,
+				service_account.name
 			) AS "name?"
 		FROM
 			resource
@@ -73,6 +74,9 @@ pub async fn get_resources_info(
 		LEFT JOIN
 			runner
 			ON runner.id = resource.id
+		LEFT JOIN
+			service_account
+			ON service_account.id = resource.id
 		WHERE
 			resource.workspace_id = $1 AND
 			resource.id = ANY($2::UUID[]) AND

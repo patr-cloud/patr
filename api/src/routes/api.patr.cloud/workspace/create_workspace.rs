@@ -11,6 +11,7 @@ use models::{
 		Permission,
 		RunnerPermission,
 		SecretPermission,
+		ServiceAccountPermission,
 	},
 };
 use time::OffsetDateTime;
@@ -357,6 +358,37 @@ fn default_roles() -> Vec<DefaultRole> {
 		name: "Runner: Admin",
 		description: "Default role: full control over runners, including delete.",
 		permissions: admin_runner,
+	});
+
+	let view_service_account = vec![ServiceAccount(ServiceAccountPermission::View)];
+	let edit_service_account = {
+		let mut p = view_service_account.clone();
+		p.extend([
+			ServiceAccount(ServiceAccountPermission::Create),
+			ServiceAccount(ServiceAccountPermission::Edit),
+			ServiceAccount(ServiceAccountPermission::RegenerateToken),
+		]);
+		p
+	};
+	let admin_service_account = {
+		let mut p = edit_service_account.clone();
+		p.push(ServiceAccount(ServiceAccountPermission::Delete));
+		p
+	};
+	roles.push(DefaultRole {
+		name: "Service Account: Viewer",
+		description: "Default role: read-only access to service accounts.",
+		permissions: view_service_account,
+	});
+	roles.push(DefaultRole {
+		name: "Service Account: Editor",
+		description: "Default role: create, edit, and regenerate tokens on service accounts.",
+		permissions: edit_service_account,
+	});
+	roles.push(DefaultRole {
+		name: "Service Account: Admin",
+		description: "Default role: full control over service accounts, including delete.",
+		permissions: admin_service_account,
 	});
 
 	let view_registry = vec![ContainerRegistryRepository(

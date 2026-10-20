@@ -22,7 +22,10 @@ pub use self::{
 	regenerate_service_account_token::*,
 	update_service_account::*,
 };
-use crate::{prelude::*, utils::constants::RESOURCE_NAME_REGEX};
+use crate::{
+	prelude::*,
+	utils::constants::{RESOURCE_NAME_REGEX, ROLE_DESCRIPTION_REGEX},
+};
 
 /// Represents a service account in a workspace.
 ///
@@ -37,7 +40,7 @@ pub struct ServiceAccount {
 	#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 	pub name: String,
 	/// An optional description of what this service account is used for
-	#[preprocess(none)]
+	#[preprocess(optional(trim, regex = ROLE_DESCRIPTION_REGEX))]
 	#[ts(type = "string | null")]
 	pub description: Option<String>,
 }

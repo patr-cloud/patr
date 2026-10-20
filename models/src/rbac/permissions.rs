@@ -317,18 +317,24 @@ pub enum BillingPermission {
 #[serde(rename_all = "camelCase")]
 pub enum ServiceAccountPermission {
 	/// This permission allows the user to create a new service account in a
-	/// workspace.
+	/// workspace. Creating a service account can bind any role in the workspace
+	/// to its token, so this permission effectively grants every permission in
+	/// the workspace.
 	Create,
 	/// This permission allows the user to view the service account and its
 	/// details.
 	View,
 	/// This permission allows the user to edit the service account, but not
-	/// delete it or create a new one.
+	/// delete it or create a new one. Editing a service account can bind any
+	/// role in the workspace to its token, so this permission effectively
+	/// grants every permission in the workspace.
 	Edit,
 	/// This permission allows the user to delete the service account, but not
 	/// create a new one, view it, or edit it.
 	Delete,
 	/// This permission allows the user to regenerate the service account token.
+	/// The new token acts as the service account, so this permission
+	/// effectively grants everything the account's roles allow.
 	RegenerateToken,
 }
 
