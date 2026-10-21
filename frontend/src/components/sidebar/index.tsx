@@ -11,7 +11,7 @@ import {
 	FiPackage,
 } from "solid-icons/fi";
 import { Component, createSignal, For, lazy, Show } from "solid-js";
-import { useSidebar } from "./context";
+import { useSidebar } from "~/components/sidebar/context";
 import { IS_CLOUD } from "~/utils/env";
 
 // Lazy + IS_CLOUD-gated so Vite tree-shakes the switcher chunk out of

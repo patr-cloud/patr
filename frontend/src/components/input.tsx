@@ -438,7 +438,7 @@ const Input = (rawProps: InputProps) => {
 			<Show
 				when={hasSuggestions()}
 				fallback={
-					<div class="pr-lg flex items-center justify-center">
+					<div class="pr-md flex items-center justify-center">
 						{props.endIcon && <div>{props.endIcon()}</div>}
 					</div>
 				}

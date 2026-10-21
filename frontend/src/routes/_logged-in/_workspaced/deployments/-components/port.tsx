@@ -1,8 +1,7 @@
-import { FiExternalLink, FiTrash2 } from "solid-icons/fi";
-import { createEffect, createMemo, createSignal, createUniqueId, Index, Show } from "solid-js";
+import { FiArrowRight, FiCheck, FiCopy, FiTrash2 } from "solid-icons/fi";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { ExposedPortType } from "~/bindings";
-import { Button, ButtonVariant, Input, Label, InputType } from "~/components";
-import { Color } from "~/utils/color";
+import { Input, InputType, Label } from "~/components";
 import { DEPLOYMENT_DOMAIN } from "~/utils/env";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
@@ -12,15 +11,15 @@ interface PortInputProps {
 	 * Saved ports — pass the server's current state here, not the in-progress
 	 * edit state. The component seeds its rows from this map and layers
 	 * user edits on top internally; `onChange` emits the merged result.
-	 * The Visit URL link is only rendered for rows whose (port, type) still
-	 * exactly matches this map. On the create page, pass an empty map.
+	 * A row's public URL is only shown while its (port, type) still exactly
+	 * matches this map. On the create page, pass an empty map.
 	 */
 	value: MaybeAccessor<Record<string, ExposedPortType | undefined>>;
 	/** Fires whenever the committed (validated) map of current rows changes. */
 	onChange: (next: Record<string, ExposedPortType>) => void;
 	/** Fires whenever the validity of the rows changes. */
 	onValidityChange?: (valid: boolean) => void;
-	/** If set, HTTP rows pointing at a saved port show a "Visit URL" link. */
+	/** If set, HTTP rows pointing at a saved port show their public URL. */
 	deploymentId?: string;
 	/** Disables all inputs. */
 	disabled?: MaybeAccessor<boolean>;
@@ -28,14 +27,91 @@ interface PortInputProps {
 	class?: MaybeAccessor<string>;
 }
 
-type Row = { id: string; port: string; type: ExposedPortType };
+type Row = { port: string; type: ExposedPortType };
 
 const DEFAULT_TYPE: ExposedPortType = "http";
 
-const makeDraftRow = (): Row => ({ id: createUniqueId(), port: "", type: DEFAULT_TYPE });
+/** A single exposed port: the port, its public URL (once saved), and its actions. */
+const PortRow = (props: {
+	row: Row;
+	/** The public URL without the scheme, once the port is saved. */
+	url?: string;
+	/** Shown in place of the URL while the port has none yet. */
+	pendingText?: string;
+	disabled: boolean;
+	onRemove: () => void;
+}) => {
+	const [copied, setCopied] = createSignal(false);
+
+	const copy = async () => {
+		if (!props.url) return;
+		try {
+			await navigator.clipboard.writeText(`https://${props.url}`);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		} catch (error) {
+			console.error("Failed to copy:", error);
+		}
+	};
+
+	return (
+		<div class="group flex items-center gap-4 py-3 min-w-0">
+			<span class="w-14 shrink-0 font-log text-white">{props.row.port}</span>
+			<Show when={props.url || props.pendingText}>
+				<FiArrowRight size={14} class="shrink-0 text-gray-500" />
+			</Show>
+			<div class="flex-1 min-w-0">
+				<Show
+					when={props.url}
+					fallback={
+						<Show when={props.pendingText}>
+							<span class="text-sm italic text-gray-500 truncate block">{props.pendingText}</span>
+						</Show>
+					}
+				>
+					{(url) => (
+						<a
+							href={`https://${url()}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="block w-fit max-w-full truncate font-log text-sm text-gray-400 transition-colors group-hover:text-primary group-focus-within:text-primary"
+						>
+							{url()}
+						</a>
+					)}
+				</Show>
+			</div>
+			<div class="flex items-center gap-2 shrink-0">
+				<Show when={props.url}>
+					<button
+						type="button"
+						onClick={copy}
+						title={copied() ? "Copied!" : "Copy URL"}
+						aria-label="Copy URL"
+						class="p-1.5 rounded-xs cursor-pointer text-gray-500 transition-colors group-hover:text-gray-300 hover:text-white! hover:bg-white/5"
+					>
+						{copied() ? <FiCheck size={16} /> : <FiCopy size={16} />}
+					</button>
+				</Show>
+				<Show when={!props.disabled}>
+					<button
+						type="button"
+						onClick={() => props.onRemove()}
+						title="Remove port"
+						aria-label={`Remove port ${props.row.port}`}
+						class="p-1.5 rounded-xs cursor-pointer text-gray-500 transition-colors group-hover:text-gray-300 hover:text-error! hover:bg-white/5"
+					>
+						<FiTrash2 size={16} />
+					</button>
+				</Show>
+			</div>
+		</div>
+	);
+};
 
 const PortInput = (props: PortInputProps) => {
-	const [rows, setRows] = createSignal<Row[]>([makeDraftRow()]);
+	const [rows, setRows] = createSignal<Row[]>([]);
+	const [draft, setDraft] = createSignal("");
 
 	// Seed from props.value on mount and whenever the incoming map *itself*
 	// changes (e.g. the parent refetches after a save). Crucially this effect
@@ -52,168 +128,117 @@ const PortInput = (props: PortInputProps) => {
 			if (same) return;
 		}
 		lastSeeded = { ...incoming };
-		const seeded = Object.entries(incoming).map(([port, type]) => ({
-			id: createUniqueId(),
-			port,
-			type: (type ?? DEFAULT_TYPE) as ExposedPortType,
-		}));
-		seeded.push(makeDraftRow());
-		setRows(seeded);
+		setRows(
+			Object.entries(incoming).map(([port, type]) => ({
+				port,
+				type: (type ?? DEFAULT_TYPE) as ExposedPortType,
+			}))
+		);
 	});
 
-	const portCounts = createMemo(() => {
-		const counts = new Map<string, number>();
-		for (const row of rows()) {
-			if (row.port === "") continue;
-			counts.set(row.port, (counts.get(row.port) ?? 0) + 1);
-		}
-		return counts;
-	});
-
-	const rowError = (row: Row): string | undefined => {
-		if (row.port === "") return undefined;
-		const n = Number(row.port);
-		if (!Number.isInteger(n) || String(n) !== row.port) return "Must be a number";
+	const validatePort = (value: string): string | undefined => {
+		const n = Number(value);
+		if (!Number.isInteger(n) || String(n) !== value) return "Must be a number";
 		if (n < 1 || n > 65535) return "Port out of range";
-		if ((portCounts().get(row.port) ?? 0) > 1) return "Duplicate port";
+		if (rows().some((r) => r.port === value)) return "Duplicate port";
 		return undefined;
 	};
 
-	const hasAnyError = createMemo(() => rows().some((r) => rowError(r) !== undefined));
-
-	const committedMap = (): Record<string, ExposedPortType> => {
-		const out: Record<string, ExposedPortType> = {};
-		const counts = portCounts();
-		for (const row of rows()) {
-			if (rowError(row) !== undefined) continue;
-			if (row.port === "") continue;
-			if ((counts.get(row.port) ?? 0) > 1) continue;
-			out[row.port] = row.type;
-		}
-		return out;
-	};
-
-	createEffect(() => {
-		props.onChange(committedMap());
-		props.onValidityChange?.(!hasAnyError());
+	// Leftover text that isn't a valid port keeps the section invalid, so it
+	// can't be silently dropped on save.
+	const draftError = createMemo(() => {
+		const value = draft().trim();
+		return value === "" ? undefined : validatePort(value);
 	});
 
-	const updateRow = (id: string, patch: Partial<Pick<Row, "port" | "type">>) => {
-		setRows((prev) => {
-			const next = prev.map((r) => (r.id === id ? { ...r, ...patch } : r));
-			const last = next[next.length - 1];
-			if (!last || last.port !== "") {
-				next.push(makeDraftRow());
-			}
-			return next;
-		});
+	createEffect(() => {
+		const out: Record<string, ExposedPortType> = {};
+		for (const row of rows()) {
+			out[row.port] = row.type;
+		}
+		props.onChange(out);
+		props.onValidityChange?.(!draftError());
+	});
+
+	const addDraft = () => {
+		const value = draft().trim();
+		if (value === "" || validatePort(value) !== undefined) return;
+		setRows((prev) => [...prev, { port: value, type: DEFAULT_TYPE }]);
+		setDraft("");
 	};
 
-	const removeRow = (id: string) => {
-		setRows((prev) => {
-			const next = prev.filter((r) => r.id !== id);
-			if (next.length === 0 || next[next.length - 1].port !== "") {
-				next.push(makeDraftRow());
-			}
-			return next;
-		});
+	const removeRow = (port: string) => setRows((prev) => prev.filter((r) => r.port !== port));
+
+	const urlFor = (row: Row) => {
+		const saved = get(props.value) ?? {};
+		if (!DEPLOYMENT_DOMAIN || !props.deploymentId || row.type !== "http" || saved[row.port] !== "http") {
+			return undefined;
+		}
+		return `${row.port}-${props.deploymentId}.${DEPLOYMENT_DOMAIN}`;
 	};
 
-	const handleBlur = (id: string) => {
-		setRows((prev) => {
-			const row = prev.find((r) => r.id === id);
-			if (!row) return prev;
-			if (row.port !== "") return prev;
-			if (prev.length === 1) return prev;
-			if (prev[prev.length - 1].id === id) return prev;
-			return prev.filter((r) => r.id !== id);
-		});
+	const pendingTextFor = (row: Row) => {
+		if (!DEPLOYMENT_DOMAIN || row.type !== "http") return undefined;
+		return props.deploymentId ? "URL available after update" : "URL assigned once created";
 	};
 
 	return (
 		<div class={`flex gap-8 items-start w-full ${get(props.class) ?? ""}`}>
-			<Label parentClass="flex-2 pt-2.5" label="Exposed Ports" />
+			<Label
+				parentClass="flex-2 pt-2.5"
+				label="Exposed Ports"
+				comments="Ports your container listens on. Each one gets a public HTTPS URL once the deployment is saved."
+			/>
 
-			<div class="flex flex-col flex-10 gap-4 w-full">
-				<Index each={rows()}>
-					{(row) => {
-						const err = createMemo(() => rowError(row()));
-						const isDraftTrailing = createMemo(
-							() => row().port === "" && rows()[rows().length - 1]?.id === row().id
-						);
-						const showVisitUrl = createMemo(() => {
-							const r = row();
-							const saved = get(props.value) ?? {};
-							return (
-								!!DEPLOYMENT_DOMAIN &&
-								r.port.trim() !== "" &&
-								r.type === "http" &&
-								!!props.deploymentId &&
-								!err() &&
-								saved[r.port] === "http"
-							);
-						});
+			<div class="flex flex-col flex-10 w-full min-w-0">
+				{/* Dividers sit between rows only, so the last row has no line under it. */}
+				<div class="flex flex-col divide-y divide-border-color">
+					<For each={rows()}>
+						{(row) => (
+							<PortRow
+								row={row}
+								url={urlFor(row)}
+								pendingText={pendingTextFor(row)}
+								disabled={!!get(props.disabled)}
+								onRemove={() => removeRow(row.port)}
+							/>
+						)}
+					</For>
+				</div>
 
-						return (
-							<div class="flex flex-col gap-1 w-full">
-								<div class="flex items-center gap-4 w-full">
-									<Input
-										class={`flex-5 ${err() ? "border-error!" : ""}`}
-										disabled={get(props.disabled)}
-										placeholder="Enter Port Number"
-										type={InputType.Text}
-										value={row().port}
-										onInput={(e) => updateRow(row().id, { port: e.currentTarget.value })}
-										onBlur={() => handleBlur(row().id)}
-										onKeyDown={(e) => {
-											if (e.key === "Enter") e.preventDefault();
-										}}
-									/>
-									<div class="flex-7 flex items-center gap-4">
-										<Show when={showVisitUrl()} fallback={<div class="flex-9" />}>
-											<a
-												class="flex-9 flex items-center justify-center gap-2 rounded-xs bg-secondary-light border border-secondary-medium py-xs text-primary"
-												href={`https://${row().port}-${props.deploymentId}.${DEPLOYMENT_DOMAIN}`}
-												target="_blank"
-												rel="noopener noreferrer"
-											>
-												<FiExternalLink size={16} />
-												Visit URL
-											</a>
-										</Show>
-									</div>
-									<Show
-										when={!get(props.disabled) && !isDraftTrailing()}
-										fallback={
-											<Button
-												type="button"
-												variant={ButtonVariant.Outlined}
-												class="flex-1 invisible"
-												color={Color.Error}
-											>
-												<FiTrash2 size={16} />
-											</Button>
-										}
-									>
-										<Button
-											type="button"
-											onClick={() => removeRow(row().id)}
-											variant={ButtonVariant.Outlined}
-											class="flex-1"
-											color={Color.Error}
-										>
-											<FiTrash2 size={16} />
-										</Button>
-									</Show>
-								</div>
-
-								<Show when={err()}>
-									<div class="text-error text-sm">{err()}</div>
-								</Show>
-							</div>
-						);
-					}}
-				</Index>
+				<Show
+					when={!get(props.disabled)}
+					fallback={
+						<Show when={rows().length === 0}>
+							<span class="py-3 text-sm text-gray-500">No ports exposed</span>
+						</Show>
+					}
+				>
+					<Input
+						class={`${draftError() ? "border-error!" : ""}`}
+						placeholder="Add a port"
+						type={InputType.Text}
+						endIcon={() => (
+							<kbd class="font-log text-xs text-gray-400 border border-border-color rounded-xs px-2 py-0.5">
+								Enter
+							</kbd>
+						)}
+						value={draft()}
+						onInput={(e) => setDraft(e.currentTarget.value)}
+						onBlur={addDraft}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								addDraft();
+							} else if (e.key === "Escape") {
+								setDraft("");
+							}
+						}}
+					/>
+					<Show when={draftError()}>
+						<div class="text-error text-sm mt-1">{draftError()}</div>
+					</Show>
+				</Show>
 			</div>
 		</div>
 	);
