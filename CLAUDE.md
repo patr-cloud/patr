@@ -81,7 +81,7 @@ Each part of Patr has an agent in `.claude/agents/` that owns it: `api`, `access
   - the verification commands;
   - the commits.
 
-  A plan that names an agent for a task is the go-ahead to hand that task over without asking again. Agents work in the current checkout and never commit.
+  A plan that names an agent for a task is the go-ahead to hand that task over without asking again. Agents work in the current checkout and never commit. They run builds and tests in the foreground with a long `timeout` (build first, so each step fits), not in the background, where they've stalled waiting on commands that had already finished.
 - **Stages:**
   1. **Contract.** `api`, then `access-control`. Run `just bindings` at the end of the stage.
   2. **Consumers, in parallel.** `runners`, `frontend`, `user-communication`, and `cli` then `iaac`. Those last two share a crate, so they run in that order.
