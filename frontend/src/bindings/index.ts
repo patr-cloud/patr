@@ -495,6 +495,7 @@ export type * from "./OAuthTokenPath";
 export type * from "./OAuthTokenRequest";
 export type * from "./OAuthTokenRequestProcessed";
 export type * from "./OAuthTokenResponse";
+export type * from "./ObservedDeploymentStatus";
 export type * from "./PatrRegistry";
 export type * from "./Permission";
 export type * from "./Platform";

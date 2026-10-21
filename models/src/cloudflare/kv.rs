@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{api::workspace::deployment::DeploymentStatus, prelude::*};
+use crate::prelude::*;
 
 /// Managed URL types
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -54,8 +54,9 @@ pub enum InternalKVData {
 		ports: Vec<u16>,
 		/// The runner ID running the deployment
 		runner_id: Uuid,
-		/// The status of the deployment
-		status: DeploymentStatus,
+		/// Whether the deployment should be running. The worker serves the
+		/// stopped page when it shouldn't
+		should_run: bool,
 	},
 	/// The URL is pointing to a runner
 	#[serde(rename_all = "camelCase")]
