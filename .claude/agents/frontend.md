@@ -33,7 +33,7 @@ For the feature in front of you:
    - It uses the same pages, layout and components as its siblings.
    - Validation matches the API's rules, with the error shown inline next to the field.
    - It has loading, empty and error states, and paging that recovers when it goes past the last page.
-   - Actions the user can't take are hidden or disabled based on their permissions, rather than failing after a click.
+   - Actions the user can't take are hidden or disabled based on their permissions, rather than failing after a click. Check as a member who isn't the owner, too. `superAdmin` skips the permission maps, so a type missing from them only breaks for members.
    - Destructive actions ask for confirmation, and finished actions give feedback.
    - Related resources link to each other.
 3. Walk the main task the way a new user would, and remove friction:

@@ -19,5 +19,5 @@ Shared DTOs and types used by the API, frontend (via generated TS bindings), CLI
 
 - **This crate compiles to wasm** — the `ingress` Cloudflare Worker (wasm32) depends on `models`. Native-only deps (`sqlx`, native `uuid`) are gated behind `[target.'cfg(not(target_arch = "wasm32"))']` in `Cargo.toml`, and sqlx derives use `#[cfg_attr(not(target_arch = "wasm32"), ...)]`. **Don't add native-only dependencies unconditionally** — it breaks the ingress wasm build.
 - **UUIDs are non-hyphenated** — `Display`/`Serialize`/sqlx all use `.simple()` (`src/utils/uuid.rs`). Use this crate's `Uuid`, never `uuid::Uuid` directly.
-- Request fields carry `#[preprocess(...)]` (`trim`, `lowercase`, `regex = ...`, or `none`); regexes live in `utils::constants`.
+- Request fields carry `#[preprocess(...)]` (`trim`, `lowercase`, `regex = ...`, `optional(...)` for an `Option`, or `none`); regexes live in `utils::constants`.
 - Needs nightly (`#![feature(adt_const_params)]`). Private items need doc comments (except `api/mod.rs`, which allows the missing-docs lint).

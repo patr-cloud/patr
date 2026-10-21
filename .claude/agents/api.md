@@ -35,6 +35,7 @@ For the feature in front of you:
    - It can be created, listed, fetched, updated and deleted, wherever that makes sense.
    - Lists behave like every other list: search, sort, total count, paging, and `PageOutOfBounds` past the last page.
    - Names are unique where siblings' names are, and there's an availability check if siblings have one.
+   - Its fields are validated like its siblings' (the same `#[preprocess]` regex, not `none`), and each column holds everything that validation accepts.
    - Deleting it handles what depends on it, either cleaning up or refusing while it's still referenced. Workspace deletion handles it too.
    - Handlers confirm the ID is their own resource type before acting on it.
 3. Check that the contract can grow:
@@ -48,7 +49,7 @@ For the feature in front of you:
    If a breaking change is unavoidable, say so and say what it breaks.
 5. Then look sideways. A feature can break endpoints it never mentions:
    - a `match` over an enum that gained a variant;
-   - aggregate endpoints such as resource counts or workspace info;
+   - aggregate endpoints such as resource counts, workspace info and `GetResourcesInfo`, which joins each resource type's table for its name;
    - workspace deletion and other cascades;
    - cron jobs that sweep a table;
    - Redis caches that should now be invalidated;
