@@ -26,7 +26,10 @@ use self::{
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	user_invite_add_scope(&mut *connection).await?;
 	fill_user_invite_scope(&mut *connection).await?;
 

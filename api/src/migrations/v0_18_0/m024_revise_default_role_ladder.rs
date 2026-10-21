@@ -90,7 +90,10 @@ const NEW_ROLE: (&str, &str) = (
 );
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	create_missing_role(&mut *connection).await?;
 
 	for role in REVISED_ROLES {

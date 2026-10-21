@@ -74,7 +74,7 @@ where
 
 		// Run schema migrations BEFORE E::initialize so the executor sees an
 		// up-to-date schema if it ever needs to read from the database.
-		db::initialize(&database).await?;
+		db::initialize(&database, &config.clone().into_base()).await?;
 
 		let runner_state = E::initialize(&config).await?;
 

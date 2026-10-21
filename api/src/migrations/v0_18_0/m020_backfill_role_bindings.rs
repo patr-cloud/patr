@@ -42,7 +42,10 @@ use self::{
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	reject_non_uniform_roles(&mut *connection).await?;
 	reset_default_roles(&mut *connection).await?;
 	fill_role_permission(&mut *connection).await?;

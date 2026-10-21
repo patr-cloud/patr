@@ -52,7 +52,7 @@ async fn setup_managed() -> (
 	};
 
 	let database = db::connect(&config.database).await.unwrap();
-	db::initialize(&database).await.unwrap();
+	db::initialize(&database, &config).await.unwrap();
 
 	let (_root_ref, _root_handle) = RunnerSupervisor::<MockExecutor>::spawn(
 		Some("runner-supervisor".to_string()),

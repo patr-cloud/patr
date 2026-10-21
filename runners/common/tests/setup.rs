@@ -64,7 +64,7 @@ pub async fn setup() -> TestSetup {
 	let database = db::connect(&config.database)
 		.await
 		.expect("failed to connect to test database");
-	db::initialize(&database)
+	db::initialize(&database, &config)
 		.await
 		.expect("failed to initialize test database");
 

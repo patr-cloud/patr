@@ -7,7 +7,7 @@ use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
 use typed_builder::TypedBuilder;
 
-use crate::{routes::registry_patr_cloud::prelude::*, utils::config::AppConfig};
+use crate::routes::registry_patr_cloud::prelude::*;
 
 /// This struct represents a unprocessed request to the API. It contains the
 /// path, query, headers and unprocessed body of the request. This struct

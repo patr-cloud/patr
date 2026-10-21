@@ -10,7 +10,6 @@ use tokio::sync::OnceCell;
 use crate::{
 	models::{access_token_data::AccessTokenData, redis::ActorAuthDataCacheKind},
 	prelude::*,
-	utils::config::AppConfig,
 };
 
 /// A global map of Permission -> PermissionID for all permissions.

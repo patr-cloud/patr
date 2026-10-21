@@ -27,6 +27,7 @@ pub struct Migration {
 	/// The migration function
 	pub migrate: for<'a> fn(
 		&'a mut DatabaseConnection,
+		&'a AppConfig,
 	)
 		-> Pin<Box<dyn Future<Output = Result<(), ErrorType>> + Send + 'a>>,
 }
@@ -36,10 +37,12 @@ inventory::collect!(Migration);
 /// Runs pending migrations from `from_version` onwards (inclusive, to cover
 /// alpha -> stable channel switches where the version matches but new
 /// migrations may exist). Skips anything already recorded in the
-/// `migrations` table.
+/// `migrations` table. Each migration gets the app's config, for the ones that
+/// reach beyond the database.
 pub async fn run_migrations(
 	connection: &mut DatabaseConnection,
 	from_version: &Version,
+	config: &AppConfig,
 ) -> Result<(), ErrorType> {
 	let applied = query!(
 		r#"
@@ -68,7 +71,7 @@ pub async fn run_migrations(
 
 		info!("Running migration: {}", migration.name);
 
-		(migration.migrate)(&mut *connection).await?;
+		(migration.migrate)(&mut *connection, config).await?;
 
 		let version = migration.version.to_string();
 		query!(

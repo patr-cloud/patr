@@ -18,9 +18,11 @@ use crate::prelude::*;
 mod v0_18_0;
 
 /// The function signature for a migration: takes a mutable DB connection
-/// reference and returns a pinned, boxed future that resolves to a sqlx Result.
+/// reference and the runner's config, and returns a pinned, boxed future that
+/// resolves to a sqlx Result.
 type MigrateFn = for<'a> fn(
 	&'a mut DatabaseConnection,
+	&'a RunnerSettings<()>,
 ) -> Pin<Box<dyn Future<Output = Result<(), sqlx::Error>> + Send + 'a>>;
 
 /// A registered database migration.
@@ -40,10 +42,11 @@ inventory::collect!(Migration);
 /// Runs pending migrations from `from_version` onwards (inclusive, to cover
 /// alpha -> stable channel switches where the version matches but new
 /// migrations may exist). Skips anything already recorded in the
-/// `migrations` table.
+/// `migrations` table. Each migration gets the runner's config.
 pub async fn run_migrations(
 	connection: &mut DatabaseConnection,
 	from_version: &Version,
+	config: &RunnerSettings<()>,
 ) -> Result<(), sqlx::Error> {
 	let applied = sqlx::query(
 		r#"
@@ -77,7 +80,7 @@ pub async fn run_migrations(
 		// `*_new`) wedge subsequent retries on `CREATE TABLE`.
 		let mut txn = connection.begin().await?;
 
-		(migration.migrate)(&mut *txn).await?;
+		(migration.migrate)(&mut *txn, config).await?;
 
 		let version = migration.version.to_string();
 		sqlx::query(

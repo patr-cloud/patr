@@ -147,9 +147,13 @@ async fn m006_replaces_the_volume_tables() {
 		.await
 		.unwrap();
 
-	common::migrations::run_migrations(&mut conn, &common::utils::constants::DATABASE_VERSION)
-		.await
-		.expect("m006 must apply");
+	common::migrations::run_migrations(
+		&mut conn,
+		&common::utils::constants::DATABASE_VERSION,
+		&setup.config,
+	)
+	.await
+	.expect("m006 must apply");
 
 	let tables = sqlx::query(
 		"SELECT name FROM sqlite_schema WHERE type = 'table' AND name LIKE 'deployment_volume%'",

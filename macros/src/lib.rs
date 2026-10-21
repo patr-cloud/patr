@@ -250,7 +250,10 @@ pub fn version(input: TokenStream) -> TokenStream {
 }
 
 /// Registers a database migration. Place on an async function that takes
-/// `(&mut DatabaseConnection, &AppConfig)` and returns `Result<(), ErrorType>`.
+/// `(&mut DatabaseConnection, &AppConfig)` and returns `Result<(), ErrorType>`
+/// in the api, or `(&mut DatabaseConnection, &RunnerSettings<()>)` returning
+/// `Result<(), sqlx::Error>` in the runner. Every migration takes the config,
+/// whether or not it uses it.
 ///
 /// The migration name is derived from the source filename and the version
 /// from the parent directory name (`v{major}_{minor}_{patch}/`).

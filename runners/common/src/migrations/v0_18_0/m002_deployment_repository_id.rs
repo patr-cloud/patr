@@ -6,7 +6,10 @@ use crate::prelude::*;
 
 /// Add `repository_id` column and make `image_name` nullable for PatrRegistry.
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &RunnerSettings<()>,
+) -> Result<(), sqlx::Error> {
 	// SQLite doesn't support ALTER TABLE ADD COLUMN with CHECK constraints
 	// that reference other columns, so we recreate the table.
 
