@@ -39,3 +39,5 @@ mod m036_hash_web_login_refresh_tokens;
 mod m037_index_deployment_env_var_secret_id;
 mod m038_runner_workspace_fk;
 mod m039_managed_url_path_check;
+mod m040_split_deployment_status;
+mod m041_backfill_deployment_kv;

@@ -134,18 +134,17 @@ pub async fn start_deployment(
 		None
 	};
 
-	// Update status to deploying and set the current live digest
+	// Set the deployment to run and set the current live digest
 	query!(
 		r#"
 		UPDATE
 			deployment
 		SET
-			status = $1,
-			current_live_digest = COALESCE($3, current_live_digest)
+			should_run = TRUE,
+			current_live_digest = COALESCE($2, current_live_digest)
 		WHERE
-			id = $2;
+			id = $1;
 		"#,
-		DeploymentStatus::Deploying,
 		deployment_id,
 		digest,
 	)
@@ -178,13 +177,17 @@ pub async fn start_deployment(
 	let row = query!(
 		r#"
 		SELECT
-			id,
-			name,
+			deployment.id,
+			deployment.name,
 			registry,
 			image_name,
 			image_tag,
-			runner,
-			status,
+			deployment.runner,
+			CASE
+				WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable'
+				ELSE deployment.status
+			END AS "status!",
+			should_run,
 			repository_id,
 			min_horizontal_scale,
 			max_horizontal_scale,
@@ -199,9 +202,13 @@ pub async fn start_deployment(
 			current_live_digest
 		FROM
 			deployment
+		INNER JOIN
+			runner
+		ON
+			runner.id = deployment.runner
 		WHERE
-			id = $1 AND
-			deleted IS NULL;
+			deployment.id = $1 AND
+			deployment.deleted IS NULL;
 		"#,
 		deployment_id
 	)
@@ -235,7 +242,7 @@ pub async fn start_deployment(
 					&InternalKVData::Deployment {
 						ports: ports.keys().map(|port| port.value()).collect(),
 						runner_id: runner,
-						status: DeploymentStatus::Deploying,
+						should_run: row.should_run,
 					},
 				)?),
 			})
@@ -374,7 +381,8 @@ pub async fn start_deployment(
 						},
 						image_tag: image_tag.to_string(),
 						runner,
-						status: DeploymentStatus::Deploying,
+						status: row.status,
+						should_run: row.should_run,
 						current_live_digest: row.current_live_digest,
 						machine_type,
 					},

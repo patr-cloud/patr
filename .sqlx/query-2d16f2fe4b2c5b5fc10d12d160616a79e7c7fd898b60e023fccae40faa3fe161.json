@@ -38,13 +38,16 @@
             "name": "deployment_status",
             "kind": {
               "Enum": [
-                "created",
-                "pushed",
                 "deploying",
                 "running",
-                "stopped",
+                "crashing",
+                "health_check_failing",
+                "image_pull_failed",
+                "invalid_architecture",
                 "errored",
-                "deleted"
+                "stopped",
+                "stopping",
+                "unreachable"
               ]
             }
           }
@@ -85,13 +88,16 @@
                   "name": "deployment_status",
                   "kind": {
                     "Enum": [
-                      "created",
-                      "pushed",
                       "deploying",
                       "running",
-                      "stopped",
+                      "crashing",
+                      "health_check_failing",
+                      "image_pull_failed",
+                      "invalid_architecture",
                       "errored",
-                      "deleted"
+                      "stopped",
+                      "stopping",
+                      "unreachable"
                     ]
                   }
                 }

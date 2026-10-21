@@ -7,5 +7,6 @@
 'deployment_status'                = "models::api::workspace::deployment::DeploymentStatus"
 'exposed_port_type'                = "models::api::workspace::deployment::ExposedPortType"
 'managed_url_type'                 = "models::api::workspace::managed_url::ManagedUrlType"
+'observed_deployment_status'       = "models::api::workspace::deployment::ObservedDeploymentStatus"
 'social_login_provider'            = "models::api::auth::SocialLoginProvider"
 'user_login_type'                  = "models::UserLoginType"

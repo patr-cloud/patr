@@ -2,7 +2,10 @@ use std::str::FromStr;
 
 use models::{
 	ApiSuccessResponseBody,
-	api::workspace::{deployment::DeploymentStatus, secret::*},
+	api::workspace::{
+		deployment::{DeploymentStatus, ObservedDeploymentStatus},
+		secret::*,
+	},
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -818,9 +821,8 @@ async fn list_secret_deployments_returns_deployments_and_variables() {
 		"only this secret's deployments should be listed, sorted by name"
 	);
 	assert!(
-		deployments
-			.iter()
-			.all(|deployment| deployment.status == DeploymentStatus::Stopped),
+		deployments.iter().all(|deployment| deployment.status ==
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped)),
 		"each deployment should carry its status"
 	);
 }

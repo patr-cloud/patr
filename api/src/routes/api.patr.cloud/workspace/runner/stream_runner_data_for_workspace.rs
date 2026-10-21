@@ -6,18 +6,13 @@ use axum::{http::StatusCode, response::IntoResponse};
 use axum_typed_websockets::{Message, WebSocket};
 #[cfg(feature = "cloud")]
 use cloudflare::{
-	endpoints::{
-		cfd_tunnel::*,
-		dns::dns::*,
-		workerskv::{read_key, write_key},
-		zones::zone::*,
-	},
+	endpoints::{cfd_tunnel::*, dns::dns::*, zones::zone::*},
 	framework::{
 		Environment,
 		OrderDirection,
 		SearchMatch,
 		auth::Credentials,
-		client::{ClientConfig, async_api::Client as CloudflareClient},
+		client::async_api::Client as CloudflareClient,
 		response::ApiSuccess,
 	},
 };
@@ -25,12 +20,10 @@ use futures::{
 	future::{self, Either},
 	prelude::stream::*,
 };
-#[cfg(feature = "cloud")]
-use models::cloudflare::kv::InternalKVData;
 use models::{
 	ActorData,
 	api::workspace::{
-		deployment::DeploymentStatus,
+		deployment::ObservedDeploymentStatus,
 		runner::{StreamRunnerDataForWorkspaceClientMsg::*, *},
 	},
 	utils::{GenericResponse, WebSocketUpgrade},
@@ -355,6 +348,21 @@ async fn handle_websocket(
 					break;
 				}
 			}
+
+			_ = query!(
+				r#"
+				UPDATE
+					runner
+				SET
+					last_seen = NOW()
+				WHERE
+					id = $1;
+				"#,
+				runner_id,
+			)
+			.execute(&state.database)
+			.await
+			.inspect_err(|err| error!("Failed to refresh runner last seen: {:?}", err));
 			continue;
 		};
 
@@ -517,116 +525,43 @@ async fn update_deployment_status(
 	id: Uuid,
 	runner_id: Uuid,
 	workspace_id: Uuid,
-	status: DeploymentStatus,
+	status: ObservedDeploymentStatus,
 	state: &AppState,
 ) -> Result<(), ErrorType> {
-	// Try to update the status, then always return the current status
-	let Some(current_status) = query!(
+	if status == ObservedDeploymentStatus::Unknown {
+		warn!(
+			"Runner {} reported a status for deployment {} that this version doesn't know",
+			runner_id, id
+		);
+		return Ok(());
+	}
+
+	let rows_affected = query!(
 		r#"
-		WITH updated AS (
-			UPDATE
-				deployment
-			SET
-				status = $1
-			WHERE
-				id = $2 AND
-				runner = $3 AND
-				workspace_id = $4 AND
-				deleted IS NULL AND
-				status != $1 AND (
-					(
-						$1 = 'errored' AND status = 'deploying'
-					) OR (
-						$1 = 'deploying' AND status = 'errored'
-					) OR (
-						$1 IN ('deploying', 'errored') AND status = 'running'
-					) OR (
-						$1 = 'running' AND status IN ('deploying', 'errored')
-					)
-				)
-			RETURNING status
-		)
-		SELECT COALESCE(
-			(
-				SELECT status FROM updated
-			),
-			(
-				SELECT
-					status
-				FROM
-					deployment
-				WHERE
-					id = $2 AND
-					runner = $3 AND
-					workspace_id = $4 AND
-					deleted IS NULL
-			)
-		) AS "status";
+		UPDATE
+			deployment
+		SET
+			observed_status = $1
+		WHERE
+			id = $2 AND
+			runner = $3 AND
+			workspace_id = $4 AND
+			deleted IS NULL;
 		"#,
 		status,
 		id,
 		runner_id,
 		workspace_id,
 	)
-	.fetch_one(&state.database)
+	.execute(&state.database)
 	.await?
-	.status
-	else {
+	.rows_affected();
+
+	if rows_affected == 0 {
 		warn!(
 			"Runner {} reported a status for deployment {}, which isn't on that runner",
 			runner_id, id
 		);
-		return Ok(());
-	};
-
-	cfg_if! {
-		if #[cfg(feature = "cloud")] {
-			let client = CloudflareClient::new(
-				Credentials::UserAuthToken {
-					token: state.config.cloudflare.api_key.clone(),
-				},
-				ClientConfig::default(),
-				Environment::Custom(state.config.cloudflare.base_url.clone()),
-			)?;
-
-			// Read existing KV to get the ports
-			let existing_kv = serde_json::from_slice::<InternalKVData>(
-				&client
-					.request(&read_key::ReadKey {
-						account_identifier: &state.config.cloudflare.account_id,
-						namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-						key: &id.to_string(),
-					})
-					.await?,
-			)?;
-
-			let InternalKVData::Deployment { ports, .. } = &existing_kv else {
-				return Err(ErrorType::server_error(
-					"expected deployment KV data, found runner",
-				));
-			};
-
-			client
-				.request(&write_key::WriteKey {
-					account_identifier: &state.config.cloudflare.account_id,
-					namespace_identifier: &state.config.cloudflare.worker_namespace_id,
-					key: &id.to_string(),
-					params: write_key::WriteKeyParams {
-						expiration: None,
-						expiration_ttl: None,
-					},
-					body: write_key::WriteKeyBody::Value(serde_json::to_vec(
-						&InternalKVData::Deployment {
-							ports: ports.clone(),
-							runner_id,
-							status: current_status,
-						},
-					)?),
-				})
-				.await?;
-		} else {
-			let _ = (runner_id, current_status);
-		}
 	}
 
 	Ok(())

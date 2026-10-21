@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, name, registry, image_name, image_tag, runner, status, repository_id, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type AS \"startup_probe_port_type?\", liveness_probe_port, liveness_probe_path, liveness_probe_port_type AS \"liveness_probe_port_type?\", current_live_digest FROM deployment WHERE id = $1 AND deleted IS NULL;",
+  "query": "SELECT deployment.id, deployment.name, registry, repository_id, image_name, image_tag, CASE WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable' ELSE deployment.status END AS \"status!\", should_run, deployment.workspace_id, deployment.runner, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, liveness_probe_port, liveness_probe_path, current_live_digest FROM deployment INNER JOIN runner ON runner.id = deployment.runner WHERE deployment.id = $1 AND deployment.deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -43,65 +43,6 @@
       },
       {
         "ordinal": 3,
-        "name": "image_name",
-        "type_info": "Varchar",
-        "origin": {
-          "Table": {
-            "table": "deployment",
-            "name": "image_name"
-          }
-        }
-      },
-      {
-        "ordinal": 4,
-        "name": "image_tag",
-        "type_info": "Varchar",
-        "origin": {
-          "Table": {
-            "table": "deployment",
-            "name": "image_tag"
-          }
-        }
-      },
-      {
-        "ordinal": 5,
-        "name": "runner",
-        "type_info": "Uuid",
-        "origin": {
-          "Table": {
-            "table": "deployment",
-            "name": "runner"
-          }
-        }
-      },
-      {
-        "ordinal": 6,
-        "name": "status",
-        "type_info": {
-          "Custom": {
-            "name": "deployment_status",
-            "kind": {
-              "Enum": [
-                "created",
-                "pushed",
-                "deploying",
-                "running",
-                "stopped",
-                "errored",
-                "deleted"
-              ]
-            }
-          }
-        },
-        "origin": {
-          "Table": {
-            "table": "deployment",
-            "name": "status"
-          }
-        }
-      },
-      {
-        "ordinal": 7,
         "name": "repository_id",
         "type_info": "Uuid",
         "origin": {
@@ -112,7 +53,86 @@
         }
       },
       {
+        "ordinal": 4,
+        "name": "image_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "image_name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "image_tag",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "image_tag"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "status!",
+        "type_info": {
+          "Custom": {
+            "name": "deployment_status",
+            "kind": {
+              "Enum": [
+                "deploying",
+                "running",
+                "crashing",
+                "health_check_failing",
+                "image_pull_failed",
+                "invalid_architecture",
+                "errored",
+                "stopped",
+                "stopping",
+                "unreachable"
+              ]
+            }
+          }
+        },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "should_run",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "should_run"
+          }
+        }
+      },
+      {
         "ordinal": 8,
+        "name": "workspace_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "workspace_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "runner",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "runner"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
         "name": "min_horizontal_scale",
         "type_info": "Int2",
         "origin": {
@@ -123,7 +143,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "max_horizontal_scale",
         "type_info": "Int2",
         "origin": {
@@ -134,7 +154,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "machine_type",
         "type_info": "Uuid",
         "origin": {
@@ -145,7 +165,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "deploy_on_push",
         "type_info": "Bool",
         "origin": {
@@ -156,7 +176,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 14,
         "name": "startup_probe_port",
         "type_info": "Int4",
         "origin": {
@@ -167,7 +187,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 15,
         "name": "startup_probe_path",
         "type_info": "Varchar",
         "origin": {
@@ -178,27 +198,7 @@
         }
       },
       {
-        "ordinal": 14,
-        "name": "startup_probe_port_type?",
-        "type_info": {
-          "Custom": {
-            "name": "exposed_port_type",
-            "kind": {
-              "Enum": [
-                "http"
-              ]
-            }
-          }
-        },
-        "origin": {
-          "Table": {
-            "table": "deployment",
-            "name": "startup_probe_port_type"
-          }
-        }
-      },
-      {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "liveness_probe_port",
         "type_info": "Int4",
         "origin": {
@@ -209,33 +209,13 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "liveness_probe_path",
         "type_info": "Varchar",
         "origin": {
           "Table": {
             "table": "deployment",
             "name": "liveness_probe_path"
-          }
-        }
-      },
-      {
-        "ordinal": 17,
-        "name": "liveness_probe_port_type?",
-        "type_info": {
-          "Custom": {
-            "name": "exposed_port_type",
-            "kind": {
-              "Enum": [
-                "http"
-              ]
-            }
-          }
-        },
-        "origin": {
-          "Table": {
-            "table": "deployment",
-            "name": "liveness_probe_port_type"
           }
         }
       },
@@ -261,16 +241,16 @@
       false,
       false,
       true,
-      false,
-      false,
-      false,
       true,
       false,
+      null,
       false,
       false,
       false,
-      true,
-      true,
+      false,
+      false,
+      false,
+      false,
       true,
       true,
       true,
@@ -278,5 +258,5 @@
       true
     ]
   },
-  "hash": "02f9217a6b8435ed2e860b3c44c9ec183cc9945a7e8097dbf10f07343a4204f7"
+  "hash": "9a4bb45624c6f98585755f44a6267444dcb4b569902a2a7c0deac8d217e700f9"
 }

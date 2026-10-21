@@ -706,13 +706,17 @@ async fn auto_deploy_on_push(
 	let deployments = query!(
 		r#"
 		SELECT
-			id,
-			name,
+			deployment.id,
+			deployment.name,
 			registry,
 			image_name,
 			image_tag,
-			runner,
-			status,
+			deployment.runner,
+			CASE
+				WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable'
+				ELSE deployment.status
+			END AS "status!",
+			should_run,
 			repository_id,
 			min_horizontal_scale,
 			max_horizontal_scale,
@@ -727,12 +731,16 @@ async fn auto_deploy_on_push(
 			current_live_digest
 		FROM
 			deployment
+		INNER JOIN
+			runner
+		ON
+			runner.id = deployment.runner
 		WHERE
 			repository_id = $1 AND
 			image_tag = $2 AND
 			deploy_on_push = TRUE AND
-			status NOT IN ('stopped', 'errored') AND
-			deleted IS NULL;
+			should_run = TRUE AND
+			deployment.deleted IS NULL;
 		"#,
 		repository_id,
 		tag,
@@ -773,19 +781,17 @@ async fn auto_deploy_on_push(
 		.execute(&mut **database)
 		.await?;
 
-		// Update the deployment's live digest and set status to deploying
+		// Update the deployment's live digest
 		query!(
 			r#"
 			UPDATE
 				deployment
 			SET
-				current_live_digest = $1,
-				status = $2
+				current_live_digest = $1
 			WHERE
-				id = $3;
+				id = $2;
 			"#,
 			digest,
-			DeploymentStatus::Deploying,
 			deployment_id,
 		)
 		.execute(&mut **database)
@@ -920,7 +926,8 @@ async fn auto_deploy_on_push(
 							registry,
 							image_tag: deployment.image_tag,
 							runner,
-							status: DeploymentStatus::Deploying,
+							status: deployment.status,
+							should_run: deployment.should_run,
 							current_live_digest: Some(digest.to_string()),
 							machine_type: deployment.machine_type,
 						},

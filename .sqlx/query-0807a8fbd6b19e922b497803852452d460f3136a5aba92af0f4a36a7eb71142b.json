@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT deployment.id, name, registry, repository_id, image_name, image_tag, status, runner, machine_type, current_live_digest, COUNT(*) OVER() AS \"total_count!\" FROM deployment INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON deployment.id = resource.id WHERE deployment.workspace_id = $1 AND deployment.deleted IS NULL AND ($4::TEXT IS NULL OR deployment.name ILIKE '%' || $4 || '%') AND ($5::TEXT IS NULL OR deployment.image_tag = $5) AND ($6::DEPLOYMENT_STATUS[] IS NULL OR deployment.status = ANY($6)) AND ($7::UUID IS NULL OR deployment.runner = $7) AND ($8::TEXT IS NULL OR deployment.current_live_digest = $8) ORDER BY resource.created DESC LIMIT $9 OFFSET $10;",
+  "query": "SELECT deployment.id, deployment.name, registry, repository_id, image_name, image_tag, CASE WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable' ELSE deployment.status END AS \"status!\", should_run, deployment.runner, machine_type, current_live_digest, COUNT(*) OVER() AS \"total_count!\" FROM deployment INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON deployment.id = resource.id INNER JOIN runner ON runner.id = deployment.runner WHERE deployment.workspace_id = $1 AND deployment.deleted IS NULL AND ($4::TEXT IS NULL OR deployment.name ILIKE '%' || $4 || '%') AND ($5::TEXT IS NULL OR deployment.image_tag = $5) AND ($6::DEPLOYMENT_STATUS[] IS NULL OR CASE WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable' ELSE deployment.status END = ANY($6)) AND ($7::UUID IS NULL OR deployment.runner = $7) AND ($8::TEXT IS NULL OR deployment.current_live_digest = $8) AND ($9::BOOLEAN IS NULL OR deployment.should_run = $9) ORDER BY resource.created DESC LIMIT $10 OFFSET $11;",
   "describe": {
     "columns": [
       {
@@ -76,32 +76,41 @@
       },
       {
         "ordinal": 6,
-        "name": "status",
+        "name": "status!",
         "type_info": {
           "Custom": {
             "name": "deployment_status",
             "kind": {
               "Enum": [
-                "created",
-                "pushed",
                 "deploying",
                 "running",
-                "stopped",
+                "crashing",
+                "health_check_failing",
+                "image_pull_failed",
+                "invalid_architecture",
                 "errored",
-                "deleted"
+                "stopped",
+                "stopping",
+                "unreachable"
               ]
             }
           }
         },
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "should_run",
+        "type_info": "Bool",
         "origin": {
           "Table": {
             "table": "deployment",
-            "name": "status"
+            "name": "should_run"
           }
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "runner",
         "type_info": "Uuid",
         "origin": {
@@ -112,7 +121,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "machine_type",
         "type_info": "Uuid",
         "origin": {
@@ -123,7 +132,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "current_live_digest",
         "type_info": "Text",
         "origin": {
@@ -134,7 +143,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "total_count!",
         "type_info": "Int8",
         "origin": "Expression"
@@ -156,13 +165,16 @@
                   "name": "deployment_status",
                   "kind": {
                     "Enum": [
-                      "created",
-                      "pushed",
                       "deploying",
                       "running",
-                      "stopped",
+                      "crashing",
+                      "health_check_failing",
+                      "image_pull_failed",
+                      "invalid_architecture",
                       "errored",
-                      "deleted"
+                      "stopped",
+                      "stopping",
+                      "unreachable"
                     ]
                   }
                 }
@@ -172,6 +184,7 @@
         },
         "Uuid",
         "Text",
+        "Bool",
         "Int8",
         "Int8"
       ]
@@ -183,6 +196,7 @@
       true,
       true,
       false,
+      null,
       false,
       false,
       false,
@@ -190,5 +204,5 @@
       null
     ]
   },
-  "hash": "d20c0df70f02b9318add2d966325b6869314d06e8f72c318aa126dfdcc9d3ec6"
+  "hash": "0807a8fbd6b19e922b497803852452d460f3136a5aba92af0f4a36a7eb71142b"
 }

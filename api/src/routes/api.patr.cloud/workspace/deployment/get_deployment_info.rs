@@ -114,15 +114,19 @@ pub async fn get_deployment_info(
 	let deployment = query!(
 		r#"
 		SELECT
-			id,
-			name,
+			deployment.id,
+			deployment.name,
 			registry,
 			repository_id,
 			image_name,
 			image_tag,
-			status,
-			workspace_id,
-			runner,
+			CASE
+				WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable'
+				ELSE deployment.status
+			END AS "status!",
+			should_run,
+			deployment.workspace_id,
+			deployment.runner,
 			min_horizontal_scale,
 			max_horizontal_scale,
 			machine_type,
@@ -134,9 +138,13 @@ pub async fn get_deployment_info(
 			current_live_digest
 		FROM
 			deployment
+		INNER JOIN
+			runner
+		ON
+			runner.id = deployment.runner
 		WHERE
-			id = $1 AND
-			deleted IS NULL;
+			deployment.id = $1 AND
+			deployment.deleted IS NULL;
 		"#,
 		deployment_id
 	)
@@ -160,6 +168,7 @@ pub async fn get_deployment_info(
 				},
 				image_tag: row.image_tag,
 				status: row.status,
+				should_run: row.should_run,
 				runner: row.runner,
 				machine_type: row.machine_type,
 				current_live_digest: row.current_live_digest,

@@ -172,7 +172,7 @@ pub async fn update_deployment(
 	.collect::<BTreeMap<_, _>>();
 
 	// Updating deployment details
-	let runner_id = query!(
+	let updated = query!(
 		r#"
 		UPDATE
 			deployment
@@ -182,6 +182,10 @@ pub async fn update_deployment(
 			machine_type = $3,
 			deploy_on_push = $4,
 			runner = $5,
+			observed_status = CASE
+				WHEN runner = $5 THEN observed_status
+				ELSE NULL
+			END,
 			min_horizontal_scale = $6,
 			max_horizontal_scale = $7,
 			startup_probe_port = $8,
@@ -193,7 +197,8 @@ pub async fn update_deployment(
 		WHERE
 			id = $14
 		RETURNING
-			runner;
+			runner,
+			should_run;
 		"#,
 		name as _,
 		image_tag as _,
@@ -219,8 +224,7 @@ pub async fn update_deployment(
 			ErrorType::WrongParameters
 		}
 		err => ErrorType::server_error(err),
-	})?
-	.runner;
+	})?;
 
 	// END DEFERRED CONSTRAINT
 	query!(
@@ -523,14 +527,14 @@ pub async fn update_deployment(
 				body: write_key::WriteKeyBody::Value(serde_json::to_vec(
 					&InternalKVData::Deployment {
 						ports: ports.keys().map(|port| port.value()).collect(),
-						runner_id,
-						status: DeploymentStatus::Deploying,
+						runner_id: updated.runner,
+						should_run: updated.should_run,
 					},
 				)?),
 			})
 			.await?;
 		} else {
-			let _ = (state, ports, runner_id); // Avoid unused variable warning
+			let _ = (state, ports, updated); // Avoid unused variable warning
 		}
 	}
 
@@ -644,13 +648,17 @@ pub async fn update_deployment(
 	let row = query!(
 		r#"
 		SELECT
-			id,
-			name,
+			deployment.id,
+			deployment.name,
 			registry,
 			image_name,
 			image_tag,
-			runner,
-			status,
+			deployment.runner,
+			CASE
+				WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable'
+				ELSE deployment.status
+			END AS "status!",
+			should_run,
 			repository_id,
 			min_horizontal_scale,
 			max_horizontal_scale,
@@ -665,9 +673,13 @@ pub async fn update_deployment(
 			current_live_digest
 		FROM
 			deployment
+		INNER JOIN
+			runner
+		ON
+			runner.id = deployment.runner
 		WHERE
-			id = $1 AND
-			deleted IS NULL;
+			deployment.id = $1 AND
+			deployment.deleted IS NULL;
 		"#,
 		deployment_id
 	)
@@ -724,7 +736,8 @@ pub async fn update_deployment(
 						},
 						image_tag: image_tag.to_string(),
 						runner,
-						status: DeploymentStatus::Deploying,
+						status: row.status,
+						should_run: row.should_run,
 						current_live_digest: row.current_live_digest,
 						machine_type,
 					},

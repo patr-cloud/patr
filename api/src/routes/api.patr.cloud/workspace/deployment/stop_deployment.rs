@@ -48,17 +48,16 @@ pub async fn stop_deployment(
 ) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
 	info!("Starting: Stop deployment");
 
-	// Updating deployment status
+	// Set the deployment to stop
 	query!(
 		r#"
 		UPDATE
 			deployment
 		SET
-			status = $1
+			should_run = FALSE
 		WHERE
-			id = $2;
+			id = $1;
 		"#,
-		DeploymentStatus::Stopped,
 		deployment_id
 	)
 	.execute(&mut **database)
@@ -174,13 +173,17 @@ pub async fn stop_deployment(
 	let row = query!(
 		r#"
 		SELECT
-			id,
-			name,
+			deployment.id,
+			deployment.name,
 			registry,
 			image_name,
 			image_tag,
-			runner,
-			status,
+			deployment.runner,
+			CASE
+				WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable'
+				ELSE deployment.status
+			END AS "status!",
+			should_run,
 			repository_id,
 			min_horizontal_scale,
 			max_horizontal_scale,
@@ -195,9 +198,13 @@ pub async fn stop_deployment(
 			current_live_digest
 		FROM
 			deployment
+		INNER JOIN
+			runner
+		ON
+			runner.id = deployment.runner
 		WHERE
-			id = $1 AND
-			deleted IS NULL;
+			deployment.id = $1 AND
+			deployment.deleted IS NULL;
 		"#,
 		deployment_id
 	)
@@ -254,7 +261,7 @@ pub async fn stop_deployment(
 					&InternalKVData::Deployment {
 						ports: ports.keys().map(|port| port.value()).collect(),
 						runner_id: runner,
-						status: DeploymentStatus::Stopped,
+						should_run: row.should_run,
 					},
 				)?),
 			})
@@ -285,7 +292,8 @@ pub async fn stop_deployment(
 						},
 						image_tag: image_tag.to_string(),
 						runner,
-						status: DeploymentStatus::Stopped,
+						status: row.status,
+						should_run: row.should_run,
 						current_live_digest: row.current_live_digest,
 						machine_type,
 					},

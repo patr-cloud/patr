@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TYPE DEPLOYMENT_STATUS AS ENUM('deploying', 'running', 'crashing', 'health_check_failing', 'image_pull_failed', 'invalid_architecture', 'errored', 'stopped', 'stopping', 'unreachable');",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "861202237f34376e967e3e4a718df615c24937545b00c5d376282a266e31aa9a"
+}

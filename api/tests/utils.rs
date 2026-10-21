@@ -406,6 +406,28 @@ impl TestSetup {
 		.expect("failed to mark test domain as verified");
 	}
 
+	/// Force-mark a runner as online by flipping `is_connected` and `last_seen`
+	/// directly in the DB, skipping a real runner connection. Used by tests that
+	/// read a deployment's status but don't exercise the runner's connection
+	/// itself.
+	pub async fn mark_test_runner_online(&self, runner_id: Uuid) {
+		query!(
+			r#"
+			UPDATE
+				runner
+			SET
+				is_connected = TRUE,
+				last_seen = NOW()
+			WHERE
+				id = $1;
+			"#,
+			runner_id,
+		)
+		.execute(self.database())
+		.await
+		.expect("failed to mark test runner as online");
+	}
+
 	/// Add a domain to a workspace, returning its ID and domain name.
 	pub async fn create_test_domain(&self, token: &BearerToken, workspace_id: Uuid) -> TestDomain {
 		let domain = format!("{}.com", random_name(8));

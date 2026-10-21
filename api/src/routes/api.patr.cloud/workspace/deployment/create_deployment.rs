@@ -123,7 +123,7 @@ pub async fn create_deployment(
 				repository_id,
 				image_name,
 				image_tag,
-				status,
+				should_run,
 				workspace_id,
 				runner,
 				min_horizontal_scale,
@@ -166,11 +166,7 @@ pub async fn create_deployment(
 		registry.repository_id(),
 		registry.image_name(),
 		image_tag.as_ref(),
-		if deploy_on_create {
-			DeploymentStatus::Deploying
-		} else {
-			DeploymentStatus::Stopped
-		},
+		deploy_on_create,
 		workspace_id,
 		runner,
 		min_horizontal_scale as i32,
@@ -441,7 +437,7 @@ pub async fn create_deployment(
 					&InternalKVData::Deployment {
 						ports: ports.keys().map(|port| port.value()).collect(),
 						runner_id: runner,
-						status: DeploymentStatus::Deploying,
+						should_run: deploy_on_create,
 					},
 				)?),
 			})
@@ -463,7 +459,12 @@ pub async fn create_deployment(
 						registry,
 						image_tag: image_tag.to_string(),
 						runner,
-						status: DeploymentStatus::Deploying,
+						status: if deploy_on_create {
+							DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying)
+						} else {
+							DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped)
+						},
+						should_run: deploy_on_create,
 						current_live_digest: None,
 						machine_type,
 					},

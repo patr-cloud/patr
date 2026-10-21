@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT runner.id, name, is_connected, last_seen, version, COUNT(*) OVER() AS \"total_count!\" FROM runner INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON runner.id = resource.id WHERE runner.workspace_id = $1 AND runner.deleted IS NULL AND ($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') AND ($5::BOOLEAN IS NULL OR is_connected = $5) AND ($6::TIMESTAMPTZ IS NULL OR last_seen >= $6) AND ($7::TIMESTAMPTZ IS NULL OR last_seen <= $7) ORDER BY resource.created DESC LIMIT $8 OFFSET $9;",
+  "query": "SELECT runner.id, name, IS_RUNNER_ONLINE(is_connected, last_seen) AS \"connected!\", last_seen, version, COUNT(*) OVER() AS \"total_count!\" FROM runner INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON runner.id = resource.id WHERE runner.workspace_id = $1 AND runner.deleted IS NULL AND ($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') AND ($5::BOOLEAN IS NULL OR IS_RUNNER_ONLINE(is_connected, last_seen) = $5) AND ($6::TIMESTAMPTZ IS NULL OR last_seen >= $6) AND ($7::TIMESTAMPTZ IS NULL OR last_seen <= $7) ORDER BY resource.created DESC LIMIT $8 OFFSET $9;",
   "describe": {
     "columns": [
       {
@@ -27,14 +27,9 @@
       },
       {
         "ordinal": 2,
-        "name": "is_connected",
+        "name": "connected!",
         "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "is_connected"
-          }
-        }
+        "origin": "Expression"
       },
       {
         "ordinal": 3,
@@ -81,11 +76,11 @@
     "nullable": [
       false,
       false,
-      false,
+      null,
       true,
       false,
       null
     ]
   },
-  "hash": "acbd7589254a0fc3886ccc21a37f8c306920184d89fb1a0f9c40ee52dd9b2501"
+  "hash": "b22f4883647e52250aa69c85238272212279043e41f440116f3026d751a659c4"
 }

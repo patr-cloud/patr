@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id FROM deployment WHERE repository_id = $1 AND status != 'deleted';",
+  "query": "SELECT id FROM deployment WHERE repository_id = $1 AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -24,5 +24,5 @@
       false
     ]
   },
-  "hash": "984fa0bbf25b3c3d7bae38b7378cce752869b1735f136bf799d532595ecf467a"
+  "hash": "20ce97b619a2c6b0736656630063087cf76bbfb15c4c9f480bacc75cc80ef659"
 }

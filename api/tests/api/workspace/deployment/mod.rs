@@ -4,6 +4,7 @@ use models::{
 	ApiErrorResponseBody,
 	ApiSuccessResponseBody,
 	api::workspace::deployment::{deploy_history::*, *},
+	rbac::WorkspacePermission,
 	utils::{Base64String, ListResourceQuery, StringifiedU16, Uuid},
 };
 use prost::Message;
@@ -187,6 +188,35 @@ async fn send_stop(
 					deployment_id,
 				})
 				.headers(StopDeploymentRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+}
+
+/// Send a list-deployments request with the given search, page size and page.
+async fn send_list(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	search: DeploymentSearchParams,
+	count: usize,
+	page: usize,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListDeploymentRequest>::builder()
+				.path(ListDeploymentPath { workspace_id })
+				.query(ListResourceQuery {
+					sort: None,
+					search,
+					count,
+					page,
+					additional_query: (),
+				})
+				.headers(ListDeploymentRequestHeaders {
 					authorization: token.clone(),
 					user_agent: TEST_USER_AGENT,
 				})
@@ -1783,9 +1813,14 @@ async fn create_patr_deployment_stopped_shape() {
 		.await
 		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
 		.response;
+	setup.mark_test_runner_online(runner.id).await;
 
 	let info = get_info(&setup, &user.access_token, workspace.id, created.id.id).await;
-	assert_eq!(info.deployment.status.to_string(), "stopped");
+	assert_eq!(
+		info.deployment.status,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped)
+	);
+	assert!(!info.deployment.should_run);
 	assert!(info.deployment.registry.is_patr_registry());
 	assert_eq!(info.deployment.registry.repository_id(), Some(repo.id));
 	assert_eq!(info.deployment.image_tag, "latest");
@@ -1817,9 +1852,14 @@ async fn deploy_on_create_sets_deploying() {
 		.await
 		.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
 		.response;
+	setup.mark_test_runner_online(runner.id).await;
 
 	let info = get_info(&setup, &user.access_token, workspace.id, created.id.id).await;
-	assert_eq!(info.deployment.status.to_string(), "deploying");
+	assert_eq!(
+		info.deployment.status,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying)
+	);
+	assert!(info.deployment.should_run);
 }
 
 #[tokio::test]
@@ -2599,6 +2639,219 @@ async fn list_deployments_page_zero_empty_allowed() {
 	);
 }
 
+/// The status filter, the total count and paging all run on the derived
+/// status, not on what the runner last reported.
+#[tokio::test]
+async fn list_deployments_filters_by_derived_status() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	setup.mark_test_runner_online(runner.id).await;
+	let offline_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let mut ids = BTreeMap::new();
+	for (runner_id, should_run, observed_status) in [
+		(runner.id, true, "running"),
+		(runner.id, false, "running"),
+		(runner.id, false, "running"),
+		(runner.id, false, "stopped"),
+		(offline_runner.id, true, "running"),
+	] {
+		let dep = setup
+			.create_test_deployment(&user.access_token, workspace.id, runner_id)
+			.await;
+		setup
+			.execute_sql(&format!(
+				"UPDATE deployment SET should_run = {should_run}, observed_status = '{observed_status}' WHERE id = '{}'",
+				dep.id
+			))
+			.await;
+		ids.entry((runner_id, should_run, observed_status))
+			.or_insert_with(Vec::new)
+			.push(dep.id);
+	}
+
+	// `running` is observed on four of them, but only one is derived as running.
+	let response = send_list(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		DeploymentSearchParams {
+			status: Some(vec![DeploymentStatus::Observed(
+				ObservedDeploymentStatus::Running,
+			)]),
+			..Default::default()
+		},
+		10,
+		0,
+	)
+	.await;
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListDeploymentResponse>>();
+	assert_eq!(
+		vec![ids[&(runner.id, true, "running")][0]],
+		body.response
+			.deployments
+			.iter()
+			.map(|deployment| deployment.id)
+			.collect::<Vec<_>>()
+	);
+	assert_eq!(
+		body.response.deployments[0].status,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Running)
+	);
+
+	let unreachable = send_list(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		DeploymentSearchParams {
+			status: Some(vec![DeploymentStatus::Unreachable]),
+			..Default::default()
+		},
+		10,
+		0,
+	)
+	.await
+	.json::<ApiSuccessResponseBody<ListDeploymentResponse>>();
+	assert_eq!(
+		vec![ids[&(offline_runner.id, true, "running")][0]],
+		unreachable
+			.response
+			.deployments
+			.iter()
+			.map(|deployment| deployment.id)
+			.collect::<Vec<_>>()
+	);
+
+	// Three match `stopping` or `stopped`; page through them two at a time.
+	let search = DeploymentSearchParams {
+		status: Some(vec![
+			DeploymentStatus::Stopping,
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped),
+		]),
+		..Default::default()
+	};
+	let mut listed = Vec::new();
+	for page in 0..2 {
+		let response = send_list(
+			&setup,
+			&user.access_token,
+			workspace.id,
+			search.clone(),
+			2,
+			page,
+		)
+		.await;
+		assert_eq!("3", response.header("x-total-count"));
+		listed.extend(
+			response
+				.json::<ApiSuccessResponseBody<ListDeploymentResponse>>()
+				.response
+				.deployments
+				.into_iter()
+				.map(|deployment| deployment.id),
+		);
+	}
+	let mut expected = ids[&(runner.id, false, "running")].clone();
+	expected.extend(&ids[&(runner.id, false, "stopped")]);
+	listed.sort();
+	expected.sort();
+	assert_eq!(expected, listed);
+
+	let out_of_bounds = send_list(&setup, &user.access_token, workspace.id, search, 2, 2).await;
+	assert_eq!(
+		400,
+		out_of_bounds.status_code().as_u16(),
+		"a page past the filtered results should be PageOutOfBounds (400)"
+	);
+}
+
+#[tokio::test]
+async fn list_deployments_filters_by_should_run() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let running = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	send_start(&setup, &user.access_token, workspace.id, running.id, false).await;
+
+	let response = send_list(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		DeploymentSearchParams {
+			should_run: Some(true),
+			..Default::default()
+		},
+		10,
+		0,
+	)
+	.await;
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListDeploymentResponse>>();
+	assert_eq!(running.id, body.response.deployments[0].id);
+	assert!(body.response.deployments[0].should_run);
+
+	let response = send_list(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		DeploymentSearchParams {
+			should_run: Some(false),
+			..Default::default()
+		},
+		10,
+		0,
+	)
+	.await;
+	assert_eq!("1", response.header("x-total-count"));
+}
+
+/// A status this build doesn't know parses as `unknown`, which no deployment
+/// ever has, so it matches nothing rather than failing the query.
+#[tokio::test]
+async fn list_deployments_unknown_status_matches_nothing() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let response = send_list(
+		&setup,
+		&user.access_token,
+		workspace.id,
+		DeploymentSearchParams {
+			status: Some(vec![DeploymentStatus::Observed(
+				ObservedDeploymentStatus::Unknown,
+			)]),
+			..Default::default()
+		},
+		10,
+		0,
+	)
+	.await;
+	assert_eq!(StatusCode::OK, response.status_code());
+	assert_eq!("0", response.header("x-total-count"));
+}
+
 // ---------- lifecycle ----------
 
 #[tokio::test]
@@ -2612,10 +2865,15 @@ async fn start_deployment_sets_deploying() {
 	let dep = setup
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
+	setup.mark_test_runner_online(runner.id).await;
 
 	send_start(&setup, &user.access_token, workspace.id, dep.id, false).await;
 	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
-	assert_eq!(info.deployment.status.to_string(), "deploying");
+	assert!(info.deployment.should_run);
+	assert_eq!(
+		info.deployment.status,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying)
+	);
 }
 
 #[tokio::test]
@@ -2629,16 +2887,21 @@ async fn stop_deployment_sets_stopped() {
 	let dep = setup
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
+	setup.mark_test_runner_online(runner.id).await;
 	setup
 		.execute_sql(&format!(
-			"UPDATE deployment SET status = 'deploying' WHERE id = '{}'",
+			"UPDATE deployment SET should_run = TRUE WHERE id = '{}'",
 			dep.id
 		))
 		.await;
 
 	send_stop(&setup, &user.access_token, workspace.id, dep.id).await;
 	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
-	assert_eq!(info.deployment.status.to_string(), "stopped");
+	assert!(!info.deployment.should_run);
+	assert_eq!(
+		info.deployment.status,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped)
+	);
 }
 
 #[tokio::test]
@@ -2652,15 +2915,19 @@ async fn start_deployment_force_restart_is_noop() {
 	let dep = setup
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
+	setup.mark_test_runner_online(runner.id).await;
 
 	// force_restart is destructured but ignored — start still sets Deploying.
 	send_start(&setup, &user.access_token, workspace.id, dep.id, true).await;
 	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
-	assert_eq!(info.deployment.status.to_string(), "deploying");
+	assert_eq!(
+		info.deployment.status,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying)
+	);
 }
 
 #[tokio::test]
-async fn start_running_deployment_sets_deploying() {
+async fn start_running_deployment_keeps_running() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -2670,21 +2937,25 @@ async fn start_running_deployment_sets_deploying() {
 	let dep = setup
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
+	setup.mark_test_runner_online(runner.id).await;
 	setup
 		.execute_sql(&format!(
-			"UPDATE deployment SET status = 'running' WHERE id = '{}'",
+			"UPDATE deployment SET should_run = TRUE, observed_status = 'running' WHERE id = '{}'",
 			dep.id
 		))
 		.await;
 
-	// Start has no status guard — a running deployment is still set to Deploying.
+	// Start only sets the intent, so what the runner last saw still shows.
 	send_start(&setup, &user.access_token, workspace.id, dep.id, false).await;
 	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
-	assert_eq!(info.deployment.status.to_string(), "deploying");
+	assert_eq!(
+		info.deployment.status,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Running)
+	);
 }
 
 #[tokio::test]
-async fn stop_running_deployment_sets_stopped() {
+async fn stop_running_deployment_sets_stopping() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -2694,16 +2965,18 @@ async fn stop_running_deployment_sets_stopped() {
 	let dep = setup
 		.create_test_deployment(&user.access_token, workspace.id, runner.id)
 		.await;
+	setup.mark_test_runner_online(runner.id).await;
 	setup
 		.execute_sql(&format!(
-			"UPDATE deployment SET status = 'running' WHERE id = '{}'",
+			"UPDATE deployment SET should_run = TRUE, observed_status = 'running' WHERE id = '{}'",
 			dep.id
 		))
 		.await;
 
+	// Stopping until the runner reports the deployment stopped.
 	send_stop(&setup, &user.access_token, workspace.id, dep.id).await;
 	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
-	assert_eq!(info.deployment.status.to_string(), "stopped");
+	assert_eq!(info.deployment.status, DeploymentStatus::Stopping);
 }
 
 #[tokio::test]
@@ -2738,13 +3011,22 @@ async fn delete_deployment_from_each_state() {
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
 
-	for state in ["stopped", "deploying", "running", "errored"] {
+	for state in [
+		"deploying",
+		"running",
+		"crashing",
+		"health_check_failing",
+		"image_pull_failed",
+		"invalid_architecture",
+		"errored",
+		"stopped",
+	] {
 		let dep = setup
 			.create_test_deployment(&user.access_token, workspace.id, runner.id)
 			.await;
 		setup
 			.execute_sql(&format!(
-				"UPDATE deployment SET status = '{state}'::DEPLOYMENT_STATUS WHERE id = '{}'",
+				"UPDATE deployment SET observed_status = '{state}' WHERE id = '{}'",
 				dep.id
 			))
 			.await;
@@ -2754,43 +3036,149 @@ async fn delete_deployment_from_each_state() {
 	}
 }
 
+/// Every combination of runner liveness, intent and observed status maps to
+/// one public status.
 #[tokio::test]
-async fn get_info_pushed_status_500() {
+async fn get_info_derives_status() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
-	let runner = setup
+	let online_runner = setup
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
-	let dep = setup
-		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+	setup.mark_test_runner_online(online_runner.id).await;
+	let never_connected_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
 		.await;
-	// `pushed` is a valid DB enum value but the Rust model can't deserialize it.
+	// Connected, but not seen for an hour: what an API crash leaves behind.
+	let stale_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
 	setup
 		.execute_sql(&format!(
-			"UPDATE deployment SET status = 'pushed'::DEPLOYMENT_STATUS WHERE id = '{}'",
-			dep.id
+			"UPDATE runner SET is_connected = TRUE, last_seen = NOW() - INTERVAL '1 hour' WHERE id = '{}'",
+			stale_runner.id
 		))
 		.await;
 
-	let response = setup
-		.make_web_dashboard_call(
-			ApiRequest::<GetDeploymentInfoRequest>::builder()
-				.path(GetDeploymentInfoPath {
-					workspace_id: workspace.id,
-					deployment_id: dep.id,
-				})
-				.headers(GetDeploymentInfoRequestHeaders {
-					authorization: user.access_token.clone(),
-					user_agent: TEST_USER_AGENT,
-				})
-				.build(),
-		)
-		.await;
-	assert!(
-		response.status_code().is_server_error(),
-		"get-info on a `pushed` status row should 500 (model cannot deserialize)"
-	);
+	let cases = [
+		(
+			never_connected_runner.id,
+			true,
+			None,
+			DeploymentStatus::Unreachable,
+		),
+		(
+			never_connected_runner.id,
+			false,
+			Some("running"),
+			DeploymentStatus::Unreachable,
+		),
+		(
+			stale_runner.id,
+			true,
+			Some("running"),
+			DeploymentStatus::Unreachable,
+		),
+		(stale_runner.id, false, None, DeploymentStatus::Unreachable),
+		(
+			online_runner.id,
+			false,
+			None,
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped),
+		),
+		(
+			online_runner.id,
+			false,
+			Some("stopped"),
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped),
+		),
+		(
+			online_runner.id,
+			false,
+			Some("running"),
+			DeploymentStatus::Stopping,
+		),
+		(
+			online_runner.id,
+			false,
+			Some("crashing"),
+			DeploymentStatus::Stopping,
+		),
+		(
+			online_runner.id,
+			true,
+			None,
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying),
+		),
+		(
+			online_runner.id,
+			true,
+			Some("stopped"),
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying),
+		),
+		(
+			online_runner.id,
+			true,
+			Some("deploying"),
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying),
+		),
+		(
+			online_runner.id,
+			true,
+			Some("running"),
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Running),
+		),
+		(
+			online_runner.id,
+			true,
+			Some("crashing"),
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Crashing),
+		),
+		(
+			online_runner.id,
+			true,
+			Some("health_check_failing"),
+			DeploymentStatus::Observed(ObservedDeploymentStatus::HealthCheckFailing),
+		),
+		(
+			online_runner.id,
+			true,
+			Some("image_pull_failed"),
+			DeploymentStatus::Observed(ObservedDeploymentStatus::ImagePullFailed),
+		),
+		(
+			online_runner.id,
+			true,
+			Some("invalid_architecture"),
+			DeploymentStatus::Observed(ObservedDeploymentStatus::InvalidArchitecture),
+		),
+		(
+			online_runner.id,
+			true,
+			Some("errored"),
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Errored),
+		),
+	];
+	for (runner_id, should_run, observed_status, expected) in cases {
+		let dep = setup
+			.create_test_deployment(&user.access_token, workspace.id, runner_id)
+			.await;
+		setup
+			.execute_sql(&format!(
+				"UPDATE deployment SET should_run = {should_run}, observed_status = {} WHERE id = '{}'",
+				observed_status.map_or_else(|| "NULL".to_string(), |status| format!("'{status}'")),
+				dep.id
+			))
+			.await;
+
+		let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+		assert_eq!(
+			info.deployment.status, expected,
+			"should_run {should_run}, observed {observed_status:?} on runner {runner_id}"
+		);
+		assert_eq!(info.deployment.should_run, should_run);
+	}
 }
 
 #[tokio::test]
@@ -2955,6 +3343,152 @@ async fn update_deployment_change_runner() {
 		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
 	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
 	assert_eq!(info.deployment.runner, runner2.id);
+}
+
+/// What the old runner last saw says nothing about the new one, so a move
+/// clears it. Any other update keeps it.
+#[tokio::test]
+async fn update_deployment_change_runner_resets_observed_status() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let runner2 = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	setup.mark_test_runner_online(runner.id).await;
+	setup.mark_test_runner_online(runner2.id).await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	setup
+		.execute_sql(&format!(
+			"UPDATE deployment SET should_run = TRUE, observed_status = 'running' WHERE id = '{}'",
+			dep.id
+		))
+		.await;
+
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.name = random_name(8);
+	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(
+		info.deployment.status,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Running)
+	);
+
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.runner = runner2.id;
+	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(
+		info.deployment.status,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying)
+	);
+	assert!(info.deployment.should_run);
+}
+
+/// The ingress KV entry carries the deployment's intent from the database, and
+/// no status.
+#[tokio::test]
+async fn deployment_kv_carries_should_run() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let key = dep.id.to_string();
+
+	let kv = setup.last_cloudflare_kv_write(&key).await.unwrap();
+	assert_eq!(kv["shouldRun"], false);
+	assert!(kv.get("status").is_none());
+
+	// An update leaves the intent alone, so a stopped deployment stays stopped.
+	let body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+	let kv = setup.last_cloudflare_kv_write(&key).await.unwrap();
+	assert_eq!(kv["shouldRun"], false);
+
+	send_start(&setup, &user.access_token, workspace.id, dep.id, false).await;
+	let kv = setup.last_cloudflare_kv_write(&key).await.unwrap();
+	assert_eq!(kv["shouldRun"], true);
+
+	let body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	send_update(&setup, &user.access_token, workspace.id, dep.id, body)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateDeploymentResponse));
+	let kv = setup.last_cloudflare_kv_write(&key).await.unwrap();
+	assert_eq!(kv["shouldRun"], true);
+
+	send_stop(&setup, &user.access_token, workspace.id, dep.id).await;
+	let kv = setup.last_cloudflare_kv_write(&key).await.unwrap();
+	assert_eq!(kv["shouldRun"], false);
+}
+
+/// A push redeploys every deployment on the tag that should be running,
+/// whatever the runner last saw, and leaves stopped ones alone.
+#[tokio::test]
+async fn deploy_on_push_redeploys_deployments_that_should_run() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let repo = setup
+		.create_test_container_repo(&user.access_token, workspace.id)
+		.await;
+	let mt = first_machine_type(&setup, workspace.id).await;
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(workspace.id, WorkspacePermission::SuperAdmin)]),
+		)
+		.await;
+
+	let mut deployments = Vec::new();
+	for (should_run, observed_status) in [(true, "errored"), (true, "crashing"), (false, "stopped")]
+	{
+		let mut body = patr_body(repo.id, runner.id, mt);
+		body.running_details.deploy_on_push = true;
+		let id = send_create(&setup, &user.access_token, workspace.id, body)
+			.await
+			.json::<ApiSuccessResponseBody<CreateDeploymentResponse>>()
+			.response
+			.id
+			.id;
+		setup
+			.execute_sql(&format!(
+				"UPDATE deployment SET should_run = {should_run}, observed_status = '{observed_status}' WHERE id = '{id}'"
+			))
+			.await;
+		deployments.push((id, should_run, observed_status));
+	}
+
+	let image = setup
+		.push_test_image(&api_token.token, &workspace.id, &repo.name, "latest")
+		.await;
+
+	for (id, should_run, observed_status) in deployments {
+		let info = get_info(&setup, &user.access_token, workspace.id, id).await;
+		assert_eq!(
+			info.deployment.current_live_digest.as_deref() == Some(image.manifest_digest.as_str()),
+			should_run,
+			"should_run {should_run}, observed {observed_status}"
+		);
+	}
 }
 
 #[tokio::test]

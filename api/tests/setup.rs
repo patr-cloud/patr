@@ -496,6 +496,23 @@ impl TestSetup {
 			.count()
 	}
 
+	/// The body of the last Cloudflare KV write made to a key, if any.
+	pub async fn last_cloudflare_kv_write(&self, key: &str) -> Option<serde_json::Value> {
+		let suffix = format!("/values/{key}");
+		self.cloudflare_mock
+			.received_requests()
+			.await
+			.unwrap_or_default()
+			.iter()
+			.rev()
+			.find(|request| {
+				request.method == http::Method::PUT && request.url.path().ends_with(&suffix)
+			})
+			.map(|request| {
+				serde_json::from_slice(&request.body).expect("KV write body should be JSON")
+			})
+	}
+
 	/// Look up the UUID of a permission by the strongly-typed `Permission`
 	/// enum. Uses the cached `permission_ids` populated at setup time.
 	pub fn get_permission_id(&self, permission: Permission) -> Uuid {

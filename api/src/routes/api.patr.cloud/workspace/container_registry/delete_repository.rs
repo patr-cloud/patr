@@ -41,7 +41,7 @@ pub async fn delete_repository(
 			deployment
 		WHERE
 			repository_id = $1 AND
-			status != 'deleted';
+			deleted IS NULL;
 		"#,
 		repository_id
 	)
