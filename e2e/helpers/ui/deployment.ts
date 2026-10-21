@@ -91,8 +91,11 @@ export function portError(
 	return page.getByText(text, { exact: true });
 }
 
+// Types into the "Add a port" field and presses Enter to add it as a row.
 export async function fillFirstPort(page: Page, value: string): Promise<void> {
-	await page.locator('input[placeholder="Enter Port Number"]').first().fill(value);
+	const input = page.locator('input[placeholder="Add a port"]');
+	await input.fill(value);
+	await input.press('Enter');
 }
 
 // Fill the first environment-variable row (env-input.tsx: "Enter Env Name" /

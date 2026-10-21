@@ -166,8 +166,8 @@ const ListContainerRepositories = () => {
 								</div>
 								<div class="hidden md:block">
 									<Table
-										column_grids={["flex-4", "flex-3", "flex-2", "flex-3"]}
-										headings={["Repository", "Last Updated", "Size", "Created"]}
+										column_grids={["flex-2", "flex-2", "flex-1", "flex-2"]}
+										headings={["Repository", "Created", "Last Updated", "Size"]}
 										rows={repositoriesQuery.data?.repositories || []}
 										renderRow={(repo: WithId<ContainerRepository>) => (
 											<tr
@@ -182,17 +182,17 @@ const ListContainerRepositories = () => {
 													}
 												}}
 											>
-												<td role="cell" class="flex-4 min-w-0">
+												<td role="cell" class="flex-2 min-w-0">
 													<span class="truncate font-medium text-white">{repo.name}</span>
 												</td>
-												<td role="cell" class="flex-3">
+												<td role="cell" class="flex-2">
+													{formatRelativeTime(repo.created)}
+												</td>
+												<td role="cell" class="flex-1">
 													{formatRelativeTime(repo.lastUpdated)}
 												</td>
 												<td role="cell" class="flex-2">
 													{formatSize(repo.size)}
-												</td>
-												<td role="cell" class="flex-3">
-													{formatRelativeTime(repo.created)}
 												</td>
 											</tr>
 										)}

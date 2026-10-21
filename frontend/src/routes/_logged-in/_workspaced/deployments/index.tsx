@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { useNavigate } from "@tanstack/solid-router";
+import { useNavigate, Link as RouterLink } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
+import { FiLink } from "solid-icons/fi";
 import { createEffect, createMemo, ErrorBoundary, For, Show, Suspense } from "solid-js";
 import { Deployment, WithId } from "~/bindings";
 import {
@@ -20,6 +21,24 @@ import {
 } from "~/components";
 import { useDeploymentsQuery, useRunnersQuery } from "~/hooks/fetch";
 import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
+
+/**
+ * Links to a deployment's runner. Sits inside a clickable row or card, so it
+ * stops clicks and keys from also opening the deployment.
+ */
+const RunnerLink = (props: { runnerId: string; runnerName: string }) => (
+	<RouterLink
+		to="/runners/$id"
+		params={{ id: props.runnerId }}
+		search={{ tab: "deployments" }}
+		onClick={(e) => e.stopPropagation()}
+		onKeyDown={(e) => e.stopPropagation()}
+		class="flex items-center gap-1.5 min-w-0 cursor-pointer hover:text-primary transition-colors"
+	>
+		<FiLink size={14} class="shrink-0" />
+		<span class="truncate">{props.runnerName}</span>
+	</RouterLink>
+);
 
 const DeploymentCard = (props: { item: WithId<Deployment>; runnerName: string }) => {
 	const navigate = useNavigate();
@@ -45,7 +64,9 @@ const DeploymentCard = (props: { item: WithId<Deployment>; runnerName: string })
 			</div>
 			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-grey">
 				<dt>Runner</dt>
-				<dd class="text-white truncate">{props.runnerName}</dd>
+				<dd class="text-white min-w-0">
+					<RunnerLink runnerId={props.item.runner} runnerName={props.runnerName} />
+				</dd>
 				<dt>ID</dt>
 				<dd class="min-w-0" onClick={(e) => e.stopPropagation()}>
 					<CopyableField
@@ -85,7 +106,7 @@ const DeploymentListRow = (props: { item: WithId<Deployment>; runnerName: string
 				<StatusChip status={props.item.status} />
 			</td>
 			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
-				<span class="truncate">{props.runnerName}</span>
+				<RunnerLink runnerId={props.item.runner} runnerName={props.runnerName} />
 			</td>
 			<td role="cell" class="flex-3 flex items-center justify-start min-w-0">
 				<CopyableField

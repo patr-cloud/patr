@@ -1,5 +1,6 @@
-import { FiChevronDown } from "solid-icons/fi";
+import { FiChevronDown, FiExternalLink, FiLink } from "solid-icons/fi";
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
+import { useNavigate } from "@tanstack/solid-router";
 import { ExposedPortType, GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
 import {
 	Button,
@@ -26,6 +27,9 @@ import { EventT } from "~/utils/types";
 import PortInput from "./port";
 import { isSameUpdate, toUpdateRequest } from "./utils";
 
+/** Hostnames an image's registry may be stored as when it's Docker Hub. */
+const DOCKER_HUB_REGISTRIES = ["docker.io", "index.docker.io", "registry-1.docker.io", "registry.hub.docker.com"];
+
 interface DeploymentInfoProps {
 	deploymentId: string;
 }
@@ -35,6 +39,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [workspaceId] = useLastWorkspaceId();
 	const toast = useToast();
 	const queryClient = useQueryClient();
+	const navigate = useNavigate();
 
 	const deploymentQuery = useDeploymentInfoQuery(() => props.deploymentId);
 	const [runnerSearch, setRunnerSearch] = createSignal("");
@@ -67,6 +72,68 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 			options.unshift({ value: missing.id, label: missing.name });
 		}
 		return options;
+	};
+
+	/** The repository the deployment's image comes from, when it's in the Patr registry. */
+	const patrRepositoryId = () => {
+		const info = localInfo();
+		return info && info.registry === REGISTRY_DOMAIN && "repositoryId" in info
+			? (info.repositoryId as string)
+			: undefined;
+	};
+
+	/** The image's Docker Hub page, when it's pulled from Docker Hub. */
+	const dockerHubUrl = () => {
+		const info = localInfo();
+		if (!info?.registry || !DOCKER_HUB_REGISTRIES.includes(info.registry) || !("imageName" in info)) {
+			return undefined;
+		}
+		const segments = info.imageName.split("/").filter(Boolean);
+		// Official images (`nginx`, `library/nginx`) live under `/_/`.
+		if (segments.length === 1 || (segments.length === 2 && segments[0] === "library")) {
+			return `https://hub.docker.com/_/${encodeURIComponent(segments[segments.length - 1])}`;
+		}
+		return `https://hub.docker.com/r/${segments.map(encodeURIComponent).join("/")}`;
+	};
+
+	/**
+	 * The image field's start icon: Docker Hub images open their Hub page, Patr
+	 * registry ones their repository. Unset otherwise, since any start icon
+	 * narrows the input's padding.
+	 */
+	const imageLinkIcon = () => {
+		const hubUrl = dockerHubUrl();
+		if (hubUrl) {
+			return () => (
+				<a
+					href={hubUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					aria-label="Open on Docker Hub"
+					class="text-primary flex items-center justify-center pl-md cursor-pointer"
+				>
+					<FiExternalLink size={16} />
+				</a>
+			);
+		}
+		const repositoryId = patrRepositoryId();
+		if (repositoryId) {
+			return () => (
+				<button
+					type="button"
+					aria-label="Open repository"
+					class="text-primary flex items-center justify-center pl-md cursor-pointer"
+					// Keep the input from taking focus.
+					onMouseDown={(e) => e.preventDefault()}
+					onClick={() =>
+						navigate({ to: "/container-registry/$id", params: { id: repositoryId }, search: { tab: "" } })
+					}
+				>
+					<FiLink size={16} />
+				</button>
+			);
+		}
+		return undefined;
 	};
 
 	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentId);
@@ -220,6 +287,29 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						placeholder="Select Runner"
 						disabled={!deploymentPermissions().edit}
 						value={localInfo()?.runner ?? ""}
+						startIcon={() => (
+							// Follows the selected runner, saved or not, so it matches the field.
+							<Show when={localInfo()?.runner}>
+								{(runnerId) => (
+									<button
+										type="button"
+										aria-label="Open runner"
+										class="text-primary flex items-center justify-center pl-md cursor-pointer"
+										// Keep the input from taking focus and opening the options.
+										onMouseDown={(e) => e.preventDefault()}
+										onClick={() =>
+											navigate({
+												to: "/runners/$id",
+												params: { id: runnerId() },
+												search: { tab: "deployments" },
+											})
+										}
+									>
+										<FiLink size={16} />
+									</button>
+								)}
+							</Show>
+						)}
 						endIcon={() => (
 							<button>
 								<FiChevronDown size={16} />
@@ -251,6 +341,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 							class="flex-6"
 							placeholder="Image Name"
 							type={InputType.Text}
+							startIcon={imageLinkIcon()}
 							value={(() => {
 								const info = localInfo();
 								if (!info) return "";

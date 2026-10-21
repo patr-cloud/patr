@@ -33,6 +33,8 @@ interface InputDropdownProps {
 	id?: string;
 	/** The name of the input, this is used to identify the input in a form submission. */
 	name?: string;
+	/** The Start Icon of the input */
+	startIcon?: () => JSX.Element;
 	/** @deprecated Ignored — chevron is rendered internally by Input. */
 	endIcon?: () => JSX.Element;
 	/** @deprecated Ignored. */
@@ -58,6 +60,7 @@ const InputDropdown = (props: InputDropdownProps) => (
 		required={props.required}
 		id={props.id}
 		name={props.name}
+		startIcon={props.startIcon}
 		onLoadMore={props.onLoadMore}
 		isLoadingMore={props.isLoadingMore}
 		onSearch={props.onSearch}
