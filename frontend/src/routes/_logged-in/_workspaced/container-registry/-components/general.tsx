@@ -139,16 +139,24 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
 							<CopyableField value={`docker login ${registryHost} -u patr`} innerClass="font-mono" />
-							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
-								Use an{" "}
+							<p class="text-gray-300 text-sm mt-2 flex flex-wrap items-center gap-1">
+								Use an&nbsp;
 								<Link
 									href="/profile/api-tokens"
 									external={false}
 									class="inline-flex items-center gap-1"
 								>
 									API token <FiExternalLink size={12} />
-								</Link>{" "}
-								as the password.
+								</Link>
+								&nbsp;as the password, or a&nbsp;
+								<Link
+									href="/workspace/service-accounts"
+									external={false}
+									class="inline-flex items-center gap-1"
+								>
+									service account <FiExternalLink size={12} />
+								</Link>
+								&nbsp;token for CI.
 							</p>
 						</div>
 
@@ -174,7 +182,7 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 						<div>
 							<p class="text-gray-300 text-sm mb-2">1. Login to Patr Registry</p>
 							<CopyableField value={`docker login ${registryHost} -u patr`} innerClass="font-mono" />
-							<p class="text-gray-300 text-sm mt-2 flex items-center gap-1">
+							<p class="text-gray-300 text-sm mt-2 flex flex-wrap items-center gap-1">
 								Use an&nbsp;
 								<Link
 									href="/profile/api-tokens"
@@ -183,7 +191,15 @@ const PushInstructions = (props: { repositoryName: string | undefined }) => {
 								>
 									API token <FiExternalLink size={12} />
 								</Link>
-								&nbsp; as the password.
+								&nbsp;as the password, or a&nbsp;
+								<Link
+									href="/workspace/service-accounts"
+									external={false}
+									class="inline-flex items-center gap-1"
+								>
+									service account <FiExternalLink size={12} />
+								</Link>
+								&nbsp;token for CI.
 							</p>
 						</div>
 

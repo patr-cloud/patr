@@ -52,6 +52,7 @@ export type ResourceTypes =
 	| "managedURL"
 	| "runner"
 	| "secret"
+	| "serviceAccount"
 	| "viewRoles"
 	| "modifyRoles"
 	| "editWorkspace";

@@ -1,0 +1,12 @@
+Hi {{ first_name }},
+
+A service account named {{ service_account_name }} was created in the {{ workspace_name }} workspace by {{ created_by }}.
+
+Its token can do anything its roles allow in the workspace. If you didn't expect this, regenerate its token or delete the service account right away.
+
+View Service Account: {{ service_account_url }}
+
+Need help? Talk to us on Discord: https://patr.cloud/discord
+
+---
+2026 Patr. All rights reserved.

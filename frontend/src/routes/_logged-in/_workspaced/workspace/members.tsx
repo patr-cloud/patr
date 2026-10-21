@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, createMemo, createSignal, For, Show, Suspense } from "solid-js";
 import {
+	AccessRow,
 	Button,
 	ButtonVariant,
 	BindingRows,
@@ -23,7 +24,7 @@ import { ResendWorkspaceInviteResponse } from "~/bindings/ResendWorkspaceInviteR
 import { UpdateWorkspaceInviteRolesRequest } from "~/bindings/UpdateWorkspaceInviteRolesRequest";
 import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
 import { httpRequest } from "~/utils/http-request";
-import { groupScopes, scopeResources } from "~/utils/scope";
+import { bindingsToGrants, grantsToBindings } from "~/utils/scope";
 import WorkspaceHeader from "./-components/workspace-header";
 import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery, useInvitesQuery } from "~/hooks/fetch";
 import type { WorkspaceMember } from "~/hooks/fetch/members";
@@ -49,24 +50,6 @@ type PersonRow = {
 	isOwner: boolean;
 	expired: boolean;
 };
-
-const grantsToBindings = (grants: RoleBindingGrant[], workspaceId: string): Binding[] =>
-	groupScopes(
-		grants,
-		(grant) => grant.roleId,
-		(grant) => grant.resourceId,
-		workspaceId
-	).map(({ subjectId, scope }) => ({ subjectId, scope }));
-
-const bindingsToGrants = (bindings: Binding[], workspaceId: string): RoleBindingGrant[] =>
-	bindings
-		.filter((binding) => binding.subjectId)
-		.flatMap((binding) =>
-			scopeResources(binding.scope, workspaceId).map((resourceId) => ({
-				roleId: binding.subjectId,
-				resourceId,
-			}))
-		);
 
 const ManageWorkspace = () => {
 	const [workspaceId] = useLastWorkspaceId();
@@ -331,13 +314,6 @@ const ManageWorkspace = () => {
 	// The list shows one row per role, so flat grants are grouped for display.
 	const displayBindings = (grants: RoleBindingGrant[]) => grantsToBindings(grants, workspaceId() ?? "");
 
-	const grantLabel = (binding: Binding) => {
-		const name = roleNameMap().get(binding.subjectId) || binding.subjectId;
-		if (binding.scope.scopeType !== "resources") return { name, scope: null };
-		const count = binding.scope.resources.length;
-		return { name, scope: `${count} resource${count === 1 ? "" : "s"}` };
-	};
-
 	return (
 		<>
 			<Title>Workspace Members | Patr</Title>
@@ -558,19 +534,15 @@ const ManageWorkspace = () => {
 														>
 															<ul class="flex flex-col gap-2">
 																<For each={displayBindings(row().grants)}>
-																	{(binding) => {
-																		const label = grantLabel(binding);
-																		return (
-																			<li class="flex items-center justify-between gap-3 px-3 py-2 border border-border-color rounded-xs">
-																				<span class="text-white text-sm truncate">
-																					{label.name}
-																				</span>
-																				<span class="text-grey text-xs shrink-0">
-																					{label.scope ?? "Entire workspace"}
-																				</span>
-																			</li>
-																		);
-																	}}
+																	{(binding) => (
+																		<AccessRow
+																			label={
+																				roleNameMap().get(binding.subjectId) ||
+																				binding.subjectId
+																			}
+																			scope={binding.scope}
+																		/>
+																	)}
 																</For>
 															</ul>
 														</Show>

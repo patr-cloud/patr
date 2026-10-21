@@ -1,14 +1,17 @@
 use api::redis::keys;
 use models::{
 	ApiSuccessResponseBody,
-	api::workspace::{
-		GetWorkspaceInfoPath,
-		GetWorkspaceInfoRequest,
-		GetWorkspaceInfoRequestHeaders,
-		rbac::user::RoleBindingGrant,
-		service_account::*,
+	api::{
+		user::{UpdateUserInfoRequest, UpdateUserInfoRequestHeaders, UpdateUserInfoResponse},
+		workspace::{
+			GetWorkspaceInfoPath,
+			GetWorkspaceInfoRequest,
+			GetWorkspaceInfoRequestHeaders,
+			rbac::user::RoleBindingGrant,
+			service_account::*,
+		},
 	},
-	rbac::Permission,
+	rbac::{Permission, ServiceAccountPermission},
 	utils::{ListResourceQuery, Uuid},
 };
 use sha2::{Digest as _, Sha256};
@@ -31,6 +34,149 @@ async fn create_service_account_works() {
 	assert!(
 		sa.token.starts_with("patr_sa_"),
 		"token should start with patr_sa_"
+	);
+}
+
+/// How many emails of `email_type` about the service account named
+/// `service_account_name` are queued for `to`.
+async fn queued_service_account_emails(
+	setup: &TestSetup,
+	email_type: &str,
+	to: &str,
+	service_account_name: &str,
+) -> i64 {
+	sqlx::query_scalar::<_, i64>(
+		r#"
+		SELECT
+			COUNT(*)
+		FROM
+			apalis.jobs
+		WHERE
+			CONVERT_FROM(job, 'UTF8')::JSONB #>> '{data,type}' = $1 AND
+			CONVERT_FROM(job, 'UTF8')::JSONB #>> '{data,to}' = $2 AND
+			CONVERT_FROM(job, 'UTF8')::JSONB #>> '{data,data,serviceAccountName}' = $3;
+		"#,
+	)
+	.bind(email_type)
+	.bind(to)
+	.bind(service_account_name)
+	.fetch_one(setup.database())
+	.await
+	.expect("queued email query")
+}
+
+/// Who each queued email of `email_type` about the service account named
+/// `service_account_name` is to, paired with who its `actor_field` names as
+/// having acted.
+async fn queued_service_account_email_actors(
+	setup: &TestSetup,
+	email_type: &str,
+	actor_field: &str,
+	service_account_name: &str,
+) -> Vec<(String, String)> {
+	sqlx::query_as::<_, (String, String)>(
+		r#"
+		SELECT
+			CONVERT_FROM(job, 'UTF8')::JSONB #>> '{data,to}',
+			CONVERT_FROM(job, 'UTF8')::JSONB #>> ARRAY['data', 'data', $2]
+		FROM
+			apalis.jobs
+		WHERE
+			CONVERT_FROM(job, 'UTF8')::JSONB #>> '{data,type}' = $1 AND
+			CONVERT_FROM(job, 'UTF8')::JSONB #>> '{data,data,serviceAccountName}' = $3;
+		"#,
+	)
+	.bind(email_type)
+	.bind(actor_field)
+	.bind(service_account_name)
+	.fetch_all(setup.database())
+	.await
+	.expect("queued email query")
+}
+
+/// Add a member holding `permission` across the workspace, renamed to `Acting
+/// Member` so an email can tell them apart from the owner, and return a token
+/// from a fresh login: an existing login's cached actor data keeps the old
+/// name.
+async fn add_renamed_member(
+	setup: &TestSetup,
+	owner: &TestUser,
+	workspace_id: Uuid,
+	permission: Permission,
+) -> BearerToken {
+	let role = setup
+		.create_role_with_permissions(
+			&owner.access_token,
+			workspace_id,
+			vec![setup.get_permission_id(permission)],
+		)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&owner.access_token, workspace_id, role.id)
+		.await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: member.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: "Acting".to_string(),
+					last_name: "Member".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateUserInfoResponse));
+
+	let (access_token, _refresh_token) =
+		setup.login_test_user(&member.email, &member.password).await;
+	BearerToken::from_str(&access_token).unwrap()
+}
+
+#[tokio::test]
+async fn create_service_account_emails_the_super_admin() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let sa = setup
+		.create_test_service_account(&user.access_token, workspace.id, vec![])
+		.await;
+
+	assert_eq!(
+		1,
+		queued_service_account_emails(&setup, "serviceAccountCreated", &user.email, &sa.name).await,
+		"creating a service account should email the workspace's super admin"
+	);
+}
+
+/// A member creating a service account emails the super admin, not the
+/// member, and names the member as who created it.
+#[tokio::test]
+async fn create_service_account_by_a_member_emails_the_super_admin() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let member_token = add_renamed_member(
+		&setup,
+		&owner,
+		workspace.id,
+		Permission::ServiceAccount(ServiceAccountPermission::Create),
+	)
+	.await;
+
+	let sa = setup
+		.create_test_service_account(&member_token, workspace.id, vec![])
+		.await;
+
+	assert_eq!(
+		vec![(owner.email, "Acting Member".to_string())],
+		queued_service_account_email_actors(&setup, "serviceAccountCreated", "createdBy", &sa.name)
+			.await,
+		"a member creating a service account should email only the super admin, naming the member"
 	);
 }
 
@@ -1053,6 +1199,92 @@ async fn regenerate_token_works() {
 	assert_ne!(
 		&sa.token, new_token,
 		"new token should differ from original"
+	);
+}
+
+#[tokio::test]
+async fn regenerate_token_emails_the_super_admin() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let sa = setup
+		.create_test_service_account(&user.access_token, workspace.id, vec![])
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RegenerateServiceAccountTokenRequest>::builder()
+				.path(RegenerateServiceAccountTokenPath {
+					workspace_id: workspace.id,
+					service_account_id: sa.id,
+				})
+				.headers(RegenerateServiceAccountTokenRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(StatusCode::ACCEPTED, response.status_code());
+
+	assert_eq!(
+		1,
+		queued_service_account_emails(
+			&setup,
+			"serviceAccountTokenRegenerated",
+			&user.email,
+			&sa.name
+		)
+		.await,
+		"regenerating a service account's token should email the workspace's super admin"
+	);
+}
+
+/// A member regenerating a service account's token emails the super admin,
+/// not the member, and names the member as who regenerated it.
+#[tokio::test]
+async fn regenerate_token_by_a_member_emails_the_super_admin() {
+	let setup = setup().await.expect("failed to setup test server");
+	let owner = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&owner.access_token).await;
+	let sa = setup
+		.create_test_service_account(&owner.access_token, workspace.id, vec![])
+		.await;
+	let member_token = add_renamed_member(
+		&setup,
+		&owner,
+		workspace.id,
+		Permission::ServiceAccount(ServiceAccountPermission::RegenerateToken),
+	)
+	.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<RegenerateServiceAccountTokenRequest>::builder()
+				.path(RegenerateServiceAccountTokenPath {
+					workspace_id: workspace.id,
+					service_account_id: sa.id,
+				})
+				.headers(RegenerateServiceAccountTokenRequestHeaders {
+					authorization: member_token,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(StatusCode::ACCEPTED, response.status_code());
+
+	assert_eq!(
+		vec![(owner.email, "Acting Member".to_string())],
+		queued_service_account_email_actors(
+			&setup,
+			"serviceAccountTokenRegenerated",
+			"regeneratedBy",
+			&sa.name
+		)
+		.await,
+		"a member regenerating a service account's token should email only the super admin, \
+		 naming the member"
 	);
 }
 
