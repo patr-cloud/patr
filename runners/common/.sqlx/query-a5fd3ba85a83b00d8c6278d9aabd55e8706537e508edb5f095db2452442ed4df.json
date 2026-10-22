@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO deployment_machine_type(id, cpu_count, memory_count) VALUES ($1, 1, 1024);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "a5fd3ba85a83b00d8c6278d9aabd55e8706537e508edb5f095db2452442ed4df"
+}

@@ -48,7 +48,7 @@ pub async fn get_exposed_ports(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		repository_id as _
+		repository_id
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -80,8 +80,8 @@ pub async fn get_exposed_ports(
 					manifest_digest = $2
 			) AS combined;
 		"#,
-		repository_id as _,
-		digest_or_tag as _
+		repository_id,
+		digest_or_tag
 	)
 	.fetch_optional(&mut **database)
 	.await?

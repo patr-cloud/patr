@@ -30,7 +30,7 @@ pub async fn get_deployment_info(
 ) -> Result<AppResponse<GetDeploymentInfoRequest>, ErrorType> {
 	info!("Getting deployment info");
 
-	let ports = query(
+	let ports = sqlx::query(
 		r#"
 		SELECT
 			port,
@@ -53,7 +53,7 @@ pub async fn get_deployment_info(
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
-	let environment_variables = query(
+	let environment_variables = sqlx::query(
 		r#"
 		SELECT
 			name,
@@ -92,7 +92,7 @@ pub async fn get_deployment_info(
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
-	let config_mounts = query(
+	let config_mounts = sqlx::query(
 		r#"
 		SELECT
 			path,
@@ -115,7 +115,7 @@ pub async fn get_deployment_info(
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
-	let volumes = query(
+	let volumes = sqlx::query(
 		r#"
 		SELECT
 			path
@@ -132,7 +132,7 @@ pub async fn get_deployment_info(
 	.map(|row| Ok((row.try_get::<String, _>("path")?, VolumeConfig {})))
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
-	let row = query(
+	let row = sqlx::query(
 		r#"
 		SELECT
 			id,

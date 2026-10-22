@@ -15,7 +15,7 @@ use futures::TryStreamExt as _;
 use headers::{ContentLength, ContentType};
 use models::utils::DockerUploadUuid;
 use oci_spec::image::{Digest as OciDigest, DigestAlgorithm};
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 use sha2::{
 	Digest as _,
 	Sha256,
@@ -119,7 +119,7 @@ pub async fn initiate_upload(
 		query!(
 			r#"
 			SELECT
-				id AS "id: Uuid"
+				id
 			FROM
 				workspace
 			WHERE
@@ -138,7 +138,7 @@ pub async fn initiate_upload(
 	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid"
+			id AS "resource_id"
 		FROM
 			container_registry_repository
 		WHERE
@@ -146,7 +146,7 @@ pub async fn initiate_upload(
 			name = $2 AND
 			deleted IS NULL;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		&repo_name,
 	)
 	.fetch_optional(&mut **database)
@@ -445,10 +445,11 @@ pub async fn initiate_upload(
 		// Temporarily associate this blob with the repository in Redis so that
 		// HEAD/GET blob checks pass before the manifest is pushed.
 		redis
-			.setex(
+			.set_with_options(
 				keys::repository_for_registry_blob(&repository_id, &digest),
-				constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
 				"exists",
+				None,
+				SetExpiration::Ex(constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs()),
 			)
 			.await?;
 
@@ -488,9 +489,8 @@ pub async fn initiate_upload(
 		let upload_id = response.upload_id().unwrap_or("");
 
 		redis
-			.setex(
+			.set_with_options(
 				keys::registry_blob_upload_part_prefix(&session_id),
-				constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
 				serde_json::to_string(&S3UploadSession {
 					upload_id: upload_id.to_string(),
 					uploaded_parts_etags: vec![],
@@ -499,6 +499,8 @@ pub async fn initiate_upload(
 					initiated_by_ip: client_ip,
 					hasher_state: hex::encode(Sha256::new().serialize()),
 				})?,
+				None,
+				SetExpiration::Ex(constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs()),
 			)
 			.await?;
 

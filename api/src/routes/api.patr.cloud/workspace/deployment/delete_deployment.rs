@@ -44,13 +44,13 @@ pub async fn delete_deployment(
 	let runner = query!(
 		r#"
 		SELECT
-			runner AS "runner: Uuid"
+			runner
 		FROM
 			deployment
 		WHERE
 			id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -64,7 +64,7 @@ pub async fn delete_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -76,7 +76,7 @@ pub async fn delete_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -88,7 +88,7 @@ pub async fn delete_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -106,7 +106,7 @@ pub async fn delete_deployment(
 		WHERE
 			id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -118,7 +118,7 @@ pub async fn delete_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -138,7 +138,7 @@ pub async fn delete_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -151,7 +151,7 @@ pub async fn delete_deployment(
 		WHERE
 			id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.execute(&mut **database)
 	.await
@@ -178,7 +178,7 @@ pub async fn delete_deployment(
 		WHERE
 			id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.execute(&mut **database)
 	.await?;

@@ -99,7 +99,7 @@ pub async fn create_api_token(
 			client
 		RETURNING user_login.login_id;
 		"#,
-		user_data.id as _,
+		user_data.id,
 		now,
 	)
 	.fetch_one(&mut **database)
@@ -110,8 +110,7 @@ pub async fn create_api_token(
 		}
 		_ => ErrorType::InternalServerError,
 	})?
-	.login_id
-	.into();
+	.login_id;
 
 	trace!("User login inserted");
 
@@ -144,9 +143,9 @@ pub async fn create_api_token(
 				DEFAULT
 			);
 		"#,
-		token_id as _,
+		token_id,
 		&name,
-		user_data.id as _,
+		user_data.id,
 		&hashed_refresh_token,
 		token_nbf,
 		token_exp,
@@ -190,8 +189,8 @@ pub async fn create_api_token(
 							'super_admin'
 						);
 					"#,
-					token_id as _,
-					workspace_id as _,
+					token_id,
+					workspace_id,
 				)
 				.execute(&mut **database)
 				.await?;
@@ -213,9 +212,9 @@ pub async fn create_api_token(
 							DEFAULT
 						);
 					"#,
-					token_id as _,
-					user_data.id as _,
-					workspace_id as _,
+					token_id,
+					user_data.id,
+					workspace_id,
 				)
 				.execute(&mut **database)
 				.await
@@ -243,8 +242,8 @@ pub async fn create_api_token(
 							'member'
 						);
 					"#,
-					token_id as _,
-					workspace_id as _,
+					token_id,
+					workspace_id,
 				)
 				.execute(&mut **database)
 				.await?;
@@ -264,8 +263,8 @@ pub async fn create_api_token(
 						(token_id, permission_id, scope_id)
 					DO NOTHING;
 					"#,
-					token_id as _,
-					workspace_id as _,
+					token_id,
+					workspace_id,
 					&permissions.keys().copied().collect::<Vec<_>>() as _,
 					&permissions
 						.values()

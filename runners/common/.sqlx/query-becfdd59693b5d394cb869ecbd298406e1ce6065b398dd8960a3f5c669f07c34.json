@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO secret(id, last_updated) VALUES ($1, $2) ON CONFLICT(id) DO UPDATE SET last_updated = excluded.last_updated;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "becfdd59693b5d394cb869ecbd298406e1ce6065b398dd8960a3f5c669f07c34"
+}

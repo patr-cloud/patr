@@ -53,7 +53,7 @@ pub async fn update_deployment(
 ) -> Result<AppResponse<UpdateDeploymentRequest>, ErrorType> {
 	info!("Updating deployment: {}", deployment_id);
 
-	query(
+	sqlx::query(
 		r#"
 		SELECT
 			id
@@ -69,7 +69,7 @@ pub async fn update_deployment(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment_exposed_port
@@ -82,7 +82,7 @@ pub async fn update_deployment(
 	.await?;
 
 	for (port, port_type) in ports {
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				deployment_exposed_port(
@@ -106,7 +106,7 @@ pub async fn update_deployment(
 	}
 
 	// Updating deployment details
-	query(
+	sqlx::query(
 		r#"
 		UPDATE
 			deployment
@@ -141,7 +141,7 @@ pub async fn update_deployment(
 	.execute(&mut **database)
 	.await?;
 
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment_environment_variable
@@ -154,7 +154,7 @@ pub async fn update_deployment(
 	.await?;
 
 	for (name, value) in environment_variables {
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				deployment_environment_variable(
@@ -180,7 +180,7 @@ pub async fn update_deployment(
 		.await?;
 	}
 
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment_config_mounts
@@ -193,7 +193,7 @@ pub async fn update_deployment(
 	.await?;
 
 	for (path, file) in config_mounts {
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				deployment_config_mounts(
@@ -216,7 +216,7 @@ pub async fn update_deployment(
 		.await?;
 	}
 
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment_volume
@@ -229,7 +229,7 @@ pub async fn update_deployment(
 	.await?;
 
 	for path in volumes.keys() {
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				deployment_volume(

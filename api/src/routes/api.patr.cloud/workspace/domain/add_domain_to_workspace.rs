@@ -48,8 +48,8 @@ pub async fn add_domain_to_workspace(
 			)
 		RETURNING id;
 		"#,
-		workspace_id as _,
-		now as _,
+		workspace_id,
+		now,
 	)
 	.fetch_one(&mut **database)
 	.await
@@ -108,10 +108,10 @@ pub async fn add_domain_to_workspace(
 				NULL
 			);
 		"#,
-		domain_id as _,
-		name as _,
+		domain_id,
+		name,
 		tld as _,
-		workspace_id as _,
+		workspace_id,
 	)
 	.execute(&mut **database)
 	.await

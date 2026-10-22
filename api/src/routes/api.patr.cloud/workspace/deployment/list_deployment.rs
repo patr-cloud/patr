@@ -53,7 +53,7 @@ pub async fn list_deployment(
 			repository_id,
 			image_name,
 			image_tag,
-			status AS "status: DeploymentStatus",
+			status,
 			runner,
 			machine_type,
 			current_live_digest,
@@ -80,14 +80,14 @@ pub async fn list_deployment(
 		LIMIT $9
 		OFFSET $10;
 		"#,
-		workspace_id as _,
-		user_data.login_id as _,
+		workspace_id,
+		user_data.login_id,
 		Permission::Deployment(DeploymentPermission::View) as _,
-		name_filter as _,
-		image_tag_filter as _,
+		name_filter,
+		image_tag_filter,
 		status_filter as _,
 		runner_filter as _,
-		current_live_digest_filter as _,
+		current_live_digest_filter,
 		count as i32,
 		(count * page) as i32,
 	)
@@ -103,7 +103,7 @@ pub async fn list_deployment(
 				registry: if row.registry == PatrRegistry.to_string() {
 					DeploymentRegistry::PatrRegistry {
 						registry: PatrRegistry,
-						repository_id: row.repository_id.unwrap().into(),
+						repository_id: row.repository_id.unwrap(),
 					}
 				} else {
 					DeploymentRegistry::ExternalRegistry {
@@ -113,8 +113,8 @@ pub async fn list_deployment(
 				},
 				image_tag: row.image_tag,
 				status: row.status,
-				runner: row.runner.into(),
-				machine_type: row.machine_type.into(),
+				runner: row.runner,
+				machine_type: row.machine_type,
 				current_live_digest: row.current_live_digest,
 			},
 		)

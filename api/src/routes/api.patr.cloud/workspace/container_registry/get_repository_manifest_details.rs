@@ -34,7 +34,7 @@ pub async fn get_repository_manifest_details(
 		r#"
 		SELECT
 			repository_manifest.manifest_digest AS "digest!",
-			manifest.kind AS "kind!: ManifestKind",
+			manifest.kind AS "kind!",
 			manifest.artifact_type AS "artifact_type",
 			repository_manifest.created_at AS "created!",
 			COALESCE(platform_agg.platforms, '[]'::JSONB)
@@ -102,8 +102,8 @@ pub async fn get_repository_manifest_details(
 			END
 		LIMIT 1;
 		"#,
-		repository_id as _,
-		digest_or_tag as _
+		repository_id,
+		digest_or_tag
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -122,8 +122,8 @@ pub async fn get_repository_manifest_details(
 			repository_id = $1 AND
 			manifest_digest = $2;
 		"#,
-		repository_id as _,
-		digest as _
+		repository_id,
+		digest
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -162,7 +162,7 @@ pub async fn get_repository_manifest_details(
 		WHERE
 			manifest.digest = $1;
 		"#,
-		digest as _
+		digest
 	)
 	.fetch_one(&mut **database)
 	.await
@@ -172,7 +172,7 @@ pub async fn get_repository_manifest_details(
 		r#"
 		SELECT
 			referenced_manifest.digest AS "digest!",
-			referenced_manifest.kind AS "kind!: ManifestKind",
+			referenced_manifest.kind AS "kind!",
 			referenced_manifest.artifact_type AS "artifact_type",
 			(
 				referenced_manifest.size +
@@ -239,8 +239,8 @@ pub async fn get_repository_manifest_details(
 		ORDER BY
 			repository_manifest.created_at DESC;
 		"#,
-		repository_id as _,
-		digest as _,
+		repository_id,
+		digest,
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -269,7 +269,7 @@ pub async fn get_repository_manifest_details(
 		ORDER BY
 			ordinal ASC;
 		"#,
-		digest as _,
+		digest,
 	)
 	.fetch_all(&mut **database)
 	.await?

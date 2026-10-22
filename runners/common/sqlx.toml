@@ -1,0 +1,45 @@
+# The runner's SQLite database. The api's macros read `DATABASE_URL`, so the
+# runner's need a variable of their own when both are prepared.
+[common]
+database-url-var = "RUNNER_DATABASE_URL"
+
+[macros.table-overrides.'deployment_machine_type']
+'id' = "models::prelude::Uuid"
+
+[macros.table-overrides.'deployment']
+'id'                       = "models::prelude::Uuid"
+'liveness_probe_port'      = "u16"
+'liveness_probe_port_type' = "models::api::workspace::deployment::ExposedPortType"
+'machine_type'             = "models::prelude::Uuid"
+'max_horizontal_scale'     = "u16"
+'min_horizontal_scale'     = "u16"
+'repository_id'            = "models::prelude::Uuid"
+'startup_probe_port'       = "u16"
+'startup_probe_port_type'  = "models::api::workspace::deployment::ExposedPortType"
+'status'                   = "models::api::workspace::deployment::DeploymentStatus"
+
+[macros.table-overrides.'deployment_environment_variable']
+'deployment_id' = "models::prelude::Uuid"
+'secret_id'     = "models::prelude::Uuid"
+
+[macros.table-overrides.'deployment_exposed_port']
+'deployment_id' = "models::prelude::Uuid"
+'port'          = "u16"
+'port_type'     = "models::api::workspace::deployment::ExposedPortType"
+
+[macros.table-overrides.'deployment_config_mounts']
+'deployment_id' = "models::prelude::Uuid"
+
+[macros.table-overrides.'deployment_deploy_history']
+'deployment_id' = "models::prelude::Uuid"
+
+[macros.table-overrides.'managed_url']
+'deployment_id' = "models::prelude::Uuid"
+'id'            = "models::prelude::Uuid"
+'port'          = "u16"
+
+[macros.table-overrides.'deployment_volume']
+'deployment_id' = "models::prelude::Uuid"
+
+[macros.table-overrides.'secret']
+'id' = "models::prelude::Uuid"

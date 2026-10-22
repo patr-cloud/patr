@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE\n    apalis.jobs\nSET\n    status = 'Running',\n    lock_at = now(),\n    lock_by = $2\nWHERE\n    (\n        status = 'Pending'\n        OR status = 'Queued'\n        OR (\n            status = 'Failed'\n            AND attempts < max_attempts\n        )\n    )\n    AND run_at < now()\n    AND id = ANY($1);\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4aaacfe4160824ce6c68a5e26698812af44e47e9e5032475ca83c9a04f039256"
+}

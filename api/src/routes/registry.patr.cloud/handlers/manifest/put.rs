@@ -112,7 +112,7 @@ pub async fn upload_manifest(
 		query!(
 			r#"
 			SELECT
-				id AS "id: Uuid"
+				id
 			FROM
 				workspace
 			WHERE
@@ -131,7 +131,7 @@ pub async fn upload_manifest(
 	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid"
+			id AS "resource_id"
 		FROM
 			container_registry_repository
 		WHERE
@@ -139,7 +139,7 @@ pub async fn upload_manifest(
 			name = $2 AND
 			deleted IS NULL;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		&repo_name,
 	)
 	.fetch_optional(&mut **database)
@@ -329,7 +329,7 @@ pub async fn upload_manifest(
 		digest,
 		media_type,
 		size as i64,
-		kind as _,
+		kind,
 		artifact_type,
 		subject_digest,
 	)
@@ -486,7 +486,7 @@ pub async fn upload_manifest(
 						ON CONFLICT (manifest_digest, ordinal) DO NOTHING;
 						"#,
 						digest,
-						ManifestKind::Image as _,
+						ManifestKind::Image,
 						ordinal as i32,
 						blob_digest,
 						layer.media_type().to_string(),
@@ -530,7 +530,7 @@ pub async fn upload_manifest(
 						ON CONFLICT (manifest_digest, ordinal) DO NOTHING;
 						"#,
 						digest,
-						ManifestKind::Artifact as _,
+						ManifestKind::Artifact,
 						ordinal as i32,
 						blob_digest,
 						descriptor.media_type().to_string(),
@@ -622,7 +622,7 @@ pub async fn upload_manifest(
 			($1, $2, NOW())
 		ON CONFLICT (repository_id, manifest_digest) DO NOTHING;
 		"#,
-		repository_id as _,
+		repository_id,
 		digest
 	)
 	.execute(&mut **database)
@@ -647,7 +647,7 @@ pub async fn upload_manifest(
 				last_updated = EXCLUDED.last_updated;
 			"#,
 			reference,
-			repository_id as _,
+			repository_id,
 			&digest
 		)
 		.execute(&mut **database)
@@ -702,24 +702,24 @@ async fn auto_deploy_on_push(
 	let deployments = query!(
 		r#"
 		SELECT
-			id AS "id: Uuid",
+			id,
 			name,
 			registry,
 			image_name,
 			image_tag,
-			runner AS "runner: Uuid",
-			status AS "status: DeploymentStatus",
-			repository_id AS "repository_id: Uuid",
+			runner,
+			status,
+			repository_id,
 			min_horizontal_scale,
 			max_horizontal_scale,
-			machine_type AS "machine_type: Uuid",
+			machine_type,
 			deploy_on_push,
 			startup_probe_port,
 			startup_probe_path,
-			startup_probe_port_type AS "startup_probe_port_type: Option<ExposedPortType>",
+			startup_probe_port_type AS "startup_probe_port_type?",
 			liveness_probe_port,
 			liveness_probe_path,
-			liveness_probe_port_type AS "liveness_probe_port_type: Option<ExposedPortType>",
+			liveness_probe_port_type AS "liveness_probe_port_type?",
 			current_live_digest
 		FROM
 			deployment
@@ -730,7 +730,7 @@ async fn auto_deploy_on_push(
 			status NOT IN ('stopped', 'errored') AND
 			deleted IS NULL;
 		"#,
-		repository_id as _,
+		repository_id,
 		tag,
 	)
 	.fetch_all(&mut **database)
@@ -761,10 +761,10 @@ async fn auto_deploy_on_push(
 				(deployment_id, image_digest)
 			DO NOTHING;
 			"#,
-			deployment_id as _,
+			deployment_id,
 			digest,
-			repository_id as _,
-			now as _,
+			repository_id,
+			now,
 		)
 		.execute(&mut **database)
 		.await?;
@@ -781,8 +781,8 @@ async fn auto_deploy_on_push(
 				id = $3;
 			"#,
 			digest,
-			DeploymentStatus::Deploying as _,
-			deployment_id as _,
+			DeploymentStatus::Deploying,
+			deployment_id,
 		)
 		.execute(&mut **database)
 		.await?;
@@ -792,13 +792,13 @@ async fn auto_deploy_on_push(
 			r#"
 			SELECT
 				port,
-				port_type AS "port_type: ExposedPortType"
+				port_type
 			FROM
 				deployment_exposed_port
 			WHERE
 				deployment_id = $1;
 			"#,
-			deployment_id as _
+			deployment_id
 		)
 		.fetch_all(&mut **database)
 		.await?
@@ -811,13 +811,13 @@ async fn auto_deploy_on_push(
 			SELECT
 				name,
 				value,
-				secret_id AS "secret_id: Uuid"
+				secret_id
 			FROM
 				deployment_environment_variable
 			WHERE
 				deployment_id = $1;
 			"#,
-			deployment_id as _
+			deployment_id
 		)
 		.fetch_all(&mut **database)
 		.await?
@@ -851,7 +851,7 @@ async fn auto_deploy_on_push(
 			WHERE
 				deployment_id = $1;
 			"#,
-			deployment_id as _
+			deployment_id
 		)
 		.fetch_all(&mut **database)
 		.await?
@@ -868,7 +868,7 @@ async fn auto_deploy_on_push(
 			WHERE
 				deployment_id = $1;
 			"#,
-			deployment_id as _
+			deployment_id
 		)
 		.fetch_all(&mut **database)
 		.await?

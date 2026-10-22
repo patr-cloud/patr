@@ -69,8 +69,8 @@ pub async fn create_managed_url(
 			workspace_domain.deleted IS NULL AND
 			resource.workspace_id = $2;
 		"#,
-		domain_id as _,
-		workspace_id as _,
+		domain_id,
+		workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -97,7 +97,7 @@ pub async fn create_managed_url(
 				let deployment = query!(
 					r#"
 					SELECT
-						deployment.runner AS "runner: Uuid"
+						deployment.runner
 					FROM
 						deployment
 					INNER JOIN
@@ -109,8 +109,8 @@ pub async fn create_managed_url(
 						deployment.deleted IS NULL AND
 						resource.workspace_id = $2;
 					"#,
-					deployment_id as _,
-					workspace_id as _,
+					deployment_id,
+					workspace_id,
 				)
 				.fetch_optional(&mut **database)
 				.await?
@@ -166,7 +166,7 @@ pub async fn create_managed_url(
 		FOR UPDATE;
 		"#,
 		&sub_domain,
-		domain_id as _,
+		domain_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?;
@@ -227,7 +227,7 @@ pub async fn create_managed_url(
 					DO NOTHING;
 					"#,
 					&sub_domain,
-					domain_id as _,
+					domain_id,
 					&custom_hostname_id,
 				)
 				.execute(&mut **database)
@@ -249,7 +249,7 @@ pub async fn create_managed_url(
 					DO NOTHING;
 					"#,
 					&sub_domain,
-					domain_id as _,
+					domain_id,
 				)
 				.execute(&mut **database)
 				.await?;
@@ -273,9 +273,9 @@ pub async fn create_managed_url(
 				$1,
 				NOW()
 			)
-		RETURNING id AS "id: Uuid";
+		RETURNING id;
 		"#,
-		workspace_id as _,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -314,15 +314,15 @@ pub async fn create_managed_url(
 				$11
 			);
 		"#,
-		id as _,
+		id,
 		&sub_domain,
-		domain_id as _,
+		domain_id,
 		path,
 		url_discriminant as _,
-		deployment_id as _,
+		deployment_id,
 		port.map(|port| port as i32),
 		url,
-		workspace_id as _,
+		workspace_id,
 		permanent_redirect,
 		http_only,
 	)

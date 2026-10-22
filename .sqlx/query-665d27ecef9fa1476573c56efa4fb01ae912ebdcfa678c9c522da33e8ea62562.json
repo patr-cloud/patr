@@ -11,6 +11,12 @@
             "name": "citext",
             "kind": "Simple"
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "workspace_user_invite",
+            "name": "email"
+          }
         }
       }
     ],

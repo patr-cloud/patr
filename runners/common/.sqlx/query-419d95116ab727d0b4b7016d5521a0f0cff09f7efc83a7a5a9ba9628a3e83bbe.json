@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE TABLE IF NOT EXISTS deployment_config_mounts(deployment_id TEXT NOT NULL, path TEXT NOT NULL, file BLOB NOT NULL,  PRIMARY KEY(deployment_id, path), FOREIGN KEY(deployment_id) REFERENCES deployment(id));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "419d95116ab727d0b4b7016d5521a0f0cff09f7efc83a7a5a9ba9628a3e83bbe"
+}

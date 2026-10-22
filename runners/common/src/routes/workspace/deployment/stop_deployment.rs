@@ -30,7 +30,7 @@ pub async fn stop_deployment(
 ) -> Result<AppResponse<StopDeploymentRequest>, ErrorType> {
 	trace!("Stopping deployment: {}", deployment_id);
 
-	query(
+	sqlx::query(
 		r#"
 		UPDATE
 			deployment

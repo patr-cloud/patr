@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT permission_id AS \"permission_id!\" FROM role_permission WHERE role_id = $1 ORDER BY permission_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "permission_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "role_permission",
+            "name": "permission_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cebf1df532c12eecfa9c886088ef186d1d92f1eeb01a1a82cf1e4552dba02805"
+}

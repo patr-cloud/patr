@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT name, value, secret_id FROM deployment_environment_variable WHERE deployment_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "name": "name",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment_environment_variable",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "value",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment_environment_variable",
+            "name": "value"
+          }
+        }
+      },
+      {
+        "name": "secret_id",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment_environment_variable",
+            "name": "secret_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "d3bf49b9bd7f4988019bcd7cb8ee4c35ddf1bbb93acc6622c9ef56a6a8fe29e3"
+}

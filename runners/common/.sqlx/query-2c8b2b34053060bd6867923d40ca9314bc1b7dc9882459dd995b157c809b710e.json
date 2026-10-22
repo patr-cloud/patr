@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO deployment_exposed_port(deployment_id, port, port_type) VALUES ($1, $2, $3);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "2c8b2b34053060bd6867923d40ca9314bc1b7dc9882459dd995b157c809b710e"
+}

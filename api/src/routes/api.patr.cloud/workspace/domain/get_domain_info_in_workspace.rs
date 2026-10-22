@@ -41,7 +41,7 @@ pub async fn get_domain_info_in_workspace(
             id = $1 AND
 			workspace_domain.deleted IS NULL;
 		"#,
-		domain_id as _,
+		domain_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?

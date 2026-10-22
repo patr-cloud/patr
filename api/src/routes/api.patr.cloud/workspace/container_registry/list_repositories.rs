@@ -168,17 +168,17 @@ pub async fn list_repositories(
 		LIMIT $11
 		OFFSET $12;
 		"#,
-		workspace_id as _,
-		user_data.login_id as _,
+		workspace_id,
+		user_data.login_id,
 		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View)
 			.to_string(),
 		name_filter,
-		size_filter.as_ref().map(|size| *size.start() as i64) as _,
-		size_filter.as_ref().map(|size| *size.end() as i64) as _,
-		last_updated_filter.as_ref().map(|range| range.start()) as _,
-		last_updated_filter.as_ref().map(|range| range.end()) as _,
-		created_filter.as_ref().map(|range| range.start()) as _,
-		created_filter.as_ref().map(|range| range.end()) as _,
+		size_filter.as_ref().map(|size| *size.start() as i64),
+		size_filter.as_ref().map(|size| *size.end() as i64),
+		last_updated_filter.as_ref().map(|range| range.start()),
+		last_updated_filter.as_ref().map(|range| range.end()),
+		created_filter.as_ref().map(|range| range.start()),
+		created_filter.as_ref().map(|range| range.end()),
 		count as i32,
 		(page * count) as i32
 	)

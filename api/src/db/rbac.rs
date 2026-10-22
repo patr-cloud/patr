@@ -395,7 +395,7 @@ pub async fn initialize_rbac_constraints(
 			VALUES
 				($1, $2, $3);
 			"#,
-			Uuid::new_v4() as _,
+			Uuid::new_v4(),
 			permission.to_string(),
 			permission.description()
 		)
@@ -417,7 +417,7 @@ pub async fn initialize_rbac_constraints(
 			VALUES
 				($1, $2, $3);
 			"#,
-			Uuid::new_v4() as _,
+			Uuid::new_v4(),
 			resource_type.to_string(),
 			resource_type.description()
 		)

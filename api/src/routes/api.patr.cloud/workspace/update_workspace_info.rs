@@ -36,7 +36,7 @@ pub async fn update_workspace_info(
 		WHERE
 			id = $1;
 		"#,
-		&workspace_id as _,
+		&workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -83,7 +83,7 @@ pub async fn update_workspace_info(
 			id = $2;
 		"#,
 		&*name,
-		&workspace_id as _,
+		&workspace_id,
 	)
 	.execute(&mut **database)
 	.await?;

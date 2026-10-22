@@ -60,14 +60,14 @@ pub async fn delete_managed_url(
 		)
 		SELECT
 			deleted.sub_domain AS "sub_domain!",
-			deleted.domain_id AS "domain_id: Uuid",
+			deleted.domain_id,
 			CONCAT(
 				workspace_domain.name,
 				'.',
 				workspace_domain.tld
 			) AS "domain!",
 			deleted.path AS "path!",
-			deployment.runner AS "connected_deployment_runner?: Uuid"
+			deployment.runner AS "connected_deployment_runner?"
 		FROM
 			deleted
 		INNER JOIN
@@ -79,7 +79,7 @@ pub async fn delete_managed_url(
 		ON
 			deployment.id = deleted.deployment_id;
 		"#,
-		managed_url_id as _,
+		managed_url_id,
 	)
 	.fetch_optional(&mut **database)
 	.await
@@ -98,7 +98,7 @@ pub async fn delete_managed_url(
 		WHERE
 			id = $1;
 		"#,
-		managed_url_id as _,
+		managed_url_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -128,7 +128,7 @@ pub async fn delete_managed_url(
 		FOR UPDATE;
 		"#,
 		&managed_url.sub_domain,
-		managed_url.domain_id as _,
+		managed_url.domain_id,
 	)
 	.fetch_one(&mut **database)
 	.await?;
@@ -146,7 +146,7 @@ pub async fn delete_managed_url(
 			deleted IS NULL;
 		"#,
 		&managed_url.sub_domain,
-		managed_url.domain_id as _,
+		managed_url.domain_id,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -162,7 +162,7 @@ pub async fn delete_managed_url(
 				domain_id = $2;
 			"#,
 			&managed_url.sub_domain,
-			managed_url.domain_id as _,
+			managed_url.domain_id,
 		)
 		.execute(&mut **database)
 		.await?;

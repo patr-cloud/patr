@@ -1,8 +1,8 @@
 use axum::http::StatusCode;
 use models::api::user::*;
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 use time::Duration;
-use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
+use totp_rs::{Algorithm as TotpAlgorithm, Builder, Secret};
 
 use crate::{prelude::*, redis::keys as redis};
 
@@ -37,7 +37,7 @@ pub async fn get_mfa_secret(
 		WHERE
 			id = $1;
 		"#,
-		user_data.id as _
+		user_data.id
 	)
 	.fetch_one(&mut **database)
 	.await?;
@@ -46,40 +46,39 @@ pub async fn get_mfa_secret(
 		return Err(ErrorType::MfaAlreadyActive);
 	}
 
-	let secret = Secret::generate_secret().to_encoded().to_string();
+	let secret = Secret::generate().to_base32();
 
-	let qr = TOTP::new(
-		TotpAlgorithm::SHA1,
-		6,
-		1,
-		30,
-		Secret::Encoded(secret.clone())
-			.to_bytes()
-			.inspect_err(|err| {
-				error!(
-					"Unable to parse MFA secret for userId `{}`: {}",
-					user_data.id,
-					err.to_string()
-				);
-			})?,
-		Some(constants::TOTP_ISSUER.to_string()),
-		user_data.email,
-	)
-	.inspect_err(|err| {
-		error!(
-			"Unable to parse TOTP for userId `{}`: {}",
-			user_data.id,
-			err.to_string()
-		);
-	})?
-	.get_qr_base64()
-	.map_err(ErrorType::server_error)?;
+	let qr = Builder::new()
+		.with_algorithm(TotpAlgorithm::SHA1)
+		.with_digits(6)
+		.with_skew(1)
+		.with_step_duration(30)
+		.with_secret(Secret::try_from_base32(secret.clone()).inspect_err(|err| {
+			error!(
+				"Unable to parse MFA secret for userId `{}`: {}",
+				user_data.id,
+				err.to_string()
+			);
+		})?)
+		.with_issuer(Some(constants::TOTP_ISSUER))
+		.with_account_name(user_data.email)
+		.build()
+		.inspect_err(|err| {
+			error!(
+				"Unable to parse TOTP for userId `{}`: {}",
+				user_data.id,
+				err.to_string()
+			);
+		})?
+		.to_qr_base64()
+		.map_err(ErrorType::server_error)?;
 
 	redis
-		.setex(
+		.set_with_options(
 			redis::user_mfa_secret(&user_data.id),
-			Duration::minutes(5).whole_seconds().unsigned_abs(),
 			secret.clone(),
+			None,
+			SetExpiration::Ex(Duration::minutes(5).whole_seconds().unsigned_abs()),
 		)
 		.await
 		.inspect_err(|err| {

@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH deleted AS (DELETE FROM managed_url WHERE id = $1 RETURNING sub_domain, domain_id, path, deployment_id) SELECT deleted.sub_domain AS \"sub_domain!\", deleted.domain_id, CONCAT(workspace_domain.name, '.', workspace_domain.tld) AS \"domain!\", deleted.path AS \"path!\", deployment.runner AS \"connected_deployment_runner?\" FROM deleted INNER JOIN workspace_domain ON deleted.domain_id = workspace_domain.id LEFT JOIN deployment ON deployment.id = deleted.deployment_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sub_domain!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "sub_domain"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "domain_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "domain_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "domain!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "path!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "connected_deployment_runner?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "runner"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      true
+    ]
+  },
+  "hash": "ae32e7104ccca2824c50a886524e248a57383c22e10a7bc6b285f9038799ebb2"
+}

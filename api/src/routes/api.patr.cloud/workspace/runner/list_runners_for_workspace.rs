@@ -64,13 +64,13 @@ pub async fn list_runners_for_workspace(
 		LIMIT $8
 		OFFSET $9;
 		"#,
-		workspace_id as _,
-		user_data.login_id as _,
+		workspace_id,
+		user_data.login_id,
 		Permission::Runner(RunnerPermission::View) as _,
 		name_filter,
 		connected_filter,
-		last_seen_filter.as_ref().map(|last_seen| last_seen.start()) as _,
-		last_seen_filter.as_ref().map(|last_seen| last_seen.end()) as _,
+		last_seen_filter.as_ref().map(|last_seen| last_seen.start()),
+		last_seen_filter.as_ref().map(|last_seen| last_seen.end()),
 		count as i64,
 		(count * page) as i64,
 	)

@@ -17,7 +17,7 @@ use futures::{StreamExt, TryStreamExt as _};
 use headers::{ContentLength, ContentType};
 use models::utils::ContentRange;
 use oci_spec::image::{Digest as OciDigest, DigestAlgorithm};
-use rustis::commands::{GenericCommands, StringCommands};
+use rustis::commands::{GenericCommands, SetExpiration, StringCommands};
 use sha2::{
 	Digest as _,
 	Sha256,
@@ -120,7 +120,7 @@ pub async fn complete_upload(
 		query!(
 			r#"
 			SELECT
-				id AS "id: Uuid"
+				id
 			FROM
 				workspace
 			WHERE
@@ -139,7 +139,7 @@ pub async fn complete_upload(
 	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid"
+			id AS "resource_id"
 		FROM
 			container_registry_repository
 		WHERE
@@ -147,7 +147,7 @@ pub async fn complete_upload(
 			name = $2 AND
 			deleted IS NULL;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		&repo_name,
 	)
 	.fetch_optional(&mut **database)
@@ -607,10 +607,11 @@ pub async fn complete_upload(
 	// Temporarily associate this blob with the repository in Redis so that
 	// HEAD/GET blob checks pass before the manifest is pushed.
 	redis
-		.setex(
+		.set_with_options(
 			keys::repository_for_registry_blob(&repository_id, &digest),
-			constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
 			"exists",
+			None,
+			SetExpiration::Ex(constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs()),
 		)
 		.await?;
 

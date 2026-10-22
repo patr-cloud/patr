@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT port, port_type FROM deployment_exposed_port WHERE deployment_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "name": "port",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "deployment_exposed_port",
+            "name": "port"
+          }
+        }
+      },
+      {
+        "name": "port_type",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment_exposed_port",
+            "name": "port_type"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "6640f5c067c9eda4f2ae6184f9749fd7b8485a126f3b414eafd6902d56f7e32f"
+}

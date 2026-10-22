@@ -13,7 +13,7 @@ use jsonwebtoken::EncodingKey;
 use models::api::auth::*;
 use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
-use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
+use totp_rs::{Algorithm as TotpAlgorithm, Builder, Secret};
 
 #[cfg(feature = "cloud")]
 use crate::utils::cloudflare::validate_turnstile_token;
@@ -122,38 +122,30 @@ pub async fn login(
 			return Err(ErrorType::MfaRequired);
 		};
 
-		let totp = TOTP::new(
-			TotpAlgorithm::SHA1,
-			6,
-			1,
-			30,
-			Secret::Encoded(mfa_secret).to_bytes().inspect_err(|err| {
+		let totp = Builder::new()
+			.with_algorithm(TotpAlgorithm::SHA1)
+			.with_digits(6)
+			.with_skew(1)
+			.with_step_duration(30)
+			.with_secret(Secret::try_from_base32(mfa_secret).inspect_err(|err| {
 				error!(
 					"Unable to parse MFA secret for userId `{}`: {}",
 					user_data.id,
 					err.to_string()
 				);
-			})?,
-			Some(constants::TOTP_ISSUER.to_string()),
-			user_data.email,
-		)
-		.inspect_err(|err| {
-			error!(
-				"Unable to parse TOTP for userId `{}`: {}",
-				user_data.id,
-				err.to_string()
-			);
-		})?;
+			})?)
+			.with_issuer(Some(constants::TOTP_ISSUER))
+			.with_account_name(user_data.email)
+			.build()
+			.inspect_err(|err| {
+				error!(
+					"Unable to parse TOTP for userId `{}`: {}",
+					user_data.id,
+					err.to_string()
+				);
+			})?;
 
-		let mfa_valid = totp.check_current(&mfa_otp).inspect_err(|err| {
-			error!(
-				"System time error while checking TOTP for userId `{}`: {}",
-				user_data.id,
-				err.to_string()
-			);
-		})?;
-
-		if !mfa_valid {
+		if totp.check_current(&mfa_otp).is_none() {
 			return Err(ErrorType::MfaOtpInvalid);
 		}
 
@@ -249,8 +241,7 @@ pub async fn login(
 	)
 	.fetch_one(&mut **database)
 	.await?
-	.login_id
-	.into();
+	.login_id;
 
 	query!(
 		r#"
@@ -291,7 +282,7 @@ pub async fn login(
 				$13
 			);
 		"#,
-		login_id as _,
+		login_id,
 		user_data.id,
 		hashed_refresh_token,
 		refresh_token_expiry,

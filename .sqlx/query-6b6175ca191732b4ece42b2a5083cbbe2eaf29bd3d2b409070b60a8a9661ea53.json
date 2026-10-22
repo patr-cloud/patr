@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH j AS (\n    SELECT\n        (value ->> 'task_id')::text AS task_id,\n        (value ->> 'attempt')::integer AS attempt,\n        value -> 'result' AS result,\n        value ->> 'status' AS status\n    FROM jsonb_array_elements($1::jsonb) AS value\n),\nlocked AS (\n    SELECT jobs.id\n    FROM apalis.jobs AS jobs\n    INNER JOIN j ON j.task_id = jobs.id\n    WHERE jobs.lock_by = $2\n    ORDER BY jobs.id\n    FOR UPDATE\n)\nUPDATE apalis.jobs AS jobs\nSET\n    status = j.status,\n    attempts = j.attempt,\n    last_result = j.result,\n    done_at = NOW()\nFROM j\nINNER JOIN locked ON locked.id = j.task_id\nWHERE jobs.id = locked.id;\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6b6175ca191732b4ece42b2a5083cbbe2eaf29bd3d2b409070b60a8a9661ea53"
+}

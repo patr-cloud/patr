@@ -45,8 +45,8 @@ pub async fn get_role_info(
 			id = $1 AND
 			workspace_id = $2;
 		"#,
-		role_id as _,
-		workspace_id as _
+		role_id,
+		workspace_id
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -57,7 +57,7 @@ pub async fn get_role_info(
 	let permissions = query!(
 		r#"
 		SELECT
-			permission_id AS "permission_id!: Uuid"
+			permission_id AS "permission_id!"
 		FROM
 			role_permission
 		WHERE
@@ -65,7 +65,7 @@ pub async fn get_role_info(
 		ORDER BY
 			permission_id;
 		"#,
-		role_id as _
+		role_id
 	)
 	.fetch_all(&mut **database)
 	.await?

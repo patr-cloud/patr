@@ -6,17 +6,35 @@
       {
         "ordinal": 0,
         "name": "name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workspace_domain",
+            "name": "name"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "tld",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workspace_domain",
+            "name": "tld"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "is_verified",
-        "type_info": "Bool"
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "workspace_domain",
+            "name": "is_verified"
+          }
+        }
       }
     ],
     "parameters": {

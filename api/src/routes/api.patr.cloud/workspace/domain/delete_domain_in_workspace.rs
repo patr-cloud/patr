@@ -37,7 +37,7 @@ pub async fn delete_domain_in_workspace(
 		WHERE
 			id = $1;
 		"#,
-		domain_id as _
+		domain_id
 	)
 	.execute(&mut **database)
 	.await
@@ -60,7 +60,7 @@ pub async fn delete_domain_in_workspace(
 		WHERE
 			id = $1;
 		"#,
-		domain_id as _
+		domain_id
 	)
 	.execute(&mut **database)
 	.await?;

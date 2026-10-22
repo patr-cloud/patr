@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO deployment_config_mounts(deployment_id, path, file) VALUES ($1, $2, $3);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "414d52db1b0de699dad5284486ef37a784c69f10f6a0224fb5a4ae42786c8751"
+}

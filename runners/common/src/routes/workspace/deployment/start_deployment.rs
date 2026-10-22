@@ -30,7 +30,7 @@ pub async fn start_deployment(
 ) -> Result<AppResponse<StartDeploymentRequest>, ErrorType> {
 	trace!("Starting deployment: {}", deployment_id);
 
-	query(
+	sqlx::query(
 		r#"
 		UPDATE
 			deployment

@@ -48,7 +48,7 @@ pub async fn preview_workspace_invite(
 		WHERE
 			workspace_user_invite.id = $1;
 		"#,
-		invite_id as _,
+		invite_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?

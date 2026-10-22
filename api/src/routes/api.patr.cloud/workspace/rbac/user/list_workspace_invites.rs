@@ -32,9 +32,9 @@ pub async fn list_workspace_invites(
 	let rows = query!(
 		r#"
 		SELECT
-			workspace_user_invite.id AS "id: Uuid",
+			workspace_user_invite.id,
 			workspace_user_invite.email,
-			workspace_user_invite.invited_by AS "invited_by: Uuid",
+			workspace_user_invite.invited_by,
 			workspace_user_invite.created,
 			workspace_user_invite.token_expiry
 		FROM
@@ -45,7 +45,7 @@ pub async fn list_workspace_invites(
 			workspace_user_invite.created DESC,
 			workspace_user_invite.id;
 		"#,
-		workspace_id as _,
+		workspace_id,
 	)
 	.fetch_all(&mut **database)
 	.await?;
@@ -55,9 +55,9 @@ pub async fn list_workspace_invites(
 	let mut grants = query!(
 		r#"
 		SELECT
-			workspace_user_invite_role.invite_id AS "invite_id: Uuid",
-			workspace_user_invite_role.role_id AS "role_id: Uuid",
-			workspace_user_invite_role.scope_id AS "scope_id: Uuid"
+			workspace_user_invite_role.invite_id,
+			workspace_user_invite_role.role_id,
+			workspace_user_invite_role.scope_id
 		FROM
 			workspace_user_invite_role
 		WHERE

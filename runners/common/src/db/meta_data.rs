@@ -6,25 +6,25 @@ pub async fn initialize_meta_tables(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up meta tables");
-	query(
+	query!(
 		r#"
-		CREATE TABLE meta_data(
+		CREATE TABLE IF NOT EXISTS meta_data(
 			id TEXT NOT NULL PRIMARY KEY,
 			value TEXT NOT NULL
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
-		CREATE TABLE migrations(
+		CREATE TABLE IF NOT EXISTS migrations(
 			name TEXT NOT NULL PRIMARY KEY,
 			version TEXT NOT NULL,
 			applied_at TEXT NOT NULL DEFAULT (datetime('now'))
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

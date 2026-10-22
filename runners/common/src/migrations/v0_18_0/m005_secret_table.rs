@@ -8,7 +8,7 @@ use crate::prelude::*;
 /// Create the `secret` table.
 #[macros::migration]
 async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
-	query(
+	sqlx::query(
 		r#"
 		CREATE TABLE secret(
 			id TEXT NOT NULL PRIMARY KEY,

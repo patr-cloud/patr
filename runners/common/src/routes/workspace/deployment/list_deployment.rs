@@ -35,7 +35,7 @@ pub async fn list_deployment(
 ) -> Result<AppResponse<ListDeploymentRequest>, ErrorType> {
 	trace!("Listing all deployments");
 
-	let rows = query(
+	let rows = sqlx::query(
 		r#"
 		SELECT
 			id,

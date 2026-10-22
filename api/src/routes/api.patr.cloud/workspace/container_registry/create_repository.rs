@@ -47,7 +47,7 @@ pub async fn create_repository(
 			)
 		RETURNING id;
 		"#,
-		workspace_id as _,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -66,8 +66,8 @@ pub async fn create_repository(
 		VALUES
 			($1, $2, $3, NULL);
 		"#,
-		resource_id as _,
-		workspace_id as _,
+		resource_id,
+		workspace_id,
 		name as _
 	)
 	.execute(&mut **database)

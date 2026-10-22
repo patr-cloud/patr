@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO deployment_environment_variable(deployment_id, name, value, secret_id) VALUES ($1, $2, $3, $4);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "a793731df325f1c8182eccbd774f812966742c969eafa6073dfc2df41c641cd8"
+}

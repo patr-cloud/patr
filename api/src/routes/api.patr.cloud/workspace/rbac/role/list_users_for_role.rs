@@ -68,7 +68,7 @@ pub async fn list_users_for_role(
 				role_binding.role_id = $2
 		)
 		SELECT
-			role_holder.user_id AS "user_id!: Uuid",
+			role_holder.user_id AS "user_id!",
 			"user".first_name,
 			"user".last_name,
 			"user".email,
@@ -88,8 +88,8 @@ pub async fn list_users_for_role(
 		LIMIT $6
 		OFFSET $7;
 		"#,
-		workspace_id as _,
-		role_id as _,
+		workspace_id,
+		role_id,
 		email_filter,
 		first_name_filter,
 		last_name_filter,

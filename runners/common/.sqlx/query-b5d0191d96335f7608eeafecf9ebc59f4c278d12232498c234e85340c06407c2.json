@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO deployment(id, name, registry, image_name, repository_id, image_tag, status, machine_type, min_horizontal_scale, max_horizontal_scale, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type, current_live_digest, deleted) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULL, NULL, NULL, NULL, NULL, NULL, $12, NULL) ON CONFLICT(id) DO UPDATE SET name = excluded.name, registry = excluded.registry, image_name = excluded.image_name, repository_id = excluded.repository_id, image_tag = excluded.image_tag, status = excluded.status, machine_type = excluded.machine_type, min_horizontal_scale = excluded.min_horizontal_scale, max_horizontal_scale = excluded.max_horizontal_scale, deploy_on_push = excluded.deploy_on_push, startup_probe_port = NULL, startup_probe_path = NULL, startup_probe_port_type = NULL, liveness_probe_port = NULL, liveness_probe_path = NULL, liveness_probe_port_type = NULL, current_live_digest = excluded.current_live_digest, deleted = excluded.deleted;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 12
+    },
+    "nullable": []
+  },
+  "hash": "b5d0191d96335f7608eeafecf9ebc59f4c278d12232498c234e85340c06407c2"
+}

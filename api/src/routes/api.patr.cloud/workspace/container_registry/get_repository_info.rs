@@ -40,7 +40,7 @@ pub async fn get_repository_info(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		repository_id as _
+		repository_id
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -111,7 +111,7 @@ pub async fn get_repository_info(
 			manifest_size,
 			blob_size;
 		"#,
-		repository_id as _,
+		repository_id,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -145,7 +145,7 @@ pub async fn get_repository_info(
 		WHERE
 			resource.id = $1;
 		"#,
-		repository_id as _
+		repository_id
 	)
 	.fetch_one(&mut **database)
 	.await

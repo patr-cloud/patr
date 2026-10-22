@@ -43,7 +43,7 @@ pub async fn delete_deploy_history(
 			deployment_id = $1 AND
 			image_digest = $2;
 		"#,
-		deployment_id as _,
+		deployment_id,
 		image_digest
 	)
 	.execute(&mut **database)

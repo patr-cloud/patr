@@ -11,7 +11,7 @@ cfg_if! {
 		/// future use.
 		pub async fn lookup(ip: IpAddr, state: &AppState) -> Result<ipinfo::IpDetails, ErrorType> {
 			use ipinfo::IpInfo;
-			use rustis::commands::StringCommands as _;
+			use rustis::commands::{SetExpiration, StringCommands as _};
 
 			// In tests / local dev with no ipinfo token, short-circuit with a
 			// stub instead of hitting the public ipinfo API. With random
@@ -57,9 +57,11 @@ cfg_if! {
 			// Store the result in Redis for future lookups
 			state
 				.redis
-				.setex(
+				.set_with_options(
 					&key,
-					if ip_details.bogon.unwrap_or(false) {
+					serde_json::to_string(&ip_details)?,
+					None,
+					SetExpiration::Ex(if ip_details.bogon.unwrap_or(false) {
 						// If the IP is a bogon, cache it for a shorter
 						// duration since it's likely to change
 						constants::IP_LOOKUP_FAILURE_VALIDITY
@@ -69,8 +71,7 @@ cfg_if! {
 						constants::IP_LOOKUP_SUCCESS_VALIDITY
 							.whole_seconds()
 							.unsigned_abs()
-					},
-					serde_json::to_string(&ip_details)?,
+					}),
 				)
 				.await?;
 

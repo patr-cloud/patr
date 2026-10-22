@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE TABLE IF NOT EXISTS deployment_exposed_port(deployment_id TEXT NOT NULL, port INTEGER NOT NULL, port_type TEXT NOT NULL CONSTRAINT deployment_exposed_port_chk_port_type_enum CHECK(port_type IN ('http')),  PRIMARY KEY(deployment_id, port, port_type), FOREIGN KEY(deployment_id) REFERENCES deployment(id), CONSTRAINT deployment_exposed_port_chk_port_range CHECK(port > 0 AND port <= 65535));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "ca46cba1ea25967d7c45b0b371d7684aace77ac02f297a7bf12ce4ae6626c9b8"
+}

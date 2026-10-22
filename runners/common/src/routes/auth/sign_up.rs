@@ -29,7 +29,7 @@ pub async fn sign_up(
 ) -> Result<AppResponse<CreateAccountRequest>, ErrorType> {
 	trace!("Signing up user: {}", email);
 
-	let rows = query(
+	let rows = sqlx::query(
 		r#"
 		SELECT
 			*
@@ -94,7 +94,7 @@ pub async fn sign_up(
 	.map_err(ErrorType::server_error)?
 	.to_string();
 
-	query(
+	sqlx::query(
 		r#"
 		INSERT INTO
 			meta_data(

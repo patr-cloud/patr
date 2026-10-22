@@ -47,8 +47,8 @@ pub async fn resend_workspace_invite(
 			id = $1 AND
 			workspace_id = $2;
 		"#,
-		invite_id as _,
-		workspace_id as _,
+		invite_id,
+		workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -95,9 +95,9 @@ pub async fn resend_workspace_invite(
 		"#,
 		token_hash,
 		token_expiry,
-		user_data.id as _,
+		user_data.id,
 		now,
-		invite_id as _,
+		invite_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -111,7 +111,7 @@ pub async fn resend_workspace_invite(
 		WHERE
 			id = $1;
 		"#,
-		workspace_id as _,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?

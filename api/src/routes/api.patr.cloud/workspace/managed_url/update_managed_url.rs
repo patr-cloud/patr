@@ -42,7 +42,7 @@ pub async fn update_managed_url(
 		SELECT
 			managed_url.id,
 			managed_url.sub_domain,
-			managed_url.domain_id AS "domain_id: Uuid",
+			managed_url.domain_id,
 			CONCAT(
 				workspace_domain.name,
 				'.',
@@ -50,9 +50,9 @@ pub async fn update_managed_url(
 			) AS "domain!",
 			managed_url.path,
 			managed_url.url_type AS "url_type: ManagedUrlTypeDiscriminant",
-			managed_url.deployment_id AS "deployment_id: Uuid",
+			managed_url.deployment_id,
 			managed_url.port,
-			deployment.runner AS "deployment_runner?: Uuid",
+			deployment.runner AS "deployment_runner?",
 			workspace_domain.is_verified
 		FROM
 			managed_url
@@ -69,8 +69,8 @@ pub async fn update_managed_url(
 			managed_url.deleted IS NULL AND
 			managed_url.workspace_id = $2;
 		"#,
-		managed_url_id as _,
-		workspace_id as _,
+		managed_url_id,
+		workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -118,7 +118,7 @@ pub async fn update_managed_url(
 			let deployment = query!(
 				r#"
 				SELECT
-					deployment.runner AS "runner: Uuid"
+					deployment.runner
 				FROM
 					deployment
 				INNER JOIN
@@ -130,8 +130,8 @@ pub async fn update_managed_url(
 					deployment.deleted IS NULL AND
 					resource.workspace_id = $2;
 				"#,
-				managed_url_deployment_id as _,
-				workspace_id as _,
+				managed_url_deployment_id,
+				workspace_id,
 			)
 			.fetch_optional(&mut **database)
 			.await?
@@ -190,10 +190,10 @@ pub async fn update_managed_url(
 		WHERE
 			id = $1;
 		"#,
-		managed_url_id as _,
+		managed_url_id,
 		path,
 		url_type as _,
-		deployment_id as _,
+		deployment_id,
 		port.map(|port| port as i32),
 		url,
 		permanent_redirect,

@@ -432,7 +432,7 @@ where
 {
 	fn encode_by_ref(
 		&self,
-		buf: &mut <DB as sqlx::Database>::ArgumentBuffer<'q>,
+		buf: &mut <DB as sqlx::Database>::ArgumentBuffer,
 	) -> Result<IsNull, sqlx::error::BoxDynError> {
 		String::encode(self.to_string(), buf)
 	}

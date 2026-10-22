@@ -58,7 +58,7 @@ pub async fn list_all_roles(
 		LIMIT $4
 		OFFSET $5;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		name_filter,
 		description_filter,
 		count as i64,

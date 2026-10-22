@@ -66,7 +66,7 @@ pub async fn stream_deployment_logs(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		deployment_id as _,
+		deployment_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?

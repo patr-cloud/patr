@@ -355,7 +355,7 @@ where
 	E: RunnerExecutor + Send + Sync + 'static,
 {
 	// Get all deployment IDs from SQLite, sorted.
-	let db_deployment_ids = query(
+	let db_deployment_ids = query!(
 		r#"
 		SELECT
 			id
@@ -365,12 +365,12 @@ where
 			deleted IS NULL
 		ORDER BY
 			id;
-		"#,
+		"#
 	)
 	.fetch_all(&state.database)
 	.await?
 	.into_iter()
-	.filter_map(|row| row.try_get::<Uuid, _>("id").ok())
+	.map(|row| row.id)
 	.collect::<Vec<Uuid>>();
 
 	// Get all running child actor IDs (our tracking map is already sorted
@@ -470,7 +470,7 @@ async fn upsert_managed_url<E>(
 where
 	E: RunnerExecutor + Send + Sync + 'static,
 {
-	let row = query(
+	let row = query!(
 		r#"
 		SELECT
 			host,
@@ -482,8 +482,8 @@ where
 		WHERE
 			id = $1;
 		"#,
+		managed_url_id
 	)
-	.bind(managed_url_id)
 	.fetch_optional(&state.database)
 	.await?;
 
@@ -493,16 +493,15 @@ where
 		return Ok(());
 	};
 
-	let host = row.try_get::<String, _>("host")?;
-	let path = row.try_get::<String, _>("path")?;
-	let deployment_id = row.try_get::<Uuid, _>("deployment_id")?;
-	let port = row.try_get::<i64, _>("port")?;
-	let port = u16::try_from(port)
-		.map_err(|_| RunnerError::host(format!("managed_url.port out of range for u16: {port}")))?;
-
 	let executor = E::new(&state.config, state.runner_state.clone()).await;
 	executor
-		.upsert_managed_url(managed_url_id, host, path, deployment_id, port)
+		.upsert_managed_url(
+			managed_url_id,
+			row.host,
+			row.path,
+			row.deployment_id,
+			row.port,
+		)
 		.await
 }
 
@@ -529,7 +528,7 @@ async fn reconcile_managed_urls<E>(state: &ResourceSupervisorState<E>) -> Result
 where
 	E: RunnerExecutor + Send + Sync + 'static,
 {
-	let db_ids = query(
+	let db_ids = query!(
 		r#"
 		SELECT
 			id
@@ -537,12 +536,12 @@ where
 			managed_url
 		ORDER BY
 			id;
-		"#,
+		"#
 	)
 	.fetch_all(&state.database)
 	.await?
 	.into_iter()
-	.filter_map(|row| row.try_get::<Uuid, _>("id").ok())
+	.map(|row| row.id)
 	.collect::<Vec<Uuid>>();
 
 	let executor = E::new(&state.config, state.runner_state.clone()).await;

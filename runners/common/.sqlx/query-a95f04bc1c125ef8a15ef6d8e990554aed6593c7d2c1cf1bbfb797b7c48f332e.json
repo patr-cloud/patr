@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE TABLE IF NOT EXISTS secret(id TEXT NOT NULL PRIMARY KEY, last_updated DATETIME NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "a95f04bc1c125ef8a15ef6d8e990554aed6593c7d2c1cf1bbfb797b7c48f332e"
+}

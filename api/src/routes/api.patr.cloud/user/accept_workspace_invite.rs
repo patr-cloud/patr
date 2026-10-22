@@ -1,7 +1,7 @@
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::http::StatusCode;
 use models::api::user::*;
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -36,17 +36,17 @@ pub async fn accept_workspace_invite(
 	let Some(invite) = query!(
 		r#"
 		SELECT
-			workspace_id AS "workspace_id: Uuid",
+			workspace_id,
 			email,
 			token_hash,
 			token_expiry,
-			invited_by AS "invited_by: Uuid"
+			invited_by
 		FROM
 			workspace_user_invite
 		WHERE
 			id = $1;
 		"#,
-		invite_id as _,
+		invite_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -96,7 +96,7 @@ pub async fn accept_workspace_invite(
 				email = $2::CITEXT
 		) AS "owns_email!: bool";
 		"#,
-		user_data.id as _,
+		user_data.id,
 		invite.email,
 	)
 	.fetch_one(&mut **database)
@@ -115,9 +115,9 @@ pub async fn accept_workspace_invite(
 			workspace_actor(id, workspace_id, actor_type)
 		VALUES
 			(gen_random_uuid(), $1, 'user')
-		RETURNING id AS "id: Uuid";
+		RETURNING id;
 		"#,
-		workspace_id as _,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -130,9 +130,9 @@ pub async fn accept_workspace_invite(
 		VALUES
 			($1, $2, $3);
 		"#,
-		user_data.id as _,
-		workspace_id as _,
-		&actor_id as _,
+		user_data.id,
+		workspace_id,
+		&actor_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -167,9 +167,9 @@ pub async fn accept_workspace_invite(
 			(actor_id, role_id, scope_id)
 		DO NOTHING;
 		"#,
-		actor_id as _,
-		invite_id as _,
-		invite.invited_by as _,
+		actor_id,
+		invite_id,
+		invite.invited_by,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -181,7 +181,7 @@ pub async fn accept_workspace_invite(
 		WHERE
 			invite_id = $1;
 		"#,
-		invite_id as _,
+		invite_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -193,7 +193,7 @@ pub async fn accept_workspace_invite(
 		WHERE
 			id = $1;
 		"#,
-		invite_id as _,
+		invite_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -201,12 +201,15 @@ pub async fn accept_workspace_invite(
 	info!("Invite accepted. Setting revocation timestamp");
 
 	redis
-		.setex(
+		.set_with_options(
 			redis::keys::user_id_revocation_timestamp(&user_data.id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
 			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs(),
+			),
 		)
 		.await
 		.inspect_err(|err| {

@@ -252,9 +252,9 @@ where
 				region,
 				city,
 				timezone,
-				login_id as _,
-				audit_log_type as _,
-				resource_id as _,
+				login_id,
+				audit_log_type,
+				resource_id,
 			)
 			.execute(&mut **database)
 			.await?;

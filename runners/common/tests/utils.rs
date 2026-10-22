@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use common::prelude::{DatabaseType, Row, Uuid, query};
+use common::prelude::{DatabaseType, Row, Uuid};
 use headers::UserAgent;
 
 /// The User-Agent header value used for all test API calls. Mirrors the
@@ -47,7 +47,7 @@ pub async fn wait_for_deployment_status(
 
 	while start.elapsed() < timeout {
 		last = Some(
-			query("SELECT status FROM deployment WHERE id = $1")
+			sqlx::query("SELECT status FROM deployment WHERE id = $1")
 				.bind(id)
 				.fetch_one(database)
 				.await

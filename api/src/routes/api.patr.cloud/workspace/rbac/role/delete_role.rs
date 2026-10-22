@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use models::api::workspace::rbac::role::*;
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -44,8 +44,8 @@ pub async fn delete_role(
 			id = $1 AND
 			workspace_id = $2;
 		"#,
-		role_id as _,
-		workspace_id as _,
+		role_id,
+		workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -73,8 +73,8 @@ pub async fn delete_role(
 				workspace_id = $1 AND
 				role_id = $2;
 			"#,
-			workspace_id as _,
-			role_id as _,
+			workspace_id,
+			role_id,
 		)
 		.fetch_one(&mut **database)
 		.await?
@@ -92,7 +92,7 @@ pub async fn delete_role(
 		WHERE
 			role_id = $1;
 		"#,
-		role_id as _,
+		role_id,
 	)
 	.execute(&mut **database)
 	.await?
@@ -109,8 +109,8 @@ pub async fn delete_role(
 			workspace_id = $1 AND
 			role_id = $2;
 		"#,
-		workspace_id as _,
-		role_id as _,
+		workspace_id,
+		role_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -122,7 +122,7 @@ pub async fn delete_role(
 		WHERE
 			role_id = $1;
 		"#,
-		role_id as _
+		role_id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -135,8 +135,8 @@ pub async fn delete_role(
 			id = $1 AND
 			workspace_id = $2;
 		"#,
-		role_id as _,
-		workspace_id as _,
+		role_id,
+		workspace_id,
 	)
 	.execute(&mut **database)
 	.await?
@@ -158,7 +158,7 @@ pub async fn delete_role(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		role_id as _,
+		role_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -166,12 +166,15 @@ pub async fn delete_role(
 	trace!("Deleted the role");
 
 	redis
-		.setex(
+		.set_with_options(
 			redis::keys::workspace_id_revocation_timestamp(&workspace_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
 			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs(),
+			),
 		)
 		.await
 		.inspect_err(|err| {

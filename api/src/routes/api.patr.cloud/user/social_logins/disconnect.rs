@@ -37,8 +37,8 @@ pub async fn disconnect_social_login(
 		RETURNING
 			user_id;
 		"#,
-		user_data.id as _,
-		provider as _,
+		user_data.id,
+		provider,
 	)
 	.fetch_optional(&mut **database)
 	.await?

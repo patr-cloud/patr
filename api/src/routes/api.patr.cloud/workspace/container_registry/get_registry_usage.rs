@@ -95,7 +95,7 @@ pub async fn get_registry_usage(
 					)
 			)::BIGINT AS "image_count!";
 		"#,
-		workspace_id as _,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?;

@@ -30,7 +30,7 @@ pub async fn get_secret_info(
 	let secret = query!(
 		r#"
 		SELECT
-			secret.id AS "id: Uuid",
+			secret.id,
 			secret.name AS "name: String",
 			resource.created AS "created: OffsetDateTime",
 			secret.last_updated AS "last_updated: OffsetDateTime"
@@ -45,8 +45,8 @@ pub async fn get_secret_info(
 			secret.workspace_id = $2 AND
 			secret.deleted IS NULL;
 		"#,
-		secret_id as _,
-		workspace_id as _,
+		secret_id,
+		workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?

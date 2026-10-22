@@ -51,8 +51,8 @@ pub async fn update_workspace_invite_roles(
 				workspace_id = $2
 		) AS "exists!: bool";
 		"#,
-		invite_id as _,
-		workspace_id as _,
+		invite_id,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -70,7 +70,7 @@ pub async fn update_workspace_invite_roles(
 		WHERE
 			invite_id = $1;
 		"#,
-		invite_id as _,
+		invite_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -97,8 +97,8 @@ pub async fn update_workspace_invite_roles(
 			UNNEST($3::UUID[]),
 			UNNEST($4::UUID[]);
 		"#,
-		invite_id as _,
-		workspace_id as _,
+		invite_id,
+		workspace_id,
 		&role_ids as _,
 		&scope_ids as _,
 	)

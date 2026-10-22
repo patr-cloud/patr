@@ -30,7 +30,7 @@ pub async fn delete_deployment(
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {
 	info!("Deleting deployment: {deployment_id}");
 
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment_volume
@@ -44,7 +44,7 @@ pub async fn delete_deployment(
 
 	trace!("Volume mounts deleted");
 
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment_environment_variable
@@ -58,7 +58,7 @@ pub async fn delete_deployment(
 
 	trace!("Environment variables deleted");
 
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment_config_mounts
@@ -72,7 +72,7 @@ pub async fn delete_deployment(
 
 	trace!("Config mounts deleted");
 
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment_deploy_history
@@ -86,7 +86,7 @@ pub async fn delete_deployment(
 
 	trace!("Deploy history deleted");
 
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment_exposed_port
@@ -101,7 +101,7 @@ pub async fn delete_deployment(
 	trace!("Exposed ports deleted");
 
 	// Delete the deployment in the database
-	query(
+	sqlx::query(
 		r#"
 		DELETE FROM
 			deployment

@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url.sub_domain, managed_url.domain_id, managed_url_custom_hostname.cloudflare_custom_hostname_id FROM managed_url INNER JOIN managed_url_custom_hostname ON managed_url.sub_domain = managed_url_custom_hostname.sub_domain AND managed_url.domain_id = managed_url_custom_hostname.domain_id WHERE managed_url.id = $1 AND managed_url.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sub_domain",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "sub_domain"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "domain_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "domain_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "cloudflare_custom_hostname_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url_custom_hostname",
+            "name": "cloudflare_custom_hostname_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "dea6013ada241c4936faed06e8a9536dcd3405fa003fed9ec1a4d8e9d3c0a221"
+}

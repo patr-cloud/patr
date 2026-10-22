@@ -38,7 +38,7 @@ pub async fn update_runner(
 			deleted IS NULL;
 		"#,
 		name as _,
-		runner_id as _,
+		runner_id,
 	)
 	.execute(&mut **database)
 	.await

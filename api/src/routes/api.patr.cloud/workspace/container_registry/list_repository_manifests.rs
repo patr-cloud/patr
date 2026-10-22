@@ -151,7 +151,7 @@ pub async fn list_repository_manifests(
 		SELECT
 			manifests.digest AS "digest!",
 			manifests.size AS "size!",
-			manifests.kind AS "kind!: ManifestKind",
+			manifests.kind AS "kind!",
 			manifests.artifact_type,
 			manifests.created,
 			manifests.tags AS "tags!: Vec<String>",
@@ -180,13 +180,13 @@ pub async fn list_repository_manifests(
 		LIMIT $9
 		OFFSET $10;
 		"#,
-		repository_id as _,
-		workspace_id as _,
+		repository_id,
+		workspace_id,
 		digest_filter,
-		size_filter.as_ref().map(|size| *size.start() as i64) as _,
-		size_filter.as_ref().map(|size| *size.end() as i64) as _,
-		created_filter.as_ref().map(|range| range.start()) as _,
-		created_filter.as_ref().map(|range| range.end()) as _,
+		size_filter.as_ref().map(|size| *size.start() as i64),
+		size_filter.as_ref().map(|size| *size.end() as i64),
+		created_filter.as_ref().map(|range| range.start()),
+		created_filter.as_ref().map(|range| range.end()),
 		tags_filter.as_deref(),
 		count as i32,
 		(page * count) as i32

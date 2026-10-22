@@ -36,9 +36,9 @@ pub mod utils;
 /// The prelude module contains all the things you need to import to get
 /// started with the runner.
 pub mod prelude {
-	pub use macros::version;
+	pub use macros::{query, version};
 	pub use models::{api::workspace::runner::RunnerExposureType, prelude::*};
-	pub use sqlx::{Row, query};
+	pub use sqlx::Row;
 
 	pub use crate::{
 		app::{AppRequest, AppState},

@@ -70,15 +70,15 @@ pub async fn list_api_tokens(
 		LIMIT $10
 		OFFSET $11;
 		"#,
-		user_data.id as _,
+		user_data.id,
 		name_filter,
-		token_nbf_filter.as_ref().map(|token_nbf| token_nbf.start()) as _,
-		token_nbf_filter.as_ref().map(|token_nbf| token_nbf.end()) as _,
-		token_exp_filter.as_ref().map(|token_exp| token_exp.start()) as _,
-		token_exp_filter.as_ref().map(|token_exp| token_exp.end()) as _,
+		token_nbf_filter.as_ref().map(|token_nbf| token_nbf.start()),
+		token_nbf_filter.as_ref().map(|token_nbf| token_nbf.end()),
+		token_exp_filter.as_ref().map(|token_exp| token_exp.start()),
+		token_exp_filter.as_ref().map(|token_exp| token_exp.end()),
 		allowed_ips_filter,
-		created_filter.as_ref().map(|created_at| created_at.start()) as _,
-		created_filter.as_ref().map(|created_at| created_at.end()) as _,
+		created_filter.as_ref().map(|created_at| created_at.start()),
+		created_filter.as_ref().map(|created_at| created_at.end()),
 		count as i32,
 		(count * page) as i32,
 	)

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR REPLACE INTO meta_data(id, value) VALUES ('version_major', $1), ('version_minor', $2), ('version_patch', $3);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "e22db234a7264985b4aaf93e916128adde99834e437e579606fd9ff3602ed546"
+}

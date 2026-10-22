@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT deployment.runner FROM deployment_environment_variable INNER JOIN deployment ON deployment.id = deployment_environment_variable.deployment_id WHERE deployment_environment_variable.secret_id = $1 AND deployment.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "runner",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "runner"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3e19fbccebf44673e3b32b09b4f7856eaba76075e7353fde88ac79ea12e43a99"
+}

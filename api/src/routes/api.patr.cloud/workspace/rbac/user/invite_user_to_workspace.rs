@@ -70,7 +70,7 @@ pub async fn invite_user_to_workspace(
 			) AS "already_member!: bool";
 		"#,
 		email.as_ref(),
-		workspace_id as _,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -118,14 +118,14 @@ pub async fn invite_user_to_workspace(
 			)
 		VALUES
 			($1, $2, $3, $4, $5, $6, $7)
-		RETURNING id AS "id: Uuid";
+		RETURNING id;
 		"#,
-		Uuid::new_v4() as _,
-		workspace_id as _,
+		Uuid::new_v4(),
+		workspace_id,
 		email.as_ref(),
 		token_hash,
 		token_expiry,
-		user_data.id as _,
+		user_data.id,
 		now,
 	)
 	.fetch_one(&mut **database)
@@ -160,8 +160,8 @@ pub async fn invite_user_to_workspace(
 			UNNEST($3::UUID[]),
 			UNNEST($4::UUID[]);
 		"#,
-		invite_id as _,
-		workspace_id as _,
+		invite_id,
+		workspace_id,
 		&role_ids as _,
 		&scope_ids as _,
 	)
@@ -188,7 +188,7 @@ pub async fn invite_user_to_workspace(
 		WHERE
 			id = $1;
 		"#,
-		workspace_id as _,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?

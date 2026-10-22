@@ -35,7 +35,7 @@ pub async fn get_user_details(
 		WHERE
 			id = $1;
 		"#,
-		user_id as _
+		user_id
 	)
 	.fetch_optional(&mut **database)
 	.await?

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE TABLE IF NOT EXISTS meta_data(id TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "eed892eb9e37583f8e8327031f97149da45a7b331366735a1f32bd7ee0df1ae2"
+}

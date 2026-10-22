@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO resource(id, resource_type_id, workspace_id, created, deleted) VALUES (GENERATE_RESOURCE_ID(), (SELECT id FROM resource_type WHERE name = 'secret'), $1, $2, NULL) RETURNING id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1ebd107c4b52afd3ff60b9bc5d1cff393f3baffb551f0d7432612cce0e86fa7c"
+}

@@ -6,22 +6,46 @@
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "password_reset_token",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "password_reset_token"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "password_reset_token_expiry",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "password_reset_token_expiry"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "password_reset_attempts",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "password_reset_attempts"
+          }
+        }
       }
     ],
     "parameters": {

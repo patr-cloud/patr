@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE deployment SET name = $1, image_tag = $2, machine_type = $3, deploy_on_push = $4, runner = $5, min_horizontal_scale = $6, max_horizontal_scale = $7, startup_probe_port = $8, startup_probe_path = $9, startup_probe_port_type = $10, liveness_probe_port = $11, liveness_probe_path = $12, liveness_probe_port_type = $13 WHERE id = $14 RETURNING runner;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "runner",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "runner"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "Varchar",
+        "Uuid",
+        "Bool",
+        "Uuid",
+        "Int2",
+        "Int2",
+        "Int4",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        },
+        "Int4",
+        "Varchar",
+        {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        },
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "29690f9a98226a38ab68b39c777c35424554a011ceda5de2711f66197fde0f59"
+}

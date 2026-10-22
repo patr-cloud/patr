@@ -7,9 +7,9 @@ pub async fn initialize_managed_url_tables(
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up managed URL tables");
 
-	query(
+	query!(
 		r#"
-		CREATE TABLE managed_url(
+		CREATE TABLE IF NOT EXISTS managed_url(
 			id TEXT NOT NULL PRIMARY KEY,
 			host TEXT NOT NULL,
 			path TEXT NOT NULL,
@@ -23,7 +23,7 @@ pub async fn initialize_managed_url_tables(
 
 			FOREIGN KEY(deployment_id) REFERENCES deployment(id)
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -38,13 +38,13 @@ pub async fn initialize_managed_url_indices(
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up managed URL indices");
 
-	query(
+	query!(
 		r#"
-		CREATE INDEX
+		CREATE INDEX IF NOT EXISTS
 			managed_url_idx_deployment_id
 		ON
 			managed_url(deployment_id);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

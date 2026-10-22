@@ -348,7 +348,7 @@ impl TestSetup {
 			WHERE
 				id = $1;
 			"#,
-			domain_id as _,
+			domain_id,
 		)
 		.execute(self.database())
 		.await

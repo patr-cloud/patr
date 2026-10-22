@@ -7,13 +7,13 @@ pub async fn initialize_secret_tables(
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up secret tables");
 
-	query(
+	query!(
 		r#"
-		CREATE TABLE secret(
+		CREATE TABLE IF NOT EXISTS secret(
 			id TEXT NOT NULL PRIMARY KEY,
 			last_updated DATETIME NOT NULL
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

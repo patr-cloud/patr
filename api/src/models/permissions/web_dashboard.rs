@@ -2,7 +2,10 @@ use std::{collections::BTreeMap, net::IpAddr, ops::Sub};
 
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use models::{RequestUserData, rbac::WorkspacePermission};
-use rustis::{client::Client as RedisClient, commands::StringCommands as _};
+use rustis::{
+	client::Client as RedisClient,
+	commands::{SetExpiration, StringCommands as _},
+};
 use time::OffsetDateTime;
 
 use crate::{
@@ -131,8 +134,7 @@ pub(crate) async fn get_permissions(
 		return Err(ErrorType::MalformedAccessToken);
 	}
 
-	let permissions =
-		get_permissions_for_web_login(&mut *database, redis, &sub, &user.id.into()).await?;
+	let permissions = get_permissions_for_web_login(&mut *database, redis, &sub, &user.id).await?;
 
 	Ok(RequestUserData::builder()
 		.id(user.id)
@@ -173,14 +175,14 @@ pub async fn get_permissions_for_web_login(
 		WHERE
 			super_admin_id = $1;
 		"#,
-		user_id as _,
+		user_id,
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
 	.map(|row| row.workspace_id)
 	.for_each(|workspace_id| {
-		user_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
+		user_permissions.insert(workspace_id, WorkspacePermission::SuperAdmin);
 	});
 
 	// Membership is first-class: a member holding no roles still belongs to
@@ -188,13 +190,13 @@ pub async fn get_permissions_for_web_login(
 	query!(
 		r#"
 		SELECT
-			workspace_id AS "workspace_id!: Uuid"
+			workspace_id AS "workspace_id!"
 		FROM
 			workspace_user
 		WHERE
 			user_id = $1;
 		"#,
-		user_id as _,
+		user_id,
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
@@ -230,17 +232,17 @@ pub async fn get_permissions_for_web_login(
 		WHERE
 			workspace_user.user_id = $1;
 		"#,
-		user_id as _,
+		user_id,
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
 	.for_each(|row| {
-		let permissions = user_permissions
-			.entry(row.workspace_id.into())
-			.or_insert_with(|| WorkspacePermission::Member {
+		let permissions = user_permissions.entry(row.workspace_id).or_insert_with(|| {
+			WorkspacePermission::Member {
 				permissions: BTreeMap::new(),
-			});
+			}
+		});
 
 		let WorkspacePermission::Member { permissions } = permissions else {
 			// Super admin of this workspace — bindings are redundant.
@@ -250,21 +252,24 @@ pub async fn get_permissions_for_web_login(
 		// A scope is just a resource id; the workspace's own id is the root
 		// and covers everything under it.
 		permissions
-			.entry(row.permission_id.into())
+			.entry(row.permission_id)
 			.or_default()
-			.insert(row.scope_id.into());
+			.insert(row.scope_id);
 	});
 
 	redis_connection
-		.setex(
+		.set_with_options(
 			redis::keys::permission_for_login_id(login_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
 			serde_json::to_string(&UserPermissionCache {
 				permission: user_permissions.clone(),
 				creation_time: OffsetDateTime::now_utc(),
 			})?,
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs(),
+			),
 		)
 		.await
 		.inspect_err(|err| {

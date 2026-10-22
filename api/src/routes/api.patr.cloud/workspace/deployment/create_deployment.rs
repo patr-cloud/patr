@@ -91,10 +91,10 @@ pub async fn create_deployment(
 				$2,
 				NULL
 			)
-		RETURNING id AS "id: Uuid";
+		RETURNING id;
 		"#,
-		workspace_id as _,
-		now as _,
+		workspace_id,
+		now,
 	)
 	.fetch_one(&mut **database)
 	.await
@@ -160,29 +160,29 @@ pub async fn create_deployment(
 				$19
 			);
 		"#,
-		deployment_id as _,
+		deployment_id,
 		name as _,
 		registry.registry_url(),
-		registry.repository_id() as _,
+		registry.repository_id(),
 		registry.image_name(),
 		image_tag.as_ref(),
 		if deploy_on_create {
 			DeploymentStatus::Deploying
 		} else {
 			DeploymentStatus::Stopped
-		} as _,
-		workspace_id as _,
-		runner as _,
+		},
+		workspace_id,
+		runner,
 		min_horizontal_scale as i32,
 		max_horizontal_scale as i32,
-		machine_type as _,
+		machine_type,
 		deploy_on_push,
 		startup_probe.as_ref().map(|probe| probe.port as i32),
 		startup_probe.as_ref().map(|probe| probe.path.as_str()),
-		startup_probe.as_ref().map(|_| ExposedPortType::Http) as _,
+		startup_probe.as_ref().map(|_| ExposedPortType::Http),
 		liveness_probe.as_ref().map(|probe| probe.port as i32),
 		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
-		liveness_probe.as_ref().map(|_| ExposedPortType::Http) as _,
+		liveness_probe.as_ref().map(|_| ExposedPortType::Http),
 	)
 	.execute(&mut **database)
 	.await
@@ -382,7 +382,7 @@ pub async fn create_deployment(
 				repository_id = $1 AND
 				name = $2;
 			"#,
-			repository_id as _,
+			repository_id,
 			image_tag as _
 		)
 		.fetch_optional(&mut **database)
@@ -405,10 +405,10 @@ pub async fn create_deployment(
 					(deployment_id, image_digest)
 				DO NOTHING;
 				"#,
-				deployment_id as _,
-				digest as _,
-				repository_id as _,
-				now as _,
+				deployment_id,
+				digest,
+				repository_id,
+				now,
 			)
 			.execute(&mut **database)
 			.await?;

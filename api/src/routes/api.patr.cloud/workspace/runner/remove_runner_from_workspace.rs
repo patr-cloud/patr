@@ -49,7 +49,7 @@ pub async fn remove_runner_from_workspace(
 		WHERE
 			id = $1;
 		"#,
-		&runner_id as _,
+		&runner_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -62,7 +62,7 @@ pub async fn remove_runner_from_workspace(
 		WHERE
 			id = $1;
 		"#,
-		runner_id as _,
+		runner_id,
 	)
 	.execute(&mut **database)
 	.await
@@ -85,7 +85,7 @@ pub async fn remove_runner_from_workspace(
 		WHERE
 			id = $1;
 		"#,
-		runner_id as _,
+		runner_id,
 	)
 	.execute(&mut **database)
 	.await?;

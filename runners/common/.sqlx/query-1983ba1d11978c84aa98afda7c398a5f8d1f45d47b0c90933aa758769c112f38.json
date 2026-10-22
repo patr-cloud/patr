@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE INDEX IF NOT EXISTS managed_url_idx_deployment_id ON managed_url(deployment_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "1983ba1d11978c84aa98afda7c398a5f8d1f45d47b0c90933aa758769c112f38"
+}

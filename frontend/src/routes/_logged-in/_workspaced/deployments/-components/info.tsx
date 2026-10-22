@@ -102,11 +102,10 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	 * narrows the input's padding.
 	 */
 	const imageLinkIcon = () => {
-		const hubUrl = dockerHubUrl();
-		if (hubUrl) {
+		if (dockerHubUrl()) {
 			return () => (
 				<a
-					href={hubUrl}
+					href={dockerHubUrl()}
 					target="_blank"
 					rel="noopener noreferrer"
 					aria-label="Open on Docker Hub"
@@ -116,8 +115,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 				</a>
 			);
 		}
-		const repositoryId = patrRepositoryId();
-		if (repositoryId) {
+		if (patrRepositoryId()) {
 			return () => (
 				<button
 					type="button"
@@ -126,7 +124,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 					// Keep the input from taking focus.
 					onMouseDown={(e) => e.preventDefault()}
 					onClick={() =>
-						navigate({ to: "/container-registry/$id", params: { id: repositoryId }, search: { tab: "" } })
+						navigate({
+							to: "/container-registry/$id",
+							params: { id: patrRepositoryId()! },
+							search: { tab: "" },
+						})
 					}
 				>
 					<FiLink size={16} />

@@ -6,32 +6,68 @@
       {
         "ordinal": 0,
         "name": "token_id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "name"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "token_nbf",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_nbf"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "token_exp",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_exp"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "allowed_ips",
-        "type_info": "InetArray"
+        "type_info": "InetArray",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "allowed_ips"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "created",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "created"
+          }
+        }
       }
     ],
     "parameters": {

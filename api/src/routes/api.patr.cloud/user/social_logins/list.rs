@@ -1,5 +1,5 @@
 use axum::http::StatusCode;
-use models::api::{auth::SocialLoginProvider, user::*};
+use models::api::user::*;
 
 use crate::prelude::*;
 
@@ -28,7 +28,7 @@ pub async fn list_social_logins(
 	let logins = query!(
 		r#"
 		SELECT
-			provider AS "provider: SocialLoginProvider",
+			provider,
 			linked_at
 		FROM
 			user_social_login
@@ -37,7 +37,7 @@ pub async fn list_social_logins(
 		ORDER BY
 			linked_at ASC;
 		"#,
-		user_data.id as _,
+		user_data.id,
 	)
 	.fetch_all(&mut **database)
 	.await?

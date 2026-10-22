@@ -34,13 +34,13 @@ pub async fn get_deployment_info(
 		r#"
 		SELECT
 			port,
-			port_type AS "port_type: ExposedPortType"
+			port_type
 		FROM
 			deployment_exposed_port
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -59,7 +59,7 @@ pub async fn get_deployment_info(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -69,7 +69,7 @@ pub async fn get_deployment_info(
 		(None, Some(secret_id)) => Some((
 			env.name,
 			EnvironmentVariableValue::Secret {
-				from_secret: secret_id.into(),
+				from_secret: secret_id,
 			},
 		)),
 		_ => None,
@@ -86,7 +86,7 @@ pub async fn get_deployment_info(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -103,7 +103,7 @@ pub async fn get_deployment_info(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _,
+		deployment_id,
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -120,7 +120,7 @@ pub async fn get_deployment_info(
 			repository_id,
 			image_name,
 			image_tag,
-			status AS "status: DeploymentStatus",
+			status,
 			workspace_id,
 			runner,
 			min_horizontal_scale,
@@ -138,7 +138,7 @@ pub async fn get_deployment_info(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -150,7 +150,7 @@ pub async fn get_deployment_info(
 				registry: if row.registry == PatrRegistry.to_string() {
 					DeploymentRegistry::PatrRegistry {
 						registry: PatrRegistry,
-						repository_id: row.repository_id.unwrap().into(),
+						repository_id: row.repository_id.unwrap(),
 					}
 				} else {
 					DeploymentRegistry::ExternalRegistry {
@@ -160,8 +160,8 @@ pub async fn get_deployment_info(
 				},
 				image_tag: row.image_tag,
 				status: row.status,
-				runner: row.runner.into(),
-				machine_type: row.machine_type.into(),
+				runner: row.runner,
+				machine_type: row.machine_type,
 				current_live_digest: row.current_live_digest,
 			},
 		),

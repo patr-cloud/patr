@@ -37,7 +37,7 @@ pub async fn get_workspace_info(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		&workspace_id as _,
+		&workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -49,7 +49,7 @@ pub async fn get_workspace_info(
 				workspace_id,
 				Workspace {
 					name: workspace.name,
-					super_admin_id: workspace.super_admin_id.into(),
+					super_admin_id: workspace.super_admin_id,
 				},
 			),
 		})

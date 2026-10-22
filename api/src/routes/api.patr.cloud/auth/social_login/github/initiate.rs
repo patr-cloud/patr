@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use models::api::auth::*;
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 
 use crate::{models::social_login::GithubStatePayload, prelude::*};
 
@@ -37,10 +37,11 @@ pub async fn social_login_initiate(
 	let oauth_state_token = Uuid::new_v4().to_string();
 
 	redis
-		.setex(
+		.set_with_options(
 			redis::keys::social_login_state(&provider, &oauth_state_token),
-			GITHUB_STATE_TTL_SECS,
 			serde_json::to_string(&GithubStatePayload::Anonymous)?,
+			None,
+			SetExpiration::Ex(GITHUB_STATE_TTL_SECS),
 		)
 		.await
 		.inspect_err(|err| {

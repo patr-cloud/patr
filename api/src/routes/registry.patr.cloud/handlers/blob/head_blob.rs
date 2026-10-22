@@ -78,7 +78,7 @@ pub async fn head_blob(
 		query!(
 			r#"
 			SELECT
-				id AS "id: Uuid"
+				id
 			FROM
 				workspace
 			WHERE
@@ -97,7 +97,7 @@ pub async fn head_blob(
 	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid"
+			id AS "resource_id"
 		FROM
 			container_registry_repository
 		WHERE
@@ -105,7 +105,7 @@ pub async fn head_blob(
 			name = $2 AND
 			deleted IS NULL;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		&repo_name,
 	)
 	.fetch_optional(&mut **database)
@@ -199,7 +199,7 @@ pub async fn head_blob(
 		) AS "exists!";
 		"#,
 		digest,
-		repository_id as _,
+		repository_id,
 	)
 	.fetch_one(&mut **database)
 	.await?

@@ -6,22 +6,46 @@
       {
         "ordinal": 0,
         "name": "registry",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "registry"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "repository_id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "repository_id"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "image_name",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "image_name"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "image_tag",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "image_tag"
+          }
+        }
       }
     ],
     "parameters": {

@@ -57,7 +57,7 @@ pub async fn upsert_deployment_in_database(
 	// we're about to recreate). On conflict, also clear probes so the delete
 	// below can drop the old `deployment_exposed_port` rows without violating
 	// the FK; we re-set them at the end once the new rows exist.
-	query(
+	query!(
 		r#"
 		INSERT INTO
 			deployment(
@@ -123,72 +123,72 @@ pub async fn upsert_deployment_in_database(
 			current_live_digest = excluded.current_live_digest,
 			deleted = excluded.deleted;
 		"#,
+		deployment_id,
+		name.to_string(),
+		registry.registry_url(),
+		registry.image_name(),
+		registry.repository_id(),
+		image_tag.to_string(),
+		status,
+		machine_type,
+		min_horizontal_scale,
+		max_horizontal_scale,
+		deploy_on_push,
+		current_live_digest
 	)
-	.bind(deployment_id)
-	.bind(name.to_string())
-	.bind(registry.registry_url())
-	.bind(registry.image_name())
-	.bind(registry.repository_id())
-	.bind(image_tag.to_string())
-	.bind(status)
-	.bind(machine_type)
-	.bind(min_horizontal_scale)
-	.bind(max_horizontal_scale)
-	.bind(deploy_on_push)
-	.bind(current_live_digest)
 	.execute(&mut *connection)
 	.await?;
 
 	// Clear owned child rows so we can re-insert the latest set. Probes were
 	// nulled above, so `deployment_exposed_port` is no longer referenced from
 	// `deployment` and can be deleted safely.
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment_volume
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment_config_mounts
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment_environment_variable
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment_exposed_port
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
 
 	for (port, port_type) in &ports {
-		query(
+		query!(
 			r#"
 			INSERT INTO
 				deployment_exposed_port(
@@ -199,15 +199,15 @@ pub async fn upsert_deployment_in_database(
 			VALUES
 				($1, $2, $3);
 			"#,
+			deployment_id,
+			port.value(),
+			port_type
 		)
-		.bind(deployment_id)
-		.bind(port.value())
-		.bind(port_type)
 		.execute(&mut *connection)
 		.await?;
 	}
 
-	query(
+	query!(
 		r#"
 		UPDATE
 			deployment
@@ -221,19 +221,19 @@ pub async fn upsert_deployment_in_database(
 		WHERE
 			id = $1;
 		"#,
+		deployment_id,
+		startup_probe.as_ref().map(|probe| probe.port),
+		startup_probe.as_ref().map(|probe| probe.path.as_str()),
+		startup_probe.as_ref().map(|_| ExposedPortType::Http),
+		liveness_probe.as_ref().map(|probe| probe.port),
+		liveness_probe.as_ref().map(|probe| probe.path.as_str()),
+		liveness_probe.as_ref().map(|_| ExposedPortType::Http)
 	)
-	.bind(deployment_id)
-	.bind(startup_probe.as_ref().map(|probe| probe.port))
-	.bind(startup_probe.as_ref().map(|probe| probe.path.as_str()))
-	.bind(startup_probe.as_ref().map(|_| ExposedPortType::Http))
-	.bind(liveness_probe.as_ref().map(|probe| probe.port))
-	.bind(liveness_probe.as_ref().map(|probe| probe.path.as_str()))
-	.bind(liveness_probe.as_ref().map(|_| ExposedPortType::Http))
 	.execute(&mut *connection)
 	.await?;
 
 	for (name, value) in &environment_variables {
-		query(
+		query!(
 			r#"
 			INSERT INTO
 				deployment_environment_variable(
@@ -245,17 +245,17 @@ pub async fn upsert_deployment_in_database(
 			VALUES
 				($1, $2, $3, $4);
 			"#,
+			deployment_id,
+			name,
+			value.value(),
+			value.secret_id()
 		)
-		.bind(deployment_id)
-		.bind(name)
-		.bind(value.value())
-		.bind(value.secret_id())
 		.execute(&mut *connection)
 		.await?;
 	}
 
 	for (path, file) in &config_mounts {
-		query(
+		query!(
 			r#"
 			INSERT INTO
 				deployment_config_mounts(
@@ -266,16 +266,16 @@ pub async fn upsert_deployment_in_database(
 			VALUES
 				($1, $2, $3);
 			"#,
+			deployment_id,
+			path,
+			file.to_vec()
 		)
-		.bind(deployment_id)
-		.bind(path)
-		.bind(file.to_vec())
 		.execute(&mut *connection)
 		.await?;
 	}
 
 	for path in volumes.keys() {
-		query(
+		query!(
 			r#"
 			INSERT INTO
 				deployment_volume(
@@ -285,9 +285,9 @@ pub async fn upsert_deployment_in_database(
 			VALUES
 				($1, $2);
 			"#,
+			deployment_id,
+			path
 		)
-		.bind(deployment_id)
-		.bind(path)
 		.execute(&mut *connection)
 		.await?;
 	}
@@ -307,7 +307,7 @@ pub async fn upsert_managed_url_in_database(
 	deployment_id: Uuid,
 	port: u16,
 ) -> Result<(), RunnerError> {
-	query(
+	query!(
 		r#"
 		INSERT INTO managed_url(
 			id,
@@ -323,12 +323,12 @@ pub async fn upsert_managed_url_in_database(
 			deployment_id = excluded.deployment_id,
 			port = excluded.port;
 		"#,
+		managed_url_id,
+		host,
+		path,
+		deployment_id,
+		port as i64
 	)
-	.bind(managed_url_id)
-	.bind(host)
-	.bind(path)
-	.bind(deployment_id)
-	.bind(port as i64)
 	.execute(&mut *connection)
 	.await?;
 
@@ -341,15 +341,15 @@ pub async fn delete_managed_url_in_database(
 	connection: &mut DatabaseConnection,
 	managed_url_id: Uuid,
 ) -> Result<(), RunnerError> {
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			managed_url
 		WHERE
 			id = $1;
 		"#,
+		managed_url_id
 	)
-	.bind(managed_url_id)
 	.execute(&mut *connection)
 	.await?;
 
@@ -361,11 +361,11 @@ pub async fn delete_managed_url_in_database(
 pub async fn delete_all_managed_urls_in_database(
 	connection: &mut DatabaseConnection,
 ) -> Result<(), RunnerError> {
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			managed_url;
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
@@ -380,7 +380,7 @@ pub async fn upsert_secret_in_database(
 	secret_id: Uuid,
 	last_updated: OffsetDateTime,
 ) -> Result<(), RunnerError> {
-	query(
+	query!(
 		r#"
 		INSERT INTO
 			secret(
@@ -392,9 +392,9 @@ pub async fn upsert_secret_in_database(
 		ON CONFLICT(id) DO UPDATE SET
 			last_updated = excluded.last_updated;
 		"#,
+		secret_id,
+		last_updated
 	)
-	.bind(secret_id)
-	.bind(last_updated)
 	.execute(&mut *connection)
 	.await?;
 
@@ -412,87 +412,87 @@ pub async fn delete_deployment_in_database(
 ) -> Result<(), RunnerError> {
 	// Clear referencing managed URLs first — the FK on managed_url.deployment_id
 	// would otherwise block the deployment delete (foreign_keys = ON).
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			managed_url
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment_volume
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment_deploy_history
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment_config_mounts
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment_exposed_port
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment_environment_variable
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
 		DELETE FROM
 			deployment
 		WHERE
 			id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.execute(&mut *connection)
 	.await?;
 

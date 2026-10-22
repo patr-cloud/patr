@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM deployment_exposed_port WHERE deployment_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "df168dc51dc8a4cdaa40d09b1efb644e0c3637bfb0eb4072a1cf9895b5cbea56"
+}

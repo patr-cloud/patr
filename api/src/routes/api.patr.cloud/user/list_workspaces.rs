@@ -44,7 +44,7 @@ pub async fn list_workspaces(
 			) AND
 			workspace.deleted IS NULL;
 		"#,
-		user_data.id as _,
+		user_data.id,
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -54,7 +54,7 @@ pub async fn list_workspaces(
 			row.id,
 			Workspace {
 				name: row.name,
-				super_admin_id: row.super_admin_id.into(),
+				super_admin_id: row.super_admin_id,
 			},
 		)
 	})

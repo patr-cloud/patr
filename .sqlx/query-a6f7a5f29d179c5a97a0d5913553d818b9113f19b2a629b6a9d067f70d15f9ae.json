@@ -1,0 +1,86 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url_custom_hostname.sub_domain, managed_url_custom_hostname.domain_id, managed_url_custom_hostname.cloudflare_custom_hostname_id, managed_url_custom_hostname.is_active, workspace_domain.name AS \"domain_name\", workspace_domain.tld AS \"domain_tld\" FROM managed_url_custom_hostname INNER JOIN workspace_domain ON managed_url_custom_hostname.domain_id = workspace_domain.id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sub_domain",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url_custom_hostname",
+            "name": "sub_domain"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "domain_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url_custom_hostname",
+            "name": "domain_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "cloudflare_custom_hostname_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url_custom_hostname",
+            "name": "cloudflare_custom_hostname_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "is_active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url_custom_hostname",
+            "name": "is_active"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "domain_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workspace_domain",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "domain_tld",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "workspace_domain",
+            "name": "tld"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a6f7a5f29d179c5a97a0d5913553d818b9113f19b2a629b6a9d067f70d15f9ae"
+}

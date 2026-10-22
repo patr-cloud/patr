@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE TABLE IF NOT EXISTS deployment_volume(deployment_id TEXT NOT NULL, path TEXT NOT NULL,  PRIMARY KEY(deployment_id, path), FOREIGN KEY(deployment_id) REFERENCES deployment(id));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "27c49940f80872b44e046394941ae98a49004dac79a9e57de6bf0f8466a6db0a"
+}
