@@ -20,6 +20,7 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
 import General from "./-components/general";
 import Versions from "./-components/versions";
+import { requireUuidParam } from "~/utils/validation";
 
 const ContainerRepositoryInfo = () => {
 	const [authState] = useAuthState();
@@ -182,6 +183,7 @@ const ContainerRepositoryInfo = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/container-registry/$id")({
+	beforeLoad: ({ params }) => requireUuidParam(params.id),
 	validateSearch: (search: Record<string, unknown>): { tab: string } => ({
 		tab: (search.tab as string) || "",
 	}),

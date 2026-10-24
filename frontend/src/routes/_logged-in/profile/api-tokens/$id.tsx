@@ -27,6 +27,7 @@ import RegenerateModal from "./-components/regenerate-modal";
 import { RegenerateApiTokenResponse } from "~/bindings/RegenerateApiTokenResponse";
 import ApiTokenModal from "./-components/api-token-modal";
 import TokenGrantsItem from "./-components/token-grants-item";
+import { requireUuidParam } from "~/utils/validation";
 
 const ApiTokenInfo = () => {
 	const [authState] = useAuthState();
@@ -384,5 +385,6 @@ const ApiTokenInfo = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/profile/api-tokens/$id")({
+	beforeLoad: ({ params }) => requireUuidParam(params.id),
 	component: ApiTokenInfo,
 });

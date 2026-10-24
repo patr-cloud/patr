@@ -1,4 +1,4 @@
-import { createFileRoute, notFound, useNavigate } from "@tanstack/solid-router";
+import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, ErrorBoundary, For, Show } from "solid-js";
@@ -39,7 +39,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { Color } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 import { bindingsToGrants, grantsToBindings } from "~/utils/scope";
-import { RESOURCE_NAME_REGEX, validateRoleDescription } from "~/utils/validation";
+import { RESOURCE_NAME_REGEX, requireUuidParam, validateRoleDescription } from "~/utils/validation";
 import RegenerateModal from "~/routes/_logged-in/profile/api-tokens/-components/regenerate-modal";
 
 const ServiceAccountForm = (props: { serviceAccountId: string }) => {
@@ -575,12 +575,6 @@ const ServiceAccountDetail = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/service-accounts/$id")({
-	// The id goes into an API path, so anything but a bare UUID is a 404
-	// rather than a request to some other endpoint.
-	beforeLoad: ({ params }) => {
-		if (!/^[0-9a-f]{32}$/i.test(params.id)) {
-			throw notFound();
-		}
-	},
+	beforeLoad: ({ params }) => requireUuidParam(params.id),
 	component: ServiceAccountDetail,
 });

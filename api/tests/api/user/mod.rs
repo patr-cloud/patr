@@ -139,6 +139,47 @@ async fn update_user_info_works() {
 	assert_eq!("Name", info.response.basic_user_info.last_name);
 }
 
+/// A rename reaches the login it was made with straight away, not once its
+/// cached actor data expires.
+#[tokio::test]
+async fn update_user_info_refreshes_the_cached_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateUserInfoRequest>::builder()
+				.headers(UpdateUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateUserInfoRequest {
+					first_name: "Renamed".to_string(),
+					last_name: "Owner".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(UpdateUserInfoResponse));
+
+	let sa = setup
+		.create_test_service_account(&user.access_token, workspace.id, vec![])
+		.await;
+
+	assert_eq!(
+		vec![(user.email, "Renamed Owner".to_string())],
+		crate::api::workspace::service_account::queued_service_account_email_actors(
+			&setup,
+			"serviceAccountCreated",
+			"createdBy",
+			&sa.name
+		)
+		.await,
+		"the service account created email should name the creator by their new name"
+	);
+}
+
 #[tokio::test]
 async fn update_user_info_unauthorized() {
 	let setup = setup().await.expect("failed to setup test server");

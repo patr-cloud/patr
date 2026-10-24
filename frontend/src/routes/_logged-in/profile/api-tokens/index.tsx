@@ -14,7 +14,7 @@ import {
 	Pagination,
 	Table,
 } from "~/components";
-import { createPaginationState, recoverFromOutOfBounds } from "~/hooks";
+import { createPaginationState, recoverFromOutOfBounds, paginationSearch } from "~/hooks";
 import { useApiTokensQuery } from "~/hooks/fetch";
 import { formatRelativeTime } from "~/utils/func";
 
@@ -27,8 +27,8 @@ const ListApiTokens = () => {
 	});
 
 	const apiTokensQuery = useApiTokensQuery(
-		() => search().page,
-		() => search().count
+		() => search().page?.toString(),
+		() => search().count?.toString()
 	);
 
 	createEffect(() => {
@@ -160,9 +160,6 @@ const ListApiTokens = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/profile/api-tokens/")({
-	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-		page: (search.page as string) || undefined,
-		count: (search.count as string) || undefined,
-	}),
+	validateSearch: paginationSearch,
 	component: ListApiTokens,
 });

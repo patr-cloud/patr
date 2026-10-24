@@ -6,6 +6,7 @@ import { useRoleInfoQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
 import RoleHeader from "./-components/role-header";
 import UsersAssignedToRole from "./-components/users";
 import EditPermissions from "./-components/edit";
+import { requireUuidParam } from "~/utils/validation";
 
 const RoleInfo = () => {
 	const params = Route.useParams();
@@ -65,6 +66,7 @@ const RoleInfo = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/roles/$roleId")({
+	beforeLoad: ({ params }) => requireUuidParam(params.roleId),
 	validateSearch: (search: Record<string, unknown>): { tab: string } => ({
 		tab: (search.tab as string) || "",
 	}),

@@ -20,7 +20,7 @@ import {
 	StatusChip,
 } from "~/components";
 import { lt } from "semver";
-import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
+import { useIsAllowed, createPaginationState, recoverFromOutOfBounds, paginationSearch } from "~/hooks";
 import { useRunnersListQuery, useApiVersionQuery } from "~/hooks/fetch";
 import { formatRelativeTime } from "~/utils/func";
 
@@ -83,8 +83,8 @@ const ListRunnersPage = () => {
 	});
 
 	const runnersQuery = useRunnersListQuery(
-		() => search().page,
-		() => search().count
+		() => search().page?.toString(),
+		() => search().count?.toString()
 	);
 	const versionQuery = useApiVersionQuery();
 
@@ -300,9 +300,6 @@ const ListRunnersPage = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/runners/")({
-	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-		page: (search.page as string) || undefined,
-		count: (search.count as string) || undefined,
-	}),
+	validateSearch: paginationSearch,
 	component: ListRunnersPage,
 });

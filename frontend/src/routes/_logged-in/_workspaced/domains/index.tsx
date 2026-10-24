@@ -24,7 +24,7 @@ import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { httpRequest } from "~/utils/http-request";
 import { VerifyDomainInWorkspaceResponse } from "~/bindings";
 import { EventT } from "~/utils/types";
-import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
+import { useIsAllowed, createPaginationState, recoverFromOutOfBounds, paginationSearch } from "~/hooks";
 import { useDomainsQuery } from "~/hooks/fetch";
 import type { WorkspaceDomain } from "~/hooks/fetch/domains";
 import { domainKeys } from "~/hooks/query-keys";
@@ -203,8 +203,8 @@ const ListDomainsPage = () => {
 	});
 
 	const domainsQuery = useDomainsQuery(
-		() => search().page,
-		() => search().count
+		() => search().page?.toString(),
+		() => search().count?.toString()
 	);
 
 	createEffect(() => {
@@ -353,9 +353,6 @@ const ListDomainsPage = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/domains/")({
-	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-		page: (search.page as string) || undefined,
-		count: (search.count as string) || undefined,
-	}),
+	validateSearch: paginationSearch,
 	component: ListDomainsPage,
 });

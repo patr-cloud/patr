@@ -147,6 +147,11 @@ test.describe('service account > list [UI]', () => {
 			await openServiceAccountList(page, '?page=1');
 			await expect(serviceAccountRow(page, last.name)).toBeVisible({ timeout: 10_000 });
 
+			// Older links quoted the page number, and still open the same page.
+			const quoted = await page.context().newPage();
+			await openServiceAccountList(quoted, '?page=%221%22');
+			await expect(serviceAccountRow(quoted, last.name)).toBeVisible({ timeout: 10_000 });
+
 			await deleteServiceAccountAPI(api, owner, owner.workspaceId, last.id);
 
 			// A fresh tab, rather than a reload, which hangs under the dev server.
@@ -156,6 +161,7 @@ test.describe('service account > list [UI]', () => {
 				timeout: 10_000,
 			});
 			await expect(emptyStateHeading(fresh)).toHaveCount(0);
+			await expectUrl(fresh, /[?&]page=0(&|$)/, { timeout: 10_000 });
 		});
 	});
 
