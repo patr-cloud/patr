@@ -23,18 +23,29 @@ interface TokenGrantsItemProps {
  * whatever the token's owner can currently do.
  */
 const TokenGrantsItem = (props: TokenGrantsItemProps) => {
+	const permissionCount = () => new Set(props.grants.map((grant) => grant.permissionId)).size;
+
 	return (
-		<div class="w-full flex flex-col items-start gap-2 border border-border-color rounded-xs p-4">
-			<Checkbox
-				checked={props.enabled}
-				onChange={() => props.onToggle(props.workspace.id, !props.enabled)}
-				label={props.workspace.name}
-			/>
+		<div class="w-full flex flex-col items-start gap-3 border border-border-color rounded-xs p-4">
+			<div class="flex items-center justify-between gap-2 w-full">
+				<Checkbox
+					checked={props.enabled}
+					onChange={() => props.onToggle(props.workspace.id, !props.enabled)}
+					label={props.workspace.name}
+				/>
+				<Show when={props.enabled}>
+					<span class="text-grey text-sm shrink-0">
+						{props.superAdmin
+							? "Super admin"
+							: `${permissionCount()} permission${permissionCount() === 1 ? "" : "s"}`}
+					</span>
+				</Show>
+			</div>
 
 			<Show when={props.enabled}>
 				<div class="flex flex-col gap-4 w-full">
 					<Show when={props.isSuperAdmin}>
-						<div class="flex flex-row items-center gap-6 mt-2">
+						<div class="flex flex-row items-center gap-6">
 							<Radio
 								name={`grant-mode-${props.workspace.id}`}
 								checked={props.superAdmin}

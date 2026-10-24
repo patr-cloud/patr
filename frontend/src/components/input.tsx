@@ -114,7 +114,16 @@ export type InputEventT = InputEvent & { currentTarget: HTMLInputElement };
 export interface AutocompleteSuggestion {
 	label: string;
 	value: string;
+	/**
+	 * The heading this suggestion sits under. Suggestions sharing a group must
+	 * be contiguous; a heading is drawn wherever the group changes.
+	 */
+	group?: string;
 }
+
+/** Whether the option at `index` opens a new group, and so needs a heading above it. */
+export const startsGroup = (options: { group?: string }[], index: number) =>
+	!!options[index]?.group && options[index].group !== options[index - 1]?.group;
 
 interface InputProps {
 	/** The name of the input, this is used to identify the input in a form submission. */
@@ -280,7 +289,10 @@ const Input = (rawProps: InputProps) => {
 		const filter = inputText().toLowerCase();
 		if (!filter) return suggestions;
 		return suggestions.filter(
-			(s) => s.label.toLowerCase().includes(filter) || s.value.toLowerCase().includes(filter)
+			(s) =>
+				s.label.toLowerCase().includes(filter) ||
+				s.value.toLowerCase().includes(filter) ||
+				!!s.group?.toLowerCase().includes(filter)
 		);
 	};
 
@@ -474,18 +486,25 @@ const Input = (rawProps: InputProps) => {
 					>
 						<For each={filteredSuggestions()}>
 							{(suggestion, index) => (
-								<div
-									onMouseDown={(e) => {
-										e.preventDefault();
-										selectSuggestion(suggestion);
-									}}
-									onMouseEnter={() => setHighlightedIndex(index())}
-									class={`border-b last-of-type:border-0 border-border-color hover:bg-secondary-dark px-xl py-sm cursor-pointer text-sm text-white font-thin ${
-										highlightedIndex() === index() ? "bg-secondary-dark" : ""
-									}`}
-								>
-									{suggestion.label}
-								</div>
+								<>
+									<Show when={startsGroup(filteredSuggestions(), index())}>
+										<div class="px-xl pt-sm pb-xs text-xs text-grey uppercase tracking-wide border-b border-border-color">
+											{suggestion.group}
+										</div>
+									</Show>
+									<div
+										onMouseDown={(e) => {
+											e.preventDefault();
+											selectSuggestion(suggestion);
+										}}
+										onMouseEnter={() => setHighlightedIndex(index())}
+										class={`border-b last-of-type:border-0 border-border-color hover:bg-secondary-dark px-xl py-sm cursor-pointer text-sm text-white font-thin ${
+											highlightedIndex() === index() ? "bg-secondary-dark" : ""
+										}`}
+									>
+										{suggestion.label}
+									</div>
+								</>
 							)}
 						</For>
 						<Show when={filteredSuggestions().length === 0 && !get(props.isLoadingMore)}>

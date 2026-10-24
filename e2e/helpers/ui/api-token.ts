@@ -178,6 +178,7 @@ export async function submitDelete(page: Page): Promise<void> {
 	await submitInModal.click();
 }
 
-export async function clickSavePermissions(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /^Save Permissions$/ }).click();
+// Detail page's single save. Only enabled once the name or permissions change.
+export async function clickSaveChanges(page: Page): Promise<void> {
+	await page.getByRole('button', { name: /^Save Changes$/ }).click();
 }

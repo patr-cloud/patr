@@ -1,5 +1,6 @@
 import { MaybeAccessor } from "~/utils/types";
 import { InputDropdownOption } from "./input-dropdown";
+import { startsGroup } from "./input";
 import { createSignal, For, JSX, mergeProps, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { get, variantBgClass } from "~/utils/func";
@@ -95,7 +96,10 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 		}
 
 		return options.filter(
-			(option) => option.label.toLowerCase().includes(filter) || option.value.toLowerCase().includes(filter)
+			(option) =>
+				option.label.toLowerCase().includes(filter) ||
+				option.value.toLowerCase().includes(filter) ||
+				!!option.group?.toLowerCase().includes(filter)
 		);
 	};
 
@@ -199,19 +203,29 @@ const InputDropdownCheckbox = (rawProps: InputDropdownCheckboxProps) => {
 					>
 						<For each={filteredOptions()}>
 							{(option, index) => (
-								<div
-									onClick={(e) => onSelectItem(e, option.value)}
-									class={`border-b last-of-type:border-0 border-border-color px-xl py-sm cursor-pointer flex items-center gap-3 ${
-										highlightedIndex() === index() ? "bg-secondary-dark" : ""
-									}`}
-								>
-									<div class="pointer-events-none">
-										<Checkbox
-											checked={get(props.checked).includes(option.value)}
-											label={option.label}
-										/>
+								<>
+									<Show when={startsGroup(filteredOptions(), index())}>
+										<div class="px-xl pt-sm pb-xs text-xs text-grey uppercase tracking-wide border-b border-border-color">
+											{option.group}
+										</div>
+									</Show>
+									<div
+										onClick={(e) => onSelectItem(e, option.value)}
+										class={`border-b last-of-type:border-0 border-border-color px-xl py-sm cursor-pointer flex items-center gap-3 ${
+											highlightedIndex() === index() ? "bg-secondary-dark" : ""
+										}`}
+									>
+										{/* Flex, not block: an inline-flex label in a block sits on
+										  the text baseline, which floats an unchecked (empty) box
+										  above the row's centre. */}
+										<div class="pointer-events-none flex">
+											<Checkbox
+												checked={get(props.checked).includes(option.value)}
+												label={option.label}
+											/>
+										</div>
 									</div>
-								</div>
+								</>
 							)}
 						</For>
 						{filteredOptions().length === 0 && (

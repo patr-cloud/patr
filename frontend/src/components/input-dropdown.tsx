@@ -7,6 +7,11 @@ export interface InputDropdownOption {
 	label: string;
 	/** The Value of the option, e.g. id, index etc */
 	value: string;
+	/**
+	 * The heading this option sits under. Options sharing a group must be
+	 * contiguous; a heading is drawn wherever the group changes.
+	 */
+	group?: string;
 }
 
 interface InputDropdownProps {

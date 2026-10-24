@@ -3,7 +3,12 @@ import { useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, createSignal, For, Show, Suspense } from "solid-js";
 import { GetApiTokenInfoResponse, UpdateApiTokenRequest } from "~/bindings";
-import { PermissionGrant, toPermissionGrants, toWorkspacePermission } from "~/components/token-permission-editor";
+import {
+	canonicalPermissions,
+	PermissionGrant,
+	toPermissionGrants,
+	toWorkspacePermission,
+} from "~/components/token-permission-editor";
 import {
 	Button,
 	ButtonVariant,
@@ -171,9 +176,27 @@ const ApiTokenInfo = () => {
 		setIsApiTokenModalOpen(true);
 	};
 
+	/** The ceiling as currently edited, in wire shape. */
+	const draftPermissions = () =>
+		Object.fromEntries(
+			[...enabledWorkspaces()].map((wsId) => [
+				wsId,
+				toWorkspacePermission(superAdminWorkspaces().has(wsId), workspaceGrants()[wsId] ?? []),
+			])
+		);
+
+	/** Whether the name or the ceiling differ from what was last saved. */
+	const isDirty = () => {
+		const info = apiTokenInfo();
+		if (!info || !initialized()) return false;
+		return (
+			(tokenName() ?? info.name).trim() !== info.name ||
+			canonicalPermissions(draftPermissions()) !== canonicalPermissions(info.permissions ?? {})
+		);
+	};
+
 	// Single save for the whole token: the full object (name + permissions +
-	// carried nbf/exp/allowedIps) is sent on every update. Both the name form
-	// and the permissions section call this, so neither clobbers the other.
+	// carried nbf/exp/allowedIps) is sent on every update.
 	const saveToken = async () => {
 		const auth = authState();
 		if (!auth || auth.type !== "LoggedIn") {
@@ -203,12 +226,7 @@ const ApiTokenInfo = () => {
 			return;
 		}
 
-		const permissions = Object.fromEntries(
-			[...enabledWorkspaces()].map((wsId) => [
-				wsId,
-				toWorkspacePermission(superAdminWorkspaces().has(wsId), workspaceGrants()[wsId] ?? []),
-			])
-		);
+		const permissions = draftPermissions();
 
 		if (isSaving()) return;
 		setIsSaving(true);
@@ -296,29 +314,20 @@ const ApiTokenInfo = () => {
 							<form
 								onSubmit={(e) => {
 									e.preventDefault();
-									saveToken();
+									if (isDirty()) saveToken();
 								}}
 								class="w-full"
 							>
 								<InputWithLabel for="token-name" label="Name">
-									<div class="flex gap-2 items-center w-full">
-										<Input
-											value={tokenName() ?? ""}
-											class="flex-1"
-											id="token-name"
-											name="token-name"
-											placeholder="Token Name"
-											type={InputType.Text}
-											onInput={(e) => setTokenName(e.currentTarget.value)}
-										/>
-										<Button
-											type="submit"
-											variant={ButtonVariant.Contained}
-											disabled={isSaving() || (tokenName() ?? "").trim() === ""}
-										>
-											Save
-										</Button>
-									</div>
+									<Input
+										value={tokenName() ?? ""}
+										class="w-full"
+										id="token-name"
+										name="token-name"
+										placeholder="Token Name"
+										type={InputType.Text}
+										onInput={(e) => setTokenName(e.currentTarget.value)}
+									/>
 								</InputWithLabel>
 							</form>
 						</div>
@@ -333,16 +342,7 @@ const ApiTokenInfo = () => {
 						>
 							<Show when={initialized()}>
 								<div class="flex flex-col gap-4 items-start w-full">
-									<div class="flex justify-between items-center w-full">
-										<h3 class="text-lg text-white">Workspace Permissions</h3>
-										<Button
-											variant={ButtonVariant.Contained}
-											onClick={saveToken}
-											disabled={isSaving() || enabledWorkspaces().size === 0}
-										>
-											Save Permissions
-										</Button>
-									</div>
+									<h3 class="text-lg text-white">Workspace Permissions</h3>
 
 									<p class="text-grey text-sm">
 										<span class="text-white">This token can never do more than you can.</span>{" "}
@@ -370,6 +370,24 @@ const ApiTokenInfo = () => {
 								</div>
 							</Show>
 						</Suspense>
+
+						<div class="flex items-center justify-end gap-3">
+							<Show when={isDirty()}>
+								<span class="text-grey text-sm">Unsaved changes</span>
+							</Show>
+							<Button
+								variant={ButtonVariant.Contained}
+								onClick={saveToken}
+								disabled={
+									isSaving() ||
+									!isDirty() ||
+									enabledWorkspaces().size === 0 ||
+									(tokenName() ?? "").trim() === ""
+								}
+							>
+								Save Changes
+							</Button>
+						</div>
 					</PageContainerBody>
 				</Suspense>
 
