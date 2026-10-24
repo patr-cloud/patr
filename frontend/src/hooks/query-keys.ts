@@ -97,6 +97,13 @@ export const secretKeys = {
 	detail: (workspaceId: string, id: string) => [...secretKeys.all(workspaceId), "detail", id] as const,
 };
 
+export const serviceAccountKeys = {
+	all: (workspaceId: string) => ["serviceAccounts", workspaceId] as const,
+	list: (workspaceId: string, page: string | undefined, count: string | undefined) =>
+		[...serviceAccountKeys.all(workspaceId), "list", page, count] as const,
+	detail: (workspaceId: string, id: string) => [...serviceAccountKeys.all(workspaceId), "detail", id] as const,
+};
+
 export const managedUrlKeys = {
 	all: (workspaceId: string) => ["managedUrls", workspaceId] as const,
 	list: (workspaceId: string, domainId: string) => [...managedUrlKeys.all(workspaceId), "list", domainId] as const,

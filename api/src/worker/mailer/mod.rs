@@ -53,6 +53,10 @@ mod runner_created;
 mod runner_disconnected_reminder;
 /// The runner token regenerated email template.
 mod runner_token_regenerated;
+/// The service account created email template.
+mod service_account_created;
+/// The service account token regenerated email template.
+mod service_account_token_regenerated;
 /// The sign-up completed email template.
 mod sign_up_completed;
 /// The unverified domain delete email template.
@@ -83,6 +87,8 @@ pub use self::{
 	runner_created::*,
 	runner_disconnected_reminder::*,
 	runner_token_regenerated::*,
+	service_account_created::*,
+	service_account_token_regenerated::*,
 	sign_up_completed::*,
 	unverified_domain_delete::*,
 	user_sign_up::*,
@@ -183,6 +189,16 @@ pub enum EmailTemplateType {
 	/// The runner token regenerated email template. This email is sent to the
 	/// workspace's super admin when a runner's token is regenerated.
 	RunnerTokenRegenerated(runner_token_regenerated::RunnerTokenRegeneratedEmail),
+	/// The service account created email template. This email is sent to the
+	/// workspace's super admin when a service account is created in their
+	/// workspace.
+	ServiceAccountCreated(service_account_created::ServiceAccountCreatedEmail),
+	/// The service account token regenerated email template. This email is
+	/// sent to the workspace's super admin when a service account's token is
+	/// regenerated.
+	ServiceAccountTokenRegenerated(
+		service_account_token_regenerated::ServiceAccountTokenRegeneratedEmail,
+	),
 	/// The sign-up completed email template. This email is sent to the user
 	/// when their account setup is complete.
 	SignUpCompleted(sign_up_completed::SignUpCompletedEmail),
@@ -222,6 +238,8 @@ impl EmailTemplateType {
 			Self::RunnerCreated(template) => template.render_subject(globals),
 			Self::RunnerDisconnectedReminder(template) => template.render_subject(globals),
 			Self::RunnerTokenRegenerated(template) => template.render_subject(globals),
+			Self::ServiceAccountCreated(template) => template.render_subject(globals),
+			Self::ServiceAccountTokenRegenerated(template) => template.render_subject(globals),
 			Self::SignUpCompleted(template) => template.render_subject(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_subject(globals),
 			Self::UserSignUp(template) => template.render_subject(globals),
@@ -251,6 +269,8 @@ impl EmailTemplateType {
 			Self::RunnerCreated(template) => template.render_html(globals),
 			Self::RunnerDisconnectedReminder(template) => template.render_html(globals),
 			Self::RunnerTokenRegenerated(template) => template.render_html(globals),
+			Self::ServiceAccountCreated(template) => template.render_html(globals),
+			Self::ServiceAccountTokenRegenerated(template) => template.render_html(globals),
 			Self::SignUpCompleted(template) => template.render_html(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_html(globals),
 			Self::UserSignUp(template) => template.render_html(globals),
@@ -280,6 +300,8 @@ impl EmailTemplateType {
 			Self::RunnerCreated(template) => template.render_text(globals),
 			Self::RunnerDisconnectedReminder(template) => template.render_text(globals),
 			Self::RunnerTokenRegenerated(template) => template.render_text(globals),
+			Self::ServiceAccountCreated(template) => template.render_text(globals),
+			Self::ServiceAccountTokenRegenerated(template) => template.render_text(globals),
 			Self::SignUpCompleted(template) => template.render_text(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_text(globals),
 			Self::UserSignUp(template) => template.render_text(globals),

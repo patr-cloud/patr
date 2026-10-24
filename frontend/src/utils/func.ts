@@ -11,6 +11,7 @@ const resourceActionMap: Record<ResourceTypes, ActionTypes[]> = {
 	managedURL: ["view", "edit", "delete", "add", "verify"],
 	runner: ["view", "edit", "create", "delete", "regenerateToken"],
 	secret: ["view", "edit", "create", "delete"],
+	serviceAccount: ["view", "edit", "create", "delete", "regenerateToken"],
 	viewRoles: [],
 	modifyRoles: [],
 	editWorkspace: [],
@@ -38,6 +39,7 @@ const workspaceScopedActions: Record<string, string[]> = {
 	managedURL: ["add"],
 	runner: ["create"],
 	secret: ["create"],
+	serviceAccount: ["create"],
 };
 
 /**
@@ -57,6 +59,7 @@ const resourceTypes = [
 	"managedURL",
 	"runner",
 	"secret",
+	"serviceAccount",
 	"viewRoles",
 	"modifyRoles",
 	"editWorkspace",

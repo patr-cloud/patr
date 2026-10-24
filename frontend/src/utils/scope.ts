@@ -1,3 +1,5 @@
+import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
+
 /**
  * The editor's view of where a grant applies.
  *
@@ -31,3 +33,29 @@ export const groupScopes = <T>(
 /** Expands one grouped scope back into the resource ids it covers. */
 export const scopeResources = (scope: Scope, workspaceId: string): string[] =>
 	scope.scopeType === "workspace" ? [workspaceId] : scope.resources;
+
+/** One role per binding, with the role's flat grants grouped into a scope. */
+export const grantsToBindings = (
+	grants: RoleBindingGrant[],
+	workspaceId: string
+): { subjectId: string; scope: Scope }[] =>
+	groupScopes(
+		grants,
+		(grant) => grant.roleId,
+		(grant) => grant.resourceId,
+		workspaceId
+	).map(({ subjectId, scope }) => ({ subjectId, scope }));
+
+/** Flattens role bindings back into the grants the API takes, dropping rows with no role picked. */
+export const bindingsToGrants = (
+	bindings: { subjectId: string; scope: Scope }[],
+	workspaceId: string
+): RoleBindingGrant[] =>
+	bindings
+		.filter((binding) => binding.subjectId)
+		.flatMap((binding) =>
+			scopeResources(binding.scope, workspaceId).map((resourceId) => ({
+				roleId: binding.subjectId,
+				resourceId,
+			}))
+		);

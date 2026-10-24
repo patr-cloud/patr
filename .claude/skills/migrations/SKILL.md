@@ -17,7 +17,7 @@ Fresh databases never run migrations. That includes every test, every CI job and
    - backfill before adding `NOT NULL`;
    - check existing rows satisfy any new constraint;
    - guard renames and drops whose target might differ between databases.
-6. If existing workspaces need new data, such as permissions for their default roles, the migration grants it. `default_roles()` in `api/src/routes/api.patr.cloud/workspace/create_workspace.rs` covers new workspaces only.
+6. If existing workspaces need new data, such as new default roles or permissions for existing ones, the migration seeds it from a frozen copy, never a call to `default_roles()` (see m020, m029). `default_roles()` in `api/src/routes/api.patr.cloud/workspace/create_workspace.rs` covers new workspaces only.
 7. Run `just prepare` if any `query!` changed.
 
 Watch for these:
@@ -26,6 +26,7 @@ Watch for these:
 - **`ADD COLUMN` appends.** If the fresh-install DDL puts the column somewhere else, the two schemas differ in column order.
 - **A new enum value can't be used in the transaction that added it**, and every pending migration runs in one transaction. Rename the type and recreate it instead (m029, m033), dropping and re-adding every generated column and FK of that type around the swap. Find them all; `ACTOR_TYPE` and `ACTOR_CLIENT_TYPE` each have one per subtype table.
 - **Grants by name skip missing permissions.** A grant that joins on `permission.name` inserts nothing for a name the table doesn't have yet, and still succeeds. Insert the permission first, and on the alpha clone check every name the migration grants exists.
+- **Permission descriptions are the doc comment, line breaks included.** A fresh install stores `Permission::description()`, and strum joins a multi-line doc comment with a `\n` after each line. A migration stores the one-line string it's given. Keep the words identical. Rewording a doc comment only changes fresh installs, so existing databases need a migration to match.
 
 ## Verifying against alpha
 

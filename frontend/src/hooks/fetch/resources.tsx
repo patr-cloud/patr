@@ -32,7 +32,8 @@ type ResourcePage = {
  * and get a best-effort label composed from what the list returns.
  */
 const extractItems = (data: Record<string, RawListItem[]>): ListedResource[] => {
-	const named = data.deployments || data.runners || data.repositories || data.secrets || data.domains;
+	const named =
+		data.deployments || data.runners || data.repositories || data.secrets || data.domains || data.serviceAccounts;
 	if (named) {
 		return named.map((r) => ({ id: r.id, name: r.name ?? "" }));
 	}

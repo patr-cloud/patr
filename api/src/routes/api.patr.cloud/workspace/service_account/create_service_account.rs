@@ -25,7 +25,7 @@ pub async fn create_service_account(
 		redis: _,
 		client_ip: _,
 		actor_data,
-		state: _,
+		mut state,
 	}: AuthenticatedAppRequest<'_, CreateServiceAccountRequest>,
 ) -> Result<AppResponse<CreateServiceAccountRequest>, ErrorType> {
 	info!("Creating service account with name: `{name}`");
@@ -193,6 +193,51 @@ pub async fn create_service_account(
 		}
 		other => ErrorType::server_error(other),
 	})?;
+
+	let super_admin = query!(
+		r#"
+		SELECT
+			workspace.name::TEXT AS "workspace_name!",
+			"user".email::TEXT AS "email!",
+			"user".first_name
+		FROM
+			workspace
+		INNER JOIN
+			"user"
+		ON
+			"user".id = workspace.super_admin_id
+		WHERE
+			workspace.id = $1;
+		"#,
+		workspace_id,
+	)
+	.fetch_one(&mut **database)
+	.await?;
+
+	// Cloud serves the dashboard on `app.`; self-hosted off the base domain.
+	let base_domain = &state.config.server.base_domain;
+	let dashboard_url = if cfg!(feature = "cloud") {
+		format!("https://app.{base_domain}")
+	} else {
+		format!("https://{base_domain}")
+	};
+
+	state
+		.worker
+		.send_email(
+			super_admin.email,
+			ServiceAccountCreatedEmail {
+				first_name: super_admin.first_name,
+				service_account_name: name.into_owned(),
+				workspace_name: super_admin.workspace_name,
+				created_by: actor_data.actor.display_name(),
+				service_account_url: format!("{dashboard_url}/workspace/service-accounts/{id}"),
+			},
+		)
+		.await
+		.inspect_err(|err| {
+			error!("Error enqueuing service account created email: `{err}`");
+		})?;
 
 	AppResponse::builder()
 		.body(CreateServiceAccountResponse {

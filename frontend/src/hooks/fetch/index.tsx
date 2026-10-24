@@ -28,6 +28,7 @@ import {
 } from "./container-registry";
 import { useDomainsQuery, useDomainInfoQuery } from "./domains";
 import { useSecretsQuery, useSecretInfoQuery } from "./secrets";
+import { useServiceAccountsQuery, useServiceAccountQuery } from "./service-accounts";
 import { useManagedUrlsQuery } from "./managed-urls";
 import { useRunnerMetricsQuery, useDeploymentMetricsQuery } from "./metrics";
 import { useUserInfoQuery, useMfaSecretQuery } from "./user";
@@ -69,6 +70,8 @@ export {
 	useDomainInfoQuery,
 	useSecretsQuery,
 	useSecretInfoQuery,
+	useServiceAccountsQuery,
+	useServiceAccountQuery,
 	useManagedUrlsQuery,
 	useUserInfoQuery,
 	useMfaSecretQuery,
