@@ -13,7 +13,7 @@ import {
 	Pagination,
 	LoadingSpinner,
 } from "~/components";
-import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
+import { useIsAllowed, createPaginationState, recoverFromOutOfBounds, paginationSearch } from "~/hooks";
 import { useSecretsQuery } from "~/hooks/fetch";
 import { formatRelativeTime } from "~/utils/func";
 
@@ -28,8 +28,8 @@ const ListSecretsPage = () => {
 	});
 
 	const secretsQuery = useSecretsQuery(
-		() => search().page,
-		() => search().count
+		() => search().page?.toString(),
+		() => search().count?.toString()
 	);
 
 	createEffect(() => {
@@ -199,9 +199,6 @@ const ListSecretsPage = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/secrets/")({
-	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-		page: (search.page as string) || undefined,
-		count: (search.count as string) || undefined,
-	}),
+	validateSearch: paginationSearch,
 	component: ListSecretsPage,
 });

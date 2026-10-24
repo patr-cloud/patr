@@ -31,6 +31,23 @@ export interface PaginationState {
  */
 type NavigateFn = (opts: Record<string, unknown>) => void;
 
+/** The search params a paginated list keeps in its URL. */
+export type PaginationSearch = { page?: number; count?: number };
+
+/**
+ * The `validateSearch` for paginated list routes. Coerces `page` and `count` to
+ * numbers, so they're written as `?page=2` rather than JSON-quoted strings.
+ * Older links carried the quoted form (`?page=%222%22`), which parses to the
+ * string `"2"`, so strings are coerced too.
+ */
+export const paginationSearch = (search: Record<string, unknown>): PaginationSearch => {
+	const toNumber = (value: unknown, min: number) => {
+		const n = typeof value === "string" ? Number(value) : value;
+		return typeof n === "number" && Number.isInteger(n) && n >= min ? n : undefined;
+	};
+	return { page: toNumber(search.page, 0), count: toNumber(search.count, 1) };
+};
+
 /**
  * Creates a pagination state object backed by URL search params (`?page=0&count=20`).
  * Page and count survive navigation and can be bookmarked / shared.
@@ -59,7 +76,7 @@ type NavigateFn = (opts: Record<string, unknown>) => void;
  */
 const createPaginationState = (opts: {
 	defaultCount?: number;
-	search: Accessor<{ page?: string; count?: string }>;
+	search: Accessor<PaginationSearch>;
 	navigate: NavigateFn;
 }): PaginationState => {
 	// Must match the API's ListResourceQuery::DEFAULT_PAGE_SIZE (20). The list
@@ -69,21 +86,15 @@ const createPaginationState = (opts: {
 	const defaultCount = opts.defaultCount ?? 20;
 	const [totalCount, setTotalCount] = createSignal(0);
 
-	const page = () => {
-		const p = parseInt(String(opts.search()?.page ?? "0"), 10);
-		return isNaN(p) || p < 0 ? 0 : p;
-	};
+	const page = () => opts.search()?.page ?? 0;
 
-	const count = () => {
-		const c = parseInt(String(opts.search()?.count ?? String(defaultCount)), 10);
-		return isNaN(c) || c < 1 ? defaultCount : c;
-	};
+	const count = () => opts.search()?.count ?? defaultCount;
 
 	const totalPages = () => Math.max(1, Math.ceil(totalCount() / count()));
 	const canPrev = () => page() > 0;
 	const canNext = () => page() < totalPages() - 1;
 
-	const updateSearch = (update: Record<string, string>) => {
+	const updateSearch = (update: PaginationSearch) => {
 		opts.navigate({
 			search: (prev: Record<string, unknown>) => ({ ...prev, ...update }),
 			replace: true,
@@ -92,11 +103,11 @@ const createPaginationState = (opts: {
 
 	const setPage = (p: number) => {
 		const clamped = Math.max(0, Math.min(p, totalPages() - 1));
-		updateSearch({ page: String(clamped) });
+		updateSearch({ page: clamped });
 	};
 
 	const setCount = (c: number) => {
-		updateSearch({ count: String(c), page: "0" });
+		updateSearch({ count: c, page: 0 });
 	};
 
 	return { page, count, totalCount, totalPages, canPrev, canNext, setPage, setCount, setTotalCount };

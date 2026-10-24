@@ -14,7 +14,7 @@ import {
 	Pagination,
 	Table,
 } from "~/components";
-import { createPaginationState, recoverFromOutOfBounds, useIsAllowed } from "~/hooks";
+import { createPaginationState, recoverFromOutOfBounds, useIsAllowed, paginationSearch } from "~/hooks";
 import { WithId, ContainerRepository } from "~/bindings";
 import { useContainerRegistriesQuery } from "~/hooks/fetch";
 import { formatRelativeTime, formatSize } from "~/utils/func";
@@ -60,8 +60,8 @@ const ListContainerRepositories = () => {
 	});
 
 	const repositoriesQuery = useContainerRegistriesQuery(
-		() => search().page,
-		() => search().count
+		() => search().page?.toString(),
+		() => search().count?.toString()
 	);
 
 	createEffect(() => {
@@ -214,9 +214,6 @@ const ListContainerRepositories = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/container-registry/")({
-	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-		page: (search.page as string) || undefined,
-		count: (search.count as string) || undefined,
-	}),
+	validateSearch: paginationSearch,
 	component: ListContainerRepositories,
 });

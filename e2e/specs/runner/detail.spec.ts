@@ -1,5 +1,8 @@
-import { test, expect, newContext, createUserWithWorkspace, loginAs } from '@/prelude';
+import { test, expect, newContext, createUserWithWorkspace, loginAs, expectUrl } from '@/prelude';
 import { createRunnerAPI } from '@/helpers/runner-api';
+import { createDeploymentAPI } from '@/helpers/deployment-api';
+import { createContainerRepo } from '@/helpers/registry';
+import { seedMachineType } from '@/helpers/db';
 import {
 	openRunnerDetail,
 	statusBadge,
@@ -34,6 +37,10 @@ async function withDetail(
 		await context.close();
 	}
 }
+
+test.beforeAll(async () => {
+	await seedMachineType();
+});
 
 test.describe('runner > detail [UI]', () => {
 	test('detail shows the four tabs and a Not set up badge for a fresh runner', async ({
@@ -101,6 +108,38 @@ test.describe('runner > detail [UI]', () => {
 		});
 		await withDetail(browser, user, runner.id, 'logs', async (page) => {
 			await expect(logsTab(page)).toBeVisible();
+		});
+	});
+
+	test('the deployments tab pages through the runner deployments', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		const runner = await createRunnerAPI(api, user, user.workspaceId);
+		const repo = await createContainerRepo(api, user, user.workspaceId);
+		for (let i = 0; i < 21; i++) {
+			await createDeploymentAPI(api, user, user.workspaceId, {
+				repositoryId: repo.id,
+				runnerId: runner.id,
+			});
+		}
+		// The tab pages 20 at a time, so page 1 holds exactly one.
+		const secondPage = await api.request<{ deployments: { name: string }[] }>(
+			'GET',
+			`/workspace/${user.workspaceId}/deployment?search[runner]=${runner.id}&page=1&count=20`,
+			{ token: user.accessToken, clientIp: user.clientIp },
+		);
+		expect(secondPage.deployments).toHaveLength(1);
+		const last = secondPage.deployments[0].name;
+
+		await withDetail(browser, user, runner.id, undefined, async (page) => {
+			await expect(page.getByRole('button', { name: 'Page 2', exact: true })).toBeVisible({
+				timeout: 10_000,
+			});
+			await expect(page.getByText(last, { exact: true })).toHaveCount(0);
+			await page.getByRole('button', { name: 'Page 2', exact: true }).click();
+			await expectUrl(page, /[?&]page=1(&|$)/);
+			await expect(page.getByText(last, { exact: true }).last()).toBeVisible({
+				timeout: 10_000,
+			});
 		});
 	});
 });

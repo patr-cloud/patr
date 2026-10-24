@@ -1,11 +1,11 @@
 use axum::http::StatusCode;
 use models::api::workspace::runner::*;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
-/// Renames a runner. The name only lives in the `runner` row — the runner
-/// process, its Cloudflare entries and the Redis caches are all keyed by ID —
-/// so nothing needs to be told about the change.
+/// Renames a runner. The runner process and its Cloudflare entries are keyed
+/// by ID, so nothing needs to be told about the change, but the runner's cached
+/// auth data holds its name and is marked stale.
 pub async fn update_runner(
 	AuthenticatedAppRequest {
 		request:
@@ -19,7 +19,7 @@ pub async fn update_runner(
 				body: UpdateRunnerRequestProcessed { name },
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
 		actor_data: _,
 		state: _,
@@ -51,6 +51,8 @@ pub async fn update_runner(
 	if rows_updated == 0 {
 		return Err(ErrorType::ResourceDoesNotExist);
 	}
+
+	permissions::mark_actor_stale(redis, &runner_id).await?;
 
 	AppResponse::builder()
 		.body(UpdateRunnerResponse)

@@ -12,7 +12,7 @@ import {
 	Pagination,
 	Table,
 } from "~/components";
-import { createPaginationState, recoverFromOutOfBounds, useIsAllowed } from "~/hooks";
+import { createPaginationState, recoverFromOutOfBounds, useIsAllowed, paginationSearch } from "~/hooks";
 import { useServiceAccountsQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
 import WorkspaceHeader from "~/routes/_logged-in/_workspaced/workspace/-components/workspace-header";
 
@@ -27,8 +27,8 @@ const ListServiceAccounts = () => {
 
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
 	const serviceAccountsQuery = useServiceAccountsQuery(
-		() => search().page,
-		() => search().count
+		() => search().page?.toString(),
+		() => search().count?.toString()
 	);
 
 	createEffect(() => {
@@ -160,9 +160,6 @@ const ListServiceAccounts = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/service-accounts/")({
-	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-		page: (search.page as string) || undefined,
-		count: (search.count as string) || undefined,
-	}),
+	validateSearch: paginationSearch,
 	component: ListServiceAccounts,
 });

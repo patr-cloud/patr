@@ -28,6 +28,7 @@ import DeploymentInfoUpdate from "./-components/info";
 import DeploymentLogs from "./-components/logs";
 import DeploymentMetrics from "./-components/metrics";
 import { Color } from "~/utils/color";
+import { requireUuidParam } from "~/utils/validation";
 
 const DeploymentInfo = () => {
 	const params = Route.useParams();
@@ -332,6 +333,7 @@ const DeploymentInfo = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/deployments/$id")({
+	beforeLoad: ({ params }) => requireUuidParam(params.id),
 	validateSearch: (search: Record<string, unknown>): { tab: string } => ({
 		tab: (search.tab as string) || "metrics",
 	}),

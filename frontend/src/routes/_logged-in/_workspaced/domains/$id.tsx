@@ -31,6 +31,7 @@ import { DEPLOYMENT_DOMAIN, IS_CLOUD } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import DeploymentOption from "./-components/deployment-option";
 import ManageUrlRow from "./-components/managed-url-component";
+import { requireUuidParam } from "~/utils/validation";
 
 type urlTypeT = "proxyUrl" | "redirect" | "proxyDeployment";
 
@@ -413,5 +414,6 @@ const DomainInfo = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/domains/$id")({
+	beforeLoad: ({ params }) => requireUuidParam(params.id),
 	component: DomainInfo,
 });
