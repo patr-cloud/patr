@@ -63,9 +63,9 @@ pub async fn create_api_token(
 		r#"
 		WITH client AS (
 			INSERT INTO
-				actor_client(id, actor_client_type)
+				actor_client(id, actor_client_type, actor_id)
 			VALUES
-				(GENERATE_LOGIN_ID(), 'user_login')
+				(GENERATE_LOGIN_ID(), 'user_login', $1)
 			RETURNING id
 		)
 		INSERT INTO

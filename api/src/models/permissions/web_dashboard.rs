@@ -22,7 +22,11 @@ pub(super) async fn load_actor_auth_data(
 	let Some(user) = query! {
 		r#"
 		SELECT
-			"user".*
+			"user".id,
+			"user".email,
+			"user".first_name,
+			"user".last_name,
+			"user".created
 		FROM
 			"user"
 		INNER JOIN

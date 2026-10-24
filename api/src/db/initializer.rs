@@ -57,21 +57,24 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 
 		// Create all tables
 		super::initialize_meta_tables(&mut transaction).await?;
+		// actor first: `"user"`, `workspace_actor` and `service_account` are
+		// declared with ACTOR_TYPE, which actor creates. Only types matter
+		// here — table creation carries no foreign keys.
+		super::initialize_actor_tables(&mut transaction).await?;
 		super::initialize_actor_client_tables(&mut transaction).await?;
 		super::initialize_user_tables(&mut transaction).await?;
-		// rbac before workspace: `service_account` is declared with
-		// WORKSPACE_ACTOR_TYPE, which rbac creates. Only types matter here —
-		// table creation carries no foreign keys.
 		super::initialize_rbac_tables(&mut transaction).await?;
 		super::initialize_workspace_tables(&mut transaction).await?;
 
 		super::initialize_meta_indices(&mut transaction).await?;
+		super::initialize_actor_indices(&mut transaction).await?;
 		super::initialize_actor_client_indices(&mut transaction).await?;
 		super::initialize_user_indices(&mut transaction).await?;
 		super::initialize_workspace_indices(&mut transaction).await?;
 		super::initialize_rbac_indices(&mut transaction).await?;
 
 		super::initialize_meta_constraints(&mut transaction).await?;
+		super::initialize_actor_constraints(&mut transaction).await?;
 		super::initialize_actor_client_constraints(&mut transaction).await?;
 		super::initialize_user_constraints(&mut transaction).await?;
 		super::initialize_workspace_constraints(&mut transaction).await?;

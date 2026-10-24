@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE workspace_user(user_id UUID NOT NULL, workspace_id UUID NOT NULL, actor_id UUID NOT NULL, actor_type ACTOR_TYPE NOT NULL GENERATED ALWAYS AS ('user') STORED);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "1483f6615fc87878070a971ccec72fa4a2b28de983a78cf0be3bb88a5e526f10"
+}

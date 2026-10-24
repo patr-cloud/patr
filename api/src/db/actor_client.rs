@@ -21,7 +21,8 @@ pub async fn initialize_actor_client_tables(
 		r#"
 		CREATE TABLE actor_client(
 			id UUID NOT NULL,
-			actor_client_type ACTOR_CLIENT_TYPE NOT NULL
+			actor_client_type ACTOR_CLIENT_TYPE NOT NULL,
+			actor_id UUID NOT NULL
 		);
 		"#
 	)
@@ -41,7 +42,8 @@ pub async fn initialize_actor_client_indices(
 		r#"
 		ALTER TABLE actor_client
 			ADD CONSTRAINT actor_client_pk PRIMARY KEY(id),
-			ADD CONSTRAINT actor_client_uq_id_actor_client_type UNIQUE(id, actor_client_type);
+			ADD CONSTRAINT actor_client_uq_id_actor_client_type_actor_id
+				UNIQUE(id, actor_client_type, actor_id);
 		"#
 	)
 	.execute(&mut *connection)
@@ -51,10 +53,20 @@ pub async fn initialize_actor_client_indices(
 }
 
 /// Initializes the actor client constraints
-#[instrument(skip(_connection))]
+#[instrument(skip(connection))]
 pub async fn initialize_actor_client_constraints(
-	_connection: &mut DatabaseConnection,
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up actor client constraints");
+	query!(
+		r#"
+		ALTER TABLE actor_client
+			ADD CONSTRAINT actor_client_fk_actor_id
+				FOREIGN KEY(actor_id) REFERENCES actor(id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

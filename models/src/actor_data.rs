@@ -23,7 +23,7 @@ pub enum UserLoginType {
 }
 
 /// The actor making the authenticated request. Mirrors the database's
-/// `WORKSPACE_ACTOR_TYPE`: a human user, or a service account.
+/// `ACTOR_TYPE`: a human user, or a service account.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "actorType")]
 pub enum ActorData {
@@ -90,7 +90,8 @@ impl ActorData {
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(setter(into)))]
 pub struct RequestActorData {
-	/// The ID of the actor (user ID or service account ID).
+	/// The ID of the actor (`actor.id`): the user ID or the service account ID,
+	/// unique across both.
 	pub id: Uuid,
 	/// Who is making the request, and through which kind of credential.
 	pub actor: ActorData,

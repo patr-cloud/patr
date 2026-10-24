@@ -21,6 +21,7 @@ A feature's diff shows the permissions it declared, not the ones it forgot or th
   - the cached permission map and its revocation in Redis;
   - the account auth surfaces under `models/src/api/auth/` and `models/src/api/user/` (API tokens, MFA, web logins, social logins).
 - Audit logs: `AuditLogType`, `api/src/utils/layers/audit_logger_layer.rs`, `api/src/db/workspace/audit_log.rs` and the audit log endpoints.
+- The identity registries: `actor` (`api/src/db/actor.rs`), `actor_client` and `workspace_actor`, and the ownership FKs between them.
 
 Read `api/CLAUDE.md` and `models/CLAUDE.md` before anything else, particularly the rules on endpoint declaration, the typed-ID check every handler needs, and the Redis permission cache.
 
@@ -49,7 +50,8 @@ For the feature in front of you:
    - audit-log actors;
    - "created by" and ownership fields;
    - token ownership;
-   - permission-cache keys and revocation.
+   - permission-cache keys and revocation;
+   - its `ACTOR_TYPE` value and `actor` row, with every credential it holds naming it in `actor_client.actor_id` through a composite FK. Anything workspace-scoped references `workspace_actor`, never `actor`; only provenance (`created_by`, `invited_by`) points at `actor`.
    
    This is where a list of principals that's really a list of users gets caught.
 4. For a new way to authenticate, check the whole lifecycle: issuance, expiry, revocation reaching the cached permission map, how it interacts with MFA, and rate limiting.

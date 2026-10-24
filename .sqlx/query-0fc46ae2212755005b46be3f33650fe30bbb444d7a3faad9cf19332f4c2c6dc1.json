@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "WITH client AS (INSERT INTO actor_client(id, actor_client_type) VALUES (GENERATE_LOGIN_ID(), 'user_login') RETURNING id) INSERT INTO user_login(login_id, user_id, login_type, created) SELECT client.id, $1, 'web_login', $2 FROM client RETURNING user_login.login_id;",
+  "query": "WITH client AS (INSERT INTO actor_client(id, actor_client_type, actor_id) VALUES (GENERATE_LOGIN_ID(), 'user_login', $1) RETURNING id) INSERT INTO user_login(login_id, user_id, login_type, created) SELECT client.id, $1, 'api_token', $2 FROM client RETURNING user_login.login_id;",
   "describe": {
     "columns": [
       {
@@ -25,5 +25,5 @@
       false
     ]
   },
-  "hash": "666703ade866241840a50ec22ac1a034e554fc5554f2a9900908edd5be0ddc4a"
+  "hash": "0fc46ae2212755005b46be3f33650fe30bbb444d7a3faad9cf19332f4c2c6dc1"
 }

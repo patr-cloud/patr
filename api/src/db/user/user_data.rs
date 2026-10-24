@@ -19,7 +19,9 @@ pub async fn initialize_user_data_tables(
 			password_reset_token TEXT,
 			password_reset_token_expiry TIMESTAMPTZ NULL,
 			password_reset_attempts INT NULL,
-			mfa_secret TEXT
+			mfa_secret TEXT,
+			actor_type ACTOR_TYPE NOT NULL
+				GENERATED ALWAYS AS ('user') STORED
 		);
 		"#
 	)
@@ -60,9 +62,19 @@ pub async fn initialize_user_data_indices(
 	Ok(())
 }
 
-/// Initializes the user data constraints. There are none.
+/// Initializes the user data constraints
 pub async fn initialize_user_data_constraints(
-	_connection: &mut DatabaseConnection,
+	connection: &mut DatabaseConnection,
 ) -> Result<(), sqlx::Error> {
+	query!(
+		r#"
+		ALTER TABLE "user"
+			ADD CONSTRAINT user_fk_id_actor_type
+				FOREIGN KEY(id, actor_type) REFERENCES actor(id, actor_type);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE user_login ADD CONSTRAINT user_login_fk_user_id FOREIGN KEY(user_id) REFERENCES \"user\"(id), ADD CONSTRAINT user_login_fk_login_id_actor_client_type_user_id FOREIGN KEY(login_id, actor_client_type, user_id) REFERENCES actor_client(id, actor_client_type, actor_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6b8659ad2dddecd6f4052bc2c78b90b8ded57e01ba6c0f3d0223e2e2d73accf3"
+}

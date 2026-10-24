@@ -2,12 +2,13 @@ use crate::prelude::*;
 
 /// Initializes the service account tables.
 ///
-/// A service account's id is the same id in three registries: `resource` (it
-/// is permission-gated like anything else), `workspace_actor` (role bindings
-/// are granted on it) and `actor_client` (it authenticates and leaves an
-/// audit trail). It is workspace-scoped by construction, so its actor is
-/// one-to-one with the account and needs no membership row — unlike a user,
-/// whose actor is per-workspace.
+/// A service account's id is the same id in four registries: `actor` (it is
+/// an accountable identity), `resource` (it is permission-gated like anything
+/// else), `workspace_actor` (role bindings are granted on it) and
+/// `actor_client` (it authenticates and leaves an audit trail, as the owner of
+/// its own credential). It is workspace-scoped by construction, so its
+/// workspace actor is one-to-one with the account and needs no membership row
+/// — unlike a user, whose workspace actor is per-workspace.
 #[instrument(skip(connection))]
 pub async fn initialize_service_account_tables(
 	connection: &mut DatabaseConnection,
@@ -23,7 +24,7 @@ pub async fn initialize_service_account_tables(
 			token_hash TEXT NOT NULL,
 			created TIMESTAMPTZ NOT NULL,
 			deleted TIMESTAMPTZ,
-			actor_type WORKSPACE_ACTOR_TYPE NOT NULL
+			actor_type ACTOR_TYPE NOT NULL
 				GENERATED ALWAYS AS ('service_account') STORED,
 			actor_client_type ACTOR_CLIENT_TYPE NOT NULL
 				GENERATED ALWAYS AS ('service_account') STORED
@@ -102,9 +103,11 @@ pub async fn initialize_service_account_constraints(
 			ADD CONSTRAINT service_account_fk_id_actor_workspace_id
 				FOREIGN KEY(id, workspace_id)
 					REFERENCES workspace_actor(id, workspace_id),
-			ADD CONSTRAINT service_account_fk_id_actor_client_type
-				FOREIGN KEY(id, actor_client_type)
-					REFERENCES actor_client(id, actor_client_type);
+			ADD CONSTRAINT service_account_fk_id_actor_type_actor
+				FOREIGN KEY(id, actor_type) REFERENCES actor(id, actor_type),
+			ADD CONSTRAINT service_account_fk_id_actor_client_type_id
+				FOREIGN KEY(id, actor_client_type, id)
+					REFERENCES actor_client(id, actor_client_type, actor_id);
 		"#
 	)
 	.execute(&mut *connection)

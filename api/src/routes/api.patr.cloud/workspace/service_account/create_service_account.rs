@@ -59,19 +59,36 @@ pub async fn create_service_account(
 	.await?
 	.id;
 
-	// The same id registers the account in all three supertypes: it is a
-	// resource above, an actor_client (so it can authenticate and be named in
-	// an audit entry) and a workspace_actor (so role bindings can hang off
-	// it).
+	// The same id registers the account in all four supertypes: it is a
+	// resource above, an actor (the accountable identity), an actor_client
+	// that it owns itself (so it can authenticate and be named in an audit
+	// entry) and a workspace_actor (so role bindings can hang off it).
+	query!(
+		r#"
+		INSERT INTO
+			actor(
+				id,
+				actor_type,
+				created
+			)
+		VALUES
+			($1, 'service_account', NOW());
+		"#,
+		id,
+	)
+	.execute(&mut **database)
+	.await?;
+
 	query!(
 		r#"
 		INSERT INTO
 			actor_client(
 				id,
-				actor_client_type
+				actor_client_type,
+				actor_id
 			)
 		VALUES
-			($1, 'service_account');
+			($1, 'service_account', $1);
 		"#,
 		id,
 	)
