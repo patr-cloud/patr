@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use api::models::permissions;
 use headers::authorization::Authorization;
 use models::{
 	ApiSuccessResponseBody,
@@ -395,7 +396,7 @@ async fn jwt_on_an_api_token_route_is_a_malformed_api_token() {
 }
 
 /// A service account token on a route that takes API tokens but not service
-/// accounts is rejected, whether the account is cached or not.
+/// accounts is rejected by its prefix, whether it's cached or not.
 #[tokio::test]
 async fn service_account_token_on_an_api_token_only_route_is_unauthorized() {
 	let setup = setup().await.expect("failed to setup test server");
@@ -417,7 +418,7 @@ async fn service_account_token_on_an_api_token_only_route_is_unauthorized() {
 		)
 	};
 
-	// Not cached yet: rejected at the lookup, before anything is loaded.
+	// Not cached yet.
 	assert_eq!(401, get_user_info().await.status_code().as_u16());
 
 	// Cache it through a route that does take service accounts…
@@ -440,7 +441,7 @@ async fn service_account_token_on_an_api_token_only_route_is_unauthorized() {
 		"a service account should be able to read its own workspace"
 	);
 
-	// …and it is still rejected here, now from the cached entry.
+	// …and it's still rejected here.
 	assert_eq!(401, get_user_info().await.status_code().as_u16());
 }
 
@@ -743,7 +744,7 @@ async fn docker_login_works() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 	// docker login is for API tokens, not web-dashboard sessions — the handler
-	// validates the password as a `patrv1.` token.
+	// validates the password as an API token.
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
@@ -802,18 +803,13 @@ async fn docker_login_invalid_token() {
 	let setup = setup().await.expect("failed to setup test server");
 	let _user = setup.create_test_user().await;
 
-	// Username is `patr` but the password is a well-formed-but-nonexistent API
-	// token. The handler now validates it, so this must be rejected instead of
-	// echoed back as a bearer credential.
+	// Username is `patr` but the password is a well-formed but unknown API
+	// token. It must be rejected, not echoed back as a bearer credential.
 	let response = setup
 		.make_api_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
-					authorization: Authorization::basic(
-						"patr",
-						"patrv1.deadbeefdeadbeefdeadbeefdeadbeef.\
-						 deadbeefdeadbeefdeadbeefdeadbeef",
-					),
+					authorization: Authorization::basic("patr", &permissions::generate_api_token()),
 					user_agent: TEST_USER_AGENT,
 				})
 				.query(DockerLoginQuery {

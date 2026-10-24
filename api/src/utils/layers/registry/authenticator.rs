@@ -23,7 +23,7 @@ use crate::{models::permissions, routes::registry_patr_cloud::prelude::*};
 ///
 /// This layer:
 /// 1. Extracts the Authorization header (Bearer token)
-/// 2. Validates the token as an API token (format: patrv1.{refresh_token}.{login_id})
+/// 2. Validates the token as an API token or service account token
 /// 3. Verifies the token against the database
 /// 4. Checks token expiration, revocation, and IP restrictions
 /// 5. Loads user permissions from Redis cache or database

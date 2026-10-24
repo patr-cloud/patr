@@ -24,9 +24,9 @@ const RATE_LIMITS: [(u32, Duration); 3] = if cfg!(debug_assertions) {
 	]
 } else {
 	[
-		(20, Duration::from_secs(1)),
-		(500, Duration::from_secs(60)),
-		(5000, Duration::from_secs(3600)),
+		(100, Duration::from_secs(1)),
+		(1000, Duration::from_secs(60)),
+		(10000, Duration::from_secs(3600)),
 	]
 };
 

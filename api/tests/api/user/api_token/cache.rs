@@ -4,8 +4,10 @@
 
 use std::{collections::BTreeMap, net::IpAddr, str::FromStr};
 
+use api::{models::permissions, redis::keys};
 use ipnetwork::IpNetwork;
 use models::{ApiSuccessResponseBody, api::user::*, rbac::WorkspacePermission};
+use sha2::{Digest as _, Sha256};
 
 use super::{call_with_token, mint_token_raw};
 use crate::prelude::*;
@@ -50,10 +52,10 @@ async fn used_api_token_is_served_from_cache() {
 	);
 }
 
-/// A cached login doesn't vouch for the secret: once a token has been used,
-/// the same login ID with a wrong secret is still rejected.
+/// A cached token doesn't vouch for anything else: once a real token has been
+/// used, a well-formed token that was never issued is still rejected.
 #[tokio::test]
-async fn cached_api_token_still_checks_the_secret() {
+async fn cached_api_token_does_not_vouch_for_other_tokens() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -72,14 +74,14 @@ async fn cached_api_token_still_checks_the_secret() {
 		"the first call should populate the cache"
 	);
 
-	let forged = format!("patrv1.{}.{}", Uuid::new_v4(), api_token.id);
+	let forged = permissions::generate_api_token();
 	assert_eq!(
 		401,
 		call_with_token(&setup, &forged)
 			.await
 			.status_code()
 			.as_u16(),
-		"a wrong secret for a cached login should be rejected with 401"
+		"a token that was never issued should be rejected with 401"
 	);
 }
 
@@ -103,6 +105,11 @@ async fn revoked_api_token_is_rejected_immediately() {
 			.is_success(),
 		"the token should work before it is revoked"
 	);
+	let cache_key = keys::auth_data_for_token(&hex::encode(Sha256::digest(&api_token.token)));
+	assert!(
+		setup.get_redis_value(&cache_key).await.is_some(),
+		"the token should be cached"
+	);
 
 	setup
 		.make_web_dashboard_call(
@@ -119,6 +126,10 @@ async fn revoked_api_token_is_rejected_immediately() {
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(RevokeApiTokenResponse));
 
+	assert!(
+		setup.get_redis_value(&cache_key).await.is_none(),
+		"revoking should drop the cached entry"
+	);
 	assert_eq!(
 		401,
 		call_with_token(&setup, &api_token.token)
@@ -149,6 +160,11 @@ async fn regenerated_api_token_old_secret_is_rejected_immediately() {
 			.is_success(),
 		"the token should work before it is regenerated"
 	);
+	let cache_key = keys::auth_data_for_token(&hex::encode(Sha256::digest(&api_token.token)));
+	assert!(
+		setup.get_redis_value(&cache_key).await.is_some(),
+		"the token should be cached"
+	);
 
 	let new_token = setup
 		.make_web_dashboard_call(
@@ -167,6 +183,10 @@ async fn regenerated_api_token_old_secret_is_rejected_immediately() {
 		.response
 		.token;
 
+	assert!(
+		setup.get_redis_value(&cache_key).await.is_none(),
+		"regenerating should drop the old token's cached entry"
+	);
 	assert_eq!(
 		401,
 		call_with_token(&setup, &api_token.token)

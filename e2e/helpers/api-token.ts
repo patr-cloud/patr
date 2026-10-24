@@ -18,7 +18,7 @@ export type CreateApiTokenOpts = {
 
 export type ApiTokenHandle = {
 	id: string;
-	token: string; // patrv1.<refresh>.<loginId>
+	token: string; // patr_at_<32 base62 chars><6-char checksum>
 	name: string;
 };
 
