@@ -127,7 +127,7 @@ pub async fn handle_blob_mount(
 		LIMIT 1
 		"#,
 		digest,
-		source_repo.workspace_id() as _,
+		source_repo.workspace_id(),
 		source_repo.name()
 	)
 	.fetch_optional(&mut **req.database)
@@ -234,7 +234,7 @@ pub(super) async fn get_or_create_repository(
 			AND deleted IS NULL
 		LIMIT 1
 		"#,
-		workspace_id as _,
+		workspace_id,
 		repo_name
 	)
 	.fetch_optional(&mut **database)
@@ -271,8 +271,8 @@ pub(super) async fn get_or_create_repository(
 			deleted
 		) VALUES ($1, $2, $3, NOW(), NOW(), NULL)
 		"#,
-		repo_id as _,
-		workspace_id as _,
+		repo_id,
+		workspace_id,
 		repo_name
 	)
 	.execute(&mut **database)

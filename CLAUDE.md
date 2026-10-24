@@ -35,7 +35,8 @@ The same codebase builds two flavors. The **cloud** build is the public `patr.cl
 ## SQLx (offline)
 
 - Builds run with **`SQLX_OFFLINE=true`** and compile against the committed `.sqlx/`. There is no committed root `.env`; when building locally without a live DB, prefix `SQLX_OFFLINE=true`.
-- After changing any `query!`, regenerate the offline cache with **`just prepare`** — it prepares both feature sets (cloud + `--no-default-features`) and merges them into one `.sqlx/` (hash-named files collapse shared queries and let feature-only ones coexist). Commit the `.sqlx/` change alongside the query/schema change that prompted it, or CI/offline builds break.
+- After changing any `query!`, regenerate the offline cache with **`just prepare`** (with `DATABASE_URL` pointing at a migrated api database). It prepares the api's two feature sets (cloud + `--no-default-features`) into one `.sqlx/` (hash-named files collapse shared queries and let feature-only ones coexist), and the runner's SQLite queries into **`runners/common/.sqlx/`**, against `target/runner.db` from `just runner-db`. The runner keeps its own cache because some of its queries are word for word the same as the api's, and a cache file is named after its SQL. Commit both caches alongside the query/schema change that prompted it, or CI/offline builds break.
+- **Column types come from `sqlx.toml`** (`api/sqlx.toml`, `runners/common/sqlx.toml`): `UUID` and our Postgres enums map to `models` types in the api, and the runner maps its TEXT UUID/enum and `u16` INTEGER columns per table. Don't add inline `"col: Type"` overrides or `as _` casts for mapped types; a new runner column of one of those kinds needs a line in its `sqlx.toml`.
 
 ## Conventions
 

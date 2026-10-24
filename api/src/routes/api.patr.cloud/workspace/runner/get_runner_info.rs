@@ -40,8 +40,8 @@ pub async fn get_runner_info(
 			workspace_id = $2 AND
 			deleted IS NULL;
 		"#,
-		&runner_id as _,
-		&workspace_id as _,
+		&runner_id,
+		&workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?

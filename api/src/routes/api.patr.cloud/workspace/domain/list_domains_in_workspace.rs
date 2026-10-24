@@ -64,17 +64,17 @@ pub async fn list_domains_in_workspace(
 		LIMIT $8
 		OFFSET $9;
 		"#,
-		workspace_id as _,
-		user_data.login_id as _,
+		workspace_id,
+		user_data.login_id,
 		Permission::Domain(DomainPermission::View) as _,
-		name_filter as _,
-		is_verified_filter as _,
+		name_filter,
+		is_verified_filter,
 		last_verified_filter
 			.as_ref()
-			.map(|last_verified_at| last_verified_at.start()) as _,
+			.map(|last_verified_at| last_verified_at.start()),
 		last_verified_filter
 			.as_ref()
-			.map(|last_verified_at| last_verified_at.end()) as _,
+			.map(|last_verified_at| last_verified_at.end()),
 		count as i32,
 		(count * page) as i32,
 	)

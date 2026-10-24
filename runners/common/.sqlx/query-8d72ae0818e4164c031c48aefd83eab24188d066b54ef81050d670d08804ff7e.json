@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM deployment_environment_variable WHERE deployment_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "8d72ae0818e4164c031c48aefd83eab24188d066b54ef81050d670d08804ff7e"
+}

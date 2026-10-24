@@ -34,7 +34,7 @@ macros                         = { workspace = true }
 models                         = { workspace = true }
 opentelemetry                  = { workspace = true, features = ["default"] }
 opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
-opentelemetry-otlp             = { workspace = true, features = ["default", "http-json", "reqwest-rustls-webpki-roots"] }
+opentelemetry-otlp             = { workspace = true, features = ["default", "http-json", "reqwest-rustls", "tls-webpki-roots"] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
 preprocess                     = { workspace = true, features = [] }
 ractor                         = { workspace = true, features = ["tokio_runtime"] }
@@ -47,7 +47,7 @@ semver                         = { workspace = true, features = ["default"] }
 serde                          = { workspace = true, features = ["derive"] }
 serde_json                     = { workspace = true, features = [] }
 serde_qs                       = { workspace = true, features = [] }
-sqlx                           = { workspace = true, features = ["runtime-tokio-rustls", "sqlite", "time", "uuid"] }
+sqlx                           = { workspace = true, features = ["macros", "runtime-tokio", "sqlite", "sqlx-toml", "time", "tls-rustls", "uuid"] }
 tempfile                       = { workspace = true, features = ["default"] }
 thiserror                      = { workspace = true, features = [] }
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }

@@ -8,7 +8,7 @@ use argon2::{
 };
 use axum::http::StatusCode;
 use models::api::auth::*;
-use rustis::commands::StringCommands as _;
+use rustis::commands::{SetExpiration, StringCommands as _};
 use time::OffsetDateTime;
 
 use crate::{prelude::*, redis::keys as redis};
@@ -199,12 +199,15 @@ pub async fn reset_password(
 	.await?;
 
 	redis
-		.setex(
-			redis::user_id_revocation_timestamp(&user_data.id.into()),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
+		.set_with_options(
+			redis::user_id_revocation_timestamp(&user_data.id),
 			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs(),
+			),
 		)
 		.await
 		.inspect_err(|err| {

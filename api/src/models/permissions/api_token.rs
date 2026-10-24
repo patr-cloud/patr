@@ -5,7 +5,10 @@ use models::{
 	RequestUserData,
 	rbac::{WorkspacePermission, intersect_workspace_permissions},
 };
-use rustis::{client::Client as RedisClient, commands::StringCommands as _};
+use rustis::{
+	client::Client as RedisClient,
+	commands::{SetExpiration, StringCommands as _},
+};
 use time::OffsetDateTime;
 
 use crate::{models::redis::UserPermissionCache, prelude::*, utils::config::AppConfig};
@@ -71,7 +74,7 @@ pub(crate) async fn get_permissions(
 			user_api_token.token_id = $1 AND
 			user_login.login_type = 'api_token';
 		"#,
-		login_id as _
+		login_id
 	)
 	.fetch_optional(&mut *database) // What the actual fuck?
 	.await?
@@ -146,8 +149,7 @@ pub(crate) async fn get_permissions(
 	info!("API token valid");
 
 	let permissions =
-		get_permissions_for_api_token(&mut *database, redis, &login_id, &token.user_id.into())
-			.await?;
+		get_permissions_for_api_token(&mut *database, redis, &login_id, &token.user_id).await?;
 
 	Ok(RequestUserData::builder()
 		.id(token.user_id)
@@ -198,14 +200,14 @@ pub async fn get_permissions_for_api_token(
 		WHERE
 			super_admin_id = $1;
 		"#,
-		user_id as _,
+		user_id,
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
 	.map(|row| row.workspace_id)
 	.for_each(|workspace_id| {
-		user_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
+		user_permissions.insert(workspace_id, WorkspacePermission::SuperAdmin);
 	});
 
 	query!(
@@ -227,17 +229,17 @@ pub async fn get_permissions_for_api_token(
 		WHERE
 			workspace_user.user_id = $1;
 		"#,
-		user_id as _,
+		user_id,
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
 	.for_each(|row| {
-		let permissions = user_permissions
-			.entry(row.workspace_id.into())
-			.or_insert_with(|| WorkspacePermission::Member {
+		let permissions = user_permissions.entry(row.workspace_id).or_insert_with(|| {
+			WorkspacePermission::Member {
 				permissions: BTreeMap::new(),
-			});
+			}
+		});
 
 		let WorkspacePermission::Member { permissions } = permissions else {
 			// Super admin of this workspace — bindings are redundant.
@@ -247,9 +249,9 @@ pub async fn get_permissions_for_api_token(
 		// A scope is just a resource id; the workspace's own id is the root
 		// and covers everything under it.
 		permissions
-			.entry(row.permission_id.into())
+			.entry(row.permission_id)
 			.or_default()
-			.insert(row.scope_id.into());
+			.insert(row.scope_id);
 	});
 
 	// Token's declared permissions (the snapshot at mint/patch time).
@@ -264,14 +266,14 @@ pub async fn get_permissions_for_api_token(
 		WHERE
 			token_id = $1;
 		"#,
-		login_id as _,
+		login_id,
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
 	.map(|row| row.workspace_id)
 	.for_each(|workspace_id| {
-		token_permissions.insert(workspace_id.into(), WorkspacePermission::SuperAdmin);
+		token_permissions.insert(workspace_id, WorkspacePermission::SuperAdmin);
 	});
 
 	// The token's declared ceiling: its own (permission, scope) rows.
@@ -286,14 +288,14 @@ pub async fn get_permissions_for_api_token(
 		WHERE
 			user_api_token_permission_binding.token_id = $1;
 		"#,
-		login_id as _,
+		login_id,
 	)
 	.fetch_all(&mut *db_connection)
 	.await?
 	.into_iter()
 	.for_each(|row| {
 		let permissions = token_permissions
-			.entry(row.workspace_id.into())
+			.entry(row.workspace_id)
 			.or_insert_with(|| WorkspacePermission::Member {
 				permissions: BTreeMap::new(),
 			});
@@ -306,9 +308,9 @@ pub async fn get_permissions_for_api_token(
 		// A scope is just a resource id; the workspace's own id is the root
 		// and covers everything under it.
 		permissions
-			.entry(row.permission_id.into())
+			.entry(row.permission_id)
 			.or_default()
-			.insert(row.scope_id.into());
+			.insert(row.scope_id);
 	});
 
 	let effective_permissions =
@@ -316,15 +318,18 @@ pub async fn get_permissions_for_api_token(
 
 	// A token belongs to the workspaces it holds effective permissions or
 	redis_connection
-		.setex(
+		.set_with_options(
 			redis::keys::permission_for_login_id(login_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
 			serde_json::to_string(&UserPermissionCache {
 				permission: effective_permissions.clone(),
 				creation_time: OffsetDateTime::now_utc(),
 			})?,
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs(),
+			),
 		)
 		.await
 		.inspect_err(|err| {

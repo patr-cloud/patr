@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use apalis::prelude::*;
-use apalis_cron::CronStream;
-use apalis_postgres::{PostgresStorage, shared::SharedPostgresStorage};
+use apalis_cron::CronScheduler;
+use apalis_postgres::{PostgresStorage, factory::PostgresStorageFactory};
 use cron::Schedule;
 use futures::FutureExt;
 use serde::{Deserialize, Serialize};
@@ -66,7 +66,7 @@ pub fn setup(pool: &sqlx::Pool<DatabaseType>) -> PostgresStorage<WorkerTaskType>
 
 /// Initializes the worker by running any necessary setup tasks, such as
 /// database migrations.
-pub async fn initialize(state: &AppState) -> Result<(), sqlx::Error> {
+pub async fn initialize(state: &AppState) -> Result<(), apalis_postgres::Error> {
 	PostgresStorage::setup(&state.database).await
 }
 
@@ -79,13 +79,13 @@ pub async fn run(state: &AppState) {
 				.register({
 					let state = state.clone();
 					move |_| {
-						let backend = SharedPostgresStorage::new(state.database.clone())
-							.make_shared()
-							.expect("Failed to create shared postgres storage for worker");
+						let backend = PostgresStorageFactory::new(state.database.clone())
+							.create()
+							.expect("Failed to create postgres storage for worker");
 
 						WorkerBuilder::new("verify-unverified-domains")
 							.backend(
-								CronStream::new(
+								CronScheduler::new(
 									// Every 2 hours
 									Schedule::from_str("0 0 */2 * * *").expect(
 										"Failed to parse cron schedule for verify-unverified-domains",
@@ -100,13 +100,13 @@ pub async fn run(state: &AppState) {
 				.register({
 					let state = state.clone();
 					move |_| {
-						let backend = SharedPostgresStorage::new(state.database.clone())
-							.make_shared()
-							.expect("Failed to create shared postgres storage for worker");
+						let backend = PostgresStorageFactory::new(state.database.clone())
+							.create()
+							.expect("Failed to create postgres storage for worker");
 
 						WorkerBuilder::new("reverify-verified-domains")
 							.backend(
-								CronStream::new(
+								CronScheduler::new(
 									// Every 6 hours
 									Schedule::from_str("0 0 */6 * * *").expect(
 										"Failed to parse cron schedule for reverify-verified-domains",
@@ -121,13 +121,13 @@ pub async fn run(state: &AppState) {
 				.register({
 					let state = state.clone();
 					move |_| {
-						let backend = SharedPostgresStorage::new(state.database.clone())
-							.make_shared()
-							.expect("Failed to create shared postgres storage for worker");
+						let backend = PostgresStorageFactory::new(state.database.clone())
+							.create()
+							.expect("Failed to create postgres storage for worker");
 
 						WorkerBuilder::new("verify-managed-url-active")
 							.backend(
-								CronStream::new(
+								CronScheduler::new(
 									// Every 2 hours
 									Schedule::from_str("0 0 */2 * * *").expect(
 										"Failed to parse cron schedule for verify-managed-url-active",
@@ -142,13 +142,13 @@ pub async fn run(state: &AppState) {
 				.register({
 					let state = state.clone();
 					move |_| {
-						let backend = SharedPostgresStorage::new(state.database.clone())
-							.make_shared()
-							.expect("Failed to create shared postgres storage for worker");
+						let backend = PostgresStorageFactory::new(state.database.clone())
+							.create()
+							.expect("Failed to create postgres storage for worker");
 
 						WorkerBuilder::new("cleanup-unverified-domains")
 							.backend(
-								CronStream::new(
+								CronScheduler::new(
 									// Every 6 hours
 									Schedule::from_str("0 0 */6 * * *").expect(
 										"Failed to parse cron schedule for cleanup-unverified-domains",
@@ -163,13 +163,13 @@ pub async fn run(state: &AppState) {
 				.register({
 					let state = state.clone();
 					move |_| {
-						let backend = SharedPostgresStorage::new(state.database.clone())
-							.make_shared()
-							.expect("Failed to create shared postgres storage for worker");
+						let backend = PostgresStorageFactory::new(state.database.clone())
+							.create()
+							.expect("Failed to create postgres storage for worker");
 
 						WorkerBuilder::new("cleanup-inactive-managed-urls")
 							.backend(
-								CronStream::new(
+								CronScheduler::new(
 									// Every 6 hours
 									Schedule::from_str("0 0 */6 * * *").expect(
 										"Failed to parse cron schedule for cleanup-inactive-managed-urls",
@@ -195,13 +195,13 @@ pub async fn run(state: &AppState) {
 			// in both flavors.
 			let state = state.clone();
 			move |_| {
-				let backend = SharedPostgresStorage::new(state.database.clone())
-					.make_shared()
-					.expect("Failed to create shared postgres storage for worker");
+				let backend = PostgresStorageFactory::new(state.database.clone())
+					.create()
+					.expect("Failed to create postgres storage for worker");
 
 				WorkerBuilder::new("cleanup-expired-invites")
 					.backend(
-						CronStream::new(
+						CronScheduler::new(
 							// Every day at 03:00
 							Schedule::from_str("0 0 3 * * *").expect(
 								"Failed to parse cron schedule for cleanup-expired-invites",

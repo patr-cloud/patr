@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT port, port_type FROM deployment_exposed_port WHERE deployment_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "port",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "deployment_exposed_port",
+            "name": "port"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "port_type",
+        "type_info": {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "deployment_exposed_port",
+            "name": "port_type"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "6640f5c067c9eda4f2ae6184f9749fd7b8485a126f3b414eafd6902d56f7e32f"
+}

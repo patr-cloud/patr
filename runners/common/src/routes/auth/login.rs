@@ -33,7 +33,7 @@ pub async fn login(
 ) -> Result<AppResponse<LoginRequest>, ErrorType> {
 	trace!("Logging in user: {}", email);
 
-	let rows = query(
+	let rows = sqlx::query(
 		r#"
 		SELECT
 			*

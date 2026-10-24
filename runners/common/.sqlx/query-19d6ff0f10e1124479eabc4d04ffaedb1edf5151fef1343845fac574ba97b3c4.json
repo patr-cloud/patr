@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE TABLE IF NOT EXISTS deployment_deploy_history(deployment_id TEXT NOT NULL, image_digest TEXT NOT NULL, registry TEXT NOT NULL, image_tag TEXT NOT NULL, image_name TEXT NOT NULL, created DATETIME NOT NULL,  PRIMARY KEY(deployment_id, image_digest), FOREIGN KEY(deployment_id) REFERENCES deployment(id));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "19d6ff0f10e1124479eabc4d04ffaedb1edf5151fef1343845fac574ba97b3c4"
+}

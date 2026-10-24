@@ -34,7 +34,7 @@ pub async fn delete_secret(
 		WHERE
 			id = $1;
 		"#,
-		secret_id as _,
+		secret_id,
 	)
 	.execute(&mut **database)
 	.await
@@ -57,7 +57,7 @@ pub async fn delete_secret(
 		WHERE
 			id = $1;
 		"#,
-		secret_id as _,
+		secret_id,
 	)
 	.execute(&mut **database)
 	.await?;

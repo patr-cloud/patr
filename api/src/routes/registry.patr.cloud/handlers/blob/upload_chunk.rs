@@ -17,7 +17,7 @@ use futures::{StreamExt, TryStreamExt};
 use headers::{ContentLength, ContentType};
 use http_body::Body as _;
 use models::utils::{ContentRange, DockerUploadUuid, Range};
-use rustis::commands::{GenericCommands, StringCommands};
+use rustis::commands::{GenericCommands, SetExpiration, StringCommands};
 use sha2::{
 	Digest as _,
 	Sha256,
@@ -115,7 +115,7 @@ pub async fn upload_chunk(
 		query!(
 			r#"
 			SELECT
-				id AS "id: Uuid"
+				id
 			FROM
 				workspace
 			WHERE
@@ -133,7 +133,7 @@ pub async fn upload_chunk(
 	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid"
+			id AS "resource_id"
 		FROM
 			container_registry_repository
 		WHERE
@@ -141,7 +141,7 @@ pub async fn upload_chunk(
 			name = $2 AND
 			deleted IS NULL;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		&repo_name,
 	)
 	.fetch_optional(&mut **database)
@@ -399,10 +399,14 @@ pub async fn upload_chunk(
 							// bytes received (vs. bytes flushed to S3).
 							info!("Storing {} pending buffer in Redis", chunk_size_string);
 							redis
-								.setex(
+								.set_with_options(
 									&pending_key,
-									constants::REGISTRY_BLOB_UPLOAD_PENDING_BUFFER_TTL.as_secs(),
 									BASE64_STANDARD.encode(&chunk),
+									None,
+									SetExpiration::Ex(
+										constants::REGISTRY_BLOB_UPLOAD_PENDING_BUFFER_TTL
+											.as_secs(),
+									),
 								)
 								.await?;
 							pending_size_after = chunk_size as u64;
@@ -430,10 +434,11 @@ pub async fn upload_chunk(
 	info!("All parts uploaded successfully");
 
 	redis
-		.setex(
+		.set_with_options(
 			keys::registry_blob_upload_part_prefix(&session_id),
-			constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs(),
 			serde_json::to_string(&updated_session)?,
+			None,
+			SetExpiration::Ex(constants::REGISTRY_BLOB_UPLOAD_SESSION_TTL.as_secs()),
 		)
 		.await?;
 

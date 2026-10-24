@@ -1,4 +1,4 @@
-use apalis::prelude::*;
+use apalis::prelude::{Data, WorkerError, WorkerStateError};
 use apalis_cron::Tick;
 use cloudflare::{
 	endpoints::zones::custom_hostnames::*,
@@ -37,7 +37,7 @@ pub async fn verify_managed_url_active(_: Tick, data: Data<AppState>) -> Result<
 		r#"
 		SELECT
 			managed_url_custom_hostname.sub_domain,
-			managed_url_custom_hostname.domain_id AS "domain_id: Uuid",
+			managed_url_custom_hostname.domain_id,
 			managed_url_custom_hostname.cloudflare_custom_hostname_id,
 			managed_url_custom_hostname.is_active,
 			workspace_domain.name AS "domain_name",
@@ -83,7 +83,7 @@ pub async fn verify_managed_url_active(_: Tick, data: Data<AppState>) -> Result<
 							domain_id = $2;
 						"#,
 						&row.sub_domain,
-						row.domain_id as _,
+						row.domain_id,
 						active,
 					)
 					.execute(&data.database)
@@ -141,7 +141,7 @@ pub async fn verify_managed_url_active(_: Tick, data: Data<AppState>) -> Result<
 						domain_id = $2;
 					"#,
 					&row.sub_domain,
-					row.domain_id as _,
+					row.domain_id,
 					&response.result.id,
 				)
 				.execute(&data.database)

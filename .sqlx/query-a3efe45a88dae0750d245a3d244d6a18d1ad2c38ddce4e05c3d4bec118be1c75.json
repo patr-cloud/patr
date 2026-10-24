@@ -6,7 +6,13 @@
       {
         "ordinal": 0,
         "name": "manifest_digest",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "container_registry_repository_manifest",
+            "name": "manifest_digest"
+          }
+        }
       }
     ],
     "parameters": {

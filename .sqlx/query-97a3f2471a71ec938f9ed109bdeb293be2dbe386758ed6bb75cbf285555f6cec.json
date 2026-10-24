@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH stale AS (\n    SELECT\n        jobs.id\n    FROM\n        apalis.jobs\n        INNER JOIN apalis.workers ON jobs.lock_by = workers.id\n    WHERE\n        (\n            jobs.status = 'Running'\n            OR jobs.status = 'Queued'\n        )\n        AND NOW() - workers.last_seen >= $1\n        AND workers.worker_type = $2 FOR\n    UPDATE\n        OF jobs SKIP LOCKED\n)\nUPDATE\n    apalis.jobs\nSET\n    status = 'Pending',\n    done_at = NULL,\n    lock_by = NULL,\n    lock_at = NULL,\n    attempts = attempts + 1,\n    last_result = '{\"Err\": \"Re-enqueued due to worker heartbeat timeout.\"}'\nFROM\n    stale\nWHERE\n    apalis.jobs.id = stale.id;\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Interval",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "97a3f2471a71ec938f9ed109bdeb293be2dbe386758ed6bb75cbf285555f6cec"
+}

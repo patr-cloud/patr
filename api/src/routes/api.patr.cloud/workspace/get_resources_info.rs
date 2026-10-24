@@ -44,7 +44,7 @@ pub async fn get_resources_info(
 	let resolved = query!(
 		r#"
 		SELECT
-			resource.id AS "id: Uuid",
+			resource.id,
 			resource_type.name AS "resource_type!",
 			COALESCE(
 				deployment.name::TEXT,
@@ -78,7 +78,7 @@ pub async fn get_resources_info(
 			resource.id = ANY($2::UUID[]) AND
 			resource.deleted IS NULL;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		ids as _,
 	)
 	.fetch_all(&mut **database)

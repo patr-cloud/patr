@@ -86,7 +86,7 @@ pub async fn get_upload_status(
 		query!(
 			r#"
 			SELECT
-				id AS "id: Uuid"
+				id
 			FROM
 				workspace
 			WHERE
@@ -105,7 +105,7 @@ pub async fn get_upload_status(
 	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid"
+			id AS "resource_id"
 		FROM
 			container_registry_repository
 		WHERE
@@ -113,7 +113,7 @@ pub async fn get_upload_status(
 			name = $2 AND
 			deleted IS NULL;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		&repo_name,
 	)
 	.fetch_optional(&mut **database)

@@ -25,7 +25,7 @@ pub async fn cleanup_inactive_managed_urls(
 		r#"
 		SELECT
 			managed_url_custom_hostname.sub_domain,
-			managed_url_custom_hostname.domain_id AS "domain_id: Uuid",
+			managed_url_custom_hostname.domain_id,
 			managed_url_custom_hostname.cloudflare_custom_hostname_id,
 			CONCAT(
 				workspace_domain.name,
@@ -69,8 +69,8 @@ pub async fn cleanup_inactive_managed_urls(
 		let managed_urls = query!(
 			r#"
 			SELECT
-				managed_url.id AS "id: Uuid",
-				deployment.runner AS "runner?: Uuid"
+				managed_url.id,
+				deployment.runner AS "runner?"
 			FROM
 				managed_url
 			LEFT JOIN
@@ -83,7 +83,7 @@ pub async fn cleanup_inactive_managed_urls(
 				managed_url.deleted IS NULL;
 			"#,
 			&fqdn.sub_domain,
-			fqdn.domain_id as _,
+			fqdn.domain_id,
 		)
 		.fetch_all(&data.database)
 		.await
@@ -97,7 +97,7 @@ pub async fn cleanup_inactive_managed_urls(
 				WHERE
 					id = $1;
 				"#,
-				url.id as _,
+				url.id,
 			)
 			.execute(&data.database)
 			.await
@@ -112,7 +112,7 @@ pub async fn cleanup_inactive_managed_urls(
 				WHERE
 					id = $1;
 				"#,
-				url.id as _,
+				url.id,
 			)
 			.execute(&data.database)
 			.await
@@ -129,7 +129,7 @@ pub async fn cleanup_inactive_managed_urls(
 				domain_id = $2;
 			"#,
 			&fqdn.sub_domain,
-			fqdn.domain_id as _,
+			fqdn.domain_id,
 		)
 		.execute(&data.database)
 		.await

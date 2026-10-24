@@ -54,7 +54,7 @@ pub async fn create_deployment(
 	} else {
 		DeploymentStatus::Stopped
 	};
-	query(
+	sqlx::query(
 		r#"
 		INSERT INTO
 			deployment(
@@ -125,7 +125,7 @@ pub async fn create_deployment(
 	trace!("Created deployment with ID: {}", deployment_id);
 
 	for (port, port_type) in &ports {
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				deployment_exposed_port(
@@ -151,7 +151,7 @@ pub async fn create_deployment(
 	trace!("Inserted exposed ports for deployment");
 
 	for (name, value) in &environment_variables {
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				deployment_environment_variable(
@@ -180,7 +180,7 @@ pub async fn create_deployment(
 	trace!("Inserted environment variables for deployment");
 
 	for (path, file) in &config_mounts {
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				deployment_config_mounts(
@@ -206,7 +206,7 @@ pub async fn create_deployment(
 	trace!("Inserted config mounts for deployment");
 
 	for path in volumes.keys() {
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				deployment_volume(

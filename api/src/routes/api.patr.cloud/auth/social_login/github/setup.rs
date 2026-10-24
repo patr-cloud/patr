@@ -125,7 +125,7 @@ pub async fn social_login_setup(
 				NULL
 			);
 		"#,
-		user_id as _,
+		user_id,
 		hashed_password,
 		&first_name,
 		&last_name,
@@ -148,7 +148,7 @@ pub async fn social_login_setup(
 		VALUES
 			($1, 'github', $2, $3);
 		"#,
-		user_id as _,
+		user_id,
 		payload.external_id,
 		now,
 	)
@@ -230,9 +230,9 @@ pub async fn social_login_setup(
 			$2
 		FROM
 			client
-		RETURNING user_login.login_id AS "login_id: Uuid";
+		RETURNING user_login.login_id;
 		"#,
-		user_id as _,
+		user_id,
 		now,
 	)
 	.fetch_one(&mut **database)
@@ -278,8 +278,8 @@ pub async fn social_login_setup(
 				$13
 			);
 		"#,
-		login_id as _,
-		user_id as _,
+		login_id,
+		user_id,
 		hashed_refresh_token,
 		refresh_token_expiry,
 		now,

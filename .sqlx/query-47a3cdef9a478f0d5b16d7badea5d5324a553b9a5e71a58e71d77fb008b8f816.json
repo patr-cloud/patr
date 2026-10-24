@@ -1,0 +1,123 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url.path, managed_url.url_type AS \"url_type: ManagedUrlTypeDiscriminant\", managed_url.deployment_id, deployment.runner AS \"runner?\", managed_url.port, managed_url.url, managed_url.permanent_redirect, managed_url.http_only FROM managed_url INNER JOIN workspace_domain ON managed_url.domain_id = workspace_domain.id LEFT JOIN deployment ON managed_url.deployment_id = deployment.id WHERE managed_url.deleted IS NULL AND CONCAT(managed_url.sub_domain, '.', workspace_domain.name, '.', workspace_domain.tld) = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "path",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "url_type: ManagedUrlTypeDiscriminant",
+        "type_info": {
+          "Custom": {
+            "name": "managed_url_type",
+            "kind": {
+              "Enum": [
+                "proxy_to_deployment",
+                "proxy_url",
+                "redirect"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "url_type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "deployment_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "deployment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "runner?",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "runner"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "port",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "port"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "permanent_redirect",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "permanent_redirect"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "http_only",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "http_only"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "47a3cdef9a478f0d5b16d7badea5d5324a553b9a5e71a58e71d77fb008b8f816"
+}

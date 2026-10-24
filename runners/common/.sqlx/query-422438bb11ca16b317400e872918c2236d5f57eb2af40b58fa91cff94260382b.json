@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT secret.id, secret.last_updated FROM deployment_environment_variable INNER JOIN secret ON secret.id = deployment_environment_variable.secret_id WHERE deployment_environment_variable.deployment_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "secret",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "last_updated",
+        "ordinal": 1,
+        "type_info": "Datetime",
+        "origin": {
+          "Table": {
+            "table": "secret",
+            "name": "last_updated"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "422438bb11ca16b317400e872918c2236d5f57eb2af40b58fa91cff94260382b"
+}

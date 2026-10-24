@@ -330,7 +330,7 @@ where
 				"DB says unreachable but deployment is {running_status}, updating"
 			);
 
-			query(
+			query!(
 				r#"
 				UPDATE
 					deployment
@@ -339,9 +339,9 @@ where
 				WHERE
 					id = $2;
 				"#,
+				running_status.to_string(),
+				deployment_id
 			)
-			.bind(running_status.to_string())
-			.bind(deployment_id)
 			.execute(&state.database)
 			.await
 			.map_err(|err| -> ActorProcessingErr { Box::new(err) })?;
@@ -361,7 +361,7 @@ where
 				"Updating database status to match running state"
 			);
 
-			query(
+			query!(
 				r#"
 				UPDATE
 					deployment
@@ -370,9 +370,9 @@ where
 				WHERE
 					id = $2;
 				"#,
+				running_status.to_string(),
+				deployment_id
 			)
-			.bind(running_status.to_string())
-			.bind(deployment_id)
 			.execute(&state.database)
 			.await?;
 
@@ -451,7 +451,7 @@ async fn get_local_deployment_status(
 	database: &sqlx::Pool<DatabaseType>,
 	deployment_id: Uuid,
 ) -> Result<DeploymentStatus, RunnerError> {
-	let row = query(
+	query!(
 		r#"
 		SELECT
 			status
@@ -461,17 +461,15 @@ async fn get_local_deployment_status(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.fetch_one(database)
 	.await
+	.map(|row| row.status)
 	.map_err(|err| match err {
-		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist,
+		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist.into(),
 		err => err.into(),
-	})?;
-
-	row.try_get::<DeploymentStatus, _>("status")
-		.map_err(Into::into)
+	})
 }
 
 /// Get when each secret the deployment references last changed, from the local
@@ -480,7 +478,7 @@ async fn get_local_secret_versions(
 	database: &sqlx::Pool<DatabaseType>,
 	deployment_id: Uuid,
 ) -> Result<BTreeMap<Uuid, OffsetDateTime>, RunnerError> {
-	query(
+	query!(
 		r#"
 		SELECT
 			secret.id,
@@ -494,18 +492,15 @@ async fn get_local_secret_versions(
 		WHERE
 			deployment_environment_variable.deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.fetch_all(database)
-	.await?
-	.into_iter()
-	.map(|row| {
-		Ok((
-			row.try_get::<Uuid, _>("id")?,
-			row.try_get::<OffsetDateTime, _>("last_updated")?,
-		))
+	.await
+	.map(|rows| {
+		rows.into_iter()
+			.map(|row| (row.id, row.last_updated))
+			.collect()
 	})
-	.collect::<Result<BTreeMap<_, _>, sqlx::Error>>()
 	.map_err(Into::into)
 }
 
@@ -514,7 +509,7 @@ async fn get_local_deployment_info(
 	database: &sqlx::Pool<DatabaseType>,
 	deployment_id: Uuid,
 ) -> Result<(Deployment, DeploymentRunningDetails), RunnerError> {
-	let ports = query(
+	let ports = query!(
 		r#"
 		SELECT
 			port,
@@ -524,20 +519,15 @@ async fn get_local_deployment_info(
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.fetch_all(database)
 	.await?
 	.into_iter()
-	.map(|row| {
-		let port = row.try_get::<u16, _>("port")?;
-		let port_type = row.try_get::<ExposedPortType, _>("port_type")?;
+	.map(|row| (StringifiedU16::new(row.port), row.port_type))
+	.collect::<BTreeMap<_, _>>();
 
-		Ok((StringifiedU16::new(port), port_type))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
-
-	let environment_variables = query(
+	let environment_variables = query!(
 		r#"
 		SELECT
 			name,
@@ -548,19 +538,15 @@ async fn get_local_deployment_info(
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.fetch_all(database)
 	.await?
 	.into_iter()
 	.map(|env| {
-		let name = env.try_get::<String, _>("name")?;
-		let value = env
-			.try_get::<Option<String>, _>("value")?
-			.map(EnvironmentVariableValue::String);
-
+		let value = env.value.map(EnvironmentVariableValue::String);
 		let secret_id = env
-			.try_get::<Option<Uuid>, _>("secret_id")?
+			.secret_id
 			.map(|from_secret| EnvironmentVariableValue::Secret { from_secret });
 
 		let value = match (value, secret_id) {
@@ -572,11 +558,11 @@ async fn get_local_deployment_info(
 			ErrorType::server_error("corrupted deployment, cannot find environment variable value")
 		})?;
 
-		Ok((name, value))
+		Ok((env.name, value))
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
-	let config_mounts = query(
+	let config_mounts = query!(
 		r#"
 		SELECT
 			path,
@@ -586,20 +572,15 @@ async fn get_local_deployment_info(
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.fetch_all(database)
 	.await?
 	.into_iter()
-	.map(|row| {
-		let path = row.try_get::<String, _>("path")?;
-		let file = row.try_get::<Vec<u8>, _>("file").map(Base64String::from)?;
+	.map(|row| (row.path, Base64String::from(row.file)))
+	.collect::<BTreeMap<_, _>>();
 
-		Ok((path, file))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
-
-	let volumes = query(
+	let volumes = query!(
 		r#"
 		SELECT
 			path
@@ -608,15 +589,15 @@ async fn get_local_deployment_info(
 		WHERE
 			deployment_id = $1;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.fetch_all(database)
 	.await?
 	.into_iter()
-	.map(|row| Ok((row.try_get::<String, _>("path")?, VolumeConfig {})))
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
+	.map(|row| (row.path, VolumeConfig {}))
+	.collect::<BTreeMap<_, _>>();
 
-	let row = query(
+	let row = query!(
 		r#"
 		SELECT
 			id,
@@ -643,8 +624,8 @@ async fn get_local_deployment_info(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
+		deployment_id
 	)
-	.bind(deployment_id)
 	.fetch_one(database)
 	.await
 	.map_err(|err| match err {
@@ -652,30 +633,28 @@ async fn get_local_deployment_info(
 		err => err.into(),
 	})?;
 
-	let name = row.try_get::<String, _>("name")?;
-	let image_tag = row.try_get::<String, _>("image_tag")?;
-	let status = row.try_get::<DeploymentStatus, _>("status")?;
-	let registry_url = row.try_get::<String, _>("registry")?;
-	let image_name = row.try_get::<Option<String>, _>("image_name")?;
-	let repository_id = row.try_get::<Option<Uuid>, _>("repository_id")?;
-	let machine_type = row.try_get::<Uuid, _>("machine_type")?;
-	let current_live_digest = row.try_get::<Option<String>, _>("current_live_digest")?;
+	let name = row.name;
+	let image_tag = row.image_tag;
+	let status = row.status;
+	let registry_url = row.registry;
+	let machine_type = row.machine_type;
+	let current_live_digest = row.current_live_digest;
 
-	let deploy_on_push = row.try_get::<bool, _>("deploy_on_push")?;
-	let min_horizontal_scale = row.try_get::<u16, _>("min_horizontal_scale")?;
-	let max_horizontal_scale = row.try_get::<u16, _>("max_horizontal_scale")?;
+	let deploy_on_push = row.deploy_on_push;
+	let min_horizontal_scale = row.min_horizontal_scale;
+	let max_horizontal_scale = row.max_horizontal_scale;
 
 	let startup_probe = row
-		.try_get::<Option<u16>, _>("startup_probe_port")?
-		.zip(row.try_get::<Option<String>, _>("startup_probe_path")?)
+		.startup_probe_port
+		.zip(row.startup_probe_path)
 		.map(|(port, path)| DeploymentProbe { port, path });
 
 	let liveness_probe = row
-		.try_get::<Option<u16>, _>("liveness_probe_port")?
-		.zip(row.try_get::<Option<String>, _>("liveness_probe_path")?)
+		.liveness_probe_port
+		.zip(row.liveness_probe_path)
 		.map(|(port, path)| DeploymentProbe { port, path });
 
-	let registry = match (repository_id, image_name) {
+	let registry = match (row.repository_id, row.image_name) {
 		(Some(repository_id), _) => DeploymentRegistry::PatrRegistry {
 			registry: models::api::workspace::deployment::PatrRegistry,
 			repository_id,

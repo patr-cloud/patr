@@ -6,62 +6,134 @@
       {
         "ordinal": 0,
         "name": "table_catalog",
-        "type_info": "Name"
+        "type_info": "Name",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "table_catalog"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "table_schema",
-        "type_info": "Name"
+        "type_info": "Name",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "table_schema"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "table_name",
-        "type_info": "Name"
+        "type_info": "Name",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "table_name"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "table_type",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "table_type"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "self_referencing_column_name",
-        "type_info": "Name"
+        "type_info": "Name",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "self_referencing_column_name"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "reference_generation",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "reference_generation"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "user_defined_type_catalog",
-        "type_info": "Name"
+        "type_info": "Name",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "user_defined_type_catalog"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "user_defined_type_schema",
-        "type_info": "Name"
+        "type_info": "Name",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "user_defined_type_schema"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "user_defined_type_name",
-        "type_info": "Name"
+        "type_info": "Name",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "user_defined_type_name"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "is_insertable_into",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "is_insertable_into"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "is_typed",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "is_typed"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "commit_action",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "information_schema.tables",
+            "name": "commit_action"
+          }
+        }
       }
     ],
     "parameters": {

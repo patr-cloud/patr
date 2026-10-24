@@ -70,7 +70,7 @@ pub async fn list_users_in_workspace(
 				workspace.id = $1
 		)
 		SELECT
-			members.user_id AS "user_id!: Uuid",
+			members.user_id AS "user_id!",
 			"user".first_name AS "first_name!",
 			"user".last_name AS "last_name!",
 			"user".email AS "email!",
@@ -96,7 +96,7 @@ pub async fn list_users_in_workspace(
 		LIMIT $5
 		OFFSET $6;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		email_filter,
 		first_name_filter,
 		last_name_filter,
@@ -112,9 +112,9 @@ pub async fn list_users_in_workspace(
 	let mut grants = query!(
 		r#"
 		SELECT
-			workspace_user.user_id AS "user_id: Uuid",
-			role_binding.role_id AS "role_id: Uuid",
-			role_binding.scope_id AS "scope_id: Uuid"
+			workspace_user.user_id,
+			role_binding.role_id,
+			role_binding.scope_id
 		FROM
 			role_binding
 		INNER JOIN
@@ -125,7 +125,7 @@ pub async fn list_users_in_workspace(
 			workspace_user.workspace_id = $1 AND
 			workspace_user.user_id = ANY($2::UUID[]);
 		"#,
-		workspace_id as _,
+		workspace_id,
 		&rows.iter().map(|member| member.user_id).collect::<Vec<_>>() as _,
 	)
 	.fetch_all(&mut **database)
@@ -135,11 +135,11 @@ pub async fn list_users_in_workspace(
 		BTreeMap::<Uuid, Vec<RoleBindingGrant>>::new(),
 		|mut grants, row| {
 			grants
-				.entry(row.user_id.into())
+				.entry(row.user_id)
 				.or_default()
 				.push(RoleBindingGrant {
-					role_id: row.role_id.into(),
-					resource_id: row.scope_id.into(),
+					role_id: row.role_id,
+					resource_id: row.scope_id,
 				});
 			grants
 		},

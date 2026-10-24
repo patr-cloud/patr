@@ -49,7 +49,7 @@ pub fn parse(input: TokenStream) -> TokenStream {
 
 	let expanded = quote! {
 		{
-			crate::prelude::info!(target: "api::queries", "{}", #simplified_query);
+			crate::prelude::info!(target: concat!(env!("CARGO_PKG_NAME"), "::queries"), "{}", #simplified_query);
 			sqlx::query!(#simplified_query, #(#params), *)
 		}
 	};

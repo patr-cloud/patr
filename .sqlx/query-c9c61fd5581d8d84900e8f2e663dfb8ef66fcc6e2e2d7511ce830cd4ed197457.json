@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE\n    apalis.jobs\nSET\n    status = 'Pending',\n    done_at = NULL,\n    lock_by = NULL,\n    lock_at = NULL,\n    attempts = attempts + 1,\n    last_result = '{\"Err\": \"Re-enqueued due to worker shutdown\"}' :: jsonb\nFROM\n    apalis.workers\nWHERE\n    apalis.jobs.lock_by = apalis.workers.id\n    AND (apalis.jobs.status = 'Queued' OR apalis.jobs.status = 'Running')\n    AND apalis.workers.worker_type = $1\n    AND apalis.workers.id = $2\n    AND apalis.jobs.id = ANY($3);\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c9c61fd5581d8d84900e8f2e663dfb8ef66fcc6e2e2d7511ce830cd4ed197457"
+}

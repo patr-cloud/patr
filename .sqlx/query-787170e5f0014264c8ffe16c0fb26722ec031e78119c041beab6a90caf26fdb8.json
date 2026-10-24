@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT registry, repository_id, image_tag FROM deployment WHERE id = $1 AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "registry",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "registry"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "repository_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "repository_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "image_tag",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "image_tag"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "787170e5f0014264c8ffe16c0fb26722ec031e78119c041beab6a90caf26fdb8"
+}

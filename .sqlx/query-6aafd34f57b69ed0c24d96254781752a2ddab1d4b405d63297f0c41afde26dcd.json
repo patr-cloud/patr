@@ -11,27 +11,57 @@
             "name": "citext",
             "kind": "Simple"
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "email"
+          }
         }
       },
       {
         "ordinal": 1,
         "name": "first_name",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "first_name"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "last_name",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "last_name"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "created",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "created"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "mfa_secret",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "mfa_secret"
+          }
+        }
       }
     ],
     "parameters": {

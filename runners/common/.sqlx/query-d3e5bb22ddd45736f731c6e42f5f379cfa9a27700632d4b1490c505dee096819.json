@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT DISTINCT deployment_id FROM deployment_environment_variable WHERE secret_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "name": "deployment_id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment_environment_variable",
+            "name": "deployment_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d3e5bb22ddd45736f731c6e42f5f379cfa9a27700632d4b1490c505dee096819"
+}

@@ -70,8 +70,8 @@ pub async fn update_api_token(
 		token_nbf,
 		token_exp,
 		allowed_ips.as_deref(),
-		token_id as _,
-		user_data.id as _,
+		token_id,
+		user_data.id,
 	)
 	.execute(&mut **database)
 	.await
@@ -99,7 +99,7 @@ pub async fn update_api_token(
 		WHERE
 			token_id = $1;
 		"#,
-		token_id as _,
+		token_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -111,7 +111,7 @@ pub async fn update_api_token(
 		WHERE
 			token_id = $1;
 		"#,
-		token_id as _,
+		token_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -123,7 +123,7 @@ pub async fn update_api_token(
 		WHERE
 			token_id = $1;
 		"#,
-		token_id as _,
+		token_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -150,8 +150,8 @@ pub async fn update_api_token(
 							'super_admin'
 						);
 					"#,
-					token_id as _,
-					workspace_id as _,
+					token_id,
+					workspace_id,
 				)
 				.execute(&mut **database)
 				.await?;
@@ -173,9 +173,9 @@ pub async fn update_api_token(
 							DEFAULT
 						);
 					"#,
-					token_id as _,
-					user_data.id as _,
-					workspace_id as _,
+					token_id,
+					user_data.id,
+					workspace_id,
 				)
 				.execute(&mut **database)
 				.await
@@ -207,8 +207,8 @@ pub async fn update_api_token(
 							'member'
 						);
 					"#,
-					token_id as _,
-					workspace_id as _,
+					token_id,
+					workspace_id,
 				)
 				.execute(&mut **database)
 				.await?;
@@ -228,8 +228,8 @@ pub async fn update_api_token(
 						(token_id, permission_id, scope_id)
 					DO NOTHING;
 					"#,
-					token_id as _,
-					workspace_id as _,
+					token_id,
+					workspace_id,
 					&permissions.keys().copied().collect::<Vec<_>>() as _,
 					&permissions
 						.values()

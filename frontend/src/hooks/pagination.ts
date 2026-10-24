@@ -1,4 +1,4 @@
-import { createEffect, createSignal, type Accessor } from "solid-js";
+import { createEffect, createSignal, untrack, type Accessor } from "solid-js";
 
 export interface PaginationState {
 	/** The current 0-indexed page number */
@@ -121,7 +121,9 @@ export const recoverFromOutOfBounds = (
 ): void => {
 	createEffect(() => {
 		if (isError() && errorMessage() === "pageOutOfBounds" && pagination.page() > 0) {
-			pagination.setPage(pagination.page() - 1);
+			// Navigating reads and writes router state, so keep it out of this
+			// effect's dependencies or the effect re-runs itself forever.
+			untrack(() => pagination.setPage(pagination.page() - 1));
 		}
 	});
 };

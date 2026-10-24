@@ -203,7 +203,7 @@ where
 {
 	fn encode_by_ref(
 		&self,
-		buf: &mut <sqlx::Sqlite as sqlx::Database>::ArgumentBuffer<'a>,
+		buf: &mut <sqlx::Sqlite as sqlx::Database>::ArgumentBuffer,
 	) -> Result<IsNull, BoxDynError> {
 		self.resource_id.encode_by_ref(buf)
 	}
@@ -216,7 +216,7 @@ where
 {
 	fn encode_by_ref(
 		&self,
-		buf: &mut <sqlx::Postgres as sqlx::Database>::ArgumentBuffer<'a>,
+		buf: &mut <sqlx::Postgres as sqlx::Database>::ArgumentBuffer,
 	) -> Result<IsNull, BoxDynError> {
 		self.resource_id.encode_by_ref(buf)
 	}

@@ -44,8 +44,8 @@ pub async fn revoke_workspace_invite(
 				workspace_id = $2
 		) AS "exists!: bool";
 		"#,
-		invite_id as _,
-		workspace_id as _,
+		invite_id,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -63,7 +63,7 @@ pub async fn revoke_workspace_invite(
 		WHERE
 			invite_id = $1;
 		"#,
-		invite_id as _,
+		invite_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -76,8 +76,8 @@ pub async fn revoke_workspace_invite(
 			id = $1 AND
 			workspace_id = $2;
 		"#,
-		invite_id as _,
-		workspace_id as _,
+		invite_id,
+		workspace_id,
 	)
 	.execute(&mut **database)
 	.await?;

@@ -83,14 +83,14 @@ pub async fn list_managed_url(
 		LIMIT $9
 		OFFSET $10;
 		"#,
-		workspace_id as _,
-		user_data.login_id as _,
+		workspace_id,
+		user_data.login_id,
 		Permission::ManagedURL(ManagedURLPermission::View) as _,
-		sub_domain_filter as _,
+		sub_domain_filter,
 		domain_id_filter as _,
-		path_filter as _,
+		path_filter,
 		url_type_filter as _,
-		is_active_filter as _,
+		is_active_filter,
 		count as i64,
 		(count * page) as i64,
 	)
@@ -103,7 +103,7 @@ pub async fn list_managed_url(
 			row.id,
 			ManagedUrl {
 				sub_domain: row.sub_domain,
-				domain_id: row.domain_id.into(),
+				domain_id: row.domain_id,
 				path: row.path,
 				url_type: match row.url_type {
 					ManagedUrlTypeDiscriminant::ProxyUrl => ManagedUrlType::ProxyUrl {
@@ -127,12 +127,9 @@ pub async fn list_managed_url(
 					},
 					ManagedUrlTypeDiscriminant::ProxyDeployment => {
 						ManagedUrlType::ProxyDeployment {
-							deployment_id: row
-								.deployment_id
-								.ok_or_else(|| {
-									ErrorType::server_error("deployment_id in db is NULL")
-								})?
-								.into(),
+							deployment_id: row.deployment_id.ok_or_else(|| {
+								ErrorType::server_error("deployment_id in db is NULL")
+							})?,
 							port: row
 								.port
 								.ok_or_else(|| ErrorType::server_error("port in db is NULL"))?

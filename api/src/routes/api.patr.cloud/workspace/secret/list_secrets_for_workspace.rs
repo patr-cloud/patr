@@ -40,7 +40,7 @@ pub async fn list_secrets_for_workspace(
 	let secrets = query!(
 		r#"
 		SELECT
-			secret.id AS "id: Uuid",
+			secret.id,
 			secret.name AS "name: String",
 			resource.created AS "created: OffsetDateTime",
 			secret.last_updated AS "last_updated: OffsetDateTime",
@@ -64,16 +64,16 @@ pub async fn list_secrets_for_workspace(
 		LIMIT $7
 		OFFSET $8;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		name_filter,
-		created_filter.as_ref().map(|created| created.start()) as _,
-		created_filter.as_ref().map(|created| created.end()) as _,
+		created_filter.as_ref().map(|created| created.start()),
+		created_filter.as_ref().map(|created| created.end()),
 		last_updated_filter
 			.as_ref()
-			.map(|last_updated| last_updated.start()) as _,
+			.map(|last_updated| last_updated.start()),
 		last_updated_filter
 			.as_ref()
-			.map(|last_updated| last_updated.end()) as _,
+			.map(|last_updated| last_updated.end()),
 		count as i32,
 		(page * count) as i32,
 	)

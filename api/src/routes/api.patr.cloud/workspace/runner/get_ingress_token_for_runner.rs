@@ -42,7 +42,7 @@ pub async fn get_ingress_token_for_runner(
 				WHERE
 					id = $1;
 				"#,
-				&runner_id as _,
+				&runner_id,
 			)
 			.fetch_optional(&mut **database)
 			.await?
@@ -86,7 +86,7 @@ pub async fn get_ingress_token_for_runner(
 						id = $2;
 					"#,
 					&new_tunnel_id,
-					runner_id as _,
+					runner_id,
 				)
 				.execute(&mut **database)
 				.await?;

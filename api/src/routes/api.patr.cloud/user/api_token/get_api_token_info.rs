@@ -43,8 +43,8 @@ pub async fn get_api_token_info(
 			user_id = $2 AND
 			revoked IS NULL;
 		"#,
-		token_id as _,
-		user_data.id as _,
+		token_id,
+		user_data.id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -71,13 +71,13 @@ pub async fn get_api_token_info(
 	query!(
 		r#"
 		SELECT
-			workspace_id AS "workspace_id!: Uuid"
+			workspace_id AS "workspace_id!"
 		FROM
 			user_api_token_workspace_super_admin
 		WHERE
 			token_id = $1;
 		"#,
-		token_id as _,
+		token_id,
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -92,9 +92,9 @@ pub async fn get_api_token_info(
 	query!(
 		r#"
 		SELECT
-			workspace_id AS "workspace_id!: Uuid",
-			permission_id AS "permission_id!: Uuid",
-			scope_id AS "scope_id!: Uuid"
+			workspace_id AS "workspace_id!",
+			permission_id AS "permission_id!",
+			scope_id AS "scope_id!"
 		FROM
 			user_api_token_permission_binding
 		WHERE
@@ -103,7 +103,7 @@ pub async fn get_api_token_info(
 			workspace_id,
 			permission_id;
 		"#,
-		token_id as _,
+		token_id,
 	)
 	.fetch_all(&mut **database)
 	.await?

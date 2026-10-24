@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT host, path, deployment_id, port FROM managed_url WHERE id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "name": "host",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "host"
+          }
+        }
+      },
+      {
+        "name": "path",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "name": "deployment_id",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "deployment_id"
+          }
+        }
+      },
+      {
+        "name": "port",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "port"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a402c5c334749a61fed5c6e89c548c60921c1c635696acfb5a2424a5deb5f781"
+}

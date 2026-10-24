@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use axum::http::StatusCode;
 use models::api::workspace::rbac::user::*;
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -49,8 +49,8 @@ pub async fn update_user_roles_in_workspace(
 			user_id = $1 AND
 			workspace_id = $2;
 		"#,
-		user_id as _,
-		workspace_id as _,
+		user_id,
+		workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -59,15 +59,15 @@ pub async fn update_user_roles_in_workspace(
 	let actor_id = query!(
 		r#"
 		SELECT
-			actor_id AS "id: Uuid"
+			actor_id AS "id"
 		FROM
 			workspace_user
 		WHERE
 			user_id = $1 AND
 			workspace_id = $2;
 		"#,
-		&user_id as _,
-		workspace_id as _,
+		&user_id,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -94,7 +94,7 @@ pub async fn update_user_roles_in_workspace(
 					UNNEST($2::UUID[], $3::UUID[]) AS requested(role_id, scope_id)
 			);
 		"#,
-		&actor_id as _,
+		&actor_id,
 		&role_ids as _,
 		&scope_ids as _,
 	)
@@ -127,11 +127,11 @@ pub async fn update_user_roles_in_workspace(
 			(actor_id, role_id, scope_id)
 		DO NOTHING;
 		"#,
-		workspace_id as _,
-		&actor_id as _,
+		workspace_id,
+		&actor_id,
 		&role_ids as _,
 		&scope_ids as _,
-		&user_data.id as _,
+		&user_data.id,
 	)
 	.execute(&mut **database)
 	.await
@@ -149,12 +149,15 @@ pub async fn update_user_roles_in_workspace(
 	info!("User's roles updated. Setting revocation timestamp");
 
 	redis
-		.setex(
+		.set_with_options(
 			redis::keys::user_id_revocation_timestamp(&user_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
 			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs(),
+			),
 		)
 		.await
 		.inspect_err(|err| {

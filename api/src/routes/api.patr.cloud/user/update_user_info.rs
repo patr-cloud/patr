@@ -40,7 +40,7 @@ pub async fn update_user_info(
 		"#,
 		&*first_name,
 		&*last_name,
-		user_data.id as _,
+		user_data.id,
 	)
 	.execute(&mut **database)
 	.await?;

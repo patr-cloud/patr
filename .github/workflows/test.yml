@@ -487,7 +487,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres
+        run: cargo install sqlx-cli --no-default-features --features postgres,sqlite
+
+      - name: Install just
+        uses: taiki-e/install-action@v2
+        with:
+          tool: just
+
+      - name: Create frontend output dir (common embeds it)
+        run: mkdir -p frontend/.output/public
 
       - name: Build API binary
         run: cargo build --package api
@@ -500,7 +508,16 @@ jobs:
           PATR_DATABASE_HOST: localhost
           PATR_REDIS_HOST: localhost
 
-      - name: Verify sqlx offline data
-        run: cargo sqlx prepare --check --workspace
+      - name: Regenerate sqlx offline data
+        run: just prepare
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/api
+
+      - name: Fail if sqlx offline data is out of date
+        run: |
+          git add -N .sqlx runners/common/.sqlx
+          if ! git diff --quiet .sqlx runners/common/.sqlx; then
+            echo "::error::sqlx offline data is out of date. Run 'just prepare' and commit the result."
+            git diff --stat .sqlx runners/common/.sqlx
+            exit 1
+          fi

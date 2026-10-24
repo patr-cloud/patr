@@ -162,7 +162,7 @@ pub async fn social_login_callback(
 	)
 	.fetch_optional(&mut **database)
 	.await?
-	.map(|row| Uuid::from(row.user_id));
+	.map(|row| row.user_id);
 
 	match existing_owner {
 		Some(owner) if owner != user_data.id => {
@@ -193,7 +193,7 @@ pub async fn social_login_callback(
 						$3
 					);
 				"#,
-				user_data.id as _,
+				user_data.id,
 				github_external_id,
 				OffsetDateTime::now_utc(),
 			)

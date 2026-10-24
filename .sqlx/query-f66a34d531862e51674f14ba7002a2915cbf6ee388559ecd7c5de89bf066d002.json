@@ -11,37 +11,79 @@
             "name": "citext",
             "kind": "Simple"
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "user_to_sign_up",
+            "name": "email"
+          }
         }
       },
       {
         "ordinal": 1,
         "name": "password",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_to_sign_up",
+            "name": "password"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "first_name",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "user_to_sign_up",
+            "name": "first_name"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "last_name",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "user_to_sign_up",
+            "name": "last_name"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "otp_hash",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_to_sign_up",
+            "name": "otp_hash"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "otp_expiry",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_to_sign_up",
+            "name": "otp_expiry"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "sign_up_attempts",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "user_to_sign_up",
+            "name": "sign_up_attempts"
+          }
+        }
       }
     ],
     "parameters": {

@@ -477,7 +477,7 @@ where
 		SecretUpdated { id, last_updated } => {
 			let mut transaction = state.database.begin().await?;
 			db_helpers::upsert_secret_in_database(&mut transaction, id, last_updated).await?;
-			let deployment_ids = query(
+			let deployment_ids = query!(
 				r#"
 				SELECT DISTINCT
 					deployment_id
@@ -486,13 +486,13 @@ where
 				WHERE
 					secret_id = $1;
 				"#,
+				id
 			)
-			.bind(id)
 			.fetch_all(&mut *transaction)
 			.await?
 			.into_iter()
-			.map(|row| row.try_get::<Uuid, _>("deployment_id"))
-			.collect::<Result<Vec<_>, _>>()?;
+			.map(|row| row.deployment_id)
+			.collect::<Vec<_>>();
 			transaction.commit().await?;
 			// Each deployment compares the secret's version against the one it
 			// last applied, and re-applies itself if it's behind.
@@ -542,25 +542,25 @@ where
 	db_helpers::delete_all_managed_urls_in_database(&mut transaction).await?;
 
 	// Clear all deployment-related tables.
-	query("DELETE FROM deployment_volume;")
+	query!("DELETE FROM deployment_volume;")
 		.execute(&mut *transaction)
 		.await?;
-	query("DELETE FROM deployment_deploy_history;")
+	query!("DELETE FROM deployment_deploy_history;")
 		.execute(&mut *transaction)
 		.await?;
-	query("DELETE FROM deployment_config_mounts;")
+	query!("DELETE FROM deployment_config_mounts;")
 		.execute(&mut *transaction)
 		.await?;
-	query("DELETE FROM deployment_exposed_port;")
+	query!("DELETE FROM deployment_exposed_port;")
 		.execute(&mut *transaction)
 		.await?;
-	query("DELETE FROM deployment_environment_variable;")
+	query!("DELETE FROM deployment_environment_variable;")
 		.execute(&mut *transaction)
 		.await?;
-	query("DELETE FROM deployment;")
+	query!("DELETE FROM deployment;")
 		.execute(&mut *transaction)
 		.await?;
-	query("DELETE FROM secret;")
+	query!("DELETE FROM secret;")
 		.execute(&mut *transaction)
 		.await?;
 
@@ -637,7 +637,7 @@ where
 	// Collect deployment IDs we just synced; managed URLs only get persisted
 	// for deployments running on this runner. We need this before committing
 	// so the SQLite read sees them, but we can also use the in-memory set.
-	let local_deployment_ids = query(
+	let local_deployment_ids = query!(
 		r#"
 		SELECT
 			id
@@ -645,12 +645,12 @@ where
 			deployment
 		WHERE
 			deleted IS NULL;
-		"#,
+		"#
 	)
 	.fetch_all(&mut *transaction)
 	.await?
 	.into_iter()
-	.filter_map(|row| row.try_get::<Uuid, _>("id").ok())
+	.map(|row| row.id)
 	.collect::<BTreeSet<Uuid>>();
 
 	// Paginate through all managed URLs in the workspace, filter to

@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT secret.id, secret.name AS \"name: String\", resource.created AS \"created: OffsetDateTime\", secret.last_updated AS \"last_updated: OffsetDateTime\", COUNT(*) OVER() AS \"total_count!\" FROM secret INNER JOIN resource ON secret.id = resource.id WHERE secret.workspace_id = $1 AND secret.deleted IS NULL AND ($2::TEXT IS NULL OR secret.name ILIKE '%' || $2 || '%') AND ($3::TIMESTAMPTZ IS NULL OR resource.created >= $3) AND ($4::TIMESTAMPTZ IS NULL OR resource.created <= $4) AND ($5::TIMESTAMPTZ IS NULL OR secret.last_updated >= $5) AND ($6::TIMESTAMPTZ IS NULL OR secret.last_updated <= $6) ORDER BY resource.created DESC LIMIT $7 OFFSET $8;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "secret",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name: String",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "secret",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created: OffsetDateTime",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "resource",
+            "name": "created"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "last_updated: OffsetDateTime",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "secret",
+            "name": "last_updated"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "total_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Timestamptz",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "2fae042f901ee521f66478f2ca98ad9eafddc84afd10b8a0aa8db741237c872f"
+}

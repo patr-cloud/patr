@@ -1,0 +1,230 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, name, registry, image_name, repository_id, image_tag, status, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type, liveness_probe_port, liveness_probe_path, liveness_probe_port_type, current_live_digest FROM deployment WHERE id = $1 AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "name": "registry",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "registry"
+          }
+        }
+      },
+      {
+        "name": "image_name",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "image_name"
+          }
+        }
+      },
+      {
+        "name": "repository_id",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "repository_id"
+          }
+        }
+      },
+      {
+        "name": "image_tag",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "image_tag"
+          }
+        }
+      },
+      {
+        "name": "status",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "name": "min_horizontal_scale",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "min_horizontal_scale"
+          }
+        }
+      },
+      {
+        "name": "max_horizontal_scale",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "max_horizontal_scale"
+          }
+        }
+      },
+      {
+        "name": "machine_type",
+        "ordinal": 9,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "machine_type"
+          }
+        }
+      },
+      {
+        "name": "deploy_on_push",
+        "ordinal": 10,
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "deploy_on_push"
+          }
+        }
+      },
+      {
+        "name": "startup_probe_port",
+        "ordinal": 11,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "startup_probe_port"
+          }
+        }
+      },
+      {
+        "name": "startup_probe_path",
+        "ordinal": 12,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "startup_probe_path"
+          }
+        }
+      },
+      {
+        "name": "startup_probe_port_type",
+        "ordinal": 13,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "startup_probe_port_type"
+          }
+        }
+      },
+      {
+        "name": "liveness_probe_port",
+        "ordinal": 14,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "liveness_probe_port"
+          }
+        }
+      },
+      {
+        "name": "liveness_probe_path",
+        "ordinal": 15,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "liveness_probe_path"
+          }
+        }
+      },
+      {
+        "name": "liveness_probe_port_type",
+        "ordinal": 16,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "liveness_probe_port_type"
+          }
+        }
+      },
+      {
+        "name": "current_live_digest",
+        "ordinal": 17,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "current_live_digest"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "9e48c7365b0aafc762779f1af6a8411f3159d3f87f71188fefe88dbbe374e484"
+}

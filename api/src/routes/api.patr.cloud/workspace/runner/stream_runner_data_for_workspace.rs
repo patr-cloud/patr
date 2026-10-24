@@ -36,8 +36,8 @@ use models::{
 };
 use rustis::{
 	ClientError,
-	Error as RedisError,
-	client::{BatchPreparedCommand as _, Client as RedisClient},
+	ErrorKind,
+	client::{BatchPreparedCommand as _, Client as RedisClient, ExclusiveClient},
 	commands::{
 		GenericCommands,
 		SetCondition,
@@ -188,7 +188,7 @@ async fn handle_websocket(
 		WHERE
 			id = $1;
 		"#,
-		runner_id as _,
+		runner_id,
 	)
 	.execute(&state.database)
 	.await
@@ -201,7 +201,12 @@ async fn handle_websocket(
 
 	match pub_sub.subscribe(&redis_channel).await {
 		Ok(()) => (),
-		Err(RedisError::Client(ClientError::AlreadySubscribed)) => {
+		Err(err)
+			if matches!(
+				err.kind(),
+				ErrorKind::Client(ClientError::AlreadySubscribed)
+			) =>
+		{
 			warn!("Already subscribed to the runner data stream.");
 			debug!(concat!(
 				"This only happens when a previous loop ",
@@ -214,6 +219,20 @@ async fn handle_websocket(
 			return;
 		}
 	}
+
+	// WATCH belongs to the connection, so the connection lock is renewed and
+	// released over a connection of its own rather than the shared client.
+	let Ok(redis) = ExclusiveClient::connect(redis.config().clone())
+		.await
+		.inspect_err(|err| {
+			error!(
+				"Failed to connect for the runner connection lock: {:?}",
+				err
+			)
+		})
+	else {
+		return;
+	};
 
 	let ping_interval = if cfg!(debug_assertions) {
 		Duration::from_secs(1)
@@ -285,7 +304,7 @@ async fn handle_websocket(
 				.queue();
 			match tx.execute::<()>().await {
 				Ok(_) => {}
-				Err(RedisError::Aborted) => {
+				Err(err) if matches!(err.kind(), ErrorKind::Aborted) => {
 					info!("Runner connection lock changed during renewal, closing websocket");
 					break;
 				}
@@ -308,7 +327,7 @@ async fn handle_websocket(
 					// Error on pub_sub, continue to try again
 					continue;
 				};
-				let Ok(data) = serde_json::from_slice(&data.payload)
+				let Ok(data) = serde_json::from_slice(data.payload())
 					.inspect_err(|err| error!("Error streaming runner data: {:?}", err))
 				else {
 					break;
@@ -385,7 +404,7 @@ async fn handle_websocket(
 		WHERE
 			id = $1;
 		"#,
-		runner_id as _,
+		runner_id,
 	)
 	.execute(&state.database)
 	.await
@@ -411,7 +430,8 @@ async fn handle_websocket(
 		let mut tx = redis.create_transaction();
 		tx.del(lock_key.clone()).queue();
 		match tx.execute::<()>().await {
-			Ok(_) | Err(RedisError::Aborted) => Ok(()),
+			Ok(_) => Ok(()),
+			Err(err) if matches!(err.kind(), ErrorKind::Aborted) => Ok(()),
 			Err(e) => Err(e),
 		}
 	}
@@ -470,12 +490,12 @@ async fn update_deployment_status(
 					workspace_id = $4 AND
 					deleted IS NULL
 			)
-		) AS "status: DeploymentStatus";
+		) AS "status";
 		"#,
-		status as _,
-		id as _,
-		runner_id as _,
-		workspace_id as _,
+		status,
+		id,
+		runner_id,
+		workspace_id,
 	)
 	.fetch_one(&state.database)
 	.await?
@@ -594,8 +614,8 @@ async fn update_runner_exposure_type(
 					workspace_id = $2 AND
 					deleted IS NULL;
 				"#,
-				&runner_id as _,
-				&workspace_id as _,
+				&runner_id,
+				&workspace_id,
 			)
 			.fetch_optional(&state.database)
 			.await?
@@ -646,8 +666,8 @@ async fn update_runner_exposure_type(
 						deleted IS NULL;
 					"#,
 					&tunnel.id as _,
-					&runner_id as _,
-					&workspace_id as _,
+					&runner_id,
+					&workspace_id,
 				)
 				.execute(&state.database)
 				.await?;

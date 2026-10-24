@@ -64,7 +64,7 @@ pub async fn start_deployment(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -72,7 +72,7 @@ pub async fn start_deployment(
 		let registry = if deployment.registry == PatrRegistry.to_string() {
 			DeploymentRegistry::PatrRegistry {
 				registry: PatrRegistry,
-				repository_id: deployment.repository_id?.into(),
+				repository_id: deployment.repository_id?,
 			}
 		} else {
 			DeploymentRegistry::ExternalRegistry {
@@ -95,8 +95,8 @@ pub async fn start_deployment(
 				repository_id = $1 AND
 				name = $2;
 			"#,
-			repository_id as _,
-			image_tag as _
+			repository_id,
+			image_tag
 		)
 		.fetch_optional(&mut **database)
 		.await?
@@ -120,10 +120,10 @@ pub async fn start_deployment(
 					(deployment_id, image_digest)
 				DO NOTHING;
 				"#,
-				deployment_id as _,
-				digest as _,
-				repository_id as _,
-				now as _,
+				deployment_id,
+				digest,
+				repository_id,
+				now,
 			)
 			.execute(&mut **database)
 			.await?;
@@ -145,9 +145,9 @@ pub async fn start_deployment(
 		WHERE
 			id = $2;
 		"#,
-		DeploymentStatus::Deploying as _,
-		deployment_id as _,
-		digest as _,
+		DeploymentStatus::Deploying,
+		deployment_id,
+		digest,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -156,13 +156,13 @@ pub async fn start_deployment(
 		r#"
 		SELECT
 			port,
-			port_type AS "port_type: ExposedPortType"
+			port_type
 		FROM
 			deployment_exposed_port
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -178,24 +178,24 @@ pub async fn start_deployment(
 	let row = query!(
 		r#"
 		SELECT
-			id AS "id: Uuid",
+			id,
 			name,
 			registry,
 			image_name,
 			image_tag,
-			runner AS "runner: Uuid",
-			status AS "status: DeploymentStatus",
-			repository_id AS "repository_id: Uuid",
+			runner,
+			status,
+			repository_id,
 			min_horizontal_scale,
 			max_horizontal_scale,
-			machine_type AS "machine_type: Uuid",
+			machine_type,
 			deploy_on_push,
 			startup_probe_port,
 			startup_probe_path,
-			startup_probe_port_type AS "startup_probe_port_type: Option<ExposedPortType>",
+			startup_probe_port_type AS "startup_probe_port_type?",
 			liveness_probe_port,
 			liveness_probe_path,
-			liveness_probe_port_type AS "liveness_probe_port_type: Option<ExposedPortType>",
+			liveness_probe_port_type AS "liveness_probe_port_type?",
 			current_live_digest
 		FROM
 			deployment
@@ -203,7 +203,7 @@ pub async fn start_deployment(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_one(&mut **database)
 	.await
@@ -251,13 +251,13 @@ pub async fn start_deployment(
 		SELECT
 			name,
 			value,
-			secret_id AS "secret_id: Uuid"
+			secret_id
 		FROM
 			deployment_environment_variable
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -299,7 +299,7 @@ pub async fn start_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_all(&mut **database)
 	.await?
@@ -321,7 +321,7 @@ pub async fn start_deployment(
 		WHERE
 			deployment_id = $1;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_all(&mut **database)
 	.await?

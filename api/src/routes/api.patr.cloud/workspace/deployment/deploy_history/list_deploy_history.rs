@@ -53,8 +53,8 @@ pub async fn list_deploy_history(
 			workspace_id = $2 AND
 			deleted IS NULL;
 		"#,
-		deployment_id as _,
-		workspace_id as _
+		deployment_id,
+		workspace_id
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -79,10 +79,10 @@ pub async fn list_deploy_history(
 		LIMIT $5
 		OFFSET $6;
 		"#,
-		deployment_id as _,
-		image_digest_filter as _,
-		created_filter.as_ref().map(|created_at| created_at.start()) as _,
-		created_filter.as_ref().map(|created_at| created_at.end()) as _,
+		deployment_id,
+		image_digest_filter,
+		created_filter.as_ref().map(|created_at| created_at.start()),
+		created_filter.as_ref().map(|created_at| created_at.end()),
 		count as i32,
 		(page * count) as i32
 	)

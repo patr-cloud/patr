@@ -25,10 +25,10 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 	let expired_domains = query!(
 		r#"
 		SELECT
-			workspace_domain.id AS "id: Uuid",
+			workspace_domain.id,
 			workspace_domain.name,
 			workspace_domain.tld,
-			workspace_domain.workspace_id AS "workspace_id: Uuid"
+			workspace_domain.workspace_id
 		FROM
 			workspace_domain
 		INNER JOIN
@@ -74,10 +74,10 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 		let managed_urls = query!(
 			r#"
 			SELECT
-				managed_url.id AS "id: Uuid",
+				managed_url.id,
 				managed_url.sub_domain,
-				managed_url.deployment_id AS "deployment_id: Uuid",
-				deployment.runner AS "runner?: Uuid"
+				managed_url.deployment_id,
+				deployment.runner AS "runner?"
 			FROM
 				managed_url
 			LEFT JOIN
@@ -88,7 +88,7 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 				managed_url.domain_id = $1 AND
 				managed_url.deleted IS NULL;
 			"#,
-			domain.id as _,
+			domain.id,
 		)
 		.fetch_all(&data.database)
 		.await
@@ -102,7 +102,7 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 				WHERE
 					id = $1;
 				"#,
-				url.id as _,
+				url.id,
 			)
 			.execute(&data.database)
 			.await
@@ -117,7 +117,7 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 				WHERE
 					id = $1;
 				"#,
-				url.id as _,
+				url.id,
 			)
 			.execute(&data.database)
 			.await
@@ -134,7 +134,7 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 			RETURNING
 				cloudflare_custom_hostname_id;
 			"#,
-			domain.id as _,
+			domain.id,
 		)
 		.fetch_all(&data.database)
 		.await
@@ -181,7 +181,7 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 			WHERE
 				id = $1;
 			"#,
-			domain.id as _,
+			domain.id,
 		)
 		.execute(&data.database)
 		.await
@@ -196,7 +196,7 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 			WHERE
 				id = $1;
 			"#,
-			domain.id as _,
+			domain.id,
 		)
 		.execute(&data.database)
 		.await

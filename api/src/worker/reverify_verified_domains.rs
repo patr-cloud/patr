@@ -1,4 +1,4 @@
-use apalis::prelude::*;
+use apalis::prelude::{Data, WorkerError, WorkerStateError};
 use apalis_cron::Tick;
 use futures::TryStreamExt;
 use hickory_resolver::{
@@ -28,7 +28,7 @@ pub async fn reverify_verified_domains(_: Tick, data: Data<AppState>) -> Result<
 	query!(
 		r#"
 		SELECT
-			id AS "id: Uuid",
+			id,
 			name,
 			tld
 		FROM
@@ -67,7 +67,7 @@ pub async fn reverify_verified_domains(_: Tick, data: Data<AppState>) -> Result<
 				WHERE
 					id = $1;
 				"#,
-				domain.id as _,
+				domain.id,
 			)
 			.execute(&data.database)
 			.await?;

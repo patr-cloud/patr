@@ -800,7 +800,7 @@ async fn cleanup_removes_only_long_expired_invites() {
 		.await;
 
 	api::worker::cleanup_expired_invites::cleanup_expired_invites(
-		Tick::default(),
+		Tick::new(0),
 		Data::new(setup.state().clone()),
 	)
 	.await
@@ -824,9 +824,9 @@ async fn cleanup_removes_only_long_expired_invites() {
 
 	// The role rows have no ON DELETE CASCADE, so the cron has to clear them
 	// itself or they leak.
-	let orphaned_roles = sqlx::query_scalar::<_, i64>(&format!(
+	let orphaned_roles = sqlx::query_scalar::<_, i64>(sqlx::AssertSqlSafe(format!(
 		"SELECT COUNT(*) FROM workspace_user_invite_role WHERE invite_id = '{long_expired}'"
-	))
+	)))
 	.fetch_one(&setup.state().database)
 	.await
 	.expect("failed to count invite role rows");

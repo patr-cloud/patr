@@ -124,8 +124,8 @@ pub(super) async fn authenticate_and_authorize(
 			workspace_id = $2 AND
 			deleted IS NULL;
 		"#,
-		secret_id as _,
-		workspace_id as _,
+		secret_id,
+		workspace_id,
 	)
 	.fetch_optional(&mut *database)
 	.await

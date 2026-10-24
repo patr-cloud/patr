@@ -11,28 +11,28 @@ use crate::prelude::*;
 async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
 	// Disable foreign keys so we can freely drop/recreate tables regardless
 	// of reference order.
-	query("PRAGMA foreign_keys = OFF;")
+	sqlx::query("PRAGMA foreign_keys = OFF;")
 		.execute(&mut *connection)
 		.await?;
 
 	// Drop triggers (no longer needed — actor messages replace them)
 
-	query("DROP TRIGGER IF EXISTS deployment_tg_before_insert_update_log;")
+	sqlx::query("DROP TRIGGER IF EXISTS deployment_tg_before_insert_update_log;")
 		.execute(&mut *connection)
 		.await?;
-	query("DROP TRIGGER IF EXISTS deployment_tg_before_update_update_log;")
+	sqlx::query("DROP TRIGGER IF EXISTS deployment_tg_before_update_update_log;")
 		.execute(&mut *connection)
 		.await?;
-	query("DROP TRIGGER IF EXISTS deployment_tg_before_delete_update_log;")
+	sqlx::query("DROP TRIGGER IF EXISTS deployment_tg_before_delete_update_log;")
 		.execute(&mut *connection)
 		.await?;
-	query("DROP TABLE IF EXISTS deployment_update_log;")
+	sqlx::query("DROP TABLE IF EXISTS deployment_update_log;")
 		.execute(&mut *connection)
 		.await?;
 
 	// Recreate deployment_exposed_port with named constraints
 
-	query(
+	sqlx::query(
 		r#"
 		CREATE TABLE deployment_exposed_port_new(
 			deployment_id TEXT NOT NULL,
@@ -51,7 +51,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	sqlx::query(
 		r#"
 		INSERT INTO deployment_exposed_port_new
 		SELECT * FROM deployment_exposed_port;
@@ -60,17 +60,17 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query("DROP TABLE deployment_exposed_port;")
+	sqlx::query("DROP TABLE deployment_exposed_port;")
 		.execute(&mut *connection)
 		.await?;
 
-	query("ALTER TABLE deployment_exposed_port_new RENAME TO deployment_exposed_port;")
+	sqlx::query("ALTER TABLE deployment_exposed_port_new RENAME TO deployment_exposed_port;")
 		.execute(&mut *connection)
 		.await?;
 
 	// Recreate deployment with named constraints
 
-	query(
+	sqlx::query(
 		r#"
 		CREATE TABLE deployment_new(
 			id TEXT NOT NULL PRIMARY KEY,
@@ -173,7 +173,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	sqlx::query(
 		r#"
 		INSERT INTO deployment_new
 		SELECT * FROM deployment;
@@ -182,17 +182,17 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query("DROP TABLE deployment;")
+	sqlx::query("DROP TABLE deployment;")
 		.execute(&mut *connection)
 		.await?;
 
-	query("ALTER TABLE deployment_new RENAME TO deployment;")
+	sqlx::query("ALTER TABLE deployment_new RENAME TO deployment;")
 		.execute(&mut *connection)
 		.await?;
 
 	// Recreate deployment_environment_variable with named constraints
 
-	query(
+	sqlx::query(
 		r#"
 		CREATE TABLE deployment_environment_variable_new(
 			deployment_id TEXT NOT NULL,
@@ -214,7 +214,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	sqlx::query(
 		r#"
 		INSERT INTO deployment_environment_variable_new
 		SELECT * FROM deployment_environment_variable;
@@ -223,11 +223,11 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query("DROP TABLE deployment_environment_variable;")
+	sqlx::query("DROP TABLE deployment_environment_variable;")
 		.execute(&mut *connection)
 		.await?;
 
-	query(
+	sqlx::query(
 		"ALTER TABLE deployment_environment_variable_new RENAME TO deployment_environment_variable;",
 	)
 	.execute(&mut *connection)
@@ -235,7 +235,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 
 	// ── Recreate deployment_volume with named constraint ──
 
-	query(
+	sqlx::query(
 		r#"
 		CREATE TABLE deployment_volume_new(
 			id UUID NOT NULL PRIMARY KEY,
@@ -249,7 +249,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	sqlx::query(
 		r#"
 		INSERT INTO deployment_volume_new
 		SELECT * FROM deployment_volume;
@@ -258,17 +258,17 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query("DROP TABLE deployment_volume;")
+	sqlx::query("DROP TABLE deployment_volume;")
 		.execute(&mut *connection)
 		.await?;
 
-	query("ALTER TABLE deployment_volume_new RENAME TO deployment_volume;")
+	sqlx::query("ALTER TABLE deployment_volume_new RENAME TO deployment_volume;")
 		.execute(&mut *connection)
 		.await?;
 
 	// Re-enable foreign keys
 
-	query("PRAGMA foreign_keys = ON;")
+	sqlx::query("PRAGMA foreign_keys = ON;")
 		.execute(&mut *connection)
 		.await?;
 

@@ -42,7 +42,7 @@ pub async fn create_workspace(
 	cfg_if! {
 		if #[cfg(feature = "cloud")] {
 			use axum::http::StatusCode;
-			use rustis::commands::StringCommands;
+			use rustis::commands::{SetExpiration, StringCommands};
 			use std::ops::Add;
 
 			info!("Creating workspace: `{name}`");
@@ -99,7 +99,7 @@ pub async fn create_workspace(
 						gen_random_uuid(),
 						NOW()
 					)
-				RETURNING id AS "id: Uuid";
+				RETURNING id;
 				"#,
 			)
 			.fetch_one(&mut **database)
@@ -125,9 +125,9 @@ pub async fn create_workspace(
 				VALUES
 					($1, $2, $3, NULL);
 				"#,
-				workspace_id as _,
+				workspace_id,
 				&name,
-				user_id as _,
+				user_id,
 			)
 			.execute(&mut **database)
 			.await
@@ -148,8 +148,8 @@ pub async fn create_workspace(
 				WHERE
 					id = $2;
 				"#,
-				workspace_id as _,
-				workspace_id as _,
+				workspace_id,
+				workspace_id,
 			)
 			.execute(&mut **database)
 			.await?;
@@ -166,13 +166,16 @@ pub async fn create_workspace(
 
 			// Revoke the token of the user who created the workspace
 			redis
-				.setex(
+				.set_with_options(
 					redis::keys::user_id_revocation_timestamp(&user_id),
-					constants::CACHED_PERMISSIONS_VALIDITY
-						.whole_seconds()
-						.unsigned_abs()
-						.add(300),
 					OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+					None,
+					SetExpiration::Ex(
+						constants::CACHED_PERMISSIONS_VALIDITY
+							.whole_seconds()
+							.unsigned_abs()
+							.add(300),
+					),
 				)
 				.await
 				.inspect_err(|err| {
@@ -475,7 +478,7 @@ async fn create_default_roles_for_workspace(
 	let permission_ids = query!(
 		r#"
 		SELECT
-			id AS "id: Uuid",
+			id,
 			name
 		FROM
 			permission;
@@ -508,10 +511,10 @@ async fn create_default_roles_for_workspace(
 					$2,
 					NULL
 				)
-			RETURNING id AS "id: Uuid";
+			RETURNING id;
 			"#,
-			workspace_id as _,
-			now as _,
+			workspace_id,
+			now,
 		)
 		.fetch_one(&mut *connection)
 		.await
@@ -540,8 +543,8 @@ async fn create_default_roles_for_workspace(
 					TRUE
 				);
 			"#,
-			role_id as _,
-			workspace_id as _,
+			role_id,
+			workspace_id,
 			role.name,
 			role.description,
 		)
@@ -573,7 +576,7 @@ async fn create_default_roles_for_workspace(
 				$1,
 				UNNEST($2::UUID[]);
 			"#,
-			role_id as _,
+			role_id,
 			&role_permission_ids as _,
 		)
 		.execute(&mut *connection)

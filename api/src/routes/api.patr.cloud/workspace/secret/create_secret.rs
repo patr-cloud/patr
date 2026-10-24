@@ -49,10 +49,10 @@ pub async fn create_secret(
 				$2,
 				NULL
 			)
-		RETURNING id AS "id: Uuid";
+		RETURNING id;
 		"#,
-		workspace_id as _,
-		now as _,
+		workspace_id,
+		now,
 	)
 	.fetch_one(&mut **database)
 	.await?
@@ -77,10 +77,10 @@ pub async fn create_secret(
 				NULL
 			);
 		"#,
-		secret_id as _,
+		secret_id,
 		name as _,
-		workspace_id as _,
-		now as _,
+		workspace_id,
+		now,
 	)
 	.execute(&mut **database)
 	.await

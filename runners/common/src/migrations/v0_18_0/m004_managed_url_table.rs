@@ -8,7 +8,7 @@ use crate::prelude::*;
 /// Create the `managed_url` table and its index.
 #[macros::migration]
 async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
-	query(
+	sqlx::query(
 		r#"
 		CREATE TABLE managed_url(
 			id TEXT NOT NULL PRIMARY KEY,
@@ -29,7 +29,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	sqlx::query(
 		r#"
 		CREATE INDEX
 			managed_url_idx_deployment_id

@@ -46,7 +46,7 @@ pub async fn update_secret(
 		"#,
 		name as _,
 		value.is_some(),
-		secret_id as _,
+		secret_id,
 	)
 	.fetch_one(&mut **database)
 	.await
@@ -79,7 +79,7 @@ pub async fn update_secret(
 		let runners = query!(
 			r#"
 			SELECT DISTINCT
-				deployment.runner AS "runner: Uuid"
+				deployment.runner
 			FROM
 				deployment_environment_variable
 			INNER JOIN
@@ -90,7 +90,7 @@ pub async fn update_secret(
 				deployment_environment_variable.secret_id = $1 AND
 				deployment.deleted IS NULL;
 			"#,
-			secret_id as _,
+			secret_id,
 		)
 		.fetch_all(&mut **database)
 		.await?;

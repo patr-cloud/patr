@@ -165,7 +165,7 @@ where
 							id = $1 AND
 							deleted IS NULL;
 						"#,
-						resource_id as _
+						resource_id
 					)
 					.fetch_optional(&mut **req.database)
 					.await?;

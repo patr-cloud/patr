@@ -10,7 +10,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	// SQLite doesn't support ALTER TABLE ADD COLUMN with CHECK constraints
 	// that reference other columns, so we recreate the table.
 
-	query(
+	sqlx::query(
 		r#"
 		CREATE TABLE deployment_new(
 			id TEXT NOT NULL PRIMARY KEY,
@@ -116,7 +116,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	// Copy existing data. All existing rows have image_name set (they were
 	// pre-resolved), so they'll satisfy the ExternalRegistry branch of the
 	// CHECK constraint.
-	query(
+	sqlx::query(
 		r#"
 		INSERT INTO deployment_new(
 			id, name, registry, image_name, repository_id, image_tag, status,
@@ -138,11 +138,11 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query("DROP TABLE deployment;")
+	sqlx::query("DROP TABLE deployment;")
 		.execute(&mut *connection)
 		.await?;
 
-	query("ALTER TABLE deployment_new RENAME TO deployment;")
+	sqlx::query("ALTER TABLE deployment_new RENAME TO deployment;")
 		.execute(&mut *connection)
 		.await?;
 

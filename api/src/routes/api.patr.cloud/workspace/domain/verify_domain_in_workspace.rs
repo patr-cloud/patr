@@ -40,7 +40,7 @@ pub async fn verify_domain_in_workspace(
 	let row = query!(
 		r#"
 		SELECT
-			id AS "id: Uuid",
+			id,
 			name,
 			tld
 		FROM
@@ -49,7 +49,7 @@ pub async fn verify_domain_in_workspace(
 			id = $1 AND
 			workspace_domain.deleted IS NULL;
 		"#,
-		domain_id as _,
+		domain_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -91,7 +91,7 @@ pub async fn verify_domain_in_workspace(
 			WHERE
 				id = $1;
 			"#,
-			domain_id as _,
+			domain_id,
 		)
 		.execute(&mut **database)
 		.await?;

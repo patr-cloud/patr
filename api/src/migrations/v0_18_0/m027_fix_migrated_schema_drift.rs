@@ -71,9 +71,9 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
 		.is_some();
 
 		if exists {
-			sqlx::query(&format!(
+			sqlx::query(sqlx::AssertSqlSafe(format!(
 				"ALTER TABLE {table} RENAME CONSTRAINT {old_name} TO {new_name};"
-			))
+			)))
 			.execute(&mut *connection)
 			.await?;
 		}

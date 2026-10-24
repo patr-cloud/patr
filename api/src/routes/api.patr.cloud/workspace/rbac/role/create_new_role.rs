@@ -68,10 +68,10 @@ pub async fn create_new_role(
 				$2,
 				NULL
 			)
-		RETURNING id AS "id: Uuid";
+		RETURNING id;
 		"#,
-		workspace_id as _,
-		now as _,
+		workspace_id,
+		now,
 	)
 	.fetch_one(&mut **database)
 	.await
@@ -100,8 +100,8 @@ pub async fn create_new_role(
 				FALSE
 			);
 		"#,
-		role_id as _,
-		workspace_id as _,
+		role_id,
+		workspace_id,
 		name as _,
 		description as _,
 	)
@@ -122,7 +122,7 @@ pub async fn create_new_role(
 			$1,
 			UNNEST($2::UUID[]);
 		"#,
-		role_id as _,
+		role_id,
 		&permissions.into_iter().collect::<Vec<_>>() as _,
 	)
 	.execute(&mut **database)

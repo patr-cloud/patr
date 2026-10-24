@@ -1,7 +1,7 @@
 use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::http::StatusCode;
 use models::api::auth::*;
-use rustis::commands::{GenericCommands, StringCommands};
+use rustis::commands::{GenericCommands, SetExpiration, StringCommands};
 use time::OffsetDateTime;
 
 use crate::{prelude::*, redis::keys as redis};
@@ -46,7 +46,7 @@ pub async fn logout(
 		WHERE
 			login_id = $1;
 		"#,
-		login_id as _,
+		login_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -85,7 +85,7 @@ pub async fn logout(
 		WHERE
 			login_id = $1;
 		"#,
-		login_id as _,
+		login_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -99,7 +99,7 @@ pub async fn logout(
 		WHERE
 			login_id = $1;
 		"#,
-		login_id as _,
+		login_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -116,13 +116,16 @@ pub async fn logout(
 			);
 		});
 	redis
-		.setex(
+		.set_with_options(
 			redis::login_id_revocation_timestamp(&login_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs() +
-				100,
 			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs() +
+					100,
+			),
 		)
 		.await
 		.inspect_err(|err| {

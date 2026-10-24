@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE TABLE IF NOT EXISTS deployment_machine_type(id TEXT NOT NULL PRIMARY KEY, cpu_count INTEGER NOT NULL, memory_count INTEGER NOT NULL);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "3ed42ecc13cacbfd4336b8c5623a0f88010c735e4773e91633b492b4f7689d27"
+}

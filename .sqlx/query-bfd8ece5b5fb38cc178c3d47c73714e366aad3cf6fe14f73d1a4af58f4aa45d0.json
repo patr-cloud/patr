@@ -6,22 +6,46 @@
       {
         "ordinal": 0,
         "name": "id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "sub_domain",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "sub_domain"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "domain_id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "domain_id"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "path",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "path"
+          }
+        }
       },
       {
         "ordinal": 4,
@@ -37,42 +61,85 @@
               ]
             }
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "url_type"
+          }
         }
       },
       {
         "ordinal": 5,
         "name": "deployment_id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "deployment_id"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "port",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "port"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "url",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "url"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "is_active",
-        "type_info": "Bool"
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url_custom_hostname",
+            "name": "is_active"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "permanent_redirect",
-        "type_info": "Bool"
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "permanent_redirect"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "http_only",
-        "type_info": "Bool"
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "http_only"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "total_count!",
-        "type_info": "Int8"
+        "type_info": "Int8",
+        "origin": "Expression"
       }
     ],
     "parameters": {

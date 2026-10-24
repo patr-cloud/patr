@@ -24,7 +24,7 @@ pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Pe
 			query!(
 				r#"
 				SELECT
-					id AS "id: Uuid",
+					id,
 					name
 				FROM
 					permission;

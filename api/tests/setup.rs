@@ -491,22 +491,26 @@ impl TestSetup {
 	/// Compute the current TOTP code for a base32-encoded secret. Used by MFA
 	/// tests that need to submit a valid OTP.
 	pub fn compute_totp(&self, secret_base32: &str) -> String {
-		use totp_rs::{Algorithm as TotpAlgorithm, Secret, TOTP};
+		use totp_rs::{Algorithm as TotpAlgorithm, Builder, Secret};
 
-		let secret = Secret::Encoded(secret_base32.to_string())
-			.to_bytes()
-			.expect("failed to decode TOTP secret");
-		let totp = TOTP::new(TotpAlgorithm::SHA1, 6, 1, 30, secret, None, String::new())
-			.expect("failed to construct TOTP");
-		totp.generate_current()
-			.expect("failed to generate TOTP code")
+		let secret = Secret::try_from_base32(secret_base32).expect("failed to decode TOTP secret");
+		Builder::new()
+			.with_algorithm(TotpAlgorithm::SHA1)
+			.with_digits(6)
+			.with_skew(1)
+			.with_step_duration(30)
+			.with_secret(secret)
+			.build()
+			.expect("failed to construct TOTP")
+			.generate_current()
+			.to_string()
 	}
 
 	/// Run an arbitrary SQL statement against the test database. Escape hatch
 	/// for tests that need to nudge state directly (e.g. backdating an
 	/// `*_expiry` column to simulate expiry).
 	pub async fn execute_sql(&self, sql: &str) {
-		sqlx::query(sql)
+		sqlx::query(sqlx::AssertSqlSafe(sql))
 			.execute(&self.state.database)
 			.await
 			.unwrap_or_else(|e| panic!("execute_sql failed for `{sql}`: {e}"));

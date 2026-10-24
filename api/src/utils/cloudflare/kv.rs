@@ -35,8 +35,8 @@ pub async fn sync_ingress_kv_for_fqdn(
 		SELECT
 			managed_url.path,
 			managed_url.url_type AS "url_type: ManagedUrlTypeDiscriminant",
-			managed_url.deployment_id AS "deployment_id: Uuid",
-			deployment.runner AS "runner?: Uuid",
+			managed_url.deployment_id,
+			deployment.runner AS "runner?",
 			managed_url.port,
 			managed_url.url,
 			managed_url.permanent_redirect,
@@ -61,7 +61,7 @@ pub async fn sync_ingress_kv_for_fqdn(
 				workspace_domain.tld
 			) = $1;
 		"#,
-		fqdn as _,
+		fqdn,
 	)
 	.fetch_all(database)
 	.await?

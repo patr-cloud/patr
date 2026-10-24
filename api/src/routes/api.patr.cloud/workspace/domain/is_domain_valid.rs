@@ -50,7 +50,7 @@ pub async fn is_domain_valid(
             workspace_id = $1
             AND CONCAT(name, '.', tld) = $2;
         "#,
-		workspace_id as _,
+		workspace_id,
 		domain as _,
 	)
 	.fetch_optional(&mut **database)

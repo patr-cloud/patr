@@ -50,7 +50,7 @@ pub async fn verify_configuration(
 				r#"
 				SELECT
 					managed_url.sub_domain,
-					managed_url.domain_id AS "domain_id: Uuid",
+					managed_url.domain_id,
 					managed_url_custom_hostname.cloudflare_custom_hostname_id
 				FROM
 					managed_url
@@ -63,7 +63,7 @@ pub async fn verify_configuration(
 					managed_url.id = $1 AND
 					managed_url.deleted IS NULL;
 				"#,
-				managed_url_id as _,
+				managed_url_id,
 			)
 			.fetch_optional(&mut **database)
 			.await?
@@ -105,7 +105,7 @@ pub async fn verify_configuration(
 					domain_id = $2;
 				"#,
 				&row.sub_domain,
-				row.domain_id as _,
+				row.domain_id,
 				configured,
 			)
 			.execute(&mut **database)

@@ -43,7 +43,7 @@ pub async fn delete_repository(
 			repository_id = $1 AND
 			status != 'deleted';
 		"#,
-		repository_id as _
+		repository_id
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -61,7 +61,7 @@ pub async fn delete_repository(
 		WHERE
 			repository_id = $1;
 		"#,
-		repository_id as _
+		repository_id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -74,7 +74,7 @@ pub async fn delete_repository(
 		WHERE
 			repository_id = $1;
 		"#,
-		repository_id as _
+		repository_id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -87,7 +87,7 @@ pub async fn delete_repository(
 		WHERE
 			id = $1;
 		"#,
-		repository_id as _
+		repository_id
 	)
 	.execute(&mut **database)
 	.await?
@@ -109,7 +109,7 @@ pub async fn delete_repository(
 		WHERE
 			id = $1;
 		"#,
-		repository_id as _
+		repository_id
 	)
 	.execute(&mut **database)
 	.await?;

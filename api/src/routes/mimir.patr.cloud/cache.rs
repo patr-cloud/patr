@@ -1,4 +1,7 @@
-use rustis::{client::Client as RedisClient, commands::StringCommands as _};
+use rustis::{
+	client::Client as RedisClient,
+	commands::{SetExpiration, StringCommands as _},
+};
 
 use crate::prelude::*;
 
@@ -26,14 +29,14 @@ pub(super) async fn get_workspace_for_runner(
 	let result = query!(
 		r#"
 		SELECT
-			workspace_id AS "workspace_id: Uuid"
+			workspace_id
 		FROM
 			runner
 		WHERE
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		runner_id as _
+		runner_id
 	)
 	.fetch_optional(&mut *database)
 	.await?
@@ -42,7 +45,12 @@ pub(super) async fn get_workspace_for_runner(
 	// Cache the result (empty string for not-found)
 	let cache_value = result.map(|id| id.to_string()).unwrap_or_default();
 	let _ = redis
-		.setex(&cache_key, super::CACHE_TTL.as_secs(), &cache_value)
+		.set_with_options(
+			&cache_key,
+			&cache_value,
+			None,
+			SetExpiration::Ex(super::CACHE_TTL.as_secs()),
+		)
 		.await;
 
 	Ok(result)
@@ -71,14 +79,14 @@ pub(super) async fn get_runner_for_deployment(
 	let result = query!(
 		r#"
 		SELECT
-			runner AS "runner: Uuid"
+			runner
 		FROM
 			deployment
 		WHERE
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		deployment_id as _
+		deployment_id
 	)
 	.fetch_optional(&mut *database)
 	.await?
@@ -86,7 +94,12 @@ pub(super) async fn get_runner_for_deployment(
 
 	let cache_value = result.map(|id| id.to_string()).unwrap_or_default();
 	let _ = redis
-		.setex(&cache_key, super::CACHE_TTL.as_secs(), &cache_value)
+		.set_with_options(
+			&cache_key,
+			&cache_value,
+			None,
+			SetExpiration::Ex(super::CACHE_TTL.as_secs()),
+		)
 		.await;
 
 	Ok(result)

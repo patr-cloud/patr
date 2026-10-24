@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM managed_url;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "09cfdfc2d1a55d0004c01bedbece143e5d91f5d4f046ae6c6163fc44f59d140a"
+}

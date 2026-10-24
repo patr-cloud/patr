@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use models::api::{auth::SocialLoginProvider, user::*};
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 
 use crate::{models::social_login::GithubStatePayload, prelude::*};
 
@@ -38,10 +38,11 @@ pub async fn connect_social_login_initiate(
 
 	// State token validity: 10 minutes.
 	redis
-		.setex(
+		.set_with_options(
 			redis::keys::social_login_state(&provider, &oauth_state_token),
-			600,
 			payload,
+			None,
+			SetExpiration::Ex(600),
 		)
 		.await
 		.inspect_err(|err| {

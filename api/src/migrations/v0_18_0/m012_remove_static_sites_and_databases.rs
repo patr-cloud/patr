@@ -212,7 +212,7 @@ async fn purge_rbac_metadata(connection: &mut DatabaseConnection) -> Result<(), 
 		"role_resource_permissions_exclude",
 		"role_resource_permissions_type",
 	] {
-		sqlx::query(&format!(
+		sqlx::query(sqlx::AssertSqlSafe(format!(
 			r#"
 			DELETE FROM
 				{table}
@@ -228,7 +228,7 @@ async fn purge_rbac_metadata(connection: &mut DatabaseConnection) -> Result<(), 
 						name LIKE 'dnsRecord::%'
 				);
 			"#
-		))
+		)))
 		.execute(&mut *connection)
 		.await?;
 	}

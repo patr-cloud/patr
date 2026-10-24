@@ -38,7 +38,7 @@ pub async fn get_user_info(
 		WHERE
 			"user".id = $1;
 		"#,
-		user_data.id as _
+		user_data.id
 	)
 	.fetch_one(&mut **database)
 	.await?;

@@ -1,5 +1,5 @@
 [workspace]
-members              = ["api", "cli", "ingress", "macros", "models", "runners/common", "runners/docker"]
+members = ["api", "cli", "ingress", "macros", "models", "runners/common", "runners/docker"]
 # Kept in-tree as a reference implementation only — it predates the
 # common/actor design, doesn't implement `RunnerExecutor`, and is not built.
 exclude              = ["runners/kubernetes"]
@@ -22,14 +22,14 @@ cast_sign_loss                = "warn"
 missing_docs_in_private_items = "warn"
 # `ErrorType::server_error` logs when it's constructed, so an eager
 # `.ok_or(ErrorType::server_error(..))` logs an error even on the success path.
-or_fun_call                   = "warn"
+or_fun_call = "warn"
 
 [workspace.dependencies]
 anyhow                         = { default-features = false, version = "1" }
-apalis                         = { default-features = false, version = "1.0.0-rc.1" }
-apalis-cron                    = { default-features = false, version = "1.0.0-rc.1" }
-apalis-postgres                = { default-features = false, version = "1.0.0-rc.3" }
-argon2                         = { default-features = false, version = "0.6.0-rc.7" }
+apalis                         = { default-features = false, version = "1" }
+apalis-cron                    = { default-features = false, version = "1" }
+apalis-postgres                = { default-features = false, version = "1" }
+argon2                         = { default-features = false, version = "0.6.0" }
 askama                         = { default-features = false, version = "0.16" }
 aws-config                     = { default-features = false, version = "1" }
 aws-credential-types           = { default-features = false, version = "1" }
@@ -39,23 +39,23 @@ axum-extra                     = { default-features = false, version = "0.12" }
 axum-test                      = { default-features = false, version = "21" }
 axum-typed-websockets          = { default-features = false, git = "https://github.com/cachix/axum-typed-websockets" }
 base32                         = { default-features = false, version = "0.5" }
-base64                         = { default-features = false, version = "0.22" }
+base64                         = { default-features = false, version = "0.23" }
 bollard                        = { default-features = false, version = "0.21" }
 build-print                    = { default-features = false, version = "1" }
 cfg-if                         = { default-features = false, version = "1" }
 clap                           = { default-features = false, version = "4" }
 cloudflare                     = { default-features = false, git = "https://github.com/rakshith-ravi/cloudflare-rs", branch = "patr-must-haves" }
-comfy-table                    = { default-features = false, version = "7" }
+comfy-table                    = { default-features = false, version = "8" }
 common                         = { default-features = false, path = "runners/common" }
 config                         = { default-features = false, version = "0.15" }
 console-subscriber             = { default-features = false, version = "0.5" }
 console_error_panic_hook       = { default-features = false, version = "0.1" }
-convert_case                   = { default-features = false, version = "0.11" }
-cron                           = { default-features = false, version = "0.16" }
+convert_case                   = { default-features = false, version = "0.12" }
+cron                           = { default-features = false, version = "0.17" }
 crossterm                      = { default-features = false, version = "0.29" }
 dashmap                        = { default-features = false, version = "6" }
 derive_more                    = { default-features = false, version = "2" }
-dirs                           = { default-features = false, version = "6" }
+dirs                           = { default-features = false, version = "7" }
 docker                         = { default-features = false, path = "runners/docker" }
 either                         = { default-features = false, version = "1" }
 flate2                         = { default-features = false, version = "1" }
@@ -73,8 +73,8 @@ if-addrs                       = { default-features = false, version = "0.15" }
 inquire                        = { default-features = false, version = "0.9" }
 inventory                      = { default-features = false, version = "0.3" }
 ipinfo                         = { default-features = false, version = "3" }
-ipnetwork                      = { default-features = false, version = "0.20" }
-jsonwebtoken                   = { default-features = false, version = "10" }
+ipnetwork                      = { default-features = false, version = "0.21" }
+jsonwebtoken                   = { default-features = false, version = "11" }
 lettre                         = { default-features = false, version = "0.11" }
 macros                         = { default-features = false, path = "macros" }
 mime_guess                     = { default-features = false, version = "2" }
@@ -84,11 +84,11 @@ mrml                           = { default-features = false, version = "6" }
 nix                            = { default-features = false, version = "0.31" }
 oci-spec                       = { default-features = false, version = "0.10" }
 open                           = { default-features = false, version = "5" }
-opentelemetry                  = { default-features = false, version = "0.32" }
-opentelemetry-appender-tracing = { default-features = false, version = "0.32" }
-opentelemetry-otlp             = { default-features = false, version = "0.32" }
-opentelemetry-proto            = { default-features = false, version = "0.32" }
-opentelemetry_sdk              = { default-features = false, version = "0.32" }
+opentelemetry                  = { default-features = false, version = "0.33" }
+opentelemetry-appender-tracing = { default-features = false, version = "0.33" }
+opentelemetry-otlp             = { default-features = false, version = "0.33" }
+opentelemetry-proto            = { default-features = false, version = "0.33" }
+opentelemetry_sdk              = { default-features = false, version = "0.33" }
 pin-project                    = { default-features = false, version = "1" }
 preprocess                     = { default-features = false, version = "0.5" }
 proc-macro2                    = { default-features = false, version = "1" }
@@ -96,14 +96,14 @@ prost                          = { default-features = false, version = "0.14" }
 prost-types                    = { default-features = false, version = "0.14" }
 psl                            = { default-features = false, version = "2" }
 quote                          = { default-features = false, version = "1" }
-ractor                         = { default-features = false, version = "0.15" }
-ractor_actors                  = { default-features = false, version = "0.5" }
+ractor                         = { default-features = false, version = "0.16" }
+ractor_actors                  = { default-features = false, version = "0.7" }
 rand                           = { default-features = false, version = "0.10" }
 regex                          = { default-features = false, version = "1" }
 reqwest                        = { default-features = false, version = "0.13" }
 rust-embed                     = { default-features = false, version = "8" }
-rust-s3                        = { default-features = false, version = "0.37" }
-rustis                         = { default-features = false, version = "0.19" }
+rust-s3                        = { default-features = false, version = "0.38" }
+rustis                         = { default-features = false, version = "0.27" }
 rustls                         = { default-features = false, version = "0.23" }
 schemars                       = { default-features = false, version = "1" }
 self-replace                   = { default-features = false, version = "1" }
@@ -116,9 +116,9 @@ serde_test                     = { default-features = false, version = "1" }
 serde_yaml2                    = { default-features = false, version = "0.1" }
 sha2                           = { default-features = false, version = "0.11" }
 snap                           = { default-features = false, version = "1" }
-sqlx                           = { default-features = false, version = "0.8" }
+sqlx                           = { default-features = false, version = "0.9" }
 strum                          = { default-features = false, version = "0.28" }
-syn                            = { default-features = false, version = "2" }
+syn                            = { default-features = false, version = "3" }
 sync_wrapper                   = { default-features = false, version = "1" }
 tar                            = { default-features = false, version = "0.4" }
 tempfile                       = { default-features = false, version = "3" }
@@ -128,12 +128,12 @@ tokio                          = { default-features = false, version = "1" }
 tokio-stream                   = { default-features = false, version = "0.1" }
 tokio-tungstenite              = { default-features = false, version = "0.30" }
 tokio-util                     = { default-features = false, version = "0.7" }
-totp-rs                        = { default-features = false, version = "5" }
+totp-rs                        = { default-features = false, version = "6" }
 tower                          = { default-features = false, version = "0.5" }
 tower-http                     = { default-features = false, version = "0.7" }
 tracing                        = { default-features = false, version = "0.1" }
 tracing-log                    = { default-features = false, version = "0.2" }
-tracing-opentelemetry          = { default-features = false, version = "0.33" }
+tracing-opentelemetry          = { default-features = false, version = "0.34" }
 tracing-subscriber             = { default-features = false, version = "0.3" }
 ts-rs                          = { default-features = false, version = "12" }
 typed-builder                  = { default-features = false, version = "0.23" }
@@ -143,8 +143,8 @@ uzers                          = { default-features = false, version = "0.12" }
 wiremock                       = { default-features = false, version = "0.6" }
 woothee                        = { default-features = false, version = "0.13" }
 worker                         = { default-features = false, version = "0.8" }
-zip                            = { default-features = false, version = "8" }
 zeroize                        = { default-features = false, version = "1" }
+zip                            = { default-features = false, version = "9" }
 
 [workspace.dev-dependencies]
 models = { features = ["default"] }

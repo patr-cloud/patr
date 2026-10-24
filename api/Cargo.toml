@@ -18,12 +18,12 @@ default = ["cloud"]
 [dependencies]
 apalis                         = { workspace = true, features = ["tracing"] }
 apalis-cron                    = { workspace = true, features = ["cron", "serde"] }
-apalis-postgres                = { workspace = true, features = ["migrate", "tokio", "time"] }
+apalis-postgres                = { workspace = true, features = ["migrate", "tokio"] }
 argon2                         = { workspace = true, features = ["default"] }
 askama                         = { workspace = true, features = ["derive", "config", "std", "urlencode"] }
 aws-config                     = { workspace = true, features = [] }
 aws-credential-types           = { workspace = true, features = ["hardcoded-credentials"] }
-aws-sdk-s3                     = { workspace = true, features = ["rt-tokio", "behavior-version-latest", "default-https-client", "rustls", "http-1x"] }
+aws-sdk-s3                     = { workspace = true, features = ["rt-tokio", "behavior-version-latest", "default-https-client", "http-1x"] }
 axum                           = { workspace = true, features = ["default", "macros", "tracing"] }
 axum-extra                     = { workspace = true, features = ["default", "typed-routing"] }
 axum-typed-websockets          = { workspace = true, features = ["default"] }
@@ -52,7 +52,7 @@ models                         = { workspace = true, features = ["axum"] }
 oci-spec                       = { workspace = true, features = ["distribution", "image"] }
 opentelemetry                  = { workspace = true, features = ["default"] }
 opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
-opentelemetry-otlp             = { workspace = true, features = ["default", "tonic", "tokio", "reqwest-rustls-webpki-roots", "grpc-tonic", "http-json", "metrics"] }
+opentelemetry-otlp             = { workspace = true, features = ["default", "tonic", "tokio", "reqwest-rustls", "tls-webpki-roots", "grpc-tonic", "http-json", "metrics"] }
 opentelemetry-proto            = { workspace = true, features = ["gen-tonic-messages", "with-serde", "logs", "metrics"] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
 pin-project                    = { workspace = true, features = [] }
@@ -71,7 +71,7 @@ serde_json                     = { workspace = true, features = ["default"] }
 serde_qs                       = { workspace = true, features = [] }
 sha2                           = { workspace = true, features = ["default"] }
 snap                           = { workspace = true, features = [] }
-sqlx                           = { workspace = true, features = ["ipnetwork", "macros", "postgres", "runtime-tokio", "time", "tls-rustls", "uuid", "json"] }
+sqlx                           = { workspace = true, features = ["ipnetwork", "json", "macros", "postgres", "runtime-tokio", "sqlx-toml", "time", "tls-rustls", "uuid"] }
 sync_wrapper                   = { workspace = true, features = [] }
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio                          = { workspace = true, features = ["default", "full", "tracing"] }

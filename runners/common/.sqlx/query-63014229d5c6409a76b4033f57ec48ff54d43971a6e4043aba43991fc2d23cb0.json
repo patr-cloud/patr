@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO managed_url(id, host, path, deployment_id, port) VALUES ($1, $2, $3, $4, $5) ON CONFLICT(id) DO UPDATE SET host = excluded.host, path = excluded.path, deployment_id = excluded.deployment_id, port = excluded.port;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "63014229d5c6409a76b4033f57ec48ff54d43971a6e4043aba43991fc2d23cb0"
+}

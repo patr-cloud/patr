@@ -32,6 +32,7 @@ An endpoint's shape — path, method, request/response DTOs, `authentication`, `
 ## Database & migrations
 
 - Runtime DB access uses the compile-time-checked `query!` macro against `&mut *database`. Reusable helpers live in `src/db/{user,workspace,rbac}/*`.
+- `api/sqlx.toml` maps `UUID` and our Postgres enums to their `models` types, so queries need no `"col: Type"` override or `as _` cast for them. A new Postgres enum gets a line there. Overrides are still needed for genuinely different types (e.g. `ManagedUrlTypeDiscriminant`, `Json<…>`) and for nullability (`"col!"` / `"col?"`); casts are still needed where the Rust type differs (`&Vec<Uuid>` for `UUID[]`, enum arrays, `Cow<str>`).
 - **Migrations** (`src/migrations/vX_Y_Z/mNNN_name.rs`, `#[macros::migration]`, auto-registered via `inventory`) **must use runtime `sqlx::query(...)`, never `query!`** — the schema is mid-change.
 - Scaffold with `cargo new-migration <name>`. Apply with `cargo run --bin api -- --migrate`.
 - **When you change the schema, write the migration in the same change** — the app runs on a live server; a missing migration breaks deploys.

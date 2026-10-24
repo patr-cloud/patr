@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use models::{api::workspace::*, rbac::WorkspacePermission};
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -54,8 +54,8 @@ pub async fn leave_workspace(
 					workspace_id = $2
 			);
 		"#,
-		user_data.id as _,
-		workspace_id as _,
+		user_data.id,
+		workspace_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -68,10 +68,10 @@ pub async fn leave_workspace(
 			workspace_id = $1 AND
 			user_id = $2
 		RETURNING
-			actor_id AS "actor_id: Uuid";
+			actor_id;
 		"#,
-		workspace_id as _,
-		user_data.id as _,
+		workspace_id,
+		user_data.id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -85,7 +85,7 @@ pub async fn leave_workspace(
 			WHERE
 				id = $1;
 			"#,
-			&actor_id as _,
+			&actor_id,
 		)
 		.execute(&mut **database)
 		.await?;
@@ -94,12 +94,15 @@ pub async fn leave_workspace(
 	info!("User left workspace. Setting revocation timestamp");
 
 	redis
-		.setex(
+		.set_with_options(
 			redis::keys::user_id_revocation_timestamp(&user_data.id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
 			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs(),
+			),
 		)
 		.await
 		.inspect_err(|err| {

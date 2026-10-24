@@ -47,7 +47,7 @@ pub async fn delete_repository_manifest(
 				$2
 			) AS "digest!";
 		"#,
-		repository_id as _,
+		repository_id,
 		digest_or_tag,
 	)
 	.fetch_one(&mut **database)
@@ -76,7 +76,7 @@ pub async fn delete_repository_manifest(
 			)
 		LIMIT 1;
 		"#,
-		repository_id as _,
+		repository_id,
 		digest,
 	)
 	.fetch_optional(&mut **database)
@@ -96,7 +96,7 @@ pub async fn delete_repository_manifest(
 			repository_id = $1 AND
 			manifest_digest = $2;
 		"#,
-		repository_id as _,
+		repository_id,
 		digest
 	)
 	.execute(&mut **database)
@@ -112,7 +112,7 @@ pub async fn delete_repository_manifest(
 			manifest_digest = $2
 		RETURNING manifest_digest;
 		"#,
-		repository_id as _,
+		repository_id,
 		digest
 	)
 	.fetch_optional(&mut **database)

@@ -45,7 +45,7 @@ pub async fn run_migrations(
 	connection: &mut DatabaseConnection,
 	from_version: &Version,
 ) -> Result<(), sqlx::Error> {
-	let applied = query(
+	let applied = sqlx::query(
 		r#"
 		SELECT
 			name
@@ -80,7 +80,7 @@ pub async fn run_migrations(
 		(migration.migrate)(&mut *txn).await?;
 
 		let version = migration.version.to_string();
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				migrations(name, version)
@@ -106,7 +106,7 @@ pub async fn run_migrations(
 pub async fn mark_all_applied(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
 	for migration in inventory::iter::<Migration> {
 		let version = migration.version.to_string();
-		query(
+		sqlx::query(
 			r#"
 			INSERT INTO
 				migrations(name, version)

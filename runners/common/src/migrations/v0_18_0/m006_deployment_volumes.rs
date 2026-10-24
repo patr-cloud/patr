@@ -14,7 +14,7 @@ use crate::prelude::*;
 
 #[macros::migration]
 async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
-	query(
+	sqlx::query(
 		r#"
 		DROP TABLE deployment_volume_mount;
 		"#,
@@ -22,7 +22,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	sqlx::query(
 		r#"
 		DROP TABLE deployment_volume;
 		"#,
@@ -30,7 +30,7 @@ async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error>
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	sqlx::query(
 		r#"
 		CREATE TABLE deployment_volume(
 			deployment_id TEXT NOT NULL,

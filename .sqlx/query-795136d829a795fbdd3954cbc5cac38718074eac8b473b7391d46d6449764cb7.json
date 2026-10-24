@@ -1,0 +1,283 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, registry, image_name, image_tag, runner, status, repository_id, min_horizontal_scale, max_horizontal_scale, machine_type, deploy_on_push, startup_probe_port, startup_probe_path, startup_probe_port_type AS \"startup_probe_port_type?\", liveness_probe_port, liveness_probe_path, liveness_probe_port_type AS \"liveness_probe_port_type?\", current_live_digest FROM deployment WHERE repository_id = $1 AND image_tag = $2 AND deploy_on_push = TRUE AND status NOT IN ('stopped', 'errored') AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "registry",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "registry"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "image_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "image_name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "image_tag",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "image_tag"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "runner",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "runner"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "status",
+        "type_info": {
+          "Custom": {
+            "name": "deployment_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "pushed",
+                "deploying",
+                "running",
+                "stopped",
+                "errored",
+                "deleted"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "repository_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "repository_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "min_horizontal_scale",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "min_horizontal_scale"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "max_horizontal_scale",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "max_horizontal_scale"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "machine_type",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "machine_type"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "deploy_on_push",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "deploy_on_push"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "startup_probe_port",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "startup_probe_port"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "startup_probe_path",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "startup_probe_path"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "startup_probe_port_type?",
+        "type_info": {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "startup_probe_port_type"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "liveness_probe_port",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "liveness_probe_port"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "liveness_probe_path",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "liveness_probe_path"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "liveness_probe_port_type?",
+        "type_info": {
+          "Custom": {
+            "name": "exposed_port_type",
+            "kind": {
+              "Enum": [
+                "http"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "liveness_probe_port_type"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "current_live_digest",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "current_live_digest"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "795136d829a795fbdd3954cbc5cac38718074eac8b473b7391d46d6449764cb7"
+}

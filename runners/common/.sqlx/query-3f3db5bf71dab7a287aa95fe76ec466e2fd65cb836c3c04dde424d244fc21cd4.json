@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE deployment SET status = $1 WHERE id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "3f3db5bf71dab7a287aa95fe76ec466e2fd65cb836c3c04dde424d244fc21cd4"
+}

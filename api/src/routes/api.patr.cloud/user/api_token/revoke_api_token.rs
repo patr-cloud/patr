@@ -36,8 +36,8 @@ pub async fn revoke_api_token(
 			token_id = $1 AND
 			user_id = $2;
 		"#,
-		token_id as _,
-		user_data.id as _,
+		token_id,
+		user_data.id,
 	)
 	.execute(&mut **database)
 	.await?

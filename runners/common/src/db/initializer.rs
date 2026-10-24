@@ -10,15 +10,15 @@ use crate::prelude::*;
 pub async fn initialize(database: &Pool<DatabaseType>) -> Result<(), sqlx::Error> {
 	info!("Initializing database");
 
-	let tables = query(
+	let tables = query!(
 		r#"
 		SELECT
-			*
+			name
 		FROM
 			sqlite_schema
 		WHERE
 			type = 'table';
-		"#,
+		"#
 	)
 	.fetch_all(database)
 	.await?;
@@ -42,17 +42,18 @@ pub async fn initialize(database: &Pool<DatabaseType>) -> Result<(), sqlx::Error
 
 		info!("Database created fresh");
 	} else {
-		let rows = query(
+		let rows = query!(
 			r#"
 			SELECT
-				*
+				id,
+				value
 			FROM
 				meta_data
 			WHERE
 				id = 'version_major' OR
 				id = 'version_minor' OR
 				id = 'version_patch';
-			"#,
+			"#
 		)
 		.fetch_all(&mut *connection)
 		.await?;
@@ -61,17 +62,15 @@ pub async fn initialize(database: &Pool<DatabaseType>) -> Result<(), sqlx::Error
 		// If versions can't be parsed, assume it to be the max value, so that
 		// migrations would fail
 		for row in rows {
-			let id = row.get::<String, _>("id");
-			let value = row.get::<String, _>("value");
-			match id.as_str() {
+			match row.id.as_str() {
 				"version_major" => {
-					version.major = value.parse::<u64>().unwrap_or(u64::MAX);
+					version.major = row.value.parse::<u64>().unwrap_or(u64::MAX);
 				}
 				"version_minor" => {
-					version.minor = value.parse::<u64>().unwrap_or(u64::MAX);
+					version.minor = row.value.parse::<u64>().unwrap_or(u64::MAX);
 				}
 				"version_patch" => {
-					version.patch = value.parse::<u64>().unwrap_or(u64::MAX);
+					version.patch = row.value.parse::<u64>().unwrap_or(u64::MAX);
 				}
 				_ => {}
 			}
@@ -94,7 +93,7 @@ pub async fn initialize(database: &Pool<DatabaseType>) -> Result<(), sqlx::Error
 	}
 
 	// Set the database schema version
-	query(
+	query!(
 		r#"
 		INSERT OR REPLACE INTO
 			meta_data(id, value)
@@ -103,10 +102,10 @@ pub async fn initialize(database: &Pool<DatabaseType>) -> Result<(), sqlx::Error
 			('version_minor', $2),
 			('version_patch', $3);
 		"#,
+		constants::DATABASE_VERSION.major.to_string(),
+		constants::DATABASE_VERSION.minor.to_string(),
+		constants::DATABASE_VERSION.patch.to_string()
 	)
-	.bind(constants::DATABASE_VERSION.major.to_string())
-	.bind(constants::DATABASE_VERSION.minor.to_string())
-	.bind(constants::DATABASE_VERSION.patch.to_string())
 	.execute(&mut *connection)
 	.await?;
 

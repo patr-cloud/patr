@@ -7,20 +7,20 @@ pub async fn initialize_deployment_tables(
 ) -> Result<(), sqlx::Error> {
 	info!("Setting up deployment tables");
 
-	query(
+	query!(
 		r#"
-		CREATE TABLE deployment_machine_type(
+		CREATE TABLE IF NOT EXISTS deployment_machine_type(
 			id TEXT NOT NULL PRIMARY KEY,
 			cpu_count INTEGER NOT NULL,
 			memory_count INTEGER NOT NULL
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
 	// TODO: Move this somewhere else, this is just here for testing
-	query(
+	query!(
 		r#"
 		INSERT INTO
 			deployment_machine_type(
@@ -31,8 +31,6 @@ pub async fn initialize_deployment_tables(
 		VALUES
 			($1, 1, 1024);
 		"#,
-	)
-	.bind(
 		Uuid::parse_str("b3cf3771-fa39-4281-bfdf-eb2e65a061b6")
 			.unwrap()
 			.to_string(),
@@ -40,9 +38,9 @@ pub async fn initialize_deployment_tables(
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
-		CREATE TABLE deployment(
+		CREATE TABLE IF NOT EXISTS deployment(
 			id TEXT NOT NULL PRIMARY KEY,
 			name TEXT NOT NULL,
 			registry TEXT NOT NULL,
@@ -138,14 +136,14 @@ pub async fn initialize_deployment_tables(
 			FOREIGN KEY(id, liveness_probe_port, liveness_probe_port_type)
 				REFERENCES deployment_exposed_port(deployment_id, port, port_type)
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
-		CREATE TABLE deployment_environment_variable(
+		CREATE TABLE IF NOT EXISTS deployment_environment_variable(
 			deployment_id TEXT NOT NULL,
 			name TEXT NOT NULL,
 			value TEXT,
@@ -160,14 +158,14 @@ pub async fn initialize_deployment_tables(
 			CONSTRAINT deployment_environment_variable_chk_value_secret_id_required
 				CHECK(value IS NOT NULL OR secret_id IS NOT NULL)
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
-		CREATE TABLE deployment_exposed_port(
+		CREATE TABLE IF NOT EXISTS deployment_exposed_port(
 			deployment_id TEXT NOT NULL,
 			port INTEGER NOT NULL,
 			port_type TEXT NOT NULL
@@ -179,14 +177,14 @@ pub async fn initialize_deployment_tables(
 			CONSTRAINT deployment_exposed_port_chk_port_range
 				CHECK(port > 0 AND port <= 65535)
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
-		CREATE TABLE deployment_config_mounts(
+		CREATE TABLE IF NOT EXISTS deployment_config_mounts(
 			deployment_id TEXT NOT NULL,
 			path TEXT NOT NULL,
 			file BLOB NOT NULL,
@@ -194,14 +192,14 @@ pub async fn initialize_deployment_tables(
 			PRIMARY KEY(deployment_id, path),
 			FOREIGN KEY(deployment_id) REFERENCES deployment(id)
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;
 
-	query(
+	query!(
 		r#"
-		CREATE TABLE deployment_deploy_history(
+		CREATE TABLE IF NOT EXISTS deployment_deploy_history(
 			deployment_id TEXT NOT NULL,
 			image_digest TEXT NOT NULL,
 			registry TEXT NOT NULL,
@@ -212,7 +210,7 @@ pub async fn initialize_deployment_tables(
 			PRIMARY KEY(deployment_id, image_digest),
 			FOREIGN KEY(deployment_id) REFERENCES deployment(id)
 		);
-		"#,
+		"#
 	)
 	.execute(&mut *connection)
 	.await?;

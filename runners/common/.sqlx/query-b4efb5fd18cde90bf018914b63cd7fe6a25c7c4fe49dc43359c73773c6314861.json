@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE TABLE IF NOT EXISTS managed_url(id TEXT NOT NULL PRIMARY KEY, host TEXT NOT NULL, path TEXT NOT NULL, deployment_id TEXT NOT NULL, port INTEGER NOT NULL,  CONSTRAINT managed_url_chk_port_range CHECK(port > 0 AND port <= 65535), CONSTRAINT managed_url_chk_host_nonempty CHECK(LENGTH(TRIM(host)) > 0),  FOREIGN KEY(deployment_id) REFERENCES deployment(id));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "b4efb5fd18cde90bf018914b63cd7fe6a25c7c4fe49dc43359c73773c6314861"
+}

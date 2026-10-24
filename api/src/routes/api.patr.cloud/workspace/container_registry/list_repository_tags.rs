@@ -62,7 +62,7 @@ pub async fn list_repository_tags(
 		LIMIT $6
 		OFFSET $7;
 		"#,
-		repository_id as _,
+		repository_id,
 		tag_filter,
 		digest_filter,
 		last_updated_filter.as_ref().map(|range| range.start()),

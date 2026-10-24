@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use axum::http::StatusCode;
 use models::api::workspace::*;
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -43,7 +43,7 @@ pub async fn delete_workspace(
 			id = $1 AND
 			deleted IS NULL;
 		"#,
-		&workspace_id as _,
+		&workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -66,7 +66,7 @@ pub async fn delete_workspace(
 			id <> workspace_id AND
 			deleted IS NULL;
 		"#,
-		&workspace_id as _,
+		&workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -86,7 +86,7 @@ pub async fn delete_workspace(
 		WHERE
 			id = $1;
 		"#,
-		&workspace_id as _,
+		&workspace_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -98,20 +98,23 @@ pub async fn delete_workspace(
 		WHERE
 			id = $1;
 		"#,
-		&workspace_id as _,
+		&workspace_id,
 	)
 	.execute(&mut **database)
 	.await?;
 
 	// Revoke all tokens that have access to the workspace
 	redis
-		.setex(
-			redis::keys::workspace_id_revocation_timestamp(&workspace.id.into()),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs()
-				.add(300),
+		.set_with_options(
+			redis::keys::workspace_id_revocation_timestamp(&workspace.id),
 			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs()
+					.add(300),
+			),
 		)
 		.await
 		.inspect_err(|err| {

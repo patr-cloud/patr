@@ -6,62 +6,134 @@
       {
         "ordinal": 0,
         "name": "token_id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_id"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "user_id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "user_id"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "token_hash",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_hash"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "token_nbf",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_nbf"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "token_exp",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_exp"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "allowed_ips",
-        "type_info": "InetArray"
+        "type_info": "InetArray",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "allowed_ips"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "revoked",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "revoked"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "id",
-        "type_info": "Uuid"
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "id"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "password",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "password"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "first_name",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "first_name"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "last_name",
-        "type_info": "Varchar"
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "last_name"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "created",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "created"
+          }
+        }
       },
       {
         "ordinal": 12,
@@ -71,32 +143,68 @@
             "name": "citext",
             "kind": "Simple"
           }
+        },
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "email"
+          }
         }
       },
       {
         "ordinal": 13,
         "name": "workspace_limit",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "workspace_limit"
+          }
+        }
       },
       {
         "ordinal": 14,
         "name": "password_reset_token",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "password_reset_token"
+          }
+        }
       },
       {
         "ordinal": 15,
         "name": "password_reset_token_expiry",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "password_reset_token_expiry"
+          }
+        }
       },
       {
         "ordinal": 16,
         "name": "password_reset_attempts",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "password_reset_attempts"
+          }
+        }
       },
       {
         "ordinal": 17,
         "name": "mfa_secret",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "mfa_secret"
+          }
+        }
       }
     ],
     "parameters": {

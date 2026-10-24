@@ -4,10 +4,6 @@ mod api 'api/tests/Justfile'
 mod cli 'cli/tests/Justfile'
 mod e2e
 
-# Regenerate the TypeScript bindings: both the per-type files (ts-rs, via the
-# `cargo bindings` alias) and the index.ts barrel that re-exports them. ts-rs
-# does not manage the barrel, so it has to be rebuilt here or it silently drifts
-# (missing exports for new types, dangling exports for removed ones).
 bindings:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -28,10 +24,18 @@ bindings:
     cd ../..
     pnpm exec prettier --write src/bindings/index.ts
 
+runner-db:
+    rm -f target/runner.db
+    SQLX_OFFLINE=true cargo run --quiet -p common --example init_db -- target/runner.db
+
+
 prepare:
-    cargo sqlx prepare --workspace -- --features cloud --manifest-path api/Cargo.toml
+    test -f target/runner.db || just runner-db
+    cargo clean -p apalis-postgres
+    cargo sqlx prepare --workspace -- --features cloud --manifest-path api/Cargo.toml --tests
     mkdir -p target/.sqlx-stash
     mv .sqlx/query-*.json target/.sqlx-stash/
     cargo sqlx prepare --workspace -- --no-default-features --manifest-path api/Cargo.toml
     mv target/.sqlx-stash/query-*.json .sqlx/
     rm -rf target/.sqlx-stash
+    cd runners/common && DATABASE_URL=sqlite://{{justfile_directory()}}/target/runner.db RUNNER_DATABASE_URL=sqlite://{{justfile_directory()}}/target/runner.db cargo sqlx prepare

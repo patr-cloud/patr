@@ -4,7 +4,7 @@
 //! multipart upload and cleaning up the session from the database.
 
 use axum::body::Body;
-use rustis::commands::GenericCommands;
+use rustis::commands::{GenericCommands, StringCommands};
 
 use crate::{models::permissions, redis::keys, routes::registry_patr_cloud::prelude::*};
 
@@ -58,7 +58,7 @@ pub async fn cancel_upload(
 		database,
 		redis,
 		s3,
-		client_ip: _,
+		client_ip,
 		user_data,
 		config,
 	}: AuthenticatedRegistryAppRequest<'_, CancelBlobUploadPath>,
@@ -69,7 +69,7 @@ pub async fn cancel_upload(
 		query!(
 			r#"
 			SELECT
-				id AS "id: Uuid"
+				id
 			FROM
 				workspace
 			WHERE
@@ -88,7 +88,7 @@ pub async fn cancel_upload(
 	let repository_id = query!(
 		r#"
 		SELECT
-			id AS "resource_id: Uuid"
+			id AS "resource_id"
 		FROM
 			container_registry_repository
 		WHERE
@@ -96,7 +96,7 @@ pub async fn cancel_upload(
 			name = $2 AND
 			deleted IS NULL;
 		"#,
-		workspace_id as _,
+		workspace_id,
 		&repo_name,
 	)
 	.fetch_optional(&mut **database)
@@ -143,11 +143,52 @@ pub async fn cancel_upload(
 		.into_result();
 	}
 
+	let Some(session) = redis
+		.get::<Option<String>>(keys::registry_blob_upload_part_prefix(&session_id))
+		.await?
+	else {
+		debug!("Upload session `{session_id}` not found");
+		return RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Upload session not found")
+			.code(ErrorCode::BlobUploadUnknown)
+			.build()
+			.into_result();
+	};
+	let session = serde_json::from_str::<S3UploadSession>(&session)?;
+
+	if user_data.login_id != session.initiated_by_login {
+		warn!(
+			"User login `{}` does not match upload session initiator `{}`",
+			user_data.login_id, session.initiated_by_login
+		);
+		return RegistryError::builder()
+			.status(StatusCode::NOT_FOUND)
+			.message("Repository not found")
+			.code(ErrorCode::NameUnknown)
+			.build()
+			.into_result();
+	}
+
+	if client_ip != session.initiated_by_ip {
+		warn!(
+			"Client IP `{}` does not match upload session initiator IP `{}`",
+			client_ip, session.initiated_by_ip
+		);
+		return RegistryError::builder()
+			.status(StatusCode::UNAUTHORIZED)
+			.message("Your IP address has changed since the upload was initiated")
+			.code(ErrorCode::Unauthorized)
+			.build()
+			.into_result();
+	}
+
 	debug!("Retrieved upload session");
 
 	s3.abort_multipart_upload()
 		.bucket(&config.s3.bucket)
-		.upload_id(format!("registry/uploads/{session_id}"))
+		.key(format!("registry/uploads/{session_id}"))
+		.upload_id(&session.upload_id)
 		.send()
 		.await?;
 

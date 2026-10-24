@@ -65,7 +65,7 @@ pub async fn renew_access_token(
 			login_id = $1
 		FOR UPDATE;
 		"#,
-		login_id as _,
+		login_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -133,7 +133,7 @@ pub async fn renew_access_token(
 			login_id = $2;
 		"#,
 		hashed_new_refresh_token,
-		login_id as _,
+		login_id,
 	)
 	.execute(&mut **database)
 	.await?;

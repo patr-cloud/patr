@@ -25,7 +25,7 @@ pub async fn get_user_info(
 ) -> Result<AppResponse<GetUserInfoRequest>, ErrorType> {
 	info!("Getting authenticated user info");
 
-	let rows = query(
+	let rows = sqlx::query(
 		r#"
 		SELECT
 			*

@@ -1216,20 +1216,20 @@ async fn update_user_roles_empty_keeps_membership() {
 			UpdateUserRolesInWorkspaceResponse,
 		));
 
-	let is_member: bool = sqlx::query_scalar(&format!(
+	let is_member: bool = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
 		"SELECT EXISTS(SELECT 1 FROM workspace_user WHERE user_id = '{}' AND workspace_id = '{}')",
 		user_b.user_id, workspace.id
-	))
+	)))
 	.fetch_one(setup.database())
 	.await
 	.expect("membership query");
 	assert!(is_member, "empty roles must keep the membership row");
 
-	let bindings: i64 = sqlx::query_scalar(&format!(
+	let bindings: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
 		"SELECT COUNT(*) FROM role_binding rb JOIN workspace_user wu ON wu.actor_id = rb.actor_id \
 		 WHERE wu.user_id = '{}' AND rb.workspace_id = '{}'",
 		user_b.user_id, workspace.id
-	))
+	)))
 	.fetch_one(setup.database())
 	.await
 	.expect("binding query");
@@ -1267,10 +1267,10 @@ async fn delete_role_soft_deletes_resource_row() {
 
 	// The role's resource row is tombstoned like every other deleted
 	// resource, not leaked live.
-	let deleted: bool = sqlx::query_scalar(&format!(
+	let deleted: bool = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
 		"SELECT deleted IS NOT NULL FROM resource WHERE id = '{}'",
 		role.id
-	))
+	)))
 	.fetch_one(setup.database())
 	.await
 	.expect("resource query");
@@ -1587,10 +1587,10 @@ async fn default_roles_seeded_on_workspace_create() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
-	let count: i64 = sqlx::query_scalar(&format!(
+	let count: i64 = sqlx::query_scalar(sqlx::AssertSqlSafe(format!(
 		"SELECT COUNT(*) FROM role WHERE workspace_id = '{}'",
 		workspace.id
-	))
+	)))
 	.fetch_one(setup.database())
 	.await
 	.expect("count query");

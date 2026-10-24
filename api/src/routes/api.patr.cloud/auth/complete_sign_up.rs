@@ -188,7 +188,7 @@ pub async fn complete_sign_up(
 						NULL
 					);
 				"#,
-				user_id as _,
+				user_id,
 				row.password,
 				row.first_name,
 				row.last_name,
@@ -300,13 +300,12 @@ pub async fn complete_sign_up(
 					client
 				RETURNING user_login.login_id;
 				"#,
-				user_id as _,
+				user_id,
 				now,
 			)
 			.fetch_one(&mut **database)
 			.await?
-			.login_id
-			.into();
+			.login_id;
 
 			trace!("User login inserted into the database");
 
@@ -349,8 +348,8 @@ pub async fn complete_sign_up(
 						$13
 					);
 				"#,
-				login_id as _,
-				user_id as _,
+				login_id,
+				user_id,
 				hashed_refresh_token,
 				refresh_token_expiry,
 				now,

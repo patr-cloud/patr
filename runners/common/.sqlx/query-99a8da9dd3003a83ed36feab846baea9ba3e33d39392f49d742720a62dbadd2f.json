@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "CREATE TABLE IF NOT EXISTS deployment_environment_variable(deployment_id TEXT NOT NULL, name TEXT NOT NULL, value TEXT, secret_id TEXT,  PRIMARY KEY(deployment_id, name), FOREIGN KEY(deployment_id) REFERENCES deployment(id), CONSTRAINT deployment_environment_variable_chk_name_nonempty CHECK(LENGTH(TRIM(name)) > 0), CONSTRAINT deployment_environment_variable_chk_value_nonempty CHECK(LENGTH(TRIM(value)) > 0), CONSTRAINT deployment_environment_variable_chk_value_secret_id_required CHECK(value IS NOT NULL OR secret_id IS NOT NULL));",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "99a8da9dd3003a83ed36feab846baea9ba3e33d39392f49d742720a62dbadd2f"
+}

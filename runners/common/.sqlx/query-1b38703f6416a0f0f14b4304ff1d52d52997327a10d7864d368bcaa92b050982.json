@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT path, file FROM deployment_config_mounts WHERE deployment_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "name": "path",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "deployment_config_mounts",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "name": "file",
+        "ordinal": 1,
+        "type_info": "Blob",
+        "origin": {
+          "Table": {
+            "table": "deployment_config_mounts",
+            "name": "file"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "1b38703f6416a0f0f14b4304ff1d52d52997327a10d7864d368bcaa92b050982"
+}

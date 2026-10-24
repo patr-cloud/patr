@@ -4,7 +4,7 @@ use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;
 use models::api::auth::*;
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 use serde::Deserialize;
 use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
@@ -161,7 +161,7 @@ pub async fn social_login_callback(
 		let already_linked_user = query!(
 			r#"
 			SELECT
-				user_id AS "user_id: Uuid"
+				user_id
 			FROM
 				user_social_login
 			WHERE
@@ -188,7 +188,7 @@ pub async fn social_login_callback(
 		let connected_account = query!(
 			r#"
 			SELECT
-				"user".id AS "id!: Uuid"
+				"user".id AS "id!"
 			FROM
 				"user"
 			WHERE
@@ -220,7 +220,7 @@ pub async fn social_login_callback(
 				ON CONFLICT (provider, external_id)
 				DO NOTHING;
 				"#,
-				matched_user_id as _,
+				matched_user_id,
 				github_user.id.to_string(),
 				OffsetDateTime::now_utc(),
 			)
@@ -249,13 +249,14 @@ pub async fn social_login_callback(
 		let setup_token = Uuid::new_v4().to_string();
 
 		redis
-			.setex(
-				redis::keys::social_login_setup(&provider, &setup_token),
-				600, // 10 mins
+			.set_with_options(
+				redis::keys::social_login_setup(&provider, &setup_token), // 10 mins
 				serde_json::to_string(&GithubSetupPayload {
 					external_id: github_user.id.to_string(),
 					email: github_email.clone(),
 				})?,
+				None,
+				SetExpiration::Ex(600),
 			)
 			.await
 			.inspect_err(|err| error!("Redis error storing setup token: {err}"))?;
@@ -352,9 +353,9 @@ pub async fn social_login_callback(
 			client.id, $1, 'web_login', $2
 		FROM
 			client
-		RETURNING user_login.login_id AS "login_id: Uuid";
+		RETURNING user_login.login_id;
 		"#,
-		user_id as _,
+		user_id,
 		now,
 	)
 	.fetch_one(&mut **database)
@@ -400,8 +401,8 @@ pub async fn social_login_callback(
 				$13
 			);
 		"#,
-		login_id as _,
-		user_id as _,
+		login_id,
+		user_id,
 		hashed_refresh_token,
 		refresh_token_expiry,
 		now,

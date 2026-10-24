@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use models::api::workspace::rbac::role::*;
-use rustis::commands::StringCommands;
+use rustis::commands::{SetExpiration, StringCommands};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -55,8 +55,8 @@ pub async fn update_role(
 			id = $1 AND
 			workspace_id = $2;
 		"#,
-		role_id as _,
-		workspace_id as _,
+		role_id,
+		workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -80,8 +80,8 @@ pub async fn update_role(
 		"#,
 		&*name,
 		&*description,
-		role_id as _,
-		workspace_id as _,
+		role_id,
+		workspace_id,
 	)
 	.execute(&mut **database)
 	.await
@@ -104,7 +104,7 @@ pub async fn update_role(
 		WHERE
 			role_id = $1;
 		"#,
-		role_id as _,
+		role_id,
 	)
 	.execute(&mut **database)
 	.await?;
@@ -119,7 +119,7 @@ pub async fn update_role(
 			$1,
 			UNNEST($2::UUID[]);
 		"#,
-		role_id as _,
+		role_id,
 		&permissions.into_iter().collect::<Vec<_>>() as _,
 	)
 	.execute(&mut **database)
@@ -135,12 +135,15 @@ pub async fn update_role(
 	trace!("Role permissions replaced");
 
 	redis
-		.setex(
+		.set_with_options(
 			redis::keys::workspace_id_revocation_timestamp(&workspace_id),
-			constants::CACHED_PERMISSIONS_VALIDITY
-				.whole_seconds()
-				.unsigned_abs(),
 			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
+			None,
+			SetExpiration::Ex(
+				constants::CACHED_PERMISSIONS_VALIDITY
+					.whole_seconds()
+					.unsigned_abs(),
+			),
 		)
 		.await
 		.inspect_err(|err| {

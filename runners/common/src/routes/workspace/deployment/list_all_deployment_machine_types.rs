@@ -22,7 +22,7 @@ pub async fn list_all_deployment_machine_types(
 ) -> Result<AppResponse<ListAllDeploymentMachineTypeRequest>, ErrorType> {
 	info!("Listing all Deployment Machine Types");
 
-	let machine_types = query(
+	let machine_types = sqlx::query(
 		r#"
         SELECT
             id,

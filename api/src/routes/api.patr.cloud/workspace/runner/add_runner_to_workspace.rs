@@ -52,9 +52,9 @@ pub async fn add_runner_to_workspace(
 				$1,
 				NOW()
 			)
-		RETURNING id AS "id: Uuid";
+		RETURNING id;
 		"#,
-		workspace_id as _,
+		workspace_id,
 	)
 	.fetch_one(&mut **database)
 	.await
@@ -92,9 +92,9 @@ pub async fn add_runner_to_workspace(
 				$4
 			);
 		"#,
-		id as _,
+		id,
 		name.as_ref(),
-		workspace_id as _,
+		workspace_id,
 		tunnel_id,
 	)
 	.execute(&mut **database)
