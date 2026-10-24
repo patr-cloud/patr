@@ -59,8 +59,11 @@ pub async fn initialize(app: &AppState) -> Result<(), ErrorType> {
 		super::initialize_meta_tables(&mut transaction).await?;
 		super::initialize_actor_client_tables(&mut transaction).await?;
 		super::initialize_user_tables(&mut transaction).await?;
-		super::initialize_workspace_tables(&mut transaction).await?;
+		// rbac before workspace: `service_account` is declared with
+		// WORKSPACE_ACTOR_TYPE, which rbac creates. Only types matter here —
+		// table creation carries no foreign keys.
 		super::initialize_rbac_tables(&mut transaction).await?;
+		super::initialize_workspace_tables(&mut transaction).await?;
 
 		super::initialize_meta_indices(&mut transaction).await?;
 		super::initialize_actor_client_indices(&mut transaction).await?;

@@ -15,6 +15,9 @@ mod base64string;
 /// A set of constant booleans that are used to ensure that the values are
 /// forced to be either true or false.
 mod bools;
+/// The type of client used for a request. Controls which authentication method
+/// is used and which endpoints are accessible.
+mod client_type;
 /// A set of extension traits that provide additional functionality to the
 /// [`IaacResource`] type, such as deduplication of resources based on their
 /// names.
@@ -59,6 +62,7 @@ pub use self::{
 	axum_response::*,
 	base64string::*,
 	bools::*,
+	client_type::*,
 	ext_trait::*,
 	geo_location::*,
 	headers::*,
@@ -234,7 +238,7 @@ pub mod constants {
 	/// real people actually have.
 	pub const USER_NAME_REGEX: &str = macros::verify_regex!(r"^[^<>&\n\r\t\x00-\x1f]{1,100}$");
 
-	/// The Regex to validate a role description.
+	/// The Regex to validate a role or service account description.
 	///
 	/// Same metacharacter restrictions as [`USER_NAME_REGEX`], but allows
 	/// empty (length 0–500). The role create/update handler substitutes a

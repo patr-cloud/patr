@@ -269,7 +269,7 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 	);
 }
 
-/// Deleting the role (remove_users=true) that was a token holder's sole source
+/// Deleting the role (remove_bindings=true) that was a token holder's sole source
 /// of a permission trims the token on its next use.
 #[tokio::test]
 async fn api_token_perm_trimmed_on_role_delete() {
@@ -311,7 +311,9 @@ async fn api_token_perm_trimmed_on_role_delete() {
 					workspace_id: workspace.id,
 					role_id: role.id,
 				})
-				.query(DeleteRoleQuery { remove_users: true })
+				.query(DeleteRoleQuery {
+					remove_bindings: true,
+				})
 				.headers(DeleteRoleRequestHeaders {
 					authorization: owner.access_token.clone(),
 					user_agent: TEST_USER_AGENT,
@@ -327,7 +329,7 @@ async fn api_token_perm_trimmed_on_role_delete() {
 			.await
 			.status_code()
 			.as_u16(),
-		"deleting the role with remove_users should trim the token"
+		"deleting the role with remove_bindings should trim the token"
 	);
 }
 

@@ -26,7 +26,7 @@ pub async fn update_secret(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, UpdateSecretRequest>,
 ) -> Result<AppResponse<UpdateSecretRequest>, ErrorType> {

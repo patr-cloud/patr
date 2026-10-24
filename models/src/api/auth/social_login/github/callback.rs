@@ -14,7 +14,6 @@ macros::declare_api_endpoint!(
 		/// `github` for now.
 		pub provider: SocialLoginProvider,
 	},
-	api = false,
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
@@ -36,5 +35,6 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub status: GithubCallbackStatus,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

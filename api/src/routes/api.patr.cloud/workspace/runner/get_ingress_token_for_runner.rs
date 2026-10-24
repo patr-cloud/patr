@@ -23,7 +23,7 @@ pub async fn get_ingress_token_for_runner(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, GetIngressTokenForRunnerRequest>,
 ) -> Result<AppResponse<GetIngressTokenForRunnerRequest>, ErrorType> {

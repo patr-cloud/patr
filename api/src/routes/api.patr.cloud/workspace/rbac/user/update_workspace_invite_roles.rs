@@ -27,7 +27,7 @@ pub async fn update_workspace_invite_roles(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateWorkspaceInviteRolesRequest>,
 ) -> Result<AppResponse<UpdateWorkspaceInviteRolesRequest>, ErrorType> {

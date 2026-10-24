@@ -359,9 +359,10 @@ pub fn parse(input: TokenStream) -> TokenStream {
 				// Try to figure out the search type based on the field type
 				match r#type.as_str() {
 					"bool" => SearchType::Bool,
-					"String" | "Option<String>" | "::std::borrow::Cow<'static,str>" => {
-						SearchType::String
-					}
+					"String" |
+					"Option<String>" |
+					"::std::borrow::Cow<'static,str>" |
+					"::core::option::Option<::std::borrow::Cow<'static,str>>" => SearchType::String,
 					"OffsetDateTime" | "Option<OffsetDateTime>" => SearchType::Range(
 						syn::parse_str("OffsetDateTime").expect("Failed to parse range type"),
 					),

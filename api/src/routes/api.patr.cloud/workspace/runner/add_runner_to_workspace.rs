@@ -30,7 +30,7 @@ pub async fn add_runner_to_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, AddRunnerToWorkspaceRequest>,
 ) -> Result<AppResponse<AddRunnerToWorkspaceRequest>, ErrorType> {

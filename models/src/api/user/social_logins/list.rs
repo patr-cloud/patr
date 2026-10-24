@@ -6,7 +6,6 @@ macros::declare_api_endpoint!(
 	/// caller's Patr account.
 	ListSocialLogins,
 	GET "/user/social-login",
-	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -20,5 +19,6 @@ macros::declare_api_endpoint!(
 		/// Linked providers, ordered by `linked_at` ascending.
 		pub logins: Vec<LinkedSocialLogin>,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

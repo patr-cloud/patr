@@ -1,0 +1,141 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_api_token.user_id, user_api_token.token_hash, user_api_token.token_nbf, user_api_token.token_exp, user_api_token.allowed_ips, user_api_token.revoked, \"user\".email, \"user\".first_name, \"user\".last_name, \"user\".created FROM user_api_token INNER JOIN \"user\" ON \"user\".id = user_api_token.user_id WHERE user_api_token.token_id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "token_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_hash"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "token_nbf",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_nbf"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "token_exp",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "token_exp"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "allowed_ips",
+        "type_info": "InetArray",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "allowed_ips"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "revoked",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "user_api_token",
+            "name": "revoked"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "email",
+        "type_info": {
+          "Custom": {
+            "name": "citext",
+            "kind": "Simple"
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "first_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "last_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "created"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6e278905dd079902a1a6c7c6055ea043c9bda4ca6b25ba0708b0367678606451"
+}

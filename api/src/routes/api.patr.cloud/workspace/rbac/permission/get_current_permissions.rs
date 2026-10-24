@@ -21,7 +21,7 @@ pub async fn get_current_permissions(
 		database: _,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, GetCurrentPermissionsRequest>,
 ) -> Result<AppResponse<GetCurrentPermissionsRequest>, ErrorType> {
@@ -29,7 +29,7 @@ pub async fn get_current_permissions(
 
 	AppResponse::builder()
 		.body(GetCurrentPermissionsResponse {
-			permissions: user_data
+			permissions: actor_data
 				.permissions
 				.get(&workspace_id)
 				.ok_or(ErrorType::WrongParameters)?

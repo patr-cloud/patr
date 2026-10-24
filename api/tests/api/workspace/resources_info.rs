@@ -77,6 +77,26 @@ async fn container_repo_resolves() {
 }
 
 #[tokio::test]
+async fn service_account_resolves() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let sa = setup
+		.create_test_service_account(&user.access_token, workspace.id, vec![])
+		.await;
+
+	let response = resolve(&setup, &user.access_token, workspace.id, [sa.id]).await;
+
+	assert_eq!(1, response.resources.len());
+	let resolved = response.resources[0]
+		.as_ref()
+		.expect("service account not resolved");
+	assert_eq!(sa.id, resolved.id);
+	assert_eq!(Some(sa.name), resolved.name);
+	assert_eq!(ResourceType::ServiceAccount, resolved.resource_type);
+}
+
+#[tokio::test]
 async fn unresolved_id_returns_none() {
 	// The frontend renders one row per requested ID and falls back to showing the
 	// raw ID when it cannot be resolved, so an unknown ID must come back as a

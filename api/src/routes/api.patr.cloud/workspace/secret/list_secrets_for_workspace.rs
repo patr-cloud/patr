@@ -30,7 +30,7 @@ pub async fn list_secrets_for_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListSecretsForWorkspaceRequest>,
 ) -> Result<AppResponse<ListSecretsForWorkspaceRequest>, ErrorType> {

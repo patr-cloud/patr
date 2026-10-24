@@ -37,5 +37,6 @@ macros::declare_api_endpoint!(
 		/// - description - The description of the permission
 		pub permissions: Vec<WithId<Permission>>
 	},
+	client_type = [ApiToken, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

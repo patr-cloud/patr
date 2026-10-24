@@ -65,6 +65,11 @@ pub enum ResourceType {
 	/// assigned to users within that workspace. A role can be used to grant
 	/// permissions on resources within a workspace.
 	Role,
+	/// A service account (bot account) within a workspace. A service account is
+	/// a non-human identity for CI pipelines and other automation. It has a
+	/// single token and is granted access through role bindings, the same way a
+	/// member is.
+	ServiceAccount,
 }
 
 impl ResourceType {

@@ -1,10 +1,8 @@
 use axum::http::StatusCode;
 use models::api::user::*;
-use rustis::commands::{SetExpiration, StringCommands as _};
-use time::OffsetDateTime;
 use totp_rs::{Algorithm as TotpAlgorithm, Builder, Secret};
 
-use crate::{prelude::*, redis::keys as redis};
+use crate::{models::permissions, prelude::*};
 
 pub async fn deactivate_mfa(
 	AuthenticatedAppRequest {
@@ -23,7 +21,7 @@ pub async fn deactivate_mfa(
 		redis,
 		client_ip: _,
 		state: _,
-		user_data,
+		actor_data,
 	}: AuthenticatedAppRequest<'_, DeactivateMfaRequest>,
 ) -> Result<AppResponse<DeactivateMfaRequest>, ErrorType> {
 	info!("Deactivating MFA for user");
@@ -37,7 +35,7 @@ pub async fn deactivate_mfa(
 		WHERE
 			id = $1;
 		"#,
-		user_data.id
+		actor_data.id
 	)
 	.fetch_one(&mut **database)
 	.await?;
@@ -54,17 +52,23 @@ pub async fn deactivate_mfa(
 		.with_secret(Secret::try_from_base32(secret.clone()).inspect_err(|err| {
 			error!(
 				"Unable to parse MFA secret for userId `{}`: {}",
-				user_data.id,
+				actor_data.id,
 				err.to_string()
 			);
 		})?)
 		.with_issuer(Some(constants::TOTP_ISSUER))
-		.with_account_name(user_data.email)
+		.with_account_name(
+			actor_data
+				.actor
+				.email()
+				.ok_or(ErrorType::Unauthorized)?
+				.to_string(),
+		)
 		.build()
 		.inspect_err(|err| {
 			error!(
 				"Unable to parse TOTP for userId `{}`: {}",
-				user_data.id,
+				actor_data.id,
 				err.to_string()
 			);
 		})?
@@ -84,7 +88,7 @@ pub async fn deactivate_mfa(
 		WHERE
 			id = $1;
 		"#,
-		user_data.id
+		actor_data.id
 	)
 	.execute(&mut **database)
 	.await?;
@@ -99,27 +103,13 @@ pub async fn deactivate_mfa(
 			user_id = $1 AND
 			login_id != $2;
 		"#,
-		user_data.id,
-		user_data.login_id,
+		actor_data.id,
+		actor_data.login_id,
 	)
 	.execute(&mut **database)
 	.await?;
 
-	redis
-		.set_with_options(
-			redis::user_id_revocation_timestamp(&user_data.id),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-			None,
-			SetExpiration::Ex(
-				constants::CACHED_PERMISSIONS_VALIDITY
-					.whole_seconds()
-					.unsigned_abs(),
-			),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting user_id_revocation_timestamp: `{}`", err);
-		})?;
+	permissions::mark_actor_stale(redis, &actor_data.id).await?;
 
 	AppResponse::builder()
 		.body(DeactivateMfaResponse)

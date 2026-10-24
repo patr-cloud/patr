@@ -24,7 +24,7 @@ pub async fn get_repository_manifest_details(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, GetContainerRepositoryManifestDetailsRequest>,
 ) -> Result<AppResponse<GetContainerRepositoryManifestDetailsRequest>, ErrorType> {

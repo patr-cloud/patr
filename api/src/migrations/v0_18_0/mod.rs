@@ -28,3 +28,4 @@ mod m025_recreate_secret_table;
 mod m026_deployment_env_var_workspace_id;
 mod m027_fix_migrated_schema_drift;
 mod m028_deployment_volumes;
+mod m029_add_service_accounts;

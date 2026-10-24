@@ -69,7 +69,7 @@ pub async fn stream_runner_data_for_workspace(
 		database: _,
 		redis,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, StreamRunnerDataForWorkspaceRequest>,
 ) -> Result<AppResponse<StreamRunnerDataForWorkspaceRequest>, ErrorType> {

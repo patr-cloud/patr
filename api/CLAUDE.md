@@ -4,7 +4,7 @@ The backend binary. See the root `CLAUDE.md` for workspace-wide build/sqlx/style
 
 ## One app, many hostnames
 
-`api/` serves seven logical hosts off a single axum app, dispatched by the `Host` header (`src/routes/mod.rs`): `api.` (REST API), `app.` (dashboard — `/api/*` re-mounts the API as `WebDashboard`, everything else reverse-proxies to `FRONTEND_URL`), `registry.` (OCI registry), `loki.` / `mimir.` (authenticated push proxies), `assets.`, `openbao.` (authenticated OpenBao read proxy — runners only, see below).
+`api/` serves seven logical hosts off a single axum app, dispatched by the `Host` header (`src/routes/mod.rs`): `api.` (REST API), `app.` (dashboard — `/api/*` re-mounts the API for `WebLogin`, everything else reverse-proxies to `FRONTEND_URL`), `registry.` (OCI registry), `loki.` / `mimir.` (authenticated push proxies), `assets.`, `openbao.` (authenticated OpenBao read proxy — runners only, see below).
 
 **In debug builds each host gets its own port** (`src/app.rs`): base `bind_address` = api, +1 app, +2 registry, +3 loki, +4 assets, +5 mimir, +6 openbao. Hit `localhost:<base+N>` locally, not vhosts. Release dispatches all on one port by Host header.
 
@@ -19,15 +19,16 @@ The **self-hosted** build (`--no-default-features`) collapses the seven-way `Hos
 An endpoint's shape — path, method, request/response DTOs, `authentication`, `audit_log`, `#[preprocess(...)]` validation, RBAC permission — is declared with `macros::declare_api_endpoint!` in the **`models`** crate. `api/` only holds the **handler** and mounts it. Adding an endpoint = (1) declare it in `models`, (2) write the handler under `src/routes/<host>/...`, (3) `mount_*` it in that module's `setup_routes`.
 
 - Mount via the `RouterExt` trait: `.mount_endpoint` (unauth), `.mount_auth_endpoint`, `.mount_registry_endpoint`.
-- Handlers destructure `AuthenticatedAppRequest { request, database, redis, client_ip, user_data, state }` and return `Result<AppResponse<E>, ErrorType>`.
+- Handlers destructure `AuthenticatedAppRequest { request, database, redis, client_ip, actor_data, state }` and return `Result<AppResponse<E>, ErrorType>`.
 - **The layer stack owns the DB transaction** (`DataStoreConnectionLayer`): it auto-commits on `Ok`, auto-rolls-back on `Err`. Handlers never begin/commit a tx — just return `Result`.
-- `mount_*` takes an `allowed_client_type`. If a client is `ApiToken` and the endpoint's `API_ALLOWED` is false, it's silently not mounted.
+- `mount_*` takes the host's client types. An endpoint whose `client_type` list shares none of them is silently not mounted on that host, and an authenticated endpoint only accepts the kinds in the overlap.
 - **Handlers must check the id is their kind of resource.** `ResourcePermissionAuthenticator` only proves the path id is *some* live resource in the workspace and that the caller holds the permission on it — not that it's a secret, a volume, etc. So a handler for a typed id must confirm its own row exists before doing anything else, above all before soft-deleting the shared `resource` row. Otherwise e.g. `DELETE /secret/{deployment_id}` soft-deletes the deployment. Check the typed `DELETE`'s `rows_affected()` (see `delete_secret`, `delete_role`) or `fetch_optional(…).ok_or(ErrorType::ResourceDoesNotExist)` on the typed `SELECT` (see `delete_deployment`). **Every new resource type's handlers need this**, and `api/tests/api/workspace/rbac/resource_type.rs` should get a wrong-type case for its delete route.
 
 ## Auth & caching
 
-- Web dashboard sessions use **JWT**; API tokens are `patrv1.{refresh_token}.{login_id}` (parsed in `src/models/permissions/api_token.rs`, `src/utils/layers/registry/authenticator.rs`).
-- **Redis** (`rustis`, `src/redis/`) is not just a cache — it holds the cached permission map per `login_id` (with multi-level revocation timestamps; validity `CACHED_PERMISSIONS_VALIDITY` = 2 days), rate-limit buckets (sorted sets), pub/sub for WebSocket log/metric streams, and operational caches. Key namespace lives in `src/redis/keys.rs`.
+- Web dashboard sessions use **JWT**; user API tokens and service account tokens are both `patrv1.{secret}.{login_id}`. Every bearer token goes through `permissions::authenticate` (`src/models/permissions/mod.rs`): parsed as a JWT first, else as `patrv1.`; the login ID keys a Redis entry (`ActorAuthDataCache`) holding the actor, its kind and its permissions, so a cache hit does no DB work. A miss does one `actor_client` lookup (which says whether a `patrv1.` login is an API token or a service account), verifies the secret, and loads permissions from the per-kind module. JWT claims and an API token's `allowed_ips` are re-checked per request.
+- **Cache invalidation is by stamp, not by mutation.** Anything that changes what an entry would contain calls `permissions::mark_{login,actor,workspace,all}_stale`, which writes *now* to that scope's `*_cache_stale_since` key; an entry older than a stamp covering it is a miss. `mark_login_stale` also deletes the entry. Entries and stamps share `CACHED_PERMISSIONS_VALIDITY` (2 days), so Redis **must run `maxmemory-policy noeviction`** — an evicted stamp would resurrect stale entries. Add a bump whenever you write a handler that changes credentials, roles, or membership.
+- **Redis** (`rustis`, `src/redis/`) also holds rate-limit buckets (sorted sets), pub/sub for WebSocket log/metric streams, and operational caches. Key namespace lives in `src/redis/keys.rs`.
 
 ## Database & migrations
 

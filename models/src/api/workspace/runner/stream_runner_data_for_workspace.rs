@@ -171,6 +171,7 @@ macros::declare_stream_endpoint!(
 			status: DeploymentStatus,
 		},
 	},
+	client_type = [ApiToken, ServiceAccount],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::Runner,

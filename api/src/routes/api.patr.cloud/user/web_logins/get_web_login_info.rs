@@ -13,7 +13,7 @@ pub async fn get_web_login_info(
 		database,
 		redis,
 		client_ip,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, GetWebLoginInfoRequest>,
 ) -> Result<AppResponse<GetWebLoginInfoRequest>, ErrorType> {

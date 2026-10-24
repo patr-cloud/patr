@@ -44,27 +44,27 @@ use self::{
 
 /// Sets up the auth routes
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType]) -> Router {
 	Router::new()
-		.merge(oauth::setup_routes(state, allowed_client_type).await)
+		.merge(oauth::setup_routes(state, host_client_types).await)
 		.merge(
 			#[cfg(feature = "cloud")]
 			{
-				social_login::setup_routes(state, allowed_client_type).await
+				social_login::setup_routes(state, host_client_types).await
 			},
 			#[cfg(not(feature = "cloud"))]
 			{
 				Router::new()
 			},
 		)
-		.mount_endpoint(login, state, allowed_client_type)
-		.mount_auth_endpoint(logout, state, allowed_client_type)
-		.mount_endpoint(create_account, state, allowed_client_type)
-		.mount_endpoint(renew_access_token, state, allowed_client_type)
-		.mount_endpoint(forgot_password, state, allowed_client_type)
-		.mount_endpoint(is_email_valid, state, allowed_client_type)
-		.mount_endpoint(complete_sign_up, state, allowed_client_type)
-		.mount_endpoint(resend_otp, state, allowed_client_type)
-		.mount_endpoint(reset_password, state, allowed_client_type)
-		.mount_endpoint(docker_login, state, allowed_client_type)
+		.mount_endpoint(login, state, host_client_types)
+		.mount_auth_endpoint(logout, state, host_client_types)
+		.mount_endpoint(create_account, state, host_client_types)
+		.mount_endpoint(renew_access_token, state, host_client_types)
+		.mount_endpoint(forgot_password, state, host_client_types)
+		.mount_endpoint(is_email_valid, state, host_client_types)
+		.mount_endpoint(complete_sign_up, state, host_client_types)
+		.mount_endpoint(resend_otp, state, host_client_types)
+		.mount_endpoint(reset_password, state, host_client_types)
+		.mount_endpoint(docker_login, state, host_client_types)
 }
