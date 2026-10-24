@@ -34,7 +34,8 @@
             "kind": {
               "Enum": [
                 "user",
-                "service_account"
+                "service_account",
+                "runner"
               ]
             }
           }

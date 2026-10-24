@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE runner ADD CONSTRAINT runner_fk_workspace_id FOREIGN KEY(workspace_id) REFERENCES workspace(id), ADD CONSTRAINT runner_fk_id_workspace_id FOREIGN KEY(id, workspace_id, deleted) REFERENCES resource(id, workspace_id, deleted) DEFERRABLE INITIALLY IMMEDIATE, ADD CONSTRAINT runner_fk_id_actor_type FOREIGN KEY(id, actor_type) REFERENCES actor(id, actor_type), ADD CONSTRAINT runner_fk_id_actor_client_type_id FOREIGN KEY(id, actor_client_type, id) REFERENCES actor_client(id, actor_client_type, actor_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2e50ac216ebc1bc8b10456abc3de692802ce382336596cedf80c0271c9ff4015"
+}

@@ -23,6 +23,6 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub permissions: WorkspacePermission
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, ServiceAccount, WebLogin, Runner],
 	audit_log = NoAuditLogger,
 );

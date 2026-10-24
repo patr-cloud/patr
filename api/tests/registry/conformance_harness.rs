@@ -63,6 +63,7 @@ async fn conformance_harness() {
 		&[
 			ActorClientType::UserLogin(UserLoginType::ApiToken),
 			ActorClientType::ServiceAccount,
+			ActorClientType::Runner,
 		],
 	)
 	.await;

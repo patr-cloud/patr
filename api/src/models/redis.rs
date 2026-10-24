@@ -10,18 +10,20 @@ use crate::prelude::*;
 /// Everything an authenticated request needs to know about the actor behind
 /// a login, as cached in Redis under
 /// [`auth_data_for_login_id`][redis::keys::auth_data_for_login_id] (web logins)
-/// or [`auth_data_for_token`][redis::keys::auth_data_for_token] (API tokens and
-/// service accounts). A cache hit builds the request's [`RequestActorData`]
-/// from this alone, without touching the database.
+/// or [`auth_data_for_token`][redis::keys::auth_data_for_token] (API tokens,
+/// service accounts and runners). A cache hit builds the request's
+/// [`RequestActorData`] from this alone, without touching the database.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActorAuthDataCache {
 	/// The login this entry is for: the web login ID, the API token ID, or —
-	/// for a service account, which is its own single credential — the
-	/// service account ID. Not always the cache key (tokens are keyed by their
-	/// hash), so it's kept here for the login's stale-since stamp.
+	/// for a service account or a runner, each its own single credential —
+	/// the service account ID or the runner ID. Not always the cache key
+	/// (tokens are keyed by their hash), so it's kept here for the login's
+	/// stale-since stamp.
 	pub login_id: Uuid,
-	/// The actor behind the login: the user ID or the service account ID.
+	/// The actor behind the login: the user ID, the service account ID or the
+	/// runner ID.
 	pub actor_id: Uuid,
 	/// Which kind of login this is, and what it carries.
 	pub kind: ActorAuthDataCacheKind,
@@ -72,6 +74,14 @@ pub enum ActorAuthDataCacheKind {
 		/// The service account's name.
 		name: String,
 		/// When the service account was created.
+		created: OffsetDateTime,
+	},
+	/// A runner's token.
+	#[serde(rename_all = "camelCase")]
+	Runner {
+		/// The runner's name.
+		name: String,
+		/// When the runner was created.
 		created: OffsetDateTime,
 	},
 }

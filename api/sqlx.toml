@@ -1,7 +1,7 @@
 [macros.type-overrides]
 'UUID'                             = "models::prelude::Uuid"
 'actor_client_type'                = "models::utils::ActorClientTypeDiscriminant"
-'actor_type'                       = "models::api::workspace::rbac::role::WorkspaceActorDiscriminant"
+'actor_type'                       = "models::ActorType"
 'audit_log_type'                   = "models::utils::AuditLogType"
 'container_registry_manifest_kind' = "models::api::workspace::container_registry::ManifestKind"
 'deployment_status'                = "models::api::workspace::deployment::DeploymentStatus"

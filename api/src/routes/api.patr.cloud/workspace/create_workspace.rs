@@ -334,7 +334,6 @@ fn default_roles() -> Vec<DefaultRole> {
 		p.extend([
 			Runner(RunnerPermission::Create),
 			Runner(RunnerPermission::Edit),
-			Runner(RunnerPermission::Execute),
 			Runner(RunnerPermission::RegenerateToken),
 		]);
 		p
@@ -351,7 +350,7 @@ fn default_roles() -> Vec<DefaultRole> {
 	});
 	roles.push(DefaultRole {
 		name: "Runner: Editor",
-		description: "Default role: create, edit, execute, and regenerate tokens on runners.",
+		description: "Default role: create, edit, and regenerate tokens on runners.",
 		permissions: edit_runner,
 	});
 	roles.push(DefaultRole {

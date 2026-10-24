@@ -29,9 +29,9 @@ use crate::{
 
 /// Represents a service account in a workspace.
 ///
-/// A service account is a non-human identity used to authenticate runners and
-/// other automated processes. It has a single token that can be regenerated,
-/// and is granted access through role bindings like any other actor.
+/// A service account is a non-human identity used to authenticate automated
+/// processes. It has a single token that can be regenerated, and is granted
+/// access through role bindings like any other actor.
 #[::preprocess::sync]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ListableResource, TS)]
 #[serde(rename_all = "camelCase")]

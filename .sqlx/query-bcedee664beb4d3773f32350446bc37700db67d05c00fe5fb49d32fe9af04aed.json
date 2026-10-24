@@ -1,16 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT name FROM runner WHERE id = $1 AND workspace_id = $2 AND deleted IS NULL;",
+  "query": "SELECT id FROM runner WHERE workspace_id = $1 AND name = $2 AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "name",
-        "type_info": "Text",
+        "name": "id",
+        "type_info": "Uuid",
         "origin": {
           "Table": {
             "table": "runner",
-            "name": "name"
+            "name": "id"
           }
         }
       }
@@ -18,12 +18,12 @@
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid"
+        "Text"
       ]
     },
     "nullable": [
       false
     ]
   },
-  "hash": "ed834abe891d3d37f190d28c9d9345c7c64cf4c8c91787f53e077f1df99e91f8"
+  "hash": "bcedee664beb4d3773f32350446bc37700db67d05c00fe5fb49d32fe9af04aed"
 }

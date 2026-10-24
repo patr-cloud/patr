@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT workspace.name::TEXT AS \"workspace_name!\", \"user\".email::TEXT AS \"email!\", \"user\".first_name FROM workspace INNER JOIN \"user\" ON \"user\".id = workspace.super_admin_id WHERE workspace.id = $1;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "email!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "first_name",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "\"user\"",
+            "name": "first_name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      false
+    ]
+  },
+  "hash": "ade2992689114973b22676d4544d193d0634967163c6eaae1823fdfe8095547f"
+}

@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
 use time::OffsetDateTime;
 use typed_builder::TypedBuilder;
 
@@ -23,9 +24,19 @@ pub enum UserLoginType {
 }
 
 /// The actor making the authenticated request. Mirrors the database's
-/// `ACTOR_TYPE`: a human user, or a service account.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// `ACTOR_TYPE`: a human user, a service account, or a runner. A runner isn't a
+/// workspace actor, so it can never be bound to a role.
+#[derive(Debug, Clone, Serialize, Deserialize, EnumDiscriminants)]
 #[serde(rename_all = "camelCase", tag = "actorType")]
+#[strum_discriminants(
+	name(ActorType),
+	cfg_attr(
+		not(target_arch = "wasm32"),
+		derive(sqlx::Type),
+		sqlx(type_name = "ACTOR_TYPE", rename_all = "snake_case"),
+	),
+	doc = "The database's `ACTOR_TYPE`: a user, a service account or a runner"
+)]
 pub enum ActorData {
 	/// A human user.
 	#[serde(rename_all = "camelCase")]
@@ -39,11 +50,17 @@ pub enum ActorData {
 		/// Which of the user's logins this request came through.
 		login: UserLoginType,
 	},
-	/// A service account (non-human identity for runners and automation). It
-	/// holds a single credential, so there is nothing further to discriminate.
+	/// A service account (non-human identity for automation). It holds a
+	/// single credential, so there is nothing further to discriminate.
 	#[serde(rename_all = "camelCase")]
 	ServiceAccount {
 		/// The name of the service account.
+		name: String,
+	},
+	/// A runner, acting with its own token and a fixed set of permissions.
+	#[serde(rename_all = "camelCase")]
+	Runner {
+		/// The name of the runner.
 		name: String,
 	},
 }
@@ -56,16 +73,17 @@ impl ActorData {
 		match self {
 			Self::User { login, .. } => ActorClientType::UserLogin(*login),
 			Self::ServiceAccount { .. } => ActorClientType::ServiceAccount,
+			Self::Runner { .. } => ActorClientType::Runner,
 		}
 	}
 
 	/// Returns the email address if this is a user.
-	/// Returns `None` for service accounts.
+	/// Returns `None` for service accounts and runners.
 	#[must_use]
 	pub fn email(&self) -> Option<&str> {
 		match self {
 			Self::User { email, .. } => Some(email),
-			Self::ServiceAccount { .. } => None,
+			Self::ServiceAccount { .. } | Self::Runner { .. } => None,
 		}
 	}
 
@@ -79,19 +97,19 @@ impl ActorData {
 				last_name,
 				..
 			} => format!("{first_name} {last_name}"),
-			Self::ServiceAccount { name } => name.clone(),
+			Self::ServiceAccount { name } | Self::Runner { name } => name.clone(),
 		}
 	}
 }
 
 /// Represents the data of an actor that is used in an authenticated
-/// endpoint. This can be either a user or a service account.
+/// endpoint. This can be a user, a service account or a runner.
 #[derive(Debug, Clone, Serialize, Deserialize, TypedBuilder)]
 #[serde(rename_all = "camelCase")]
 #[builder(field_defaults(setter(into)))]
 pub struct RequestActorData {
-	/// The ID of the actor (`actor.id`): the user ID or the service account ID,
-	/// unique across both.
+	/// The ID of the actor (`actor.id`): the user, service account or runner ID,
+	/// unique across all of them.
 	pub id: Uuid,
 	/// Who is making the request, and through which kind of credential.
 	pub actor: ActorData,

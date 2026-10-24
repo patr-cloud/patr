@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM runner WHERE id = $1 AND workspace_id = $2 AND deleted IS NULL;",
+  "query": "SELECT runner.id, name, is_connected, last_seen, version, COUNT(*) OVER() AS \"total_count!\" FROM runner INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource ON runner.id = resource.id WHERE runner.workspace_id = $1 AND runner.deleted IS NULL AND ($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') AND ($5::BOOLEAN IS NULL OR is_connected = $5) AND ($6::TIMESTAMPTZ IS NULL OR last_seen >= $6) AND ($7::TIMESTAMPTZ IS NULL OR last_seen <= $7) ORDER BY resource.created DESC LIMIT $8 OFFSET $9;",
   "describe": {
     "columns": [
       {
@@ -49,42 +49,33 @@
       },
       {
         "ordinal": 4,
-        "name": "workspace_id",
-        "type_info": "Uuid",
+        "name": "version",
+        "type_info": "Text",
         "origin": {
           "Table": {
             "table": "runner",
-            "name": "workspace_id"
+            "name": "version"
           }
         }
       },
       {
         "ordinal": 5,
-        "name": "cloudflare_tunnel_id",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "cloudflare_tunnel_id"
-          }
-        }
-      },
-      {
-        "ordinal": 6,
-        "name": "deleted",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "runner",
-            "name": "deleted"
-          }
-        }
+        "name": "total_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
         "Uuid",
-        "Uuid"
+        "Uuid",
+        "Text",
+        "Text",
+        "Bool",
+        "Timestamptz",
+        "Timestamptz",
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
@@ -93,9 +84,8 @@
       false,
       true,
       false,
-      false,
-      true
+      null
     ]
   },
-  "hash": "ee6a287cd21311680135dca639cc93f49ed8b3d9081ce8e4e3f678b3491ac1c0"
+  "hash": "acbd7589254a0fc3886ccc21a37f8c306920184d89fb1a0f9c40ee52dd9b2501"
 }

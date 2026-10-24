@@ -52,7 +52,7 @@ Build-time gating via `VITE_CLOUD_MODE` (default off; cloud CI sets `VITE_CLOUD_
 - `{IS_CLOUD && <Foo />}` **drops** `<Foo />` from the self-hosted bundle. `<Show when={IS_CLOUD}>` does **not** — don't use it for cloud gating.
 - For orphan components, gate a `lazy()` import on `IS_CLOUD` so the chunk never enters the main bundle. For event handlers, use a ternary at the definition site (`const handle = IS_CLOUD ? async () => {…} : undefined`).
 
-Currently gated: Turnstile widget + script, "Continue with GitHub" buttons + `/login/github` `/sign-up/github` `/profile/github/callback` routes, Profile → Connected Accounts, the "Patr Registry" deploy option + registry image-name prefix, and domain hints. **Gotcha:** the `cfTurnstileToken` request field is `String` (not `Option`) with a `min-length` preprocess, so send `"self-hosted"` as a placeholder — the server's validation is `cfg`-gated and ignores it.
+Currently gated: Turnstile widget + script, "Continue with GitHub" buttons + `/login/github` `/sign-up/github` `/profile/github/callback` routes, Profile → Connected Accounts, the "Patr Registry" deploy option + registry image-name prefix, domain hints, and the add-runner form + CLI steps on `runners/new` (self-hosted shows a note instead). **Gotcha:** the `cfTurnstileToken` request field is `String` (not `Option`) with a `min-length` preprocess, so send `"self-hosted"` as a placeholder — the server's validation is `cfg`-gated and ignores it.
 
 ## Commands (from `frontend/`)
 

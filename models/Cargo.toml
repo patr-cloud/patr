@@ -30,6 +30,7 @@ preprocess            = { workspace = true, features = [] }
 regex                 = { workspace = true, features = ["default"] }
 reqwest               = { workspace = true, features = ["default", "json", "rustls"] }
 schemars              = { workspace = true, features = ["default", "uuid1"] }
+semver                = { workspace = true, features = ["default", "serde"] }
 serde                 = { workspace = true, features = ["default", "derive"] }
 serde_json            = { workspace = true, features = ["default"] }
 serde_qs              = { workspace = true, features = [] }

@@ -68,7 +68,11 @@ cfg_if! {
 		pub async fn setup_routes(state: &AppState) -> Router {
 			let api_router = api_patr_cloud::setup_routes(
 				state,
-				&[ActorClientType::UserLogin(UserLoginType::ApiToken), ActorClientType::ServiceAccount],
+				&[
+					ActorClientType::UserLogin(UserLoginType::ApiToken),
+					ActorClientType::ServiceAccount,
+					ActorClientType::Runner,
+				],
 			)
 			.await;
 			let app_router = app_patr_cloud::setup_routes(state).await;
@@ -112,8 +116,8 @@ cfg_if! {
 				.merge(registry_patr_cloud::setup_routes(state).await)
 				.merge(loki_patr_cloud::setup_routes(state).await)
 				// Self-hosted serves every client from this one router — the
-				// dashboard, third-party API tokens, and service accounts
-				// (runners). Each endpoint's own `ALLOWED_CLIENT_TYPES` still
+				// dashboard, third-party API tokens, service accounts and
+				// runners. Each endpoint's own `ALLOWED_CLIENT_TYPES` still
 				// gates who may actually call it.
 				.nest(
 					"/api",
@@ -123,6 +127,7 @@ cfg_if! {
 							ActorClientType::UserLogin(UserLoginType::WebLogin),
 							ActorClientType::UserLogin(UserLoginType::ApiToken),
 							ActorClientType::ServiceAccount,
+							ActorClientType::Runner,
 						],
 					)
 					.await,

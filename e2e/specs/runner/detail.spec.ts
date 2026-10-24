@@ -8,6 +8,9 @@ import {
 	metricsTab,
 	logsTab,
 	deleteRunnerButton,
+	neverConnectedCallout,
+	runnerVersionInput,
+	runnerDeploymentsEmptyState,
 } from '@/helpers/ui/runner';
 
 // get-info anti-enum 401, delete→202/inaccessible and delete-already-deleted at
@@ -33,7 +36,7 @@ async function withDetail(
 }
 
 test.describe('runner > detail [UI]', () => {
-	test('detail shows the four tabs and an Unreachable badge for a fresh runner', async ({
+	test('detail shows the four tabs and a Not set up badge for a fresh runner', async ({
 		browser,
 		api,
 	}) => {
@@ -44,7 +47,37 @@ test.describe('runner > detail [UI]', () => {
 			await expect(infoTab(page)).toBeVisible();
 			await expect(metricsTab(page)).toBeVisible();
 			await expect(logsTab(page)).toBeVisible();
-			await expect(statusBadge(page, 'Unreachable')).toBeVisible();
+			await expect(statusBadge(page, 'Not set up')).toBeVisible();
+		});
+	});
+
+	test('a never-connected runner points at the reconnect command', async ({ browser, api }) => {
+		await using user = await createUserWithWorkspace(api);
+		const runner = await createRunnerAPI(api, user, user.workspaceId);
+		await withDetail(browser, user, runner.id, undefined, async (page) => {
+			// The callout lives in the Info tab, not over the default Deployments tab.
+			await expect(runnerDeploymentsEmptyState(page)).toBeVisible({ timeout: 10_000 });
+			await expect(neverConnectedCallout(page)).toHaveCount(0);
+
+			await infoTab(page).click();
+			await expect(neverConnectedCallout(page)).toBeVisible({ timeout: 10_000 });
+			await expect(
+				page.getByText(
+					`patr -w ${user.workspaceId} runner setup reconnect --runner-id ${runner.id}`,
+					{ exact: true },
+				),
+			).toBeVisible();
+			// The owner can regenerate, so the callout says where the token comes from.
+			await expect(page.getByText(/use Regenerate Token above/)).toBeVisible();
+			// It hasn't reported a version, and there's nothing to upgrade.
+			await expect(runnerVersionInput(page)).toHaveValue('Unknown');
+			await expect(page.getByText(/patr upgrade/)).toHaveCount(0);
+		});
+		await withDetail(browser, user, runner.id, 'metrics', async (page) => {
+			await expect(page.getByText('Interval', { exact: true })).toBeVisible({
+				timeout: 10_000,
+			});
+			await expect(neverConnectedCallout(page)).toHaveCount(0);
 		});
 	});
 

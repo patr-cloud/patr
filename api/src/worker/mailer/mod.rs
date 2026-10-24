@@ -47,8 +47,12 @@ mod payment_failure_invoice;
 mod payment_success_invoice;
 /// The purchase credits success email template.
 mod purchase_credits_success;
+/// The runner created email template.
+mod runner_created;
 /// The runner disconnected reminder email template.
 mod runner_disconnected_reminder;
+/// The runner token regenerated email template.
+mod runner_token_regenerated;
 /// The sign-up completed email template.
 mod sign_up_completed;
 /// The unverified domain delete email template.
@@ -76,7 +80,9 @@ pub use self::{
 	payment_failure_invoice::*,
 	payment_success_invoice::*,
 	purchase_credits_success::*,
+	runner_created::*,
 	runner_disconnected_reminder::*,
+	runner_token_regenerated::*,
 	sign_up_completed::*,
 	unverified_domain_delete::*,
 	user_sign_up::*,
@@ -168,9 +174,15 @@ pub enum EmailTemplateType {
 	/// The purchase credits success email template. This email is sent to the
 	/// user when credits have been successfully added to their workspace.
 	PurchaseCreditsSuccess(purchase_credits_success::_PurchaseCreditsSuccessEmail),
+	/// The runner created email template. This email is sent to the
+	/// workspace's super admin when a runner is created in their workspace.
+	RunnerCreated(runner_created::RunnerCreatedEmail),
 	/// The runner disconnected reminder email template. This email is sent to
 	/// the user when a runner in their workspace is no longer connected.
 	RunnerDisconnectedReminder(runner_disconnected_reminder::_RunnerDisconnectedReminderEmail),
+	/// The runner token regenerated email template. This email is sent to the
+	/// workspace's super admin when a runner's token is regenerated.
+	RunnerTokenRegenerated(runner_token_regenerated::RunnerTokenRegeneratedEmail),
 	/// The sign-up completed email template. This email is sent to the user
 	/// when their account setup is complete.
 	SignUpCompleted(sign_up_completed::SignUpCompletedEmail),
@@ -207,7 +219,9 @@ impl EmailTemplateType {
 			Self::PaymentFailureInvoice(template) => template.render_subject(globals),
 			Self::PaymentSuccessInvoice(template) => template.render_subject(globals),
 			Self::PurchaseCreditsSuccess(template) => template.render_subject(globals),
+			Self::RunnerCreated(template) => template.render_subject(globals),
 			Self::RunnerDisconnectedReminder(template) => template.render_subject(globals),
+			Self::RunnerTokenRegenerated(template) => template.render_subject(globals),
 			Self::SignUpCompleted(template) => template.render_subject(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_subject(globals),
 			Self::UserSignUp(template) => template.render_subject(globals),
@@ -234,7 +248,9 @@ impl EmailTemplateType {
 			Self::PaymentFailureInvoice(template) => template.render_html(globals),
 			Self::PaymentSuccessInvoice(template) => template.render_html(globals),
 			Self::PurchaseCreditsSuccess(template) => template.render_html(globals),
+			Self::RunnerCreated(template) => template.render_html(globals),
 			Self::RunnerDisconnectedReminder(template) => template.render_html(globals),
+			Self::RunnerTokenRegenerated(template) => template.render_html(globals),
 			Self::SignUpCompleted(template) => template.render_html(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_html(globals),
 			Self::UserSignUp(template) => template.render_html(globals),
@@ -261,7 +277,9 @@ impl EmailTemplateType {
 			Self::PaymentFailureInvoice(template) => template.render_text(globals),
 			Self::PaymentSuccessInvoice(template) => template.render_text(globals),
 			Self::PurchaseCreditsSuccess(template) => template.render_text(globals),
+			Self::RunnerCreated(template) => template.render_text(globals),
 			Self::RunnerDisconnectedReminder(template) => template.render_text(globals),
+			Self::RunnerTokenRegenerated(template) => template.render_text(globals),
 			Self::SignUpCompleted(template) => template.render_text(globals),
 			Self::UnverifiedDomainDelete(template) => template.render_text(globals),
 			Self::UserSignUp(template) => template.render_text(globals),

@@ -24,6 +24,8 @@ Watch for these:
 - **Backslashes in raw strings.** A Rust raw string (`r#"…"#`) passes them through literally. A regex `\.` is written `\.`; writing `\\.` puts two backslashes into the SQL.
 - **Postgres 18 names `NOT NULL` constraints**, as `<table>_<column>_not_null`. Renaming a column doesn't rename its constraint, so the old name lingers unless you rename that too.
 - **`ADD COLUMN` appends.** If the fresh-install DDL puts the column somewhere else, the two schemas differ in column order.
+- **A new enum value can't be used in the transaction that added it**, and every pending migration runs in one transaction. Rename the type and recreate it instead (m029, m033), dropping and re-adding every generated column and FK of that type around the swap. Find them all; `ACTOR_TYPE` and `ACTOR_CLIENT_TYPE` each have one per subtype table.
+- **Grants by name skip missing permissions.** A grant that joins on `permission.name` inserts nothing for a name the table doesn't have yet, and still succeeds. Insert the permission first, and on the alpha clone check every name the migration grants exists.
 
 ## Verifying against alpha
 
@@ -51,7 +53,7 @@ Work in your scratchpad directory, not the repo.
 6. **Check the data:**
    - Seed representative rows before migrating the clone, and confirm they survive.
    - For a new or changed constraint, confirm with a read-only `SELECT` on alpha that alpha's existing rows satisfy it.
-   - For RBAC changes, compare effective permissions before and after by calling `RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(login_id, permission_name)` for every login and permission, and explain every difference.
+   - For RBAC changes, compare effective permissions before and after by calling `RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID(login_id, permission_name)` for every login (every `actor_client` row) and permission, and explain every difference.
 7. **Check the guards,** if the migration is meant to be safe on any schema. Delete its row from `migrations` in `fresh` and migrate again. It should succeed and change nothing.
 8. **Clean up** the containers and the dumps.
 

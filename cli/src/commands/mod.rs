@@ -43,7 +43,12 @@ pub struct GlobalArgs {
 	pub output: OutputType,
 	/// The token used to authenticate with the API, instead of the login
 	/// credentials
-	#[arg(short = 't', long = "token", env = "PATR_TOKEN")]
+	#[arg(
+		short = 't',
+		long = "token",
+		env = "PATR_TOKEN",
+		hide_env_values = true
+	)]
 	pub token: Option<String>,
 	/// The workspace to use for the command. If not specified, the current
 	/// workspace will be used.

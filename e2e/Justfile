@@ -144,4 +144,4 @@ stop:
 
 down:
     docker compose -f docker-compose.yml down -v
-    -docker ps -aq -f name=e2e-dind- | xargs -r docker rm -f
+    -docker ps -aq -f name=e2e-dind- | xargs -r docker rm -fv

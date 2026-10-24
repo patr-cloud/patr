@@ -826,6 +826,38 @@ async fn docker_login_works() {
 	);
 }
 
+/// A runner logs in to the registry with its own token, to pull its
+/// deployments' images.
+#[tokio::test]
+async fn docker_login_accepts_a_runner_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<DockerLoginRequest>::builder()
+				.headers(DockerLoginRequestHeaders {
+					authorization: Authorization::basic("patr", &runner.token),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(DockerLoginQuery {
+					service: "registry".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<DockerLoginResponse>>();
+
+	assert_eq!(
+		runner.token, response.response.access_token,
+		"docker login should hand the runner's token back as the bearer token"
+	);
+}
+
 #[tokio::test]
 async fn docker_login_wrong_credentials() {
 	let setup = setup().await.expect("failed to setup test server");

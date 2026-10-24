@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cloudflare_tunnel_id FROM runner WHERE id = $1 AND workspace_id = $2 AND deleted IS NULL FOR UPDATE;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "cloudflare_tunnel_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "runner",
+            "name": "cloudflare_tunnel_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "55f3d1b2750f2085c04427cf96fc0652d34fa650e4f1bef377b2874aabf424f1"
+}

@@ -12,7 +12,6 @@ mod list_role_bindings;
 mod update_role;
 
 use serde::{Deserialize, Serialize};
-use strum::EnumDiscriminants;
 use ts_rs::TS;
 
 pub use self::{
@@ -48,16 +47,7 @@ pub struct Role {
 }
 
 /// Who holds a binding: a member of the workspace or a service account in it.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, EnumDiscriminants, TS)]
-#[strum_discriminants(
-	name(WorkspaceActorDiscriminant),
-	cfg_attr(
-		not(target_arch = "wasm32"),
-		derive(sqlx::Type),
-		sqlx(type_name = "ACTOR_TYPE", rename_all = "snake_case"),
-	),
-	doc = "Workspace actor types"
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum WorkspaceActor {
 	/// A member of the workspace

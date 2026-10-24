@@ -58,6 +58,16 @@ pub async fn update_alloy_service(
 	)
 	.await?;
 
+	let host_ip = docker
+		.inspect_network("bridge", None)
+		.await
+		.ok()
+		.and_then(|network| network.ipam)
+		.and_then(|ipam| ipam.config)
+		.and_then(|configs| configs.into_iter().next())
+		.and_then(|config| config.gateway)
+		.unwrap_or_else(|| String::from("172.17.0.1"));
+
 	// Build the global Alloy service spec
 	let networks = Some(vec![NetworkAttachmentConfig {
 		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
@@ -89,6 +99,7 @@ pub async fn update_alloy_service(
 					String::from("run"),
 					String::from("/etc/alloy/config.alloy"),
 				]),
+				hosts: Some(vec![format!("{host_ip} host.docker.internal")]),
 				configs: Some(vec![TaskSpecContainerSpecConfigs {
 					file: Some(TaskSpecContainerSpecFile1 {
 						name: Some(String::from("/etc/alloy/config.alloy")),
