@@ -107,6 +107,8 @@ export const serviceAccountKeys = {
 export const managedUrlKeys = {
 	all: (workspaceId: string) => ["managedUrls", workspaceId] as const,
 	list: (workspaceId: string, domainId: string) => [...managedUrlKeys.all(workspaceId), "list", domainId] as const,
+	page: (workspaceId: string, domainId: string, page: string | undefined, count: string | undefined) =>
+		[...managedUrlKeys.list(workspaceId, domainId), page, count] as const,
 };
 
 export const permissionKeys = {
