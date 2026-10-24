@@ -1,3 +1,5 @@
+import { notFound } from "@tanstack/solid-router";
+
 const RESOURCE_NAME_REGEX = /^[a-zA-Z0-9\-_ .]{2,255}$/;
 const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // Pattern matches USER_NAME_REGEX on the backend: 1–100 chars, no HTML
@@ -221,6 +223,18 @@ export function validateEmail(value: string): string | undefined {
 	if (!value || value.trim().length === 0) return "Required";
 	if (!EMAIL_REGEX.test(value.trim())) return "Not a valid email address";
 	return undefined;
+}
+
+/**
+ * Throws `notFound()` unless `id` is a bare, non-hyphenated UUID. Call it from
+ * the `beforeLoad` of any route that puts a path param into an API URL:
+ * TanStack decodes `%2F` in params, so an unchecked one like
+ * `..%2Fdeployment%2F<id>` would send the request to another endpoint.
+ */
+export function requireUuidParam(id: string): void {
+	if (!/^[0-9a-f]{32}$/i.test(id)) {
+		throw notFound();
+	}
 }
 
 export {

@@ -68,7 +68,7 @@ async fn queued_service_account_emails(
 /// Who each queued email of `email_type` about the service account named
 /// `service_account_name` is to, paired with who its `actor_field` names as
 /// having acted.
-async fn queued_service_account_email_actors(
+pub async fn queued_service_account_email_actors(
 	setup: &TestSetup,
 	email_type: &str,
 	actor_field: &str,
@@ -95,9 +95,8 @@ async fn queued_service_account_email_actors(
 }
 
 /// Add a member holding `permission` across the workspace, renamed to `Acting
-/// Member` so an email can tell them apart from the owner, and return a token
-/// from a fresh login: an existing login's cached actor data keeps the old
-/// name.
+/// Member` so an email can tell them apart from the owner, and return the
+/// token they renamed themselves with.
 async fn add_renamed_member(
 	setup: &TestSetup,
 	owner: &TestUser,
@@ -131,9 +130,7 @@ async fn add_renamed_member(
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(UpdateUserInfoResponse));
 
-	let (access_token, _refresh_token) =
-		setup.login_test_user(&member.email, &member.password).await;
-	BearerToken::from_str(&access_token).unwrap()
+	member.access_token
 }
 
 #[tokio::test]

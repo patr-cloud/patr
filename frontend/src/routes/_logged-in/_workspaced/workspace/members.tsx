@@ -16,7 +16,13 @@ import {
 import type { Binding } from "~/components/binding-rows";
 import { FiCheck, FiCopy, FiEdit2, FiMail, FiTrash, FiX } from "solid-icons/fi";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
-import { createAuthenticatedAction, createPaginationState, useIsAllowed, recoverFromOutOfBounds } from "~/hooks";
+import {
+	createAuthenticatedAction,
+	createPaginationState,
+	useIsAllowed,
+	recoverFromOutOfBounds,
+	paginationSearch,
+} from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
 import { RemoveUserFromWorkspaceResponse } from "~/bindings/RemoveUserFromWorkspaceResponse";
@@ -72,8 +78,8 @@ const ManageWorkspace = () => {
 		() => "100"
 	);
 	const membersQuery = useMembersQuery(
-		() => search().page,
-		() => search().count
+		() => search().page?.toString(),
+		() => search().count?.toString()
 	);
 	const invitesQuery = useInvitesQuery();
 	const canModifyMembers = useIsAllowed("modifyRoles", "edit");
@@ -88,7 +94,7 @@ const ManageWorkspace = () => {
 	// link no longer works — say so rather than showing it as merely pending.
 	const isExpired = (expiry: Date) => new Date(expiry).getTime() <= Date.now();
 
-	const isFirstPage = createMemo(() => !search().page || search().page === "0");
+	const isFirstPage = createMemo(() => !search().page);
 
 	const toMemberRow = (member: WorkspaceMember): PersonRow => ({
 		key: `member:${member.userId}`,
@@ -615,9 +621,6 @@ const ManageWorkspace = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/members")({
-	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-		page: (search.page as string) || undefined,
-		count: (search.count as string) || undefined,
-	}),
+	validateSearch: paginationSearch,
 	component: ManageWorkspace,
 });

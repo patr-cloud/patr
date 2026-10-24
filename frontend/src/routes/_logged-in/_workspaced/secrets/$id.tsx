@@ -23,6 +23,7 @@ import { secretKeys } from "~/hooks/query-keys";
 import { DeleteSecretResponse, UpdateSecretRequest, UpdateSecretResponse } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
 import { formatRelativeTime } from "~/utils/func";
+import { requireUuidParam } from "~/utils/validation";
 
 const SecretDetailPage = () => {
 	const params = Route.useParams();
@@ -271,5 +272,6 @@ const SecretDetailPage = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/secrets/$id")({
+	beforeLoad: ({ params }) => requireUuidParam(params.id),
 	component: SecretDetailPage,
 });

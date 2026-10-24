@@ -1,6 +1,9 @@
 use std::{collections::BTreeMap, time::Duration};
 
-use api::redis::keys;
+use api::{
+	models::redis::{ActorAuthDataCache, ActorAuthDataCacheKind},
+	redis::keys,
+};
 use base64::prelude::*;
 use futures::{SinkExt as _, StreamExt as _};
 use models::{
@@ -1052,6 +1055,75 @@ async fn runner_cannot_update_status_of_another_workspaces_deployment() {
 			.await,
 		victim_kv_writes,
 		"another workspace's runner must not rewrite the deployment's KV entry"
+	);
+}
+
+/// Renaming a runner reaches its cached auth data on the runner's next request,
+/// not once the entry expires.
+#[tokio::test]
+async fn update_runner_refreshes_the_cached_name() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let get_runner_info = || {
+		setup.make_api_call(
+			ApiRequest::<GetRunnerInfoRequest>::builder()
+				.path(GetRunnerInfoPath {
+					workspace_id: workspace.id,
+					runner_id: runner.id,
+				})
+				.headers(GetRunnerInfoRequestHeaders {
+					authorization: BearerToken::from_str(&runner.token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+	let cache_key = keys::auth_data_for_token(&hex::encode(Sha256::digest(&runner.token)));
+	let cached_name = || async {
+		let entry = setup
+			.get_redis_value(&cache_key)
+			.await
+			.expect("the token should be cached");
+		match serde_json::from_str::<ActorAuthDataCache>(&entry)
+			.expect("the cached entry should decode")
+			.kind
+		{
+			ActorAuthDataCacheKind::Runner { name, .. } => name,
+			kind => panic!("expected a runner's cached entry, got `{kind:?}`"),
+		}
+	};
+
+	assert!(get_runner_info().await.status_code().is_success());
+	assert_eq!(runner.name, cached_name().await);
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateRunnerRequest>::builder()
+				.path(UpdateRunnerPath {
+					workspace_id: workspace.id,
+					runner_id: runner.id,
+				})
+				.headers(UpdateRunnerRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateRunnerRequest {
+					name: "renamed-runner".to_string(),
+				})
+				.build(),
+		)
+		.await;
+	assert_eq!(StatusCode::ACCEPTED, response.status_code());
+
+	assert!(get_runner_info().await.status_code().is_success());
+	assert_eq!(
+		"renamed-runner",
+		cached_name().await,
+		"the runner's next request should cache its new name"
 	);
 }
 

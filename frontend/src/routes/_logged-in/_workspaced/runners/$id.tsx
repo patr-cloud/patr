@@ -19,7 +19,7 @@ import {
 	StatusChip,
 	useToast,
 } from "~/components";
-import { createAuthenticatedAction } from "~/hooks";
+import { createAuthenticatedAction, paginationSearch, type PaginationSearch } from "~/hooks";
 import useIsAllowed, { useGetPermissions } from "~/hooks/is-allowed";
 import { useRunnerInfoQuery } from "~/hooks/fetch";
 import { runnerKeys } from "~/hooks/query-keys";
@@ -31,6 +31,7 @@ import RunnerDeployments from "./-components/deployments";
 import RunnerMetrics from "./-components/metrics";
 import RunnerLogs from "./-components/logs";
 import RunnerInfo from "./-components/info";
+import { requireUuidParam } from "~/utils/validation";
 
 const RunnerDetail = () => {
 	const params = Route.useParams();
@@ -296,8 +297,10 @@ const RunnerDetail = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/runners/$id")({
-	validateSearch: (search: Record<string, unknown>): { tab: string } => ({
+	beforeLoad: ({ params }) => requireUuidParam(params.id),
+	validateSearch: (search: Record<string, unknown>): { tab: string } & PaginationSearch => ({
 		tab: (search.tab as string) || "deployments",
+		...paginationSearch(search),
 	}),
 	component: RunnerDetail,
 });
