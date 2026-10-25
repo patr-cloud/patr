@@ -8,7 +8,6 @@ use models::{
 	utils::Uuid,
 };
 use sha2::Digest as _;
-use time::{Duration, OffsetDateTime};
 
 use crate::prelude::*;
 
@@ -459,12 +458,17 @@ const CODE_VERIFIER: &str = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
 
 /// Runs a full authorize → consent → code cycle and returns the code.
 async fn issue_code(setup: &TestSetup, scope: &str) -> (String, TestUser) {
+	issue_code_with(setup, &[("scope", scope)]).await
+}
+
+/// The same, with any of the `/authorize` parameters overridden.
+async fn issue_code_with(setup: &TestSetup, overrides: &[(&str, &str)]) -> (String, TestUser) {
 	let user = setup.create_test_user().await;
 
 	let response = setup
 		.make_raw_api_get(&format!(
 			"/auth/oauth/authorize?{}",
-			authorize_query(&[("scope", scope)])
+			authorize_query(overrides)
 		))
 		.await;
 
@@ -1114,36 +1118,19 @@ async fn a_web_login_only_endpoint_rejects_an_oauth_token() {
 #[tokio::test]
 async fn an_id_token_presented_as_a_bearer_token_is_rejected() {
 	let setup = setup().await.expect("failed to setup test server");
-	let (access_token, user) = issue_access_token(&setup, "openid").await;
+	let (code, _user) = issue_code(&setup, "openid").await;
 
-	// An id token: same key and `kid`, but `typ` is `JWT` and `aud` the client.
-	let key = api::models::oauth::keys::get_signing_key(&setup.state().config)
-		.expect("a signing key should exist");
-
-	let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::ES256);
-	header.kid = Some(key.kid.clone());
-	header.typ = Some("JWT".to_owned());
-
-	let now = OffsetDateTime::now_utc();
-	let id_token = jsonwebtoken::encode(
-		&header,
-		&serde_json::json!({
-			"iss": format!("https://api.{}", setup.state().config.server.base_domain),
-			"sub": user.user_id.to_string(),
-			"aud": CLIENT_ID,
-			"exp": (now + Duration::minutes(5)).unix_timestamp(),
-			"iat": now.unix_timestamp(),
-		}),
-		&key.encoding_key,
-	)
-	.expect("failed to mint an id token");
+	// Signed by the same key as the access token it came with.
+	let tokens: serde_json::Value = exchange(&setup, &code).await.json();
+	let access_token = tokens["access_token"].as_str().expect("an access token");
+	let id_token = tokens["id_token"].as_str().expect("an id token");
 
 	setup
 		.make_api_call(
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.path(GetUserInfoPath)
 				.headers(GetUserInfoRequestHeaders {
-					authorization: BearerToken::from_str(&id_token).unwrap(),
+					authorization: BearerToken::from_str(id_token).unwrap(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(GetUserInfoRequest)
@@ -1157,7 +1144,7 @@ async fn an_id_token_presented_as_a_bearer_token_is_rejected() {
 			ApiRequest::<GetUserInfoRequest>::builder()
 				.path(GetUserInfoPath)
 				.headers(GetUserInfoRequestHeaders {
-					authorization: BearerToken::from_str(&access_token).unwrap(),
+					authorization: BearerToken::from_str(access_token).unwrap(),
 					user_agent: TEST_USER_AGENT,
 				})
 				.body(GetUserInfoRequest)
@@ -1282,4 +1269,178 @@ async fn a_web_dashboard_jwt_is_still_rejected_by_the_api_arm() {
 		)
 		.await
 		.assert_status(StatusCode::BAD_REQUEST);
+}
+
+/// The key a token's `kid` names, found in the published JWKS the way a
+/// relying party would.
+async fn decoding_key_for(setup: &TestSetup, token: &str) -> jsonwebtoken::DecodingKey {
+	let jwks = setup
+		.make_raw_api_get("/.well-known/jwks.json")
+		.await
+		.json::<jsonwebtoken::jwk::JwkSet>();
+
+	let kid = jsonwebtoken::decode_header(token)
+		.expect("a decodable header")
+		.kid
+		.expect("a `kid`");
+
+	jsonwebtoken::DecodingKey::from_jwk(jwks.find(&kid).expect("the JWKS should publish the `kid`"))
+		.expect("the JWK should build a decoding key")
+}
+
+#[tokio::test]
+async fn the_discovery_document_advertises_only_what_is_mounted() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup
+		.make_raw_api_get("/.well-known/openid-configuration")
+		.await;
+	response.assert_status(StatusCode::OK);
+	let document: serde_json::Value = response.json();
+
+	let issuer = api::models::oauth::issuer(&setup.state().config);
+	assert_eq!(document["issuer"].as_str(), Some(issuer.as_str()));
+
+	let mut endpoints = document
+		.as_object()
+		.expect("an object")
+		.keys()
+		.filter(|key| key.ends_with("_endpoint"))
+		.cloned()
+		.collect::<Vec<_>>();
+	endpoints.sort();
+	assert_eq!(
+		endpoints,
+		[
+			"authorization_endpoint",
+			"token_endpoint",
+			"userinfo_endpoint"
+		]
+	);
+
+	for (key, path) in [
+		("authorization_endpoint", "/auth/oauth/authorize"),
+		("token_endpoint", "/auth/oauth/token"),
+		("userinfo_endpoint", "/auth/oauth/userinfo"),
+		("jwks_uri", "/.well-known/jwks.json"),
+	] {
+		assert_eq!(
+			document[key].as_str(),
+			Some(format!("{issuer}{path}").as_str()),
+			"{key} should hang off the issuer"
+		);
+	}
+
+	assert_eq!(
+		document["code_challenge_methods_supported"],
+		serde_json::json!(["S256"])
+	);
+	assert_eq!(
+		document["id_token_signing_alg_values_supported"],
+		serde_json::json!(["ES256"])
+	);
+}
+
+#[tokio::test]
+async fn the_jwks_publishes_signing_keys_without_private_material() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup.make_raw_api_get("/.well-known/jwks.json").await;
+	response.assert_status(StatusCode::OK);
+	let jwks: serde_json::Value = response.json();
+
+	let keys = jwks["keys"].as_array().expect("a keys array");
+	assert!(!keys.is_empty());
+
+	for key in keys {
+		assert!(key.get("d").is_none(), "a private key was published: {key}");
+		// A client skips a key missing any of these.
+		assert!(key["kid"].is_string(), "missing `kid`: {key}");
+		assert_eq!(key["use"].as_str(), Some("sig"), "wrong `use`: {key}");
+		assert_eq!(key["alg"].as_str(), Some("ES256"), "wrong `alg`: {key}");
+		assert_eq!(key["kty"].as_str(), Some("EC"), "wrong `kty`: {key}");
+		assert_eq!(key["crv"].as_str(), Some("P-256"), "wrong `crv`: {key}");
+	}
+}
+
+#[tokio::test]
+async fn the_id_token_verifies_against_the_published_jwks() {
+	const NONCE: &str = "n-0S6_WzA2Mj";
+
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, user) = issue_code_with(
+		&setup,
+		&[("scope", "openid profile email"), ("nonce", NONCE)],
+	)
+	.await;
+
+	let tokens: serde_json::Value = exchange(&setup, &code).await.json();
+	let id_token = tokens["id_token"].as_str().expect("an id token");
+	let access_token = tokens["access_token"].as_str().expect("an access token");
+
+	let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::ES256);
+	validation.set_audience(&[CLIENT_ID]);
+	validation.set_issuer(&[api::models::oauth::issuer(&setup.state().config)]);
+
+	let claims = jsonwebtoken::decode::<serde_json::Value>(
+		id_token,
+		&decoding_key_for(&setup, id_token).await,
+		&validation,
+	)
+	.expect("the id token should verify against the published JWKS")
+	.claims;
+
+	assert_eq!(
+		claims["sub"].as_str(),
+		Some(user.user_id.to_string().as_str())
+	);
+	assert_eq!(claims["nonce"].as_str(), Some(NONCE));
+	assert_eq!(claims["email"].as_str(), Some(user.email.as_str()));
+	assert!(claims["name"].is_string());
+	assert!(claims["auth_time"].is_number());
+
+	let expected_at_hash = base64::Engine::encode(
+		&base64::prelude::BASE64_URL_SAFE_NO_PAD,
+		&sha2::Sha256::digest(access_token)[..16],
+	);
+	assert_eq!(claims["at_hash"].as_str(), Some(expected_at_hash.as_str()));
+}
+
+#[tokio::test]
+async fn a_grant_without_openid_gets_no_id_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "offline_access").await;
+
+	let body: serde_json::Value = exchange(&setup, &code).await.json();
+
+	assert!(body["access_token"].is_string());
+	assert!(body["refresh_token"].is_string());
+	assert!(body.get("id_token").is_none());
+}
+
+#[tokio::test]
+async fn a_refresh_does_not_return_an_id_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (code, _user) = issue_code(&setup, "openid offline_access").await;
+
+	let first: serde_json::Value = exchange(&setup, &code).await.json();
+	assert!(first["id_token"].is_string());
+
+	let refreshed: serde_json::Value = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				(
+					"refresh_token",
+					first["refresh_token"].as_str().expect("a refresh token"),
+				),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.json();
+
+	assert!(refreshed["access_token"].is_string());
+	assert!(refreshed.get("id_token").is_none());
 }

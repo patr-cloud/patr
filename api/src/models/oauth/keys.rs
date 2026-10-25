@@ -2,7 +2,7 @@ use jsonwebtoken::{
 	Algorithm,
 	DecodingKey,
 	EncodingKey,
-	jwk::{Jwk, PublicKeyUse, ThumbprintHash},
+	jwk::{Jwk, JwkSet, PublicKeyUse, ThumbprintHash},
 };
 
 use crate::{prelude::*, utils::config::AppConfig};
@@ -62,4 +62,11 @@ pub fn get_signing_key(config: &AppConfig) -> Result<SigningKey, ErrorType> {
 /// The key a token names in its `kid`, if it's one of ours.
 pub fn get_key_by_id(config: &AppConfig, kid: &str) -> Result<Option<SigningKey>, ErrorType> {
 	Ok(load_keys(config)?.into_iter().find(|key| key.kid == kid))
+}
+
+/// Every configured key, so a token signed by an older one still verifies.
+pub fn get_jwks(config: &AppConfig) -> Result<JwkSet, ErrorType> {
+	Ok(JwkSet {
+		keys: load_keys(config)?.into_iter().map(|key| key.jwk).collect(),
+	})
 }
