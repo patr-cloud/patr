@@ -16,6 +16,6 @@ macros::declare_api_endpoint!(
 		#[ts(type = "string")]
 		pub version: Version,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

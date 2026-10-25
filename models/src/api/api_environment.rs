@@ -35,6 +35,6 @@ macros::declare_api_endpoint!(
 		#[serde(skip_serializing_if = "Option::is_none")]
 		pub base_domain: Option<String>,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

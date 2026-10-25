@@ -2,8 +2,13 @@ use std::collections::BTreeMap;
 
 use api::{models::oauth::types::OAuthAuthorizationRequest, redis::keys as redis_keys};
 use axum_test::TestResponse;
-use models::{ApiSuccessResponseBody, api::auth::oauth::*, utils::Uuid};
+use models::{
+	ApiSuccessResponseBody,
+	api::{auth::oauth::*, user::*},
+	utils::Uuid,
+};
 use sha2::Digest as _;
+use time::{Duration, OffsetDateTime};
 
 use crate::prelude::*;
 
@@ -956,4 +961,325 @@ async fn an_unsupported_grant_type_is_rejected() {
 
 	response.assert_status(StatusCode::BAD_REQUEST);
 	assert!(response.text().contains("unsupported_grant_type"));
+}
+
+/// The grant an access token was issued under: its `sid`, read without
+/// verifying.
+fn grant_id_of(access_token: &str) -> Uuid {
+	let payload = access_token.split('.').nth(1).expect("a JWT payload");
+	let decoded = base64::Engine::decode(&base64::prelude::BASE64_URL_SAFE_NO_PAD, payload)
+		.expect("a base64url payload");
+	let claims: serde_json::Value = serde_json::from_slice(&decoded).expect("a JSON payload");
+
+	Uuid::parse_str(claims["sid"].as_str().expect("a `sid` claim")).expect("`sid` is a UUID")
+}
+
+/// Runs the whole flow and hands back a usable access token.
+async fn issue_access_token(setup: &TestSetup, scope: &str) -> (String, TestUser) {
+	let (code, user) = issue_code(setup, scope).await;
+	let tokens: serde_json::Value = exchange(setup, &code).await.json();
+
+	(
+		tokens["access_token"]
+			.as_str()
+			.expect("an access token")
+			.to_owned(),
+		user,
+	)
+}
+
+#[tokio::test]
+async fn an_oauth_access_token_authenticates_the_api() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid profile email").await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await;
+
+	response.assert_status(StatusCode::OK);
+	let body = response.json::<ApiSuccessResponseBody<GetUserInfoResponse>>();
+	assert_eq!(body.response.basic_user_info.id, user.user_id);
+	assert_eq!(body.response.email, user.email);
+}
+
+#[tokio::test]
+async fn an_oauth_grant_sees_the_same_workspaces_as_the_user() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid").await;
+
+	let via_grant = setup
+		.make_api_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.path(ListUserWorkspacesPath)
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ListUserWorkspacesRequest)
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListUserWorkspacesResponse>>();
+
+	let via_session = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.path(ListUserWorkspacesPath)
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ListUserWorkspacesRequest)
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListUserWorkspacesResponse>>();
+
+	assert_eq!(
+		via_grant
+			.response
+			.workspaces
+			.iter()
+			.map(|workspace| workspace.id)
+			.collect::<Vec<_>>(),
+		via_session
+			.response
+			.workspaces
+			.iter()
+			.map(|workspace| workspace.id)
+			.collect::<Vec<_>>(),
+	);
+}
+
+#[tokio::test]
+async fn an_oauth_grant_lists_the_users_resources() {
+	use models::api::workspace::runner::*;
+
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid").await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+				.path(ListRunnersForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListRunnersForWorkspaceRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>();
+
+	assert_eq!(1, response.response.runners.len());
+}
+
+#[tokio::test]
+async fn a_web_login_only_endpoint_rejects_an_oauth_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _user) = issue_access_token(&setup, "openid").await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListWebLoginsRequest>::builder()
+				.path(ListWebLoginsPath)
+				.headers(ListWebLoginsRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ListWebLoginsRequest)
+				.build(),
+		)
+		.await;
+
+	response.assert_status(StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn an_id_token_presented_as_a_bearer_token_is_rejected() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid").await;
+
+	// An id token: same key and `kid`, but `typ` is `JWT` and `aud` the client.
+	let key = api::models::oauth::keys::get_signing_key(&setup.state().config)
+		.expect("a signing key should exist");
+
+	let mut header = jsonwebtoken::Header::new(jsonwebtoken::Algorithm::ES256);
+	header.kid = Some(key.kid.clone());
+	header.typ = Some("JWT".to_owned());
+
+	let now = OffsetDateTime::now_utc();
+	let id_token = jsonwebtoken::encode(
+		&header,
+		&serde_json::json!({
+			"iss": format!("https://api.{}", setup.state().config.server.base_domain),
+			"sub": user.user_id.to_string(),
+			"aud": CLIENT_ID,
+			"exp": (now + Duration::minutes(5)).unix_timestamp(),
+			"iat": now.unix_timestamp(),
+		}),
+		&key.encoding_key,
+	)
+	.expect("failed to mint an id token");
+
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(&id_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::OK);
+}
+
+#[tokio::test]
+async fn revoking_a_grant_stops_its_access_token_immediately() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _user) = issue_access_token(&setup, "openid").await;
+
+	let grant_id = grant_id_of(&access_token);
+
+	setup
+		.execute_sql(&format!(
+			"UPDATE oauth_login SET revoked = NOW() WHERE login_id = '{grant_id}'"
+		))
+		.await;
+
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn userinfo_answers_get_and_post() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid").await;
+
+	for response in [
+		setup
+			.make_raw_api_get_authed("/auth/oauth/userinfo", &access_token)
+			.await,
+		setup
+			.make_raw_api_post_authed("/auth/oauth/userinfo", &access_token)
+			.await,
+	] {
+		response.assert_status(StatusCode::OK);
+		let claims: serde_json::Value = response.json();
+		assert_eq!(
+			claims["sub"].as_str(),
+			Some(user.user_id.to_string().as_str())
+		);
+	}
+}
+
+#[tokio::test]
+async fn userinfo_returns_only_the_claims_the_scopes_allow() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let (openid_only, _user) = issue_access_token(&setup, "openid").await;
+	let claims: serde_json::Value = setup
+		.make_raw_api_get_authed("/auth/oauth/userinfo", &openid_only)
+		.await
+		.json();
+	assert!(claims["sub"].is_string());
+	assert!(
+		claims.get("email").is_none(),
+		"`email` needs the email scope"
+	);
+	assert!(
+		claims.get("name").is_none(),
+		"`name` needs the profile scope"
+	);
+
+	let (full, user) = issue_access_token(&setup, "openid profile email").await;
+	let claims: serde_json::Value = setup
+		.make_raw_api_get_authed("/auth/oauth/userinfo", &full)
+		.await
+		.json();
+	assert_eq!(claims["email"].as_str(), Some(user.email.as_str()));
+	assert_eq!(claims["email_verified"].as_bool(), Some(true));
+	assert!(claims["name"].is_string());
+	assert!(claims["given_name"].is_string());
+	assert!(claims["family_name"].is_string());
+}
+
+#[tokio::test]
+async fn userinfo_without_a_token_challenges_for_a_bearer() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	let response = setup.make_raw_api_get("/auth/oauth/userinfo").await;
+
+	response.assert_status(StatusCode::UNAUTHORIZED);
+	let challenge = response
+		.headers()
+		.get("www-authenticate")
+		.expect("a WWW-Authenticate challenge")
+		.to_str()
+		.expect("a printable challenge");
+	assert!(challenge.starts_with("Bearer "), "got `{challenge}`");
+}
+
+#[tokio::test]
+async fn a_web_dashboard_jwt_is_still_rejected_by_the_api_arm() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
 }

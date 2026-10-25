@@ -27,7 +27,7 @@ macros::declare_api_endpoint!(
 		/// The new token (shown only once)
 		pub token: String,
 	},
-	client_type = [WebLogin, ApiToken],
+	client_type = [WebLogin, ApiToken, OAuthLogin],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::ServiceAccount,

@@ -580,20 +580,20 @@ pub async fn initialize_rbac_constraints(
 								bindings.scope_id = bindings.workspace_id
 							)
 					);
-			ELSIF local_login_type = 'web_login' THEN
+			ELSIF local_login_type IN ('web_login', 'oauth_login') THEN
 				RETURN QUERY
-				/* Workspaces where this login has super admin access */
+				/* Workspaces where this login's user has super admin access */
 				WITH super_admin_workspaces AS (
 					SELECT
 						workspace.id AS workspace_id
 					FROM
-						web_login
+						user_login
 					INNER JOIN
 						workspace
 					ON
-						workspace.super_admin_id = web_login.user_id
+						workspace.super_admin_id = user_login.user_id
 					WHERE
-						web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 				),
 				/* Bindings carrying this permission, through the user's
 				membership */
@@ -602,11 +602,11 @@ pub async fn initialize_rbac_constraints(
 						role_binding.workspace_id,
 						role_binding.scope_id
 					FROM
-						web_login
+						user_login
 					INNER JOIN
 						workspace_user
 					ON
-						workspace_user.user_id = web_login.user_id
+						workspace_user.user_id = user_login.user_id
 					INNER JOIN
 						role_binding
 					ON
@@ -617,7 +617,7 @@ pub async fn initialize_rbac_constraints(
 						role_permission.role_id = role_binding.role_id AND
 						role_permission.permission_id = local_permission_id
 					WHERE
-						web_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
+						user_login.login_id = RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID.login_id
 				)
 				SELECT
 					resource.*
