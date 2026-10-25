@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE web_login SET refresh_token = $1 WHERE login_id = $2;",
+  "query": "UPDATE web_login SET token_hash = $1 WHERE login_id = $2;",
   "describe": {
     "columns": [],
     "parameters": {
@@ -11,5 +11,5 @@
     },
     "nullable": []
   },
-  "hash": "119fcd8f19cd461f611eb9c10a7ab760f3b1249b376ce7cc0a46972f07553efc"
+  "hash": "fa6a4ac27e7f02a6ca6a3c423d68d5dcdadcbba136f5ac1c604c364661b5edb1"
 }

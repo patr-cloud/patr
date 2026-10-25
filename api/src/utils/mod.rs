@@ -83,6 +83,9 @@ pub mod constants {
 	/// The prefix of a runner token. See [`API_TOKEN_PREFIX`].
 	pub const RUNNER_TOKEN_PREFIX: &str = "patr_rn_";
 
+	/// The prefix of a refresh token. See [`API_TOKEN_PREFIX`].
+	pub const REFRESH_TOKEN_PREFIX: &str = "patr_rf_";
+
 	/// The number of random base62 characters after an opaque token's prefix:
 	/// about 190 bits of entropy.
 	pub const OPAQUE_TOKEN_SECRET_LENGTH: usize = 32;

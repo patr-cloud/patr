@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use api::models::permissions;
+use api::models::{access_token_data::AccessTokenData, permissions};
 use headers::authorization::Authorization;
 use models::{
 	ApiSuccessResponseBody,
@@ -276,10 +276,11 @@ async fn logout_works() {
 async fn deleted_web_login_is_rejected_immediately() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
-	let (other_access, other_refresh) = setup.login_test_user(&user.email, &user.password).await;
+	let (other_access, _) = setup.login_test_user(&user.email, &user.password).await;
+	let other_login_id = AccessTokenData::decode(&other_access, &setup.state().config.jwt_secret)
+		.unwrap()
+		.sid;
 	let other_access = BearerToken::from_str(&other_access).unwrap();
-	// The refresh token is `{login_id}.{secret}`.
-	let other_login_id = Uuid::parse_str(other_refresh.split_once('.').unwrap().0).unwrap();
 
 	let whoami = |token: BearerToken| {
 		setup.make_web_dashboard_call(
@@ -335,8 +336,12 @@ async fn delete_web_login_of_another_user_is_not_found() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let other = setup.create_test_user().await;
-	let other_login_id =
-		Uuid::parse_str(other.refresh_token.0.token().split_once('.').unwrap().0).unwrap();
+	let other_login_id = AccessTokenData::decode(
+		other.access_token.0.token(),
+		&setup.state().config.jwt_secret,
+	)
+	.unwrap()
+	.sid;
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -377,10 +382,11 @@ async fn delete_web_login_of_another_user_is_not_found() {
 async fn audit_entry_resolves_to_user_after_logout() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
-	let (other_access, other_refresh) = setup.login_test_user(&user.email, &user.password).await;
+	let (other_access, _) = setup.login_test_user(&user.email, &user.password).await;
+	let other_login_id = AccessTokenData::decode(&other_access, &setup.state().config.jwt_secret)
+		.unwrap()
+		.sid;
 	let other_access = BearerToken::from_str(&other_access).unwrap();
-	// The refresh token is `{login_id}.{secret}`.
-	let other_login_id = Uuid::parse_str(other_refresh.split_once('.').unwrap().0).unwrap();
 
 	// Creating a workspace is audited against the login that made it.
 	let workspace = setup.create_test_workspace(&other_access).await;
@@ -554,6 +560,40 @@ async fn renew_access_token_invalid() {
 		response.status_code().is_client_error(),
 		"expected client error for invalid refresh token"
 	);
+}
+
+/// A refresh token with a typo in its checksum, an unknown one, and another
+/// kind of token are all rejected.
+#[tokio::test]
+async fn renew_access_token_rejects_a_bad_or_unknown_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let token = user.refresh_token.0.token();
+	let (body, last) = token.split_at(token.len() - 1);
+	let typo = format!("{body}{}", if last == "0" { '1' } else { '0' });
+
+	for refresh_token in [
+		typo,
+		permissions::generate_refresh_token(),
+		permissions::generate_api_token(),
+	] {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<RenewAccessTokenRequest>::builder()
+					.headers(RenewAccessTokenRequestHeaders {
+						refresh_token: BearerToken::from_str(&refresh_token).unwrap(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+
+		assert!(
+			response.status_code().is_client_error(),
+			"`{refresh_token}` should be rejected"
+		);
+	}
 }
 
 // ---------------------------------------------------------------------------

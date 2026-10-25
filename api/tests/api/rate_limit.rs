@@ -3,7 +3,7 @@ use std::{
 	time::{SystemTime, UNIX_EPOCH},
 };
 
-use api::redis::keys;
+use api::{models::access_token_data::AccessTokenData, redis::keys};
 use models::api::user::*;
 use rand::RngExt as _;
 use rustis::commands::{SortedSetCommands as _, ZAddOptions};
@@ -27,8 +27,11 @@ fn fixed_test_ip() -> IpAddr {
 /// just made `DEBUG_PER_SECOND_LIMIT` requests. The entries are written
 /// straight to the limiter's sorted set rather than sent as requests, so the
 /// window is full however slowly the runner serves them.
-async fn fill_per_second_limit(setup: &TestSetup, refresh_token: &BearerToken) {
-	let login_id = Uuid::parse_str(refresh_token.0.token().split_once('.').unwrap().0).unwrap();
+async fn fill_per_second_limit(setup: &TestSetup, access_token: &BearerToken) {
+	let login_id =
+		AccessTokenData::decode(access_token.0.token(), &setup.state().config.jwt_secret)
+			.unwrap()
+			.sid;
 	let now_ns = SystemTime::now()
 		.duration_since(UNIX_EPOCH)
 		.unwrap()
@@ -83,7 +86,7 @@ async fn test_rate_limit_blocks_after_exceeding_per_second_limit() {
 	let ip = fixed_test_ip();
 
 	// Fill the per-second window, then send one more.
-	fill_per_second_limit(&setup, &user.refresh_token).await;
+	fill_per_second_limit(&setup, &user.access_token).await;
 
 	// The next request should be rate-limited
 	let response = setup
@@ -112,7 +115,7 @@ async fn test_rate_limit_window_slides() {
 	let ip = fixed_test_ip();
 
 	// Fill the per-second window
-	fill_per_second_limit(&setup, &user.refresh_token).await;
+	fill_per_second_limit(&setup, &user.access_token).await;
 
 	// Confirm we're rate-limited
 	let response = setup
@@ -158,7 +161,7 @@ async fn test_rate_limit_rejected_requests_count() {
 	let ip = fixed_test_ip();
 
 	// Fill the per-second window
-	fill_per_second_limit(&setup, &user.refresh_token).await;
+	fill_per_second_limit(&setup, &user.access_token).await;
 
 	// Send more requests — they should all be 429 because rejected requests
 	// also consume a slot in the sorted set (optimistic add)
@@ -194,7 +197,7 @@ async fn test_rate_limit_authenticated_per_login() {
 	let session_b_bearer = BearerToken::from_str(&session_b_token).unwrap();
 
 	// Fill the per-second window of the first session
-	fill_per_second_limit(&setup, &user.refresh_token).await;
+	fill_per_second_limit(&setup, &user.access_token).await;
 
 	// First session should be rate-limited
 	let response = setup

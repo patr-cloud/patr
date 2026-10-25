@@ -1,7 +1,7 @@
-use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 use axum::http::StatusCode;
 use models::api::auth::*;
 use rustis::commands::GenericCommands;
+use sha2::{Digest as _, Sha256};
 
 use crate::{models::permissions, prelude::*, redis::keys as redis};
 
@@ -21,7 +21,7 @@ pub async fn logout(
 		redis,
 		client_ip: _,
 		actor_data,
-		state,
+		state: _,
 	}: AuthenticatedAppRequest<'_, LogoutRequest>,
 ) -> Result<AppResponse<LogoutRequest>, ErrorType> {
 	info!("Logging out user: {}", actor_data.id);
@@ -29,53 +29,31 @@ pub async fn logout(
 	// User agent being a browser is expected to be checked in the
 	// UserAgentValidationLayer
 
-	let Some((login_id, refresh_token)) = refresh_token.0.token().split_once('.') else {
+	let refresh_token = refresh_token.0.token();
+	if !refresh_token.starts_with(constants::REFRESH_TOKEN_PREFIX) ||
+		!permissions::has_valid_checksum(refresh_token)
+	{
 		return Err(ErrorType::MalformedRefreshToken);
-	};
-
-	let login_id = Uuid::parse_str(login_id).map_err(|_| ErrorType::MalformedRefreshToken)?;
+	}
 
 	let Some(login) = query!(
 		r#"
 		SELECT
-			web_login.refresh_token,
-			web_login.token_expiry
+			login_id
 		FROM
 			web_login
 		WHERE
-			login_id = $1;
+			token_hash = $1;
 		"#,
-		login_id,
+		hex::encode(Sha256::digest(refresh_token)),
 	)
 	.fetch_optional(&mut **database)
 	.await?
 	else {
-		debug!("Could not find a login with the login id: {}", login_id);
+		debug!("Could not find a login for that refresh token");
 		return Err(ErrorType::MalformedRefreshToken);
 	};
-
-	let success = argon2::Argon2::new_with_secret(
-		state.config.password_pepper.as_bytes(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.inspect_err(|err| {
-		error!("Error creating Argon2: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.verify_password(
-		refresh_token.as_ref(),
-		&PasswordHash::new(&login.refresh_token).map_err(ErrorType::server_error)?,
-	)
-	.inspect_err(|err| {
-		info!("Error verifying password: `{}`", err);
-	})
-	.is_ok();
-
-	if !success {
-		return Err(ErrorType::MalformedRefreshToken);
-	}
+	let login_id = login.login_id;
 
 	query!(
 		r#"

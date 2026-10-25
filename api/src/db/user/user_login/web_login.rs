@@ -13,7 +13,7 @@ pub async fn initialize_web_login_tables(
 			original_login_id UUID, /* In case this login was magically swapped, what's the original one */
 			user_id UUID NOT NULL,
 
-			refresh_token TEXT NOT NULL,
+			token_hash TEXT NOT NULL,
 			/* Expiry of the refresh token. Access tokens are independently
 			 * gated by their own JWT `exp` claim — do NOT use this column to
 			 * decide whether an access token is still valid. */
@@ -83,6 +83,17 @@ pub async fn initialize_web_login_indices(
 			web_login_idx_login_id
 		ON
 			web_login(login_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
+		CREATE UNIQUE INDEX
+			web_login_uq_token_hash
+		ON
+			web_login(token_hash);
 		"#
 	)
 	.execute(&mut *connection)

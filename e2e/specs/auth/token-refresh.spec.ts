@@ -31,7 +31,9 @@ async function readAuthFromBrowser(page: import('@playwright/test').Page): Promi
 		accessToken: string;
 		refreshToken: string;
 	};
-	const [loginId] = auth.refreshToken.split('.');
+	const { sid: loginId } = JSON.parse(
+		Buffer.from(auth.accessToken.split('.')[1], 'base64url').toString(),
+	) as { sid: string };
 	return { ...auth, loginId };
 }
 
