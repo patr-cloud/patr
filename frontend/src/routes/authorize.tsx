@@ -3,22 +3,12 @@ import { Title } from "@solidjs/meta";
 import { createSignal, For, Match, onMount, Show, Switch } from "solid-js";
 import { Button, ButtonVariant } from "~/components";
 import { httpRequest } from "~/utils/http-request";
+import { SCOPE_COPY } from "~/utils/oauth";
 import { GetConsentRequestResponse } from "~/bindings/GetConsentRequestResponse";
 import { SubmitConsentRequest } from "~/bindings/SubmitConsentRequest";
 import { SubmitConsentResponse } from "~/bindings/SubmitConsentResponse";
 
 type Status = "loading" | "consent" | "deciding" | "expired" | "error";
-
-/** What each identity scope lets the client see. */
-const SCOPE_COPY: Record<string, { title: string; description: string }> = {
-	openid: { title: "Sign you in", description: "Confirm who you are." },
-	profile: { title: "Your name", description: "See your first and last name." },
-	email: { title: "Your email address", description: "See the email address on your account." },
-	offline_access: {
-		title: "Stay signed in",
-		description: "Keep access when you are not using the app, until you revoke it.",
-	},
-};
 
 /**
  * The OAuth consent screen. At the root of the route tree, like

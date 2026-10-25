@@ -1313,6 +1313,8 @@ async fn the_discovery_document_advertises_only_what_is_mounted() {
 		endpoints,
 		[
 			"authorization_endpoint",
+			"introspection_endpoint",
+			"revocation_endpoint",
 			"token_endpoint",
 			"userinfo_endpoint"
 		]
@@ -1322,6 +1324,8 @@ async fn the_discovery_document_advertises_only_what_is_mounted() {
 		("authorization_endpoint", "/auth/oauth/authorize"),
 		("token_endpoint", "/auth/oauth/token"),
 		("userinfo_endpoint", "/auth/oauth/userinfo"),
+		("revocation_endpoint", "/auth/oauth/revoke"),
+		("introspection_endpoint", "/auth/oauth/introspect"),
 		("jwks_uri", "/.well-known/jwks.json"),
 	] {
 		assert_eq!(
@@ -1443,4 +1447,357 @@ async fn a_refresh_does_not_return_an_id_token() {
 
 	assert!(refreshed["access_token"].is_string());
 	assert!(refreshed.get("id_token").is_none());
+}
+
+/// The public client seeded in `setup.rs`.
+const PUBLIC_CLIENT_ID: &str = "test-public-client";
+
+/// Runs the whole flow with `offline_access` and hands back both tokens.
+async fn issue_token_pair(setup: &TestSetup) -> (String, String, TestUser) {
+	let (code, user) = issue_code(setup, "openid offline_access").await;
+	let tokens: serde_json::Value = exchange(setup, &code).await.json();
+
+	(
+		tokens["access_token"]
+			.as_str()
+			.expect("an access token")
+			.to_owned(),
+		tokens["refresh_token"]
+			.as_str()
+			.expect("a refresh token")
+			.to_owned(),
+		user,
+	)
+}
+
+/// Calls `GetUserInfo` on the api arm with `access_token`.
+async fn call_api_with(setup: &TestSetup, access_token: &str) -> TestResponse {
+	setup
+		.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.path(GetUserInfoPath)
+				.headers(GetUserInfoRequestHeaders {
+					authorization: BearerToken::from_str(access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(GetUserInfoRequest)
+				.build(),
+		)
+		.await
+}
+
+/// Refreshes with `refresh_token` as the confidential client.
+async fn refresh(setup: &TestSetup, refresh_token: &str) -> TestResponse {
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/token",
+			&[
+				("grant_type", "refresh_token"),
+				("refresh_token", refresh_token),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+}
+
+/// Introspects `token` as the confidential client.
+async fn introspect(setup: &TestSetup, token: &str) -> serde_json::Value {
+	let response = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/introspect",
+			&[("token", token)],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await;
+	response.assert_status(StatusCode::OK);
+	response.json()
+}
+
+/// Lists the user's grants from the dashboard.
+async fn list_grants(setup: &TestSetup, user: &TestUser) -> ListOAuthGrantsResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListOAuthGrantsRequest>::builder()
+				.path(ListOAuthGrantsPath)
+				.headers(ListOAuthGrantsRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ListOAuthGrantsRequest)
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<ListOAuthGrantsResponse>>()
+		.response
+}
+
+#[tokio::test]
+async fn revoking_a_refresh_token_revokes_the_whole_grant() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, refresh_token, _user) = issue_token_pair(&setup).await;
+
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/revoke",
+			&[("token", &refresh_token)],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.assert_status(StatusCode::OK);
+
+	call_api_with(&setup, &access_token)
+		.await
+		.assert_status(StatusCode::UNAUTHORIZED);
+	refresh(&setup, &refresh_token)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn revoking_an_access_token_revokes_the_whole_grant() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, refresh_token, _user) = issue_token_pair(&setup).await;
+
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/revoke",
+			&[
+				("token", &access_token),
+				("token_type_hint", "access_token"),
+			],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.assert_status(StatusCode::OK);
+
+	call_api_with(&setup, &access_token)
+		.await
+		.assert_status(StatusCode::UNAUTHORIZED);
+	refresh(&setup, &refresh_token)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn revoking_an_unknown_token_succeeds() {
+	let setup = setup().await.expect("failed to setup test server");
+
+	for token in [
+		"not-a-token-at-all".to_owned(),
+		"patr_rf_badchecksum".to_owned(),
+		api::models::permissions::generate_refresh_token(),
+	] {
+		setup
+			.make_raw_api_form_post(
+				"/auth/oauth/revoke",
+				&[("token", &token)],
+				Some((CLIENT_ID, CLIENT_SECRET)),
+			)
+			.await
+			.assert_status(StatusCode::OK);
+	}
+}
+
+#[tokio::test]
+async fn another_clients_tokens_cannot_be_revoked() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, refresh_token, _user) = issue_token_pair(&setup).await;
+
+	for token in [&access_token, &refresh_token] {
+		setup
+			.make_raw_api_form_post(
+				"/auth/oauth/revoke",
+				&[("token", token), ("client_id", PUBLIC_CLIENT_ID)],
+				None,
+			)
+			.await
+			.assert_status(StatusCode::OK);
+	}
+
+	call_api_with(&setup, &access_token)
+		.await
+		.assert_status(StatusCode::OK);
+}
+
+#[tokio::test]
+async fn introspection_describes_a_live_access_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _refresh_token, user) = issue_token_pair(&setup).await;
+
+	let body = introspect(&setup, &access_token).await;
+
+	assert_eq!(body["active"].as_bool(), Some(true));
+	assert_eq!(body["client_id"].as_str(), Some(CLIENT_ID));
+	assert_eq!(
+		body["sub"].as_str(),
+		Some(user.user_id.to_string().as_str())
+	);
+	assert_eq!(body["token_type"].as_str(), Some("Bearer"));
+	assert_eq!(body["scope"].as_str(), Some("openid offline_access"));
+	assert!(body["exp"].is_number());
+}
+
+#[tokio::test]
+async fn introspection_describes_a_live_refresh_token_until_it_is_used() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (_access_token, refresh_token, user) = issue_token_pair(&setup).await;
+
+	let body = introspect(&setup, &refresh_token).await;
+	assert_eq!(body["active"].as_bool(), Some(true));
+	assert_eq!(
+		body["sub"].as_str(),
+		Some(user.user_id.to_string().as_str())
+	);
+
+	refresh(&setup, &refresh_token)
+		.await
+		.assert_status(StatusCode::OK);
+
+	let body = introspect(&setup, &refresh_token).await;
+	assert_eq!(body, serde_json::json!({ "active": false }));
+}
+
+#[tokio::test]
+async fn introspection_reports_a_revoked_token_as_inactive() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _refresh_token, _user) = issue_token_pair(&setup).await;
+
+	setup
+		.make_raw_api_form_post(
+			"/auth/oauth/revoke",
+			&[("token", &access_token)],
+			Some((CLIENT_ID, CLIENT_SECRET)),
+		)
+		.await
+		.assert_status(StatusCode::OK);
+
+	// Nothing but `active`, so revoked can't be told from never issued.
+	let body = introspect(&setup, &access_token).await;
+	assert_eq!(body, serde_json::json!({ "active": false }));
+}
+
+#[tokio::test]
+async fn introspection_requires_a_confidential_client() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _refresh_token, _user) = issue_token_pair(&setup).await;
+
+	let response = setup
+		.make_raw_api_form_post(
+			"/auth/oauth/introspect",
+			&[("token", &access_token), ("client_id", PUBLIC_CLIENT_ID)],
+			None,
+		)
+		.await;
+
+	response.assert_status(StatusCode::UNAUTHORIZED);
+	assert!(response.text().contains("invalid_client"));
+}
+
+#[tokio::test]
+async fn listing_grants_shows_the_app_behind_each_one() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _refresh_token, user) = issue_token_pair(&setup).await;
+
+	let grants = list_grants(&setup, &user).await.grants;
+
+	assert_eq!(grants.len(), 1);
+	assert_eq!(grants[0].id, grant_id_of(&access_token));
+	assert_eq!(grants[0].client_id, CLIENT_ID);
+	assert_eq!(grants[0].client_name, "Test Client");
+	assert_eq!(grants[0].scope, "openid offline_access");
+}
+
+#[tokio::test]
+async fn a_grant_without_a_refresh_token_is_listed_until_its_access_token_expires() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, user) = issue_access_token(&setup, "openid").await;
+
+	assert_eq!(list_grants(&setup, &user).await.grants.len(), 1);
+
+	setup
+		.execute_sql(&format!(
+			"UPDATE oauth_login SET last_used = NOW() - INTERVAL '{} seconds' WHERE login_id = '{}'",
+			constants::ACCESS_TOKEN_VALIDITY.whole_seconds() + 1,
+			grant_id_of(&access_token)
+		))
+		.await;
+
+	assert!(list_grants(&setup, &user).await.grants.is_empty());
+}
+
+#[tokio::test]
+async fn revoking_a_grant_from_the_dashboard_cuts_the_app_off() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, refresh_token, user) = issue_token_pair(&setup).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<RevokeOAuthGrantRequest>::builder()
+				.path(RevokeOAuthGrantPath {
+					grant_id: grant_id_of(&access_token),
+				})
+				.headers(RevokeOAuthGrantRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(RevokeOAuthGrantRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::ACCEPTED);
+
+	call_api_with(&setup, &access_token)
+		.await
+		.assert_status(StatusCode::UNAUTHORIZED);
+	refresh(&setup, &refresh_token)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+	assert!(list_grants(&setup, &user).await.grants.is_empty());
+}
+
+#[tokio::test]
+async fn a_grant_belonging_to_someone_else_cannot_be_revoked() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _refresh_token, _owner) = issue_token_pair(&setup).await;
+	let stranger = setup.create_test_user().await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<RevokeOAuthGrantRequest>::builder()
+				.path(RevokeOAuthGrantPath {
+					grant_id: grant_id_of(&access_token),
+				})
+				.headers(RevokeOAuthGrantRequestHeaders {
+					authorization: stranger.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(RevokeOAuthGrantRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::NOT_FOUND);
+
+	call_api_with(&setup, &access_token)
+		.await
+		.assert_status(StatusCode::OK);
+}
+
+#[tokio::test]
+async fn grant_management_rejects_an_oauth_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (access_token, _refresh_token, _user) = issue_token_pair(&setup).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListOAuthGrantsRequest>::builder()
+				.path(ListOAuthGrantsPath)
+				.headers(ListOAuthGrantsRequestHeaders {
+					authorization: BearerToken::from_str(&access_token).unwrap(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(ListOAuthGrantsRequest)
+				.build(),
+		)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
 }

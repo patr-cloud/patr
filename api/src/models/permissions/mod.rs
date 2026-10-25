@@ -114,7 +114,7 @@ pub async fn authenticate(
 	}
 
 	if accepted_client_types.contains(&ActorClientType::UserLogin(UserLoginType::OAuthLogin)) &&
-		let Some(claims) = oauth::decode_access_token(config, token)
+		let Some(claims) = crate::models::oauth::decode_access_token(config, token)
 	{
 		return authenticate_oauth_access_token(database, redis, claims).await;
 	}
@@ -344,8 +344,8 @@ async fn authenticate_jwt(
 }
 
 /// Authenticate an OAuth access token, whose signature and claims
-/// [`oauth::decode_access_token`] has already checked. Cached by its grant,
-/// like a JWT by its login.
+/// [`crate::models::oauth::decode_access_token`] has already checked. Cached
+/// by its grant, like a JWT by its login.
 async fn authenticate_oauth_access_token(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
