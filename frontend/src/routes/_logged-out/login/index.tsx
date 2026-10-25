@@ -29,6 +29,7 @@ const Login = () => {
 	const [, setAuthState] = useAuthState();
 	const router = useRouter();
 	const navigate = useNavigate();
+	const search = Route.useSearch();
 	const toast = useToast();
 	const [githubLoading, setGithubLoading] = createSignal(false);
 	const [showMfa, setShowMfa] = createSignal(false);
@@ -133,9 +134,13 @@ const Login = () => {
 				},
 			});
 			await router.invalidate();
-			// If the user arrived here from a workspace invite link, resume that
-			// flow instead of dropping them on the dashboard.
-			if (sessionStorage.getItem("pendingWorkspaceInvite")) {
+			// `returnTo` is user-controlled, so only a path on this origin is
+			// followed. Browsers read `\` as `/`, which would let `/\evil.example` out.
+			const returnTo = search().returnTo;
+			const returnUrl = returnTo && !returnTo.includes("\\") ? URL.parse(returnTo, "https://patr.invalid") : null;
+			if (returnUrl?.origin === "https://patr.invalid") {
+				navigate({ to: `${returnUrl.pathname}${returnUrl.search}${returnUrl.hash}`, replace: true });
+			} else if (sessionStorage.getItem("pendingWorkspaceInvite")) {
 				navigate({ to: "/accept-invite", replace: true });
 			} else {
 				navigate({ to: "/", replace: true });
@@ -314,4 +319,7 @@ const Login = () => {
 
 export const Route = createFileRoute("/_logged-out/login/")({
 	component: Login,
+	validateSearch: (search: Record<string, unknown>): { returnTo?: string } => ({
+		returnTo: (search.returnTo as string) || undefined,
+	}),
 });
