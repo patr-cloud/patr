@@ -24,7 +24,8 @@ use crate::{
 	models::{
 		oauth::{
 			self,
-			claims::OAuthAccessTokenClaims,
+			claims::{IdTokenClaims, OAuthAccessTokenClaims},
+			identity::{UserIdentity, build_identity_claims},
 			keys,
 			types::{OAuthAuthorizationCode, OAuthReplacementTokens},
 		},
@@ -73,6 +74,9 @@ pub struct TokenResponse {
 	/// The new refresh token, when one was issued.
 	#[serde(skip_serializing_if = "Option::is_none")]
 	refresh_token: Option<String>,
+	/// The id token, when `openid` was granted.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	id_token: Option<String>,
 	/// The granted scopes, space-delimited.
 	scope: String,
 }
@@ -87,6 +91,7 @@ impl TokenResponse {
 				.whole_seconds()
 				.unsigned_abs(),
 			refresh_token,
+			id_token: None,
 			scope,
 		}
 	}
@@ -318,9 +323,64 @@ async fn exchange_code(
 		None
 	};
 
+	// Only on the exchange. A refresh response may leave it out (OIDC Core
+	// section 12.2), and one that didn't would have to echo the nonce again.
+	let id_token = if issued.scopes.iter().any(|scope| scope == "openid") {
+		let user = query!(
+			r#"
+			SELECT
+				first_name,
+				last_name,
+				email
+			FROM
+				"user"
+			WHERE
+				id = $1;
+			"#,
+			issued.user_id,
+		)
+		.fetch_one(&mut *connection)
+		.await?;
+
+		let key = keys::get_signing_key(&state.config).map_err(OAuthError::server_error)?;
+		let mut header = Header::new(jsonwebtoken::Algorithm::ES256);
+		header.kid = Some(key.kid.clone());
+
+		Some(
+			jsonwebtoken::encode(
+				&header,
+				&IdTokenClaims {
+					iss: oauth::issuer(&state.config),
+					aud: client_id.to_owned(),
+					exp: now + constants::OAUTH_ID_TOKEN_VALIDITY,
+					iat: now,
+					auth_time: issued.auth_time,
+					nonce: issued.nonce,
+					at_hash: BASE64_URL_SAFE_NO_PAD.encode(&Sha256::digest(&access_token)[..16]),
+					identity: build_identity_claims(
+						&UserIdentity {
+							id: issued.user_id,
+							first_name: &user.first_name,
+							last_name: &user.last_name,
+							email: &user.email,
+						},
+						&scope,
+					),
+				},
+				&key.encoding_key,
+			)
+			.map_err(OAuthError::server_error)?,
+		)
+	} else {
+		None
+	};
+
 	connection.commit().await?;
 
-	Ok(TokenResponse::new(access_token, refresh_token, scope))
+	Ok(TokenResponse {
+		id_token,
+		..TokenResponse::new(access_token, refresh_token, scope)
+	})
 }
 
 /// Signs an ES256 access token for a grant.
