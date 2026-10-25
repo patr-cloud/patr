@@ -200,12 +200,14 @@ dependencies = [
  "axum-test",
  "axum-typed-websockets",
  "base32",
+ "base62",
  "base64 0.23.1",
  "cfg-if",
  "clap",
  "cloudflare",
  "config",
  "console-subscriber",
+ "crc32fast",
  "cron",
  "derive_more",
  "flate2",
@@ -956,6 +958,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "022dfe9eb35f19ebbcb51e0b40a5ab759f46ad60cadf7297e0bd085afb50e076"
 
 [[package]]
+name = "base62"
+version = "2.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3a647dce9631f152a99ec16cfc09267ae55fe280d5dc288964027d458076323"
+
+[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1297,7 +1305,6 @@ dependencies = [
  "models",
  "open",
  "preprocess",
- "rand 0.10.3",
  "reqwest 0.13.5",
  "self-replace",
  "semver",
@@ -3679,6 +3686,7 @@ dependencies = [
  "regex",
  "reqwest 0.13.5",
  "schemars 1.2.3",
+ "semver",
  "serde",
  "serde_json",
  "serde_qs",
@@ -5130,6 +5138,10 @@ name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
+dependencies = [
+ "serde",
+ "serde_core",
+]
 
 [[package]]
 name = "serde"

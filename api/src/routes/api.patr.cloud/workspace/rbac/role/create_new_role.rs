@@ -32,7 +32,7 @@ pub async fn create_new_role(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, CreateNewRoleRequest>,
 ) -> Result<AppResponse<CreateNewRoleRequest>, ErrorType> {

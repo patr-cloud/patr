@@ -36,6 +36,9 @@ Every value a user types into the deployment environment-variable editor runs th
 - **Styling is encapsulated in components** — callers pass semantic props (`color`, `variant`), not Tailwind classes. If you're copying Tailwind classes between call sites, make a component. Design tokens live in the `@theme {}` block in `src/app.css` (Tailwind v4, no config file).
 - Reuse existing primitives before making new ones: `Button`, `Input`, `Table<T>`, `Modal`/`DeleteModal`, `PageContainer`, `Toast`, `Tooltip`, `StatusBadge`, etc.
 - Data: cookie auth (`credentials: "include"` — don't attach bearer tokens manually). `httpRequest<T>` (`utils/http-request.ts`) returns a discriminated `FetchResult<T>` and handles 401 refresh + SSR cookie forwarding. Queries use `createQuery` + a key from `query-keys.ts`; mutations use the wrappers in `hooks/actions.tsx`.
+- **A new resource type** needs entries in `ResourceTypes` (`utils/types.ts`), in `resourceActionMap`, `workspaceScopedActions`, `resourceTypes` and `RESOURCE_LIST_ENDPOINTS` (`utils/func.ts`), and in `extractItems` (`hooks/fetch/resources.tsx`). The build only checks the two `Record`-keyed maps. If the type is missing from `resourceTypes`, `useUserPermissionsQuery` drops it, which hides its UI from everyone but the owner, with no error.
+- **Routes that put a path param into an API URL validate it in `beforeLoad`** and `throw notFound()` when it doesn't match: `requireUuidParam` (`utils/validation.ts`) for IDs. TanStack decodes `%2F`, so an unchecked param can send the request to another API path. Add new ones to `e2e/specs/navigation/route-params.spec.ts`.
+- **Paginated lists use `validateSearch: paginationSearch`** (`hooks/pagination.ts`). Keep search values that look like numbers as numbers: TanStack JSON-quotes number-like strings, so `"2"` lands in the URL as `?page=%222%22`.
 - `console.log` is fine — the production build strips it (`esbuild.pure`). Don't flag it as cleanup.
 - **JSX whitespace: use `&nbsp;`, not `{" "}`.** Prefix unused variables with `_`.
 
@@ -52,7 +55,7 @@ Build-time gating via `VITE_CLOUD_MODE` (default off; cloud CI sets `VITE_CLOUD_
 - `{IS_CLOUD && <Foo />}` **drops** `<Foo />` from the self-hosted bundle. `<Show when={IS_CLOUD}>` does **not** — don't use it for cloud gating.
 - For orphan components, gate a `lazy()` import on `IS_CLOUD` so the chunk never enters the main bundle. For event handlers, use a ternary at the definition site (`const handle = IS_CLOUD ? async () => {…} : undefined`).
 
-Currently gated: Turnstile widget + script, "Continue with GitHub" buttons + `/login/github` `/sign-up/github` `/profile/github/callback` routes, Profile → Connected Accounts, the "Patr Registry" deploy option + registry image-name prefix, and domain hints. **Gotcha:** the `cfTurnstileToken` request field is `String` (not `Option`) with a `min-length` preprocess, so send `"self-hosted"` as a placeholder — the server's validation is `cfg`-gated and ignores it.
+Currently gated: Turnstile widget + script, "Continue with GitHub" buttons + `/login/github` `/sign-up/github` `/profile/github/callback` routes, Profile → Connected Accounts, the "Patr Registry" deploy option + registry image-name prefix, domain hints, and the add-runner form + CLI steps on `runners/new` (self-hosted shows a note instead). **Gotcha:** the `cfTurnstileToken` request field is `String` (not `Option`) with a `min-length` preprocess, so send `"self-hosted"` as a placeholder — the server's validation is `cfg`-gated and ignores it.
 
 ## Commands (from `frontend/`)
 

@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use models::api::user::*;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn update_user_info(
 	AuthenticatedAppRequest {
@@ -20,9 +20,9 @@ pub async fn update_user_info(
 				},
 			},
 		database,
-		redis: _,
+		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateUserInfoRequest>,
 ) -> Result<AppResponse<UpdateUserInfoRequest>, ErrorType> {
@@ -40,10 +40,12 @@ pub async fn update_user_info(
 		"#,
 		&*first_name,
 		&*last_name,
-		user_data.id,
+		actor_data.id,
 	)
 	.execute(&mut **database)
 	.await?;
+
+	permissions::mark_actor_stale(redis, &actor_data.id).await?;
 
 	AppResponse::builder()
 		.body(UpdateUserInfoResponse)

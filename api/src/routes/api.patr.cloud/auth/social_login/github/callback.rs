@@ -27,7 +27,6 @@ struct GitHubTokenResponse {
 #[derive(Deserialize)]
 struct GitHubUserProfile {
 	id: i64,
-	login: String,
 	name: Option<String>,
 }
 
@@ -337,9 +336,9 @@ pub async fn social_login_callback(
 		r#"
 		WITH client AS (
 			INSERT INTO
-				actor_client(id, actor_client_type)
+				actor_client(id, actor_client_type, actor_id)
 			VALUES
-				(GENERATE_LOGIN_ID(), 'user_login')
+				(GENERATE_LOGIN_ID(), 'user_login', $1)
 			RETURNING id
 		)
 		INSERT INTO
@@ -420,7 +419,8 @@ pub async fn social_login_callback(
 
 	let access_token = AccessTokenData {
 		iss: constants::JWT_ISSUER.to_string(),
-		sub: login_id,
+		sub: user_id,
+		sid: login_id,
 		aud: OneOrMore::One(constants::PATR_JWT_AUDIENCE.to_string()),
 		exp: now.add(constants::ACCESS_TOKEN_VALIDITY),
 		nbf: now,

@@ -4,7 +4,6 @@ macros::declare_api_endpoint!(
 	/// Set the information of the currently authenticated user.
 	UpdateUserInfo,
 	PATCH "/user",
-	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -22,5 +21,6 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, regex = USER_NAME_REGEX)]
 		pub last_name: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

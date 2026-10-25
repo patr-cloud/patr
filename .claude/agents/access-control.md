@@ -21,6 +21,7 @@ A feature's diff shows the permissions it declared, not the ones it forgot or th
   - the cached permission map and its revocation in Redis;
   - the account auth surfaces under `models/src/api/auth/` and `models/src/api/user/` (API tokens, MFA, web logins, social logins).
 - Audit logs: `AuditLogType`, `api/src/utils/layers/audit_logger_layer.rs`, `api/src/db/workspace/audit_log.rs` and the audit log endpoints.
+- The identity registries: `actor` (`api/src/db/actor.rs`), `actor_client` and `workspace_actor`, and the ownership FKs between them.
 
 Read `api/CLAUDE.md` and `models/CLAUDE.md` before anything else, particularly the rules on endpoint declaration, the typed-ID check every handler needs, and the Redis permission cache.
 
@@ -42,23 +43,29 @@ For the feature in front of you:
    - Lists only return what the caller is allowed to view.
    - Handlers confirm a path ID is their own resource type before acting on it.
    - New permissions are granted to the right default roles in **both** places: `default_roles()` for new workspaces, and a migration for every existing workspace. Missing either one leaves some users unable to use the feature.
-   - Whether API tokens are allowed on it (`API_ALLOWED`) is a deliberate choice, and tokens can be scoped to it like its siblings.
+   - Which clients it accepts (`client_type`: `WebLogin`, `ApiToken`, `ServiceAccount`, `Runner`) is a deliberate choice, and tokens can be scoped to it like its siblings.
    - Every state-changing endpoint writes an audit-log entry with the right type and resource. Reads don't.
 3. For a new kind of principal, sweep every place principals appear. Each one must handle the new kind or deliberately reject it:
    - endpoints and DTOs that return or accept them (role bindings, member lists, invites);
    - audit-log actors;
    - "created by" and ownership fields;
    - token ownership;
-   - permission-cache keys and revocation.
+   - permission-cache keys and revocation;
+   - its `ACTOR_TYPE` value and `actor` row, with every credential it holds naming it in `actor_client.actor_id` through a composite FK. Anything workspace-scoped references `workspace_actor`, never `actor`, and only provenance (`created_by`, `invited_by`) points at `actor`;
+   - the per-kind branches of `RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID`;
+   - every host's client-type list (`routes/mod.rs`, `app.rs`, the registry authenticator, and the test harnesses' copies).
    
    This is where a list of principals that's really a list of users gets caught.
-4. For a new way to authenticate, check the whole lifecycle: issuance, expiry, revocation reaching the cached permission map, how it interacts with MFA, and rate limiting.
+4. For a new way to authenticate, check the whole lifecycle: issuance, expiry, revocation reaching the cached permission map (including requests already past the authenticator when it lands; one that waits on a lock the revoke holds must authenticate again once it has it), how it interacts with MFA, and rate limiting.
 5. Then look sideways:
    - A changed permission or role has to invalidate cached permission maps.
    - The role ladder has to stay ordered.
    - An owner can never lock themselves out.
    - Leaving or deleting a workspace has to clean up the feature's bindings.
    - The frontend's permission checks have to match, which is the frontend agent's to change. Flag it.
+   - Default roles are immutable. A new route that writes a role must refuse them (`RoleIsImmutable`).
+   - Being a kind of principal is never a permission, or anyone granted it passes as one. A route only a runner may call is `[Runner]`, needs `Runner::Edit` on the runner it names, and checks that `actor_data.id` is that runner and `actor_data.actor` is `ActorData::Runner`.
+   - A runner's permissions are fixed in `api/src/models/permissions/runner.rs`, mirrored by its branch of `RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID` and pinned by a parity test. Anything the runner calls with its token, or a CLI command run with it, must list `Runner` in `client_type` and need only a permission in that map.
 6. Tests: `api/tests/api/workspace/rbac/` should cover the denied cases, the wrong-type case, and scoped visibility for the new surface.
 
 ## Scoping mode

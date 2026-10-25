@@ -8,6 +8,7 @@ const DeleteModal = (props: {
 	onClickDelete: (e: MouseEvent & { currentTarget: HTMLButtonElement }) => void;
 	resourceName: string;
 	title: string;
+	message?: string;
 	isLoading?: boolean;
 	isOpen?: Accessor<boolean>;
 	setIsOpen?: Setter<boolean>;
@@ -27,7 +28,7 @@ const DeleteModal = (props: {
 					<form class="w-full" noValidate onSubmit={(e) => e.preventDefault()}>
 						<h2 class="text-md text-primary font-semibold mb-4">{props.title}</h2>
 						<p class="mb-4 text-sm text-white">
-							This action cannot be undone. To Confirm, type &nbsp;
+							{props.message ?? "This action cannot be undone."} To confirm, type &nbsp;
 							<b>"{props.resourceName}"</b> below.
 						</p>
 

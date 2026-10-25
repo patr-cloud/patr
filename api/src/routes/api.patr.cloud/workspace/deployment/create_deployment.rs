@@ -54,7 +54,7 @@ pub async fn create_deployment(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state,
 	}: AuthenticatedAppRequest<'_, CreateDeploymentRequest>,
 ) -> Result<AppResponse<CreateDeploymentRequest>, ErrorType> {
@@ -248,7 +248,7 @@ pub async fn create_deployment(
 		.values()
 		.filter_map(EnvironmentVariableValue::secret_id)
 		.any(|secret_id| {
-			!user_data.has_permission_on_resource(workspace_id, secret_id, view_secret_permission)
+			!actor_data.has_permission_on_resource(workspace_id, secret_id, view_secret_permission)
 		}) {
 		return Err(ErrorType::Unauthorized);
 	}

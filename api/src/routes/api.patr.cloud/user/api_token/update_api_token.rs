@@ -1,8 +1,7 @@
 use models::{api::user::*, rbac::WorkspacePermission};
 use reqwest::StatusCode;
-use rustis::commands::GenericCommands;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn update_api_token(
 	AuthenticatedAppRequest {
@@ -31,7 +30,7 @@ pub async fn update_api_token(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateApiTokenRequest>,
 ) -> Result<AppResponse<UpdateApiTokenRequest>, ErrorType> {
@@ -53,7 +52,7 @@ pub async fn update_api_token(
 	// every request against a vacuous list.
 	let allowed_ips = allowed_ips.filter(|ips| !ips.is_empty());
 
-	let rows_updated = query!(
+	let updated = query!(
 		r#"
 		UPDATE
 			user_api_token
@@ -64,31 +63,33 @@ pub async fn update_api_token(
 			allowed_ips = $4
 		WHERE
 			token_id = $5 AND
-			user_id = $6;
+			user_id = $6 AND
+			revoked IS NULL
+		RETURNING
+			token_hash;
 		"#,
 		&*name,
 		token_nbf,
 		token_exp,
 		allowed_ips.as_deref(),
 		token_id,
-		user_data.id,
+		actor_data.id,
 	)
-	.execute(&mut **database)
+	.fetch_optional(&mut **database)
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(db_err) if db_err.is_unique_violation() => {
 			ErrorType::ApiTokenAlreadyExists
 		}
 		other => ErrorType::server_error(other),
-	})?
-	.rows_affected();
+	})?;
 
 	// Bail before the perm-table DELETEs if the caller doesn't own this
 	// token. Without this, the DELETE block below (keyed only on token_id)
 	// would happily wipe another user's permission rows.
-	if rows_updated == 0 {
+	let Some(updated) = updated else {
 		return Err(ErrorType::ApiTokenDoesNotExist);
-	}
+	};
 
 	trace!("API token updated");
 
@@ -174,7 +175,7 @@ pub async fn update_api_token(
 						);
 					"#,
 					token_id,
-					user_data.id,
+					actor_data.id,
 					workspace_id,
 				)
 				.execute(&mut **database)
@@ -254,9 +255,7 @@ pub async fn update_api_token(
 		}
 	}
 
-	redis
-		.del(redis::keys::permission_for_login_id(&token_id))
-		.await?;
+	permissions::mark_token_stale(redis, &token_id, &updated.token_hash).await?;
 
 	AppResponse::builder()
 		.body(UpdateApiTokenResponse)

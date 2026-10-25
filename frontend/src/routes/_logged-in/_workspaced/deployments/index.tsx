@@ -20,7 +20,7 @@ import {
 	Table,
 } from "~/components";
 import { useDeploymentsQuery, useRunnersQuery } from "~/hooks/fetch";
-import { useIsAllowed, createPaginationState, recoverFromOutOfBounds } from "~/hooks";
+import { useIsAllowed, createPaginationState, recoverFromOutOfBounds, paginationSearch } from "~/hooks";
 
 /**
  * Links to a deployment's runner. Sits inside a clickable row or card, so it
@@ -130,8 +130,8 @@ const ListDeploymentsPage = () => {
 	});
 
 	const deploymentsQuery = useDeploymentsQuery(
-		() => search().page,
-		() => search().count
+		() => search().page?.toString(),
+		() => search().count?.toString()
 	);
 	const runnersQuery = useRunnersQuery();
 
@@ -259,9 +259,6 @@ const ListDeploymentsPage = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/deployments/")({
-	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-		page: (search.page as string) || undefined,
-		count: (search.count as string) || undefined,
-	}),
+	validateSearch: paginationSearch,
 	component: ListDeploymentsPage,
 });

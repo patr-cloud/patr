@@ -1,0 +1,103 @@
+use axum::http::StatusCode;
+use models::api::workspace::service_account::*;
+
+use crate::{models::permissions, prelude::*};
+
+pub async fn delete_service_account(
+	AuthenticatedAppRequest {
+		request:
+			ProcessedApiRequest {
+				path:
+					DeleteServiceAccountPath {
+						workspace_id: _,
+						service_account_id,
+					},
+				query: (),
+				headers:
+					DeleteServiceAccountRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
+				body: DeleteServiceAccountRequestProcessed,
+			},
+		database,
+		redis,
+		client_ip: _,
+		actor_data: _,
+		state: _,
+	}: AuthenticatedAppRequest<'_, DeleteServiceAccountRequest>,
+) -> Result<AppResponse<DeleteServiceAccountRequest>, ErrorType> {
+	// Remove every grant the account held
+	query!(
+		r#"
+		DELETE FROM
+			role_binding
+		WHERE
+			actor_id = $1;
+		"#,
+		service_account_id,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	// Hard-delete the service account row, then its workspace actor. The
+	// account references the workspace actor, so the order matters. The
+	// `actor_client` and `actor` rows deliberately stay — `audit_log` points
+	// at the `actor_client`, which names the `actor`, and removing either
+	// would erase the trail of what this account did.
+	let Some(deleted) = query!(
+		r#"
+		DELETE FROM
+			service_account
+		WHERE
+			id = $1
+		RETURNING
+			token_hash;
+		"#,
+		service_account_id,
+	)
+	.fetch_optional(&mut **database)
+	.await?
+	else {
+		return Err(ErrorType::ResourceDoesNotExist);
+	};
+
+	query!(
+		r#"
+		DELETE FROM
+			workspace_actor
+		WHERE
+			id = $1;
+		"#,
+		service_account_id,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	// Soft-delete the backing resource
+	query!(
+		r#"
+		UPDATE
+			resource
+		SET
+			deleted = NOW()
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		service_account_id,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	// Invalidate cached permissions
+	permissions::mark_token_stale(redis, &service_account_id, &deleted.token_hash).await?;
+	permissions::mark_actor_stale(redis, &service_account_id).await?;
+
+	AppResponse::builder()
+		.body(DeleteServiceAccountResponse)
+		.headers(())
+		.status_code(StatusCode::ACCEPTED)
+		.build()
+		.into_result()
+}

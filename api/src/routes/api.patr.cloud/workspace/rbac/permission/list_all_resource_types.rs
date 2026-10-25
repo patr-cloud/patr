@@ -29,7 +29,7 @@ pub async fn list_all_resource_types(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListAllResourceTypesRequest>,
 ) -> Result<AppResponse<ListAllResourceTypesRequest>, ErrorType> {

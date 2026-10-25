@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE \"user\"(id UUID NOT NULL, password TEXT NOT NULL, first_name VARCHAR(100) NOT NULL, last_name VARCHAR(100) NOT NULL, created TIMESTAMPTZ NOT NULL, email CITEXT NOT NULL, workspace_limit INTEGER NOT NULL, password_reset_token TEXT, password_reset_token_expiry TIMESTAMPTZ NULL, password_reset_attempts INT NULL, mfa_secret TEXT, actor_type ACTOR_TYPE NOT NULL GENERATED ALWAYS AS ('user') STORED);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "6b178ca2b7d9e795cb5e057466fe05ac66d5fda436eeffaae44345a23e136e3d"
+}

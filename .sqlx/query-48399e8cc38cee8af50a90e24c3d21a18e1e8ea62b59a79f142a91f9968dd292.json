@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM runner WHERE id = $1 RETURNING token_hash;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_hash",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "runner",
+            "name": "token_hash"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "48399e8cc38cee8af50a90e24c3d21a18e1e8ea62b59a79f142a91f9968dd292"
+}

@@ -39,7 +39,7 @@ pub async fn delete_managed_url(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, DeleteManagedURLRequest>,
 ) -> Result<AppResponse<DeleteManagedURLRequest>, ErrorType> {

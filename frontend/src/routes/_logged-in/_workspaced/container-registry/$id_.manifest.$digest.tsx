@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { createFileRoute, notFound, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, ErrorBoundary } from "solid-js";
 import {
@@ -15,6 +15,7 @@ import { useContainerRegistryInfoQuery } from "~/hooks/fetch";
 import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { Color } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
+import { requireUuidParam } from "~/utils/validation";
 import { shortDigest } from "./-components/registry-ui";
 import ManifestDetail from "./-components/manifest-detail";
 
@@ -135,5 +136,12 @@ const ContainerManifestDetail = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/container-registry/$id_/manifest/$digest")({
+	beforeLoad: ({ params }) => {
+		requireUuidParam(params.id);
+		// The versions list links by tag when an image has one, by digest when it doesn't.
+		if (!/^(sha256:[0-9a-f]{64}|sha512:[0-9a-f]{128}|[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127})$/.test(params.digest)) {
+			throw notFound();
+		}
+	},
 	component: ContainerManifestDetail,
 });

@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT token_expiry, refresh_token, user_id FROM web_login WHERE login_id = $1 FOR UPDATE;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "token_expiry",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "web_login",
+            "name": "token_expiry"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "refresh_token",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "web_login",
+            "name": "refresh_token"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "web_login",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "89789a81869c0a656e866b77b56dd947d44a5fa5494e57b597a84d6bc0be364b"
+}

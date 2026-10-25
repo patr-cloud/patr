@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE runner SET token_hash = $1 WHERE id = $2;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5016de765fc12a638b78f4e3169c476ac0fef09e75e736ebe012c424d4fa0d83"
+}

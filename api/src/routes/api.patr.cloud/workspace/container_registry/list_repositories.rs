@@ -32,7 +32,7 @@ pub async fn list_repositories(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListContainerRepositoriesRequest>,
 ) -> Result<AppResponse<ListContainerRepositoriesRequest>, ErrorType> {
@@ -169,7 +169,7 @@ pub async fn list_repositories(
 		OFFSET $12;
 		"#,
 		workspace_id,
-		user_data.login_id,
+		actor_data.login_id,
 		Permission::ContainerRegistryRepository(ContainerRegistryRepositoryPermission::View)
 			.to_string(),
 		name_filter,

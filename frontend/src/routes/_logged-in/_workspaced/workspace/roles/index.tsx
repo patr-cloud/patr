@@ -18,7 +18,7 @@ import {
 } from "~/components";
 import { Color } from "~/utils/color";
 import { useNavigate } from "@tanstack/solid-router";
-import { useAuthState, createPaginationState, useIsAllowed, recoverFromOutOfBounds } from "~/hooks";
+import { useAuthState, createPaginationState, useIsAllowed, recoverFromOutOfBounds, paginationSearch } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { WithId, Role } from "~/bindings";
 import { httpRequest } from "~/utils/http-request";
@@ -141,8 +141,8 @@ const ManageRoles = () => {
 
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
 	const rolesQuery = useRolesQuery(
-		() => search().page,
-		() => search().count
+		() => search().page?.toString(),
+		() => search().count?.toString()
 	);
 
 	createEffect(() => {
@@ -222,9 +222,6 @@ const ManageRoles = () => {
 };
 
 export const Route = createFileRoute("/_logged-in/_workspaced/workspace/roles/")({
-	validateSearch: (search: Record<string, unknown>): { page?: string; count?: string } => ({
-		page: (search.page as string) || undefined,
-		count: (search.count as string) || undefined,
-	}),
+	validateSearch: paginationSearch,
 	component: ManageRoles,
 });

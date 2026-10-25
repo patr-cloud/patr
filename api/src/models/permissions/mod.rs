@@ -1,14 +1,17 @@
-use std::{collections::BTreeMap, net::IpAddr, str::FromStr as _};
+use std::{collections::BTreeMap, net::IpAddr, ops::Sub, str::FromStr as _};
 
-use models::{RequestUserData, rbac::WorkspacePermission};
-use rustis::{
-	client::Client as RedisClient,
-	commands::{GenericCommands as _, StringCommands as _},
-};
+use models::{ActorData, RequestActorData};
+use rand::{RngExt, distr::Alphanumeric};
+use rustis::client::Client as RedisClient;
+use sha2::{Digest as _, Sha256};
 use time::OffsetDateTime;
 use tokio::sync::OnceCell;
 
-use crate::{models::redis::UserPermissionCache, prelude::*, utils::config::AppConfig};
+use crate::{
+	models::{access_token_data::AccessTokenData, redis::ActorAuthDataCacheKind},
+	prelude::*,
+	utils::config::AppConfig,
+};
 
 /// A global map of Permission -> PermissionID for all permissions.
 /// This is used to cache the permission IDs for faster lookup instead of
@@ -50,153 +53,363 @@ pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Pe
 		})
 }
 
-/// Contains the functions to extract permissions for an API token.
+/// Loads the auth data of a user API token.
 mod api_token;
-/// Contains the functions to extract permissions for a web dashboard JWT.
+/// Loads the auth data of a runner.
+mod runner;
+/// Loads the auth data of a service account.
+mod service_account;
+/// Loads the auth data of a web dashboard session.
 mod web_dashboard;
 
-pub use self::{
-	api_token::get_permissions_for_api_token,
-	web_dashboard::get_permissions_for_web_login,
+/// The Redis cache of authenticated actors, and what marks it stale.
+mod cache;
+
+pub use self::cache::{
+	mark_actor_stale,
+	mark_all_stale,
+	mark_login_stale,
+	mark_token_stale,
+	mark_workspace_stale,
 };
 
-/// Gets the user data for the given token based on the allowed client type.
-/// This function delegates the permission extraction to the appropriate module
-/// based on whether the token is for an API token or a web dashboard session.
+/// Authenticate a bearer token and return who is making the request.
 ///
-/// For a given token, it gets all the information of the user that the login ID
-/// has (based on that token).
-pub async fn get_user_data_for_token(
+/// A token is either a JWT ([`authenticate_jwt`]) or an opaque API token,
+/// service account token or runner token ([`authenticate_opaque_token`]).
+/// Both are cached — JWTs by their login ID, opaque tokens by their hash — so
+/// a hit costs no database round trip; a miss looks the login up, verifies
+/// it, loads its permissions and caches the lot until the token expires or
+/// something marks it stale (see [`cache`]).
+///
+/// `accepted_client_types` is who the caller serves. Kinds outside it aren't
+/// even parsed: a JWT sent to a route that only takes API tokens is a
+/// malformed API token as far as that route is concerned, and an opaque
+/// token of a kind the route doesn't take is rejected before any work is done
+/// on it.
+pub async fn authenticate(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
-	allowed_client_type: ClientType,
 	config: &AppConfig,
 	client_ip: IpAddr,
 	token: &str,
-) -> Result<RequestUserData, ErrorType> {
-	match allowed_client_type {
-		ClientType::ApiToken => {
-			api_token::get_permissions(database, redis, config, client_ip, token).await
-		}
-		ClientType::WebDashboard => {
-			web_dashboard::get_permissions(database, redis, config, client_ip, token).await
-		}
+	accepted_client_types: &[ActorClientType],
+) -> Result<RequestActorData, ErrorType> {
+	let accepts_jwt =
+		accepted_client_types.contains(&ActorClientType::UserLogin(UserLoginType::WebLogin));
+	let accepts_opaque_token = accepted_client_types
+		.contains(&ActorClientType::UserLogin(UserLoginType::ApiToken)) ||
+		accepted_client_types.contains(&ActorClientType::ServiceAccount) ||
+		accepted_client_types.contains(&ActorClientType::Runner);
+
+	if accepts_jwt && let Ok(claims) = AccessTokenData::decode(token, &config.jwt_secret) {
+		return authenticate_jwt(database, redis, claims).await;
 	}
+
+	if !accepts_opaque_token {
+		warn!("Authentication header is not a JWT, and only JWTs are accepted here");
+		return Err(ErrorType::MalformedAccessToken);
+	}
+
+	authenticate_opaque_token(database, redis, client_ip, token, accepted_client_types).await
 }
 
-/// Read the cached permission map for `login_id` from Redis if it is still
-/// valid. Validity is checked against four revocation timestamps (user,
-/// login, workspace, global): if any timestamp is newer than the cache
-/// entry's `creation_time`, the entry is stale, gets deleted, and `None` is
-/// returned so the caller recomputes from the database.
-async fn get_cached_permissions(
-	redis_connection: &mut RedisClient,
-	login_id: &Uuid,
-	user_id: &Uuid,
-) -> Result<Option<BTreeMap<Uuid, WorkspacePermission>>, ErrorType> {
-	let redis_data: Option<String> = redis_connection
-		.get(redis::keys::permission_for_login_id(login_id))
-		.await?;
-	let Some(Ok(data)) = redis_data
-		.as_deref()
-		.map(serde_json::from_str::<UserPermissionCache>)
-	else {
-		return Ok(None);
-	};
+/// Generates a new user API token: [`API_TOKEN_PREFIX`][constants::API_TOKEN_PREFIX],
+/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
+/// base62 characters, and a checksum of both.
+pub fn generate_api_token() -> String {
+	let body = format!(
+		"{}{}",
+		constants::API_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
 
-	// Check whether the data stored in redis is still valid
-	// Simple example: When a user has their permissions stored in Redis, and they
-	// have been removed from a workspace, that data in redis should be considered
-	// invalid. This check is to ensure that the data stored in redis is still
-	// valid.
-	// So when a user's permissions are updated (like being removed from a
-	// workspace), a timestamp is set in redis. When a request is processed, if this
-	// timestamp exists in Redis, and the data inserted into redis was inserted
-	// after this timestamp, it is considered valid.
+	format!(
+		"{body}{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	)
+}
 
-	// Check user revocation, then loginId revocation, then workspace ID revocation
-	let is_valid = 'validity: {
-		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::user_id_revocation_timestamp(user_id))
-			.await?
-			.and_then(|s| s.parse::<i128>().ok())
-			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
-			.filter(|time| {
-				// If the timestamp exists, and the token was inserted into Redis before the
-				// timestamp, then the data in Redis is considered invalid
-				data.creation_time < *time
-			})
-			.is_some();
+/// Generates a new service account token:
+/// [`SERVICE_ACCOUNT_TOKEN_PREFIX`][constants::SERVICE_ACCOUNT_TOKEN_PREFIX],
+/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
+/// base62 characters, and a checksum of both.
+pub fn generate_service_account_token() -> String {
+	let body = format!(
+		"{}{}",
+		constants::SERVICE_ACCOUNT_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
 
-		if revoked {
-			break 'validity false;
-		}
+	format!(
+		"{body}{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	)
+}
 
-		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::login_id_revocation_timestamp(login_id))
-			.await?
-			.and_then(|s| s.parse::<i128>().ok())
-			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
-			.filter(|time| {
-				// If the timestamp exists, and the token was inserted into Redis before the
-				// timestamp, then the data in Redis is considered invalid
-				data.creation_time < *time
-			})
-			.is_some();
+/// Generates a new runner token:
+/// [`RUNNER_TOKEN_PREFIX`][constants::RUNNER_TOKEN_PREFIX],
+/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
+/// base62 characters, and a checksum of both.
+pub fn generate_runner_token() -> String {
+	let body = format!(
+		"{}{}",
+		constants::RUNNER_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
 
-		if revoked {
-			break 'validity false;
-		}
+	format!(
+		"{body}{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	)
+}
 
-		for workspace_id in data.permission.keys() {
-			let revoked = redis_connection
-				.get::<Option<String>>(redis::keys::workspace_id_revocation_timestamp(workspace_id))
-				.await?
-				.and_then(|s| s.parse::<i128>().ok())
-				.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
-				.filter(|time| {
-					// If the timestamp exists, and the token was inserted into Redis before the
-					// timestamp, then the data in Redis is considered invalid
-					data.creation_time < *time
-				})
-				.is_some();
-
-			if revoked {
-				break 'validity false;
-			}
-		}
-
-		let revoked = redis_connection
-			.get::<Option<String>>(redis::keys::global_revocation_timestamp())
-			.await?
-			.and_then(|s| s.parse::<i128>().ok())
-			.and_then(|time| OffsetDateTime::from_unix_timestamp_nanos(time).ok())
-			.filter(|time| {
-				// If the timestamp exists, and the token was inserted into Redis before the
-				// timestamp, then the data in Redis is considered invalid
-				data.creation_time < *time
-			})
-			.is_some();
-
-		if revoked {
-			break 'validity false;
-		}
-
-		// None of the revocation timestamps exist, so the data in Redis is
-		// valid and can be used
-		true
-	};
-
-	if is_valid {
-		Ok(Some(data.permission))
-	} else {
-		// The data in redis is not valid anymore. It probably is expired due to a
-		// permission change, so delete it from Redis, and proceed to fetch the
-		// permissions from the database again. This ensures that the permissions are up
-		// to date, even if the cache is stale.
-		_ = redis_connection
-			.del(redis::keys::permission_for_login_id(login_id))
-			.await;
-		Ok(None)
+/// Authenticate a JWT. Today every JWT is a web dashboard session; an OAuth
+/// application's token will carry a claim saying so and branch here.
+async fn authenticate_jwt(
+	database: &mut DatabaseConnection,
+	redis: &mut RedisClient,
+	claims: AccessTokenData,
+) -> Result<RequestActorData, ErrorType> {
+	// The claims are checked on every request, cache hit or not: a login's
+	// cache entry outlives any one of its access tokens.
+	if claims.iss != constants::JWT_ISSUER {
+		warn!("Invalid JWT issuer: {}", claims.iss);
+		return Err(ErrorType::MalformedAccessToken);
 	}
+	trace!("JWT issuer valid");
+
+	// The token should have been issued within the last `REFRESH_TOKEN_VALIDITY`
+	// duration
+	if OffsetDateTime::now_utc().sub(
+		claims
+			.jti
+			.get_timestamp()
+			.ok_or(ErrorType::MalformedAccessToken)?,
+	) > AccessTokenData::REFRESH_TOKEN_VALIDITY
+	{
+		warn!("JWT is too old");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	}
+	trace!("JWT JTI valid");
+
+	if OffsetDateTime::now_utc() < claims.nbf {
+		warn!("JWT is not valid yet");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	}
+	trace!("JWT NBF valid");
+
+	if OffsetDateTime::now_utc() > claims.exp {
+		warn!("JWT has expired");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	}
+	trace!("JWT EXP valid");
+
+	if !claims
+		.aud
+		.clone()
+		.into_iter()
+		.any(|item| item == constants::PATR_JWT_AUDIENCE)
+	{
+		warn!(
+			"Invalid JWT audience: `{}`",
+			match &claims.aud {
+				OneOrMore::One(aud) => aud.clone(),
+				OneOrMore::Multiple(aud) => format!("[{}]", aud.join(", ")),
+			}
+		);
+		return Err(ErrorType::MalformedAccessToken);
+	}
+	trace!("JWT audience valid");
+
+	// `sid` is the login, and keys the cache; `sub` is the user it belongs to.
+	let cache_key = redis::keys::auth_data_for_login_id(&claims.sid);
+	let entry = if let Some(entry) = cache::read(redis, &cache_key).await {
+		trace!("Cached auth data found for login `{}`", claims.sid);
+		entry
+	} else {
+		let entry = web_dashboard::load_actor_auth_data(&mut *database, &claims.sid).await?;
+
+		cache::write(
+			redis,
+			&cache_key,
+			&entry,
+			constants::CACHED_PERMISSIONS_VALIDITY,
+		)
+		.await;
+
+		entry
+	};
+
+	// A token whose two halves disagree is malformed however it got that way.
+	// Checked on every request, cache hit or not.
+	if claims.sub != entry.actor_id {
+		warn!("JWT `sub` does not match the user owning `sid`");
+		return Err(ErrorType::MalformedAccessToken);
+	}
+	trace!("JWT sub matches the login's user");
+
+	let ActorAuthDataCacheKind::WebLogin {
+		email,
+		first_name,
+		last_name,
+		created,
+	} = entry.kind
+	else {
+		warn!("JWT presented for a login that is not a web login");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	};
+
+	Ok(RequestActorData::builder()
+		.id(entry.actor_id)
+		.actor(ActorData::User {
+			email,
+			first_name,
+			last_name,
+			login: UserLoginType::WebLogin,
+		})
+		.created(created)
+		.login_id(claims.sid)
+		.permissions(entry.permissions)
+		.build())
+}
+
+/// Authenticate an opaque token: a user API token (`patr_at_…`), a service
+/// account token (`patr_sa_…`) or a runner token (`patr_rn_…`). The prefix
+/// says which, so a kind this route doesn't take is turned away before
+/// anything is looked up. The token is found by its SHA-256, in the cache and
+/// then in the database, so finding it is itself the proof that it's genuine.
+async fn authenticate_opaque_token(
+	database: &mut DatabaseConnection,
+	redis: &mut RedisClient,
+	client_ip: IpAddr,
+	token: &str,
+	accepted_client_types: &[ActorClientType],
+) -> Result<RequestActorData, ErrorType> {
+	trace!("Parsing authentication header as an opaque token");
+
+	let client_type = if token.starts_with(constants::API_TOKEN_PREFIX) {
+		ActorClientType::UserLogin(UserLoginType::ApiToken)
+	} else if token.starts_with(constants::SERVICE_ACCOUNT_TOKEN_PREFIX) {
+		ActorClientType::ServiceAccount
+	} else if token.starts_with(constants::RUNNER_TOKEN_PREFIX) {
+		ActorClientType::Runner
+	} else {
+		warn!("Authentication header is neither a JWT nor an opaque token");
+		return Err(ErrorType::MalformedApiToken);
+	};
+
+	// The prefix and secret, and the checksum of both. Only the checksum is
+	// checked: anyone can compute a valid one, so length or character checks
+	// wouldn't stop a crafted token.
+	let Some((body, presented_checksum)) =
+		token.split_at_checked(token.len() - constants::OPAQUE_TOKEN_CHECKSUM_LENGTH)
+	else {
+		warn!("Invalid opaque token: the checksum isn't on a character boundary");
+		return Err(ErrorType::MalformedApiToken);
+	};
+	let calculated_checksum = format!(
+		"{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	);
+	if presented_checksum != calculated_checksum {
+		warn!("Invalid opaque token: the checksum doesn't match");
+		return Err(ErrorType::MalformedApiToken);
+	}
+
+	if !accepted_client_types.contains(&client_type) {
+		warn!("A `{client_type}` token was presented to a route that doesn't accept it");
+		return Err(ErrorType::Unauthorized);
+	}
+
+	let token_hash = hex::encode(Sha256::digest(token));
+	let cache_key = redis::keys::auth_data_for_token(&token_hash);
+
+	let entry = if let Some(entry) = cache::read(redis, &cache_key).await {
+		trace!("Cached auth data found for the token");
+		entry
+	} else {
+		let (entry, ttl) = match client_type {
+			ActorClientType::UserLogin(UserLoginType::ApiToken) => {
+				api_token::load_actor_auth_data(&mut *database, &token_hash).await?
+			}
+			ActorClientType::ServiceAccount => {
+				service_account::load_actor_auth_data(&mut *database, &token_hash).await?
+			}
+			ActorClientType::Runner => {
+				runner::load_actor_auth_data(&mut *database, &token_hash).await?
+			}
+			ActorClientType::UserLogin(UserLoginType::WebLogin) => {
+				unreachable!("only the opaque token prefixes are parsed above")
+			}
+		};
+
+		cache::write(redis, &cache_key, &entry, ttl).await;
+		entry
+	};
+
+	// Checked on every request, cache hit or not: for API tokens, the client's
+	// IP.
+	let (actor, created) = match entry.kind {
+		ActorAuthDataCacheKind::ApiToken {
+			email,
+			first_name,
+			last_name,
+			created,
+			allowed_ips,
+		} => {
+			if let Some(allowed_ips) = allowed_ips &&
+				!allowed_ips
+					.iter()
+					.any(|ip_network| ip_network.contains(client_ip))
+			{
+				info!("API token not accessed from an allowed IP Address");
+				return Err(ErrorType::DisallowedIpAddressForApiToken);
+			}
+
+			(
+				ActorData::User {
+					email,
+					first_name,
+					last_name,
+					login: UserLoginType::ApiToken,
+				},
+				created,
+			)
+		}
+		ActorAuthDataCacheKind::ServiceAccount { name, created } => {
+			(ActorData::ServiceAccount { name }, created)
+		}
+		ActorAuthDataCacheKind::Runner { name, created } => (ActorData::Runner { name }, created),
+		ActorAuthDataCacheKind::WebLogin { .. } => {
+			error!("A web login's cache entry was found under an opaque token's hash");
+			return Err(ErrorType::server_error(
+				"web login cached under a token hash",
+			));
+		}
+	};
+
+	Ok(RequestActorData::builder()
+		.id(entry.actor_id)
+		.actor(actor)
+		.created(created)
+		.login_id(entry.login_id)
+		.permissions(entry.permissions)
+		.build())
 }

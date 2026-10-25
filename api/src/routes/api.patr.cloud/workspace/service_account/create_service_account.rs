@@ -1,0 +1,251 @@
+use axum::http::StatusCode;
+use models::api::workspace::service_account::*;
+use sha2::{Digest as _, Sha256};
+
+use crate::{models::permissions, prelude::*};
+
+pub async fn create_service_account(
+	AuthenticatedAppRequest {
+		request:
+			ProcessedApiRequest {
+				path: CreateServiceAccountPath { workspace_id },
+				query: (),
+				headers:
+					CreateServiceAccountRequestHeaders {
+						authorization: _,
+						user_agent: _,
+					},
+				body:
+					CreateServiceAccountRequestProcessed {
+						service_account: ServiceAccountProcessed { name, description },
+						role_bindings,
+					},
+			},
+		database,
+		redis: _,
+		client_ip: _,
+		actor_data,
+		mut state,
+	}: AuthenticatedAppRequest<'_, CreateServiceAccountRequest>,
+) -> Result<AppResponse<CreateServiceAccountRequest>, ErrorType> {
+	info!("Creating service account with name: `{name}`");
+
+	// Generate token
+	let token = permissions::generate_service_account_token();
+	let token_hash = hex::encode(Sha256::digest(&token));
+
+	// Create resource
+	let id = query!(
+		r#"
+		INSERT INTO
+			resource(
+				id,
+				resource_type_id,
+				workspace_id,
+				created
+			)
+		VALUES
+			(
+				GENERATE_RESOURCE_ID(),
+				(SELECT id FROM resource_type WHERE name = 'serviceAccount'),
+				$1,
+				NOW()
+			)
+		RETURNING id;
+		"#,
+		workspace_id,
+	)
+	.fetch_one(&mut **database)
+	.await?
+	.id;
+
+	// The same id registers the account in all four supertypes: it is a
+	// resource above, an actor (the accountable identity), an actor_client
+	// that it owns itself (so it can authenticate and be named in an audit
+	// entry) and a workspace_actor (so role bindings can hang off it).
+	query!(
+		r#"
+		INSERT INTO
+			actor(
+				id,
+				actor_type,
+				created
+			)
+		VALUES
+			($1, 'service_account', NOW());
+		"#,
+		id,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			actor_client(
+				id,
+				actor_client_type,
+				actor_id
+			)
+		VALUES
+			($1, 'service_account', $1);
+		"#,
+		id,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
+			workspace_actor(
+				id,
+				workspace_id,
+				actor_type
+			)
+		VALUES
+			($1, $2, 'service_account');
+		"#,
+		id,
+		workspace_id,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	// Create service account
+	query!(
+		r#"
+		INSERT INTO
+			service_account(
+				id,
+				workspace_id,
+				name,
+				description,
+				token_hash,
+				created
+			)
+		VALUES
+			($1, $2, $3, $4, $5, NOW());
+		"#,
+		id,
+		workspace_id,
+		name.as_ref(),
+		description.as_deref(),
+		&token_hash,
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(|e| match e {
+		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		other => other.into(),
+	})?;
+
+	// Every grant is a binding: a role plus the one resource it applies at.
+	// One insert for the lot. The scope FK pivots on workspace_id, so a role
+	// or a resource from another workspace is what the FK violation means.
+	query!(
+		r#"
+		INSERT INTO
+			role_binding(
+				id,
+				workspace_id,
+				actor_id,
+				role_id,
+				scope_id,
+				created,
+				created_by
+			)
+		SELECT
+			GEN_RANDOM_UUID(),
+			$1,
+			$2,
+			requested.role_id,
+			requested.scope_id,
+			NOW(),
+			$5
+		FROM
+			UNNEST($3::UUID[], $4::UUID[]) AS requested(role_id, scope_id)
+		ON CONFLICT
+			(actor_id, role_id, scope_id)
+		DO NOTHING;
+		"#,
+		workspace_id,
+		id,
+		&role_bindings
+			.iter()
+			.map(|grant| grant.role_id)
+			.collect::<Vec<_>>() as _,
+		&role_bindings
+			.iter()
+			.map(|grant| grant.resource_id)
+			.collect::<Vec<_>>() as _,
+		actor_data.id,
+	)
+	.execute(&mut **database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
+			match db_err.constraint() {
+				Some("role_binding_fk_role_id_workspace_id") => ErrorType::RoleDoesNotExist,
+				Some("role_binding_fk_scope_id_workspace_id") => ErrorType::ResourceDoesNotExist,
+				_ => ErrorType::server_error(sqlx::Error::Database(db_err)),
+			}
+		}
+		other => ErrorType::server_error(other),
+	})?;
+
+	let super_admin = query!(
+		r#"
+		SELECT
+			workspace.name::TEXT AS "workspace_name!",
+			"user".email::TEXT AS "email!",
+			"user".first_name
+		FROM
+			workspace
+		INNER JOIN
+			"user"
+		ON
+			"user".id = workspace.super_admin_id
+		WHERE
+			workspace.id = $1;
+		"#,
+		workspace_id,
+	)
+	.fetch_one(&mut **database)
+	.await?;
+
+	// Cloud serves the dashboard on `app.`; self-hosted off the base domain.
+	let base_domain = &state.config.server.base_domain;
+	let dashboard_url = if cfg!(feature = "cloud") {
+		format!("https://app.{base_domain}")
+	} else {
+		format!("https://{base_domain}")
+	};
+
+	state
+		.worker
+		.send_email(
+			super_admin.email,
+			ServiceAccountCreatedEmail {
+				first_name: super_admin.first_name,
+				service_account_name: name.into_owned(),
+				workspace_name: super_admin.workspace_name,
+				created_by: actor_data.actor.display_name(),
+				service_account_url: format!("{dashboard_url}/workspace/service-accounts/{id}"),
+			},
+		)
+		.await
+		.inspect_err(|err| {
+			error!("Error enqueuing service account created email: `{err}`");
+		})?;
+
+	AppResponse::builder()
+		.body(CreateServiceAccountResponse {
+			id: WithId::from(id),
+			token,
+		})
+		.headers(())
+		.status_code(StatusCode::CREATED)
+		.build()
+		.into_result()
+}

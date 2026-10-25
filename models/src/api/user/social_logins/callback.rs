@@ -12,7 +12,6 @@ macros::declare_api_endpoint!(
 		/// endpoint.
 		pub provider: SocialLoginProvider,
 	},
-	api = false,
 	request_headers = {
 		/// The authorization token
 		pub authorization: BearerToken,
@@ -31,5 +30,6 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, length(min = 1))]
 		pub state: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

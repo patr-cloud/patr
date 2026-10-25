@@ -97,6 +97,19 @@ pub async fn social_login_setup(
 	query!(
 		r#"
 		INSERT INTO
+			actor(id, actor_type, created)
+		VALUES
+			($1, 'user', $2);
+		"#,
+		user_id,
+		now,
+	)
+	.execute(&mut **database)
+	.await?;
+
+	query!(
+		r#"
+		INSERT INTO
 			"user"(
 				id,
 				password,
@@ -211,9 +224,9 @@ pub async fn social_login_setup(
 		r#"
 		WITH client AS (
 			INSERT INTO
-				actor_client(id, actor_client_type)
+				actor_client(id, actor_client_type, actor_id)
 			VALUES
-				(GENERATE_LOGIN_ID(), 'user_login')
+				(GENERATE_LOGIN_ID(), 'user_login', $1)
 			RETURNING id
 		)
 		INSERT INTO
@@ -297,7 +310,8 @@ pub async fn social_login_setup(
 
 	let access_token = AccessTokenData {
 		iss: constants::JWT_ISSUER.to_string(),
-		sub: login_id,
+		sub: user_id,
+		sid: login_id,
 		aud: OneOrMore::One(constants::PATR_JWT_AUDIENCE.to_string()),
 		exp: now.add(constants::ACCESS_TOKEN_VALIDITY),
 		nbf: now,

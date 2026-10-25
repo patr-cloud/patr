@@ -1,3 +1,4 @@
+use jsonwebtoken::{DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 
@@ -21,9 +22,19 @@ pub struct AccessTokenData {
 	/// subject.  The subject value MUST either be scoped to be locally unique
 	/// in the context of the issuer or be globally unique.
 	///
-	/// I think this is the user's login ID (from which we can extract
-	/// everything else that is needed to know about the user)
+	/// I guess this is the user ID of the user. For user's specific login ID, we'll use the
+	/// [`sid`][Self::sid] claim. OpenID Connect requires `sub` to identify the user rather than
+	/// the credential, and relying parties key their local accounts on it
 	pub sub: Uuid,
+	/// OpenID Connect Core 1.0, section 2:
+	/// The "sid" (session ID) claim identifies the session the token was
+	/// issued against.
+	///
+	/// This is the login ID — the `user_login` row backing this token. It is what the
+	/// authenticator looks up to resolve permissions and to check whether the session has been
+	/// revoked. From the login ID we can extract everything else that is needed to know about the
+	/// user or the session.
+	pub sid: Uuid,
 	/// RFC7519:
 	/// The "aud" (audience) claim identifies the recipients that the JWT is
 	/// intended for.  Each principal intended to process the JWT MUST identify
@@ -88,6 +99,29 @@ impl AccessTokenData {
 	/// be considered expired, and the client should handle this by logging out
 	/// the user, or attempting to login again.
 	pub const REFRESH_TOKEN_VALIDITY: Duration = Duration::days(30);
+
+	/// Decode `token` as one of our access tokens, checking only its signature, and fails if
+	/// `token` isn't a JWT signed wtih `jwt_secret`. The claims (iss, aud, jti, nbf, exp) are
+	/// checked by the caller on every request.
+	pub fn decode(token: &str, jwt_secret: &str) -> Result<Self, jsonwebtoken::errors::Error> {
+		jsonwebtoken::decode::<AccessTokenData>(
+			token,
+			&DecodingKey::from_secret(jwt_secret.as_ref()),
+			&{
+				let mut validation = Validation::default();
+
+				// Checked by the caller on every request, since a cached login
+				// outlives any one of its access tokens
+				validation.validate_exp = false;
+				validation.validate_nbf = false;
+				validation.validate_aud = false;
+
+				validation
+			},
+		)
+		.inspect_err(|err| trace!("Token is not a JWT: {err}"))
+		.map(|data| data.claims)
+	}
 }
 
 /// A module to help serialize and deserialize `OffsetDateTime` as seconds

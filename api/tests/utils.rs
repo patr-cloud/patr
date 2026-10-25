@@ -1,7 +1,9 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::FromStr as _};
 
 use headers::UserAgent;
 use models::{
+	ApiRequest,
+	ApiSuccessResponseBody,
 	api::{
 		auth::*,
 		user::*,
@@ -13,6 +15,7 @@ use models::{
 			rbac::{role::*, user::*},
 			runner::*,
 			secret::*,
+			service_account::*,
 			*,
 		},
 	},
@@ -53,6 +56,15 @@ pub struct TestWorkspace {
 pub struct TestRunner {
 	pub id: Uuid,
 	pub name: String,
+	/// The runner's token (`patr_rn_…`).
+	pub token: String,
+}
+
+/// A test service account.
+pub struct TestServiceAccount {
+	pub id: Uuid,
+	pub name: String,
+	pub token: String,
 }
 
 /// A test deployment.
@@ -236,28 +248,67 @@ impl TestSetup {
 		}
 	}
 
-	/// Add a runner to a workspace, returning its ID and name.
+	/// Create a runner, returning its ID, name, and token.
 	pub async fn create_test_runner(&self, token: &BearerToken, workspace_id: Uuid) -> TestRunner {
 		let name = random_name(8);
 
 		let response = self
 			.make_web_dashboard_call(
-				ApiRequest::<AddRunnerToWorkspaceRequest>::builder()
-					.path(AddRunnerToWorkspacePath { workspace_id })
-					.headers(AddRunnerToWorkspaceRequestHeaders {
+				ApiRequest::<CreateRunnerRequest>::builder()
+					.path(CreateRunnerPath { workspace_id })
+					.headers(CreateRunnerRequestHeaders {
 						authorization: token.clone(),
 						user_agent: TEST_USER_AGENT,
 					})
-					.body(AddRunnerToWorkspaceRequest { name: name.clone() })
+					.body(CreateRunnerRequest { name: name.clone() })
 					.build(),
 			)
 			.await
-			.json::<ApiSuccessResponseBody<AddRunnerToWorkspaceResponse>>()
+			.json::<ApiSuccessResponseBody<CreateRunnerResponse>>()
 			.response;
 
 		TestRunner {
 			id: response.id.id,
 			name,
+			token: response.token,
+		}
+	}
+
+	/// Create a service account in a workspace with the given roles, returning
+	/// its ID, name, and token.
+	pub async fn create_test_service_account(
+		&self,
+		token: &BearerToken,
+		workspace_id: Uuid,
+		role_bindings: Vec<RoleBindingGrant>,
+	) -> TestServiceAccount {
+		let name = random_name(8);
+
+		let response = self
+			.make_web_dashboard_call(
+				ApiRequest::<CreateServiceAccountRequest>::builder()
+					.path(CreateServiceAccountPath { workspace_id })
+					.headers(CreateServiceAccountRequestHeaders {
+						authorization: token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(CreateServiceAccountRequest {
+						service_account: ServiceAccount {
+							name: name.clone(),
+							description: None,
+						},
+						role_bindings,
+					})
+					.build(),
+			)
+			.await
+			.json::<ApiSuccessResponseBody<CreateServiceAccountResponse>>()
+			.response;
+
+		TestServiceAccount {
+			id: response.id.id,
+			name,
+			token: response.token,
 		}
 	}
 

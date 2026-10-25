@@ -35,7 +35,7 @@ pub async fn delete_deployment(
 		database,
 		redis,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, DeleteDeploymentRequest>,
 ) -> Result<AppResponse<DeleteDeploymentRequest>, ErrorType> {

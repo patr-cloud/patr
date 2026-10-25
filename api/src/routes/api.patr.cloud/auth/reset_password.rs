@@ -8,10 +8,9 @@ use argon2::{
 };
 use axum::http::StatusCode;
 use models::api::auth::*;
-use rustis::commands::{SetExpiration, StringCommands as _};
 use time::OffsetDateTime;
 
-use crate::{prelude::*, redis::keys as redis};
+use crate::{models::permissions, prelude::*};
 
 pub async fn reset_password(
 	AppRequest {
@@ -198,21 +197,7 @@ pub async fn reset_password(
 	.execute(&mut **database)
 	.await?;
 
-	redis
-		.set_with_options(
-			redis::user_id_revocation_timestamp(&user_data.id),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-			None,
-			SetExpiration::Ex(
-				constants::CACHED_PERMISSIONS_VALIDITY
-					.whole_seconds()
-					.unsigned_abs(),
-			),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting user_id_revocation_timestamp: `{}`", err);
-		})?;
+	permissions::mark_actor_stale(redis, &user_data.id).await?;
 
 	AppResponse::builder()
 		.body(ResetPasswordResponse)

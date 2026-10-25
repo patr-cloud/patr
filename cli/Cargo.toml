@@ -43,7 +43,6 @@ macros              = { workspace = true, features = [] }
 models              = { workspace = true, features = [] }
 open                = { workspace = true, features = [] }
 preprocess          = { workspace = true, features = [] }
-rand                = { workspace = true, features = ["default"] }
 reqwest             = { workspace = true, features = ["default", "json"] }
 self-replace        = { workspace = true, features = [] }
 semver              = { workspace = true, features = [] }

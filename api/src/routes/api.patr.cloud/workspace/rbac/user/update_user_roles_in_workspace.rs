@@ -2,10 +2,8 @@ use std::collections::BTreeSet;
 
 use axum::http::StatusCode;
 use models::api::workspace::rbac::user::*;
-use rustis::commands::{SetExpiration, StringCommands};
-use time::OffsetDateTime;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 /// The handler to update a user's roles in a workspace. This requires the user
 /// who is sending the request to have the permission to update roles in the
@@ -29,7 +27,7 @@ pub async fn update_user_roles_in_workspace(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateUserRolesInWorkspaceRequest>,
 ) -> Result<AppResponse<UpdateUserRolesInWorkspaceRequest>, ErrorType> {
@@ -131,7 +129,7 @@ pub async fn update_user_roles_in_workspace(
 		&actor_id,
 		&role_ids as _,
 		&scope_ids as _,
-		&user_data.id,
+		&actor_data.id,
 	)
 	.execute(&mut **database)
 	.await
@@ -146,23 +144,9 @@ pub async fn update_user_roles_in_workspace(
 		other => ErrorType::server_error(other),
 	})?;
 
-	info!("User's roles updated. Setting revocation timestamp");
+	info!("User's roles updated. Marking cached permissions stale");
 
-	redis
-		.set_with_options(
-			redis::keys::user_id_revocation_timestamp(&user_id),
-			OffsetDateTime::now_utc().unix_timestamp_nanos().to_string(),
-			None,
-			SetExpiration::Ex(
-				constants::CACHED_PERMISSIONS_VALIDITY
-					.whole_seconds()
-					.unsigned_abs(),
-			),
-		)
-		.await
-		.inspect_err(|err| {
-			error!("Error setting the revocation timestamp: `{}`", err);
-		})?;
+	permissions::mark_actor_stale(redis, &user_id).await?;
 
 	AppResponse::builder()
 		.body(UpdateUserRolesInWorkspaceResponse)

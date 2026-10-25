@@ -1,194 +1,91 @@
-use std::{collections::BTreeMap, net::IpAddr};
+use std::collections::BTreeMap;
 
-use argon2::{Algorithm, Argon2, PasswordHash, PasswordVerifier as _, Version};
-use models::{
-	RequestUserData,
-	rbac::{WorkspacePermission, intersect_workspace_permissions},
+use models::rbac::{WorkspacePermission, intersect_workspace_permissions};
+use sqlx::Connection as _;
+use time::{Duration, OffsetDateTime};
+
+use crate::{
+	models::redis::{ActorAuthDataCache, ActorAuthDataCacheKind},
+	prelude::*,
 };
-use rustis::{
-	client::Client as RedisClient,
-	commands::{SetExpiration, StringCommands as _},
-};
-use time::OffsetDateTime;
 
-use crate::{models::redis::UserPermissionCache, prelude::*, utils::config::AppConfig};
-
-pub(crate) async fn get_permissions(
+/// Load everything the cache holds for the API token whose hash is
+/// `token_hash`: the user behind it, the token's restrictions, and its
+/// effective permissions. Also says how long the entry may live: until the
+/// token expires, at most [`constants::CACHED_PERMISSIONS_VALIDITY`] — expiry
+/// isn't kept in the entry; the entry just doesn't outlive the token.
+pub(super) async fn load_actor_auth_data(
 	database: &mut DatabaseConnection,
-	redis: &mut RedisClient,
-	config: &AppConfig,
-	client_ip: IpAddr,
-	token: &str,
-) -> Result<RequestUserData, ErrorType> {
-	trace!("Parsing authentication header as an API token");
-	let (refresh_token, login_id) = token
-		.strip_prefix("patrv1.")
-		.ok_or_else(|| {
-			warn!("Invalid API token: missing `patrv1.` prefix");
-			ErrorType::MalformedApiToken
-		})?
-		.split_once('.')
-		.ok_or_else(|| {
-			warn!("Invalid API token: missing refresh-token/login-id separator");
-			ErrorType::MalformedApiToken
-		})?;
+	token_hash: &str,
+) -> Result<(ActorAuthDataCache, Duration), ErrorType> {
+	// Taken before the lookup, so a stamp written while the lookup is in
+	// flight still marks this entry stale.
+	let created_at = OffsetDateTime::now_utc();
+	let now = created_at;
 
-	let refresh_token = Uuid::parse_str(refresh_token).map_err(|err| {
-		warn!(
-			"Invalid API token: refresh token is not a valid UUID: {}",
-			err
-		);
-		ErrorType::MalformedApiToken
-	})?;
-	trace!("Refresh token parsed as UUID");
-
-	let login_id = Uuid::parse_str(login_id).map_err(|err| {
-		warn!("Invalid API token: login ID is not a valid UUID: {}", err);
-		ErrorType::MalformedApiToken
-	})?;
-	trace!("Login ID parsed as UUID");
-
-	info!("Extracting information about API token");
-	let Some(token) = query!(
+	// Waits out an uncommitted revoke, update or regenerate of the row, then
+	// releases the lock right away so a long request doesn't hold it.
+	let mut savepoint = database.begin().await?;
+	let token = query!(
 		r#"
 		SELECT
 			user_api_token.token_id,
 			user_api_token.user_id,
-			user_api_token.token_hash,
 			user_api_token.token_nbf,
 			user_api_token.token_exp,
 			user_api_token.allowed_ips,
 			user_api_token.revoked,
-			"user".*
+			"user".email,
+			"user".first_name,
+			"user".last_name,
+			"user".created
 		FROM
 			user_api_token
 		INNER JOIN
-			user_login
-		ON
-			user_api_token.token_id = user_login.login_id
-		INNER JOIN
 			"user"
 		ON
-			user_api_token.user_id = "user".id
+			"user".id = user_api_token.user_id
 		WHERE
-			user_api_token.token_id = $1 AND
-			user_login.login_type = 'api_token';
+			user_api_token.token_hash = $1
+		FOR SHARE OF
+			user_api_token;
 		"#,
-		login_id
+		token_hash,
 	)
-	.fetch_optional(&mut *database) // What the actual fuck?
-	.await?
-	else {
-		warn!("API token not found");
-		// No specific error for API token not found, since we don't want to leak
-		// information about whether a loginId is valid or if it's expired
+	.fetch_optional(&mut *savepoint)
+	.await?;
+	savepoint.rollback().await?;
+
+	let Some(token) = token else {
+		// No specific error for the token not being found, since we don't
+		// want to leak whether a token ever existed
+		warn!("No API token with this hash");
 		return Err(ErrorType::AuthorizationTokenInvalid);
 	};
-	trace!("Token extracted from database");
 
-	if let Some(nbf) = token.token_nbf {
-		trace!("Token has an NBF");
-		if OffsetDateTime::now_utc() < nbf {
-			info!("API token is not valid yet");
-			return Err(ErrorType::AuthorizationTokenInvalid);
-		}
-	} else {
-		trace!("Token does not have an NBF");
+	if token.revoked.is_some() {
+		info!("API token has been revoked");
+		return Err(ErrorType::AuthorizationTokenInvalid);
 	}
-	trace!("Token passed NBF check");
 
-	if let Some(exp) = token.token_exp {
-		trace!("Token has an EXP");
-		if OffsetDateTime::now_utc() > exp {
+	if let Some(nbf) = token.token_nbf &&
+		now < nbf
+	{
+		info!("API token is not valid yet");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	}
+
+	let ttl = match token.token_exp {
+		Some(exp) if now > exp => {
 			info!("API token has expired");
 			return Err(ErrorType::AuthorizationTokenInvalid);
 		}
-	} else {
-		trace!("Token does not have an EXP");
-	}
-	trace!("Token passed EXP check");
-
-	if let Some(revoked) = token.revoked {
-		trace!("Token has a revoked timestamp");
-		if OffsetDateTime::now_utc() > revoked {
-			info!("API token has been revoked");
-			return Err(ErrorType::AuthorizationTokenInvalid);
-		}
-	} else {
-		trace!("Token does not have a revoked timestamp");
-	}
-	trace!("Token passed revoked timestamp check");
-
-	if let Some(allowed_ips) = token.allowed_ips &&
-		!allowed_ips
-			.iter()
-			.any(|ip_network| ip_network.contains(client_ip))
-	{
-		info!("API token not accessed from an allowed IP Address");
-		return Err(ErrorType::DisallowedIpAddressForApiToken);
-	}
-
-	let Ok(password_hash) = PasswordHash::new(&token.token_hash) else {
-		error!("Unable to parse password hash: {}", token.token_hash);
-		return Err(ErrorType::server_error("password hash parsing failed"));
+		Some(exp) => constants::CACHED_PERMISSIONS_VALIDITY.min(exp - now),
+		None => constants::CACHED_PERMISSIONS_VALIDITY,
 	};
-	let success = Argon2::new_with_secret(
-		config.password_pepper.as_bytes(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.map_err(ErrorType::server_error)?
-	.verify_password(refresh_token.as_bytes(), &password_hash)
-	.is_ok();
-
-	if !success {
-		warn!("API token has invalid refresh token");
-		return Err(ErrorType::AuthorizationTokenInvalid);
-	}
-	info!("API token valid");
-
-	let permissions =
-		get_permissions_for_api_token(&mut *database, redis, &login_id, &token.user_id).await?;
-
-	Ok(RequestUserData::builder()
-		.id(token.user_id)
-		.email(token.email)
-		.first_name(token.first_name)
-		.last_name(token.last_name)
-		.created(token.created)
-		.login_id(token.token_id)
-		.permissions(permissions)
-		.build())
-}
-
-/// Compute the effective permission map for an API token. On a valid cache
-/// hit the cached map is returned directly. Otherwise:
-///
-/// 1. Reads the user's current role-derived permissions for the workspaces they are a member of
-///    (the upper bound).
-/// 2. Reads the token's declared permissions from `user_api_token_*` tables (the snapshot taken at
-///    mint/patch time).
-/// 3. Computes the intersection — anything the user has lost since the token was minted is dropped
-///    from the token's effective scope.
-/// 4. Rewrites the token's DB rows for any workspace whose intersection differs from the declared
-///    rows, so subsequent reads (auth and `get_api_token_info`) see the converged state directly.
-/// 5. Caches and returns the effective map.
-#[tracing::instrument(skip(db_connection, redis_connection))]
-pub async fn get_permissions_for_api_token(
-	db_connection: &mut DatabaseConnection,
-	redis_connection: &mut RedisClient,
-	login_id: &Uuid,
-	user_id: &Uuid,
-) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
-	if let Some(cached) = super::get_cached_permissions(redis_connection, login_id, user_id).await?
-	{
-		return Ok(cached);
-	}
 
 	// User's current role-derived permissions (the upper bound for the
-	// token). Read directly from the DB — the token's cache slot is keyed
-	// on its own login_id, so reusing the user's cached perms doesn't apply.
+	// token).
 	let mut user_permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
 
 	query!(
@@ -200,9 +97,9 @@ pub async fn get_permissions_for_api_token(
 		WHERE
 			super_admin_id = $1;
 		"#,
-		user_id,
+		token.user_id,
 	)
-	.fetch_all(&mut *db_connection)
+	.fetch_all(&mut *database)
 	.await?
 	.into_iter()
 	.map(|row| row.workspace_id)
@@ -229,9 +126,9 @@ pub async fn get_permissions_for_api_token(
 		WHERE
 			workspace_user.user_id = $1;
 		"#,
-		user_id,
+		token.user_id,
 	)
-	.fetch_all(&mut *db_connection)
+	.fetch_all(&mut *database)
 	.await?
 	.into_iter()
 	.for_each(|row| {
@@ -266,9 +163,9 @@ pub async fn get_permissions_for_api_token(
 		WHERE
 			token_id = $1;
 		"#,
-		login_id,
+		token.token_id,
 	)
-	.fetch_all(&mut *db_connection)
+	.fetch_all(&mut *database)
 	.await?
 	.into_iter()
 	.map(|row| row.workspace_id)
@@ -288,9 +185,9 @@ pub async fn get_permissions_for_api_token(
 		WHERE
 			user_api_token_permission_binding.token_id = $1;
 		"#,
-		login_id,
+		token.token_id,
 	)
-	.fetch_all(&mut *db_connection)
+	.fetch_all(&mut *database)
 	.await?
 	.into_iter()
 	.for_each(|row| {
@@ -313,31 +210,22 @@ pub async fn get_permissions_for_api_token(
 			.insert(row.scope_id);
 	});
 
-	let effective_permissions =
-		intersect_workspace_permissions(&token_permissions, &user_permissions);
+	let permissions = intersect_workspace_permissions(&token_permissions, &user_permissions);
 
-	// A token belongs to the workspaces it holds effective permissions or
-	redis_connection
-		.set_with_options(
-			redis::keys::permission_for_login_id(login_id),
-			serde_json::to_string(&UserPermissionCache {
-				permission: effective_permissions.clone(),
-				creation_time: OffsetDateTime::now_utc(),
-			})?,
-			None,
-			SetExpiration::Ex(
-				constants::CACHED_PERMISSIONS_VALIDITY
-					.whole_seconds()
-					.unsigned_abs(),
-			),
-		)
-		.await
-		.inspect_err(|err| {
-			error!(
-				"Error setting the permissions for the loginId `{login_id}`: `{}`",
-				err
-			);
-		})?;
-
-	Ok(effective_permissions)
+	Ok((
+		ActorAuthDataCache {
+			login_id: token.token_id,
+			actor_id: token.user_id,
+			kind: ActorAuthDataCacheKind::ApiToken {
+				email: token.email,
+				first_name: token.first_name,
+				last_name: token.last_name,
+				created: token.created,
+				allowed_ips: token.allowed_ips,
+			},
+			permissions,
+			created_at,
+		},
+		ttl,
+	))
 }

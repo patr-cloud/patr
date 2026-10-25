@@ -1,0 +1,52 @@
+use std::fmt::Display;
+
+use serde::{Deserialize, Serialize};
+use strum::EnumDiscriminants;
+
+use crate::UserLoginType;
+
+/// Which kind of credential a request authenticated with. This decides which
+/// endpoints the caller may reach.
+///
+/// Mirrors the database's two levels: `ACTOR_CLIENT_TYPE` separates a user
+/// login from a service account and a runner ([`ActorClientTypeDiscriminant`]
+/// decodes it), and `USER_LOGIN_TYPE` beneath it separates a web session from
+/// an API token ([`UserLoginType`]).
+///
+/// - [`UserLogin`][Self::UserLogin]`(`[`WebLogin`][UserLoginType::WebLogin]`)`: the web dashboard,
+///   authenticated via JWT.
+/// - [`UserLogin`][Self::UserLogin]`(`[`ApiToken`][UserLoginType::ApiToken]`)`: third-party
+///   applications, authenticated via user API tokens (`patr_at_…`).
+/// - [`ServiceAccount`][Self::ServiceAccount]: non-human identities for automation, authenticated
+///   via service account tokens (`patr_sa_…`).
+/// - [`Runner`][Self::Runner]: a runner, authenticated via its runner token (`patr_rn_…`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumDiscriminants)]
+#[serde(rename_all = "camelCase")]
+#[strum_discriminants(
+	name(ActorClientTypeDiscriminant),
+	cfg_attr(
+		not(target_arch = "wasm32"),
+		derive(sqlx::Type),
+		sqlx(type_name = "ACTOR_CLIENT_TYPE", rename_all = "snake_case"),
+	),
+	doc = "The database's `ACTOR_CLIENT_TYPE`: a user login, a service account or a runner"
+)]
+pub enum ActorClientType {
+	/// One of a user's logins: a web session or an API token
+	UserLogin(UserLoginType),
+	/// A service account's token
+	ServiceAccount,
+	/// A runner's token
+	Runner,
+}
+
+impl Display for ActorClientType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::UserLogin(UserLoginType::WebLogin) => write!(f, "WebLogin"),
+			Self::UserLogin(UserLoginType::ApiToken) => write!(f, "ApiToken"),
+			Self::ServiceAccount => write!(f, "ServiceAccount"),
+			Self::Runner => write!(f, "Runner"),
+		}
+	}
+}

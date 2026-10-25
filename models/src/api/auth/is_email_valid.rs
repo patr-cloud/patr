@@ -4,7 +4,6 @@ macros::declare_api_endpoint!(
 	/// Route to validate user's entered email ID is available or not
 	IsEmailValid,
 	GET "/auth/email-valid",
-	api = false,
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
@@ -18,5 +17,6 @@ macros::declare_api_endpoint!(
 		/// A boolean response corresponding to the availability of the email
 		pub available: bool,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

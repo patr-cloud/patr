@@ -35,7 +35,7 @@ pub async fn list_repository_tags(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListContainerRepositoryTagsRequest>,
 ) -> Result<AppResponse<ListContainerRepositoryTagsRequest>, ErrorType> {

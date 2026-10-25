@@ -29,6 +29,14 @@ pub(super) async fn execute(
 			.expect_tty("Failed to read API token")
 	});
 
+	if token.starts_with("patr_rn_") {
+		return Err(AppError::ParseError(
+			"That's a runner token, which can't log in. To set a runner up with it, run \
+			 `patr -w <workspace-id> runner setup reconnect --runner-id <runner-id> --runner-token <token>`."
+				.to_string(),
+		));
+	}
+
 	// Verify the token by fetching user info
 	let GetUserInfoResponse {
 		basic_user_info:

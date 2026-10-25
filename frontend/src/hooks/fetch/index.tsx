@@ -12,7 +12,7 @@ import {
 	useRunnerDeploymentsQuery,
 } from "./runners";
 import { useWorkspaceInfoQuery } from "./workspace";
-import { useRolesQuery, useAllRolesQuery, useRoleInfoQuery, useRoleUsersQuery } from "./roles";
+import { useRolesQuery, useAllRolesQuery, useRoleInfoQuery, useRoleBindingsQuery } from "./roles";
 import { useMembersQuery } from "./members";
 import { useInvitesQuery } from "./invitations";
 import { useApiTokensQuery, useApiTokenInfoQuery } from "./api-tokens";
@@ -28,9 +28,11 @@ import {
 } from "./container-registry";
 import { useDomainsQuery, useDomainInfoQuery } from "./domains";
 import { useSecretsQuery, useSecretInfoQuery } from "./secrets";
+import { useServiceAccountsQuery, useServiceAccountQuery } from "./service-accounts";
 import { useManagedUrlsQuery } from "./managed-urls";
 import { useRunnerMetricsQuery, useDeploymentMetricsQuery } from "./metrics";
 import { useUserInfoQuery, useMfaSecretQuery } from "./user";
+import { useApiVersionQuery } from "./version";
 
 export {
 	useApiEnvironmentQuery,
@@ -51,7 +53,7 @@ export {
 	useRolesQuery,
 	useAllRolesQuery,
 	useRoleInfoQuery,
-	useRoleUsersQuery,
+	useRoleBindingsQuery,
 	useMembersQuery,
 	useInvitesQuery,
 	useApiTokensQuery,
@@ -68,7 +70,10 @@ export {
 	useDomainInfoQuery,
 	useSecretsQuery,
 	useSecretInfoQuery,
+	useServiceAccountsQuery,
+	useServiceAccountQuery,
 	useManagedUrlsQuery,
 	useUserInfoQuery,
 	useMfaSecretQuery,
+	useApiVersionQuery,
 };

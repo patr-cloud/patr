@@ -1,8 +1,7 @@
 use axum::http::StatusCode;
 use models::api::user::*;
-use rustis::commands::GenericCommands;
 
-use crate::prelude::*;
+use crate::{models::permissions, prelude::*};
 
 pub async fn revoke_api_token(
 	AuthenticatedAppRequest {
@@ -20,13 +19,13 @@ pub async fn revoke_api_token(
 		database,
 		redis,
 		client_ip: _,
-		user_data,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, RevokeApiTokenRequest>,
 ) -> Result<AppResponse<RevokeApiTokenRequest>, ErrorType> {
 	trace!("Revoke API token: {}", token_id);
 
-	let rows_affected = query!(
+	let Some(token) = query!(
 		r#"
 		UPDATE
 			user_api_token
@@ -34,22 +33,21 @@ pub async fn revoke_api_token(
 			revoked = NOW()
 		WHERE
 			token_id = $1 AND
-			user_id = $2;
+			user_id = $2 AND
+			revoked IS NULL
+		RETURNING
+			token_hash;
 		"#,
 		token_id,
-		user_data.id,
+		actor_data.id,
 	)
-	.execute(&mut **database)
+	.fetch_optional(&mut **database)
 	.await?
-	.rows_affected();
-
-	if rows_affected == 0 {
+	else {
 		return Err(ErrorType::ApiTokenDoesNotExist);
-	}
+	};
 
-	redis
-		.del(redis::keys::permission_for_login_id(&token_id))
-		.await?;
+	permissions::mark_token_stale(redis, &token_id, &token.token_hash).await?;
 
 	AppResponse::builder()
 		.status_code(StatusCode::ACCEPTED)

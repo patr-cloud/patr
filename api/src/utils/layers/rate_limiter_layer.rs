@@ -14,9 +14,9 @@ use crate::{models::rate_limiter::check_rate_limit, prelude::*};
 /// Each tuple is (max_requests, window_duration).
 const RATE_LIMITS: [(u32, Duration); 3] = if cfg!(debug_assertions) {
 	// Loose enough that SPA page-load bursts in the e2e suite (~8 parallel
-	// queries per route mount, plus retries) never trip it; tight enough that
-	// the rate-limit tests can exhaust the window within one second on a slow
-	// CI runner. Tests pin these values — update them together.
+	// queries per route mount, plus retries) never trip it. The rate-limit
+	// tests fill the per-second window to this value directly, so they pin it
+	// — update them together.
 	[
 		(50, Duration::from_secs(1)),
 		(2500, Duration::from_secs(60)),
@@ -24,9 +24,9 @@ const RATE_LIMITS: [(u32, Duration); 3] = if cfg!(debug_assertions) {
 	]
 } else {
 	[
-		(20, Duration::from_secs(1)),
-		(500, Duration::from_secs(60)),
-		(5000, Duration::from_secs(3600)),
+		(100, Duration::from_secs(1)),
+		(1000, Duration::from_secs(60)),
+		(10000, Duration::from_secs(3600)),
 	]
 };
 
@@ -243,7 +243,7 @@ where
 			check_rate_limit(
 				req.redis,
 				req.client_ip,
-				Some(&req.user_data.login_id),
+				Some(&req.actor_data.login_id),
 				&RATE_LIMITS,
 			)
 			.await?;

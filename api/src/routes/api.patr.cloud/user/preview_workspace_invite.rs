@@ -25,7 +25,7 @@ pub async fn preview_workspace_invite(
 		database,
 		redis: _,
 		client_ip: _,
-		user_data: _,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, PreviewWorkspaceInviteRequest>,
 ) -> Result<AppResponse<PreviewWorkspaceInviteRequest>, ErrorType> {

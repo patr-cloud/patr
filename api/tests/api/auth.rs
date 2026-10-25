@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
+use api::models::permissions;
 use headers::authorization::Authorization;
 use models::{
 	ApiSuccessResponseBody,
-	api::{auth::*, user::*},
+	api::{auth::*, user::*, workspace::*},
 	rbac::WorkspacePermission,
 };
 
@@ -267,6 +268,234 @@ async fn logout_works() {
 		)
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(LogoutResponse));
+}
+
+/// Deleting a web login from another session logs that session out at once:
+/// its access token is rejected on the very next call.
+#[tokio::test]
+async fn deleted_web_login_is_rejected_immediately() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let (other_access, other_refresh) = setup.login_test_user(&user.email, &user.password).await;
+	let other_access = BearerToken::from_str(&other_access).unwrap();
+	// The refresh token is `{login_id}.{secret}`.
+	let other_login_id = Uuid::parse_str(other_refresh.split_once('.').unwrap().0).unwrap();
+
+	let whoami = |token: BearerToken| {
+		setup.make_web_dashboard_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: token,
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+
+	assert!(
+		whoami(other_access.clone())
+			.await
+			.status_code()
+			.is_success(),
+		"the second session should work before it is deleted"
+	);
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteWebLoginRequest>::builder()
+				.path(DeleteWebLoginPath {
+					login_id: other_login_id,
+				})
+				.headers(DeleteWebLoginRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(DeleteWebLoginResponse));
+
+	assert_eq!(
+		401,
+		whoami(other_access).await.status_code().as_u16(),
+		"the deleted session should be rejected with 401"
+	);
+	assert!(
+		whoami(user.access_token.clone())
+			.await
+			.status_code()
+			.is_success(),
+		"the session that did the deleting should still work"
+	);
+}
+
+/// A login that isn't the caller's is not deletable and reports not found.
+#[tokio::test]
+async fn delete_web_login_of_another_user_is_not_found() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let other = setup.create_test_user().await;
+	let other_login_id =
+		Uuid::parse_str(other.refresh_token.0.token().split_once('.').unwrap().0).unwrap();
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteWebLoginRequest>::builder()
+				.path(DeleteWebLoginPath {
+					login_id: other_login_id,
+				})
+				.headers(DeleteWebLoginRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(404, response.status_code().as_u16());
+	assert!(
+		setup
+			.make_web_dashboard_call(
+				ApiRequest::<GetUserInfoRequest>::builder()
+					.headers(GetUserInfoRequestHeaders {
+						authorization: other.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await
+			.status_code()
+			.is_success(),
+		"the other user's session should be untouched"
+	);
+}
+
+/// An audit entry still names its user after the login that made it is gone:
+/// the `actor_client` it points at outlives the `user_login` row and names
+/// its owning actor.
+#[tokio::test]
+async fn audit_entry_resolves_to_user_after_logout() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let (other_access, other_refresh) = setup.login_test_user(&user.email, &user.password).await;
+	let other_access = BearerToken::from_str(&other_access).unwrap();
+	// The refresh token is `{login_id}.{secret}`.
+	let other_login_id = Uuid::parse_str(other_refresh.split_once('.').unwrap().0).unwrap();
+
+	// Creating a workspace is audited against the login that made it.
+	let workspace = setup.create_test_workspace(&other_access).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<DeleteWebLoginRequest>::builder()
+				.path(DeleteWebLoginPath {
+					login_id: other_login_id,
+				})
+				.headers(DeleteWebLoginRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_json(&ApiSuccessResponseBody::new(DeleteWebLoginResponse));
+
+	let login_exists: bool =
+		sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM user_login WHERE login_id = $1)")
+			.bind(other_login_id)
+			.fetch_one(setup.database())
+			.await
+			.expect("user_login query");
+	assert!(!login_exists, "the login should be gone");
+
+	let actor_id: Uuid = sqlx::query_scalar(
+		"SELECT actor.id FROM audit_log \
+		 JOIN actor_client ON actor_client.id = audit_log.actor_client_id \
+		 JOIN actor ON actor.id = actor_client.actor_id \
+		 WHERE audit_log.resource_id = $1 AND audit_log.actor_client_id = $2 AND \
+		 actor.actor_type = 'user'",
+	)
+	.bind(workspace.id)
+	.bind(other_login_id)
+	.fetch_one(setup.database())
+	.await
+	.expect("audit entry should resolve to an actor");
+	assert_eq!(user.user_id, actor_id);
+}
+
+// ---------------------------------------------------------------------------
+// Which kinds of client a route accepts
+// ---------------------------------------------------------------------------
+
+/// A JWT sent to a route that only takes API tokens is never parsed as a JWT:
+/// as far as that route is concerned it's a malformed API token.
+#[tokio::test]
+async fn jwt_on_an_api_token_route_is_a_malformed_api_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListUserWorkspacesRequest>::builder()
+				.headers(ListUserWorkspacesRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!(400, response.status_code().as_u16());
+}
+
+/// A service account token on a route that takes API tokens but not service
+/// accounts is rejected by its prefix, whether it's cached or not.
+#[tokio::test]
+async fn service_account_token_on_an_api_token_only_route_is_unauthorized() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let service_account = setup
+		.create_test_service_account(&admin.access_token, workspace.id, vec![])
+		.await;
+	let sa_token = BearerToken::from_str(&service_account.token).unwrap();
+
+	let get_user_info = || {
+		setup.make_api_call(
+			ApiRequest::<GetUserInfoRequest>::builder()
+				.headers(GetUserInfoRequestHeaders {
+					authorization: sa_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+	};
+
+	// Not cached yet.
+	assert_eq!(401, get_user_info().await.status_code().as_u16());
+
+	// Cache it through a route that does take service accounts…
+	assert!(
+		setup
+			.make_api_call(
+				ApiRequest::<GetWorkspaceInfoRequest>::builder()
+					.path(GetWorkspaceInfoPath {
+						workspace_id: workspace.id,
+					})
+					.headers(GetWorkspaceInfoRequestHeaders {
+						authorization: sa_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await
+			.status_code()
+			.is_success(),
+		"a service account should be able to read its own workspace"
+	);
+
+	// …and it's still rejected here.
+	assert_eq!(401, get_user_info().await.status_code().as_u16());
 }
 
 // ---------------------------------------------------------------------------
@@ -568,7 +797,7 @@ async fn docker_login_works() {
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 	// docker login is for API tokens, not web-dashboard sessions — the handler
-	// validates the password as a `patrv1.` token.
+	// validates the password as an API token.
 	let api_token = setup
 		.create_test_api_token(
 			&user.access_token,
@@ -577,7 +806,7 @@ async fn docker_login_works() {
 		.await;
 
 	let response = setup
-		.make_web_dashboard_call(
+		.make_api_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
 					authorization: Authorization::basic("patr", &api_token.token),
@@ -597,13 +826,45 @@ async fn docker_login_works() {
 	);
 }
 
+/// A runner logs in to the registry with its own token, to pull its
+/// deployments' images.
+#[tokio::test]
+async fn docker_login_accepts_a_runner_token() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<DockerLoginRequest>::builder()
+				.headers(DockerLoginRequestHeaders {
+					authorization: Authorization::basic("patr", &runner.token),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(DockerLoginQuery {
+					service: "registry".to_string(),
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<DockerLoginResponse>>();
+
+	assert_eq!(
+		runner.token, response.response.access_token,
+		"docker login should hand the runner's token back as the bearer token"
+	);
+}
+
 #[tokio::test]
 async fn docker_login_wrong_credentials() {
 	let setup = setup().await.expect("failed to setup test server");
 	let _user = setup.create_test_user().await;
 
 	let response = setup
-		.make_web_dashboard_call(
+		.make_api_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
 					authorization: Authorization::basic("wronguser", "wrongpassword"),
@@ -627,18 +888,13 @@ async fn docker_login_invalid_token() {
 	let setup = setup().await.expect("failed to setup test server");
 	let _user = setup.create_test_user().await;
 
-	// Username is `patr` but the password is a well-formed-but-nonexistent API
-	// token. The handler now validates it, so this must be rejected instead of
-	// echoed back as a bearer credential.
+	// Username is `patr` but the password is a well-formed but unknown API
+	// token. It must be rejected, not echoed back as a bearer credential.
 	let response = setup
-		.make_web_dashboard_call(
+		.make_api_call(
 			ApiRequest::<DockerLoginRequest>::builder()
 				.headers(DockerLoginRequestHeaders {
-					authorization: Authorization::basic(
-						"patr",
-						"patrv1.deadbeefdeadbeefdeadbeefdeadbeef.\
-						 deadbeefdeadbeefdeadbeefdeadbeef",
-					),
+					authorization: Authorization::basic("patr", &permissions::generate_api_token()),
 					user_agent: TEST_USER_AGENT,
 				})
 				.query(DockerLoginQuery {
@@ -686,7 +942,7 @@ async fn sign_up_and_login_are_case_insensitive() {
 		.await
 		.assert_json(&ApiSuccessResponseBody::new(CreateAccountResponse));
 
-	setup
+	_ = setup
 		.make_web_dashboard_call(
 			ApiRequest::<CompleteSignUpRequest>::builder()
 				.headers(CompleteSignUpRequestHeaders {

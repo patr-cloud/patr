@@ -23,7 +23,6 @@ macros::declare_api_endpoint!(
 			permission: Permission::ModifyRoles,
 		}
 	},
-	api = false,
 	request = {
 		/// The email address to invite to the workspace
 		#[preprocess(trim, lowercase, email)]
@@ -41,5 +40,6 @@ macros::declare_api_endpoint!(
 		/// caller can offer a "copy link" affordance right after inviting.
 		pub accept_url: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

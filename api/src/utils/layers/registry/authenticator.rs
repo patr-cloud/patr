@@ -23,7 +23,7 @@ use crate::{models::permissions, routes::registry_patr_cloud::prelude::*};
 ///
 /// This layer:
 /// 1. Extracts the Authorization header (Bearer token)
-/// 2. Validates the token as an API token (format: patrv1.{refresh_token}.{login_id})
+/// 2. Validates the token as an API token or service account token
 /// 3. Verifies the token against the database
 /// 4. Checks token expiration, revocation, and IP restrictions
 /// 5. Loads user permissions from Redis cache or database
@@ -109,13 +109,17 @@ where
 			let BearerToken(token) = req.request.headers.get_header();
 			let token = token.token();
 
-			let user_data = permissions::get_user_data_for_token(
+			let actor_data = permissions::authenticate(
 				req.database,
 				req.redis,
-				ClientType::ApiToken,
 				&req.config,
 				req.client_ip,
 				token,
+				&[
+					ActorClientType::UserLogin(UserLoginType::ApiToken),
+					ActorClientType::ServiceAccount,
+					ActorClientType::Runner,
+				],
 			)
 			.await
 			.map_err(|err| {
@@ -132,7 +136,7 @@ where
 					.build()
 			})?;
 
-			debug!("User authenticated successfully: {}", user_data.id);
+			debug!("User authenticated successfully: {}", actor_data.id);
 
 			// Create authenticated request
 			let request = AuthenticatedRegistryAppRequest {
@@ -141,7 +145,7 @@ where
 				redis: req.redis,
 				s3: req.s3,
 				client_ip: req.client_ip,
-				user_data,
+				actor_data,
 				config: req.config,
 			};
 

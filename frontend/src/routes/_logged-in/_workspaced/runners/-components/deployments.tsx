@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/solid-router";
+import { useNavigate, useSearch } from "@tanstack/solid-router";
 import { createEffect, ErrorBoundary, For, Show } from "solid-js";
 import { Deployment, WithId } from "~/bindings";
 import { CopyableField, CopyableFieldVariant, EmptyState, Pagination, StatusChip, Table } from "~/components";
@@ -53,8 +53,9 @@ const DeploymentCard = (props: { item: WithId<Deployment> }) => {
 
 const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 	const navigate = useNavigate();
+	const search = useSearch({ from: "/_logged-in/_workspaced/runners/$id" });
 	const pagination = createPaginationState({
-		search: () => ({}),
+		search: () => search(),
 		navigate,
 	});
 
@@ -82,7 +83,7 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 		>
 			<Show
 				when={(deploymentsQuery.data?.deployments?.length ?? 0) > 0}
-				fallback={<EmptyState title="No Deployments on This Runner" />}
+				fallback={<EmptyState title="No deployments on this runner" />}
 			>
 				<div class="md:hidden flex flex-col gap-2">
 					<For each={deploymentsQuery.data?.deployments || []}>

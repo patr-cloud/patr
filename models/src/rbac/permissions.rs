@@ -107,10 +107,10 @@ pub enum ManagedURLPermission {
 #[strum(serialize_all = "camelCase")]
 #[serde(rename_all = "camelCase")]
 pub enum RunnerPermission {
-	/// This permission allows the user to create a new runner in a workspace.
-	/// The user will be able to create a new runner, but not view, edit, or
-	/// delete it. This permission is useful for users or API tokens that need
-	/// to create a runner, but not do anything else with it.
+	/// This permission allows the user to create a new runner in a workspace,
+	/// but not view, edit, or delete it. Creating a runner mints its token,
+	/// which can read every secret, container image and deployment in the
+	/// workspace, so this permission effectively grants all of that as well.
 	Create,
 	/// This permission allows the user to only view the runner and it's
 	/// details.
@@ -123,12 +123,10 @@ pub enum RunnerPermission {
 	/// only delete runners.
 	Delete,
 	/// This permission allows the user to regenerate the runner token, but not
-	/// view it, edit it, or delete it. This permission is useful for users or
-	/// API tokens that need to only regenerate the runner token.
+	/// view it, edit it, or delete it. The new token can read every secret,
+	/// container image and deployment in the workspace, so this permission
+	/// effectively grants all of that as well.
 	RegenerateToken,
-	/// This permission allows the user to execute runner operations, including
-	/// streaming runner data and pushing logs to the logging backend.
-	Execute,
 }
 
 /// A list of all permissions that can be granted on a deployment
@@ -295,6 +293,49 @@ pub enum BillingPermission {
 	MakePayment,
 }
 
+/// A list of all permissions that can be granted on a service account.
+#[derive(
+	Eq,
+	Ord,
+	Copy,
+	Hash,
+	Debug,
+	Clone,
+	Display,
+	EnumIter,
+	PartialEq,
+	Serialize,
+	PartialOrd,
+	EnumString,
+	EnumMessage,
+	Deserialize,
+	VariantNames,
+)]
+#[strum(serialize_all = "camelCase")]
+#[serde(rename_all = "camelCase")]
+pub enum ServiceAccountPermission {
+	/// This permission allows the user to create a new service account in a
+	/// workspace. Creating a service account can bind any role in the workspace
+	/// to its token, so this permission effectively grants every permission in
+	/// the workspace.
+	Create,
+	/// This permission allows the user to view the service account and its
+	/// details.
+	View,
+	/// This permission allows the user to edit the service account, but not
+	/// delete it or create a new one. Editing a service account can bind any
+	/// role in the workspace to its token, so this permission effectively
+	/// grants every permission in the workspace.
+	Edit,
+	/// This permission allows the user to delete the service account, but not
+	/// create a new one, view it, or edit it.
+	Delete,
+	/// This permission allows the user to regenerate the service account token.
+	/// The new token acts as the service account, so this permission
+	/// effectively grants everything the account's roles allow.
+	RegenerateToken,
+}
+
 /// A list of all permissions that can be granted on a resource.
 #[derive(
 	Eq,
@@ -336,6 +377,9 @@ pub enum Permission {
 	/// All secret permissions
 	#[strum(to_string = "secret::{0}")]
 	Secret(SecretPermission),
+	/// All service account permissions
+	#[strum(to_string = "serviceAccount::{0}")]
+	ServiceAccount(ServiceAccountPermission),
 	/// View all roles in a workspace
 	ViewRoles,
 	/// Edit roles in a workspace. This permission allows the user to edit
@@ -371,6 +415,7 @@ impl Permission {
 			Permission::ManagedURL(permission) => permission.get_documentation(),
 			Permission::Runner(permission) => permission.get_documentation(),
 			Permission::Secret(permission) => permission.get_documentation(),
+			Permission::ServiceAccount(permission) => permission.get_documentation(),
 			Permission::ViewRoles | Permission::ModifyRoles | Permission::EditWorkspace => {
 				self.get_documentation()
 			}
@@ -398,6 +443,7 @@ impl FromStr for Permission {
 			"managedURL" => Self::ManagedURL(permission.parse()?),
 			"runner" => Self::Runner(permission.parse()?),
 			"secret" => Self::Secret(permission.parse()?),
+			"serviceAccount" => Self::ServiceAccount(permission.parse()?),
 			"viewRoles" => Self::ViewRoles,
 			"modifyRoles" => Self::ModifyRoles,
 			"editWorkspace" => Self::EditWorkspace,

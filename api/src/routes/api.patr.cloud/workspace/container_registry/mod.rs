@@ -27,17 +27,17 @@ use self::{
 };
 
 #[instrument(skip(state))]
-pub async fn setup_routes(state: &AppState, allowed_client_type: ClientType) -> Router {
+pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType]) -> Router {
 	Router::new()
-		.mount_auth_endpoint(create_repository, state, allowed_client_type)
-		.mount_auth_endpoint(delete_repository_manifest, state, allowed_client_type)
-		.mount_auth_endpoint(delete_repository, state, allowed_client_type)
-		.mount_auth_endpoint(get_exposed_ports, state, allowed_client_type)
-		.mount_auth_endpoint(get_registry_usage, state, allowed_client_type)
-		.mount_auth_endpoint(get_repository_manifest_details, state, allowed_client_type)
-		.mount_auth_endpoint(get_repository_info, state, allowed_client_type)
-		.mount_auth_endpoint(list_repositories, state, allowed_client_type)
-		.mount_auth_endpoint(list_repository_manifests, state, allowed_client_type)
-		.mount_auth_endpoint(list_repository_tags, state, allowed_client_type)
+		.mount_auth_endpoint(create_repository, state, host_client_types)
+		.mount_auth_endpoint(delete_repository_manifest, state, host_client_types)
+		.mount_auth_endpoint(delete_repository, state, host_client_types)
+		.mount_auth_endpoint(get_exposed_ports, state, host_client_types)
+		.mount_auth_endpoint(get_registry_usage, state, host_client_types)
+		.mount_auth_endpoint(get_repository_manifest_details, state, host_client_types)
+		.mount_auth_endpoint(get_repository_info, state, host_client_types)
+		.mount_auth_endpoint(list_repositories, state, host_client_types)
+		.mount_auth_endpoint(list_repository_manifests, state, host_client_types)
+		.mount_auth_endpoint(list_repository_tags, state, host_client_types)
 		.with_state(state.clone())
 }

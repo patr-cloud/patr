@@ -27,5 +27,6 @@ macros::declare_api_endpoint!(
 		/// The information of the secret
 		pub secret: WithId<Secret>,
 	},
+	client_type = [ApiToken, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

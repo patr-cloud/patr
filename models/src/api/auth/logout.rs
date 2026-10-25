@@ -6,7 +6,6 @@ macros::declare_api_endpoint!(
 	/// and access token associated with it.
 	Logout,
 	POST "/auth/sign-out",
-	api = false,
 	request_headers = {
 		/// The refresh token which was provided to the user when they logged in
 		pub refresh_token: BearerToken,
@@ -16,5 +15,6 @@ macros::declare_api_endpoint!(
 	authentication = {
 		AppAuthentication::<Self>::PlainTokenAuthenticator
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

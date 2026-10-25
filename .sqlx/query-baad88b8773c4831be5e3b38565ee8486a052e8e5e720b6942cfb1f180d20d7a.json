@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE actor ADD CONSTRAINT actor_pk PRIMARY KEY(id), ADD CONSTRAINT actor_uq_id_actor_type UNIQUE(id, actor_type);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "baad88b8773c4831be5e3b38565ee8486a052e8e5e720b6942cfb1f180d20d7a"
+}

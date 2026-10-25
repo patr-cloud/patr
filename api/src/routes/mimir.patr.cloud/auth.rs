@@ -3,6 +3,7 @@ use std::net::IpAddr;
 use axum::{body::Body, response::Response};
 use base64::prelude::*;
 use http::StatusCode;
+use models::ActorData;
 
 use crate::{models::permissions, prelude::*};
 
@@ -37,13 +38,15 @@ pub(super) async fn authenticate_and_authorize(
 	let mut redis_conn = state.redis.clone();
 
 	// Authenticate the API token
-	let user_data = permissions::get_user_data_for_token(
+	let actor_data = permissions::authenticate(
 		&mut database,
 		&mut redis_conn,
-		ClientType::ApiToken,
 		&state.config,
 		client_ip,
 		api_token,
+		// Only a runner's own token may push: a human or a service account
+		// must not write on a runner's behalf, however privileged it is.
+		&[ActorClientType::Runner],
 	)
 	.await
 	.map_err(|err| {
@@ -54,6 +57,19 @@ pub(super) async fn authenticate_and_authorize(
 			.body(Body::from("Authentication failed"))
 			.unwrap()
 	})?;
+
+	// A runner may only act as itself. Refused exactly like an unknown runner
+	// below, so a token can't be used to probe which runner ids exist.
+	if actor_data.id != runner_id || !matches!(actor_data.actor, ActorData::Runner { .. }) {
+		warn!(
+			"Runner {} presented its token as runner {}",
+			actor_data.id, runner_id
+		);
+		return Err(Response::builder()
+			.status(StatusCode::FORBIDDEN)
+			.body(Body::from("Access denied"))
+			.unwrap());
+	}
 
 	// Look up which workspace this runner belongs to
 	let workspace_id =
@@ -67,7 +83,7 @@ pub(super) async fn authenticate_and_authorize(
 					.unwrap()
 			})?
 			.ok_or_else(|| {
-				// Refused exactly like a missing permission below, so a token
+				// Refused exactly like another runner's token above, so a token
 				// can't be used to probe which runner ids exist.
 				warn!("Runner {} not found or deleted", runner_id);
 				Response::builder()
@@ -76,17 +92,15 @@ pub(super) async fn authenticate_and_authorize(
 					.unwrap()
 			})?;
 
-	// Check Runner::Execute permission on this specific runner
-	let permission_id = permissions::get_permission_id(
-		&mut database,
-		Permission::Runner(RunnerPermission::Execute),
-	)
-	.await;
+	// Check Runner::Edit permission on this specific runner
+	let permission_id =
+		permissions::get_permission_id(&mut database, Permission::Runner(RunnerPermission::Edit))
+			.await;
 
-	if !user_data.has_permission_on_resource(workspace_id, runner_id, permission_id) {
+	if !actor_data.has_permission_on_resource(workspace_id, runner_id, permission_id) {
 		warn!(
-			"User {} does not have Runner::Execute on runner {} in workspace {}",
-			user_data.id, runner_id, workspace_id
+			"Runner {} does not have Runner::Edit on itself in workspace {}",
+			runner_id, workspace_id
 		);
 		return Err(Response::builder()
 			.status(StatusCode::FORBIDDEN)

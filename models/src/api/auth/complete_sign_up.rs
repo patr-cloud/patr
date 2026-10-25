@@ -6,7 +6,6 @@ macros::declare_api_endpoint!(
 	/// This route will complete the sign-up process of the user.
 	CompleteSignUp,
 	POST "/auth/join",
-	api = false,
 	request_headers = {
 		/// The user-agent used to access this API
 		pub user_agent: UserAgent,
@@ -32,5 +31,6 @@ macros::declare_api_endpoint!(
 		/// It contains the login_id and the refresh_token concatinated together.
 		pub refresh_token: String,
 	},
+	client_type = [WebLogin],
 	audit_log = NoAuditLogger,
 );

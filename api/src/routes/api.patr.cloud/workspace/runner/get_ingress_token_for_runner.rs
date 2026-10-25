@@ -1,7 +1,11 @@
 #[cfg(feature = "cloud")]
 use cloudflare::{endpoints::cfd_tunnel::Tunnel, framework::response::ApiSuccess};
+#[cfg(feature = "cloud")]
+use models::ActorData;
 use models::api::workspace::runner::*;
 
+#[cfg(feature = "cloud")]
+use crate::models::permissions;
 use crate::prelude::*;
 
 pub async fn get_ingress_token_for_runner(
@@ -15,15 +19,15 @@ pub async fn get_ingress_token_for_runner(
 				query: (),
 				headers:
 					GetIngressTokenForRunnerRequestHeaders {
-						authorization: _,
+						authorization,
 						user_agent: _,
 					},
 				body: GetIngressTokenForRunnerRequestProcessed,
 			},
 		database,
-		redis: _,
-		client_ip: _,
-		user_data: _,
+		redis,
+		client_ip,
+		actor_data: _,
 		state,
 	}: AuthenticatedAppRequest<'_, GetIngressTokenForRunnerRequest>,
 ) -> Result<AppResponse<GetIngressTokenForRunnerRequest>, ErrorType> {
@@ -33,6 +37,8 @@ pub async fn get_ingress_token_for_runner(
 		if #[cfg(feature = "cloud")] {
 			use axum::http::StatusCode;
 
+			// Locked so a regenerate or delete in flight finishes first, and two
+			// fetches can't both create a tunnel
 			let runner = query!(
 				r#"
 				SELECT
@@ -40,7 +46,8 @@ pub async fn get_ingress_token_for_runner(
 				FROM
 					runner
 				WHERE
-					id = $1;
+					id = $1
+				FOR UPDATE;
 				"#,
 				&runner_id,
 			)
@@ -48,30 +55,65 @@ pub async fn get_ingress_token_for_runner(
 			.await?
 			.ok_or(ErrorType::ResourceDoesNotExist)?;
 
+			// Authenticate again now that the runner is locked. Say Mallory has
+			// a leaked copy of Alice's runner token and keeps calling this, and
+			// Alice regenerates the token. One of Mallory's calls gets past the
+			// authenticator middleware on a cached entry just before the
+			// regenerate clears it, then waits on the lock above while the
+			// regenerate swaps the tunnel. Once the regenerate commits, that
+			// call would hand Mallory the new tunnel's token. Authenticating
+			// again misses the cache and finds the old token gone.
+			let actor_data = permissions::authenticate(
+				database,
+				redis,
+				&state.config,
+				client_ip,
+				authorization.0.token(),
+				<GetIngressTokenForRunnerRequest as ApiEndpoint>::ALLOWED_CLIENT_TYPES,
+			)
+			.await?;
+
+			// A runner may only fetch its own tunnel's token
+			if actor_data.id != runner_id || !matches!(actor_data.actor, ActorData::Runner { .. }) {
+				warn!(
+					"Runner {} presented its token as runner {}",
+					actor_data.id, runner_id
+				);
+				return Err(ErrorType::Unauthorized);
+			}
+
 			let client = reqwest::Client::new();
 
-			// Check if the tunnel still exists on Cloudflare
-			let tunnel_exists = client
-				.get(format!(
-					"{}accounts/{}/cfd_tunnel/{}",
-					state.config.cloudflare.base_url,
-					state.config.cloudflare.account_id,
-					runner.cloudflare_tunnel_id
-				))
-				.bearer_auth(&state.config.cloudflare.api_key)
-				.send()
-				.await?
-				.json::<ApiSuccess<Option<Tunnel>>>()
-				.await?
-				.result
-				.filter(|tunnel| tunnel.deleted_at.is_none())
-				.is_some();
+			// Check if the tunnel still exists on Cloudflare. A runner has no tunnel
+			// until its first fetch here, and `GET cfd_tunnel/` with an empty id
+			// hits the list endpoint, so that case skips the lookup.
+			let tunnel_exists = !runner.cloudflare_tunnel_id.is_empty() &&
+				client
+					.get(format!(
+						"{}accounts/{}/cfd_tunnel/{}",
+						state.config.cloudflare.base_url,
+						state.config.cloudflare.account_id,
+						runner.cloudflare_tunnel_id
+					))
+					.bearer_auth(&state.config.cloudflare.api_key)
+					.send()
+					.await?
+					.json::<ApiSuccess<Option<Tunnel>>>()
+					.await?
+					.result
+					.filter(|tunnel| tunnel.deleted_at.is_none())
+					.is_some();
 
-			// If the tunnel was deleted or removed, recreate it with catch-all config
+			// If the tunnel was never created, or was deleted or removed, create it
+			// with catch-all config
 			let tunnel_id = if tunnel_exists {
 				runner.cloudflare_tunnel_id
 			} else {
-				warn!("Tunnel for runner `{runner_id}` not found on Cloudflare, recreating");
+				if runner.cloudflare_tunnel_id.is_empty() {
+					info!("Creating the tunnel for runner `{runner_id}`");
+				} else {
+					warn!("Tunnel for runner `{runner_id}` not found on Cloudflare, recreating");
+				}
 
 				let new_tunnel_id =
 					utils::cloudflare::create_tunnel_with_config(runner_id, &state.config).await?;
@@ -114,7 +156,7 @@ pub async fn get_ingress_token_for_runner(
 				.build()
 				.into_result()
 		} else {
-			let _ = (runner_id, database, state);
+			let _ = (runner_id, authorization, database, redis, client_ip, state);
 			Err(ErrorType::FeatureNotSupported)
 		}
 	}

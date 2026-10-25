@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO actor(id, actor_type, created) VALUES ($1, 'user', $2);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2636e4811b5b72d866d7c256461ad46fa1034d8bfdf113481a94027c044b89d1"
+}

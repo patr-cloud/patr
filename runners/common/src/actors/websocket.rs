@@ -6,6 +6,7 @@ use std::{
 };
 
 use futures::{Sink, SinkExt, StreamExt};
+use http::StatusCode;
 use models::api::workspace::{
 	deployment::*,
 	domain::{
@@ -281,7 +282,34 @@ where
 	{
 		Ok(stream) => stream,
 		Err(err) => {
-			error!("Failed to connect to upstream WebSocket: {:?}", err);
+			// Keep retrying even when the fix is out of our hands: exiting would
+			// only have systemd restart us into the same rejection.
+			match (err.status_code, &err.body.error) {
+				(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN, _) |
+				(_, ErrorType::MalformedApiToken) => {
+					error!(
+						"Upstream rejected the API token of runner {runner_id} in workspace \
+						 {workspace_id} ({}: {}). It was probably regenerated, or the runner was \
+						 deleted. Run `patr -w {workspace_id} runner setup reconnect --runner-id \
+						 {runner_id}` on this host to write a new token to `apiToken` in the \
+						 runner's config (it regenerates the token if the CLI is logged in; \
+						 otherwise use Regenerate token on the runner's page in the dashboard and \
+						 paste it), then restart the runner service.",
+						err.status_code, err.body.message
+					);
+				}
+				(_, ErrorType::RunnerAlreadyConnected) => {
+					error!(
+						"Upstream says runner {runner_id} is already connected. This clears \
+						 within two minutes if the runner restarted abruptly. If it persists, \
+						 another machine is running this runner: stop it there, or move the \
+						 runner here with `patr -w {workspace_id} runner setup reconnect \
+						 --runner-id {runner_id}`, which regenerates its token and disconnects \
+						 the other machine, then restart the runner service."
+					);
+				}
+				_ => error!("Failed to connect to upstream WebSocket: {:?}", err),
+			}
 			schedule_reconnect(&myself, state);
 			return;
 		}
@@ -293,17 +321,21 @@ where
 	// Split into read (Stream) and write (Sink) halves.
 	let (mut sink, read_stream) = stream.split();
 
-	// Send the runner's exposure type before pumping.
+	// Send the handshake before pumping.
 	if sink
-		.send(
-			StreamRunnerDataForWorkspaceClientMsg::SetRunnerExposureType {
-				exposure_type: E::runner_exposure_type(&state.config),
-			},
-		)
+		.send(StreamRunnerDataForWorkspaceClientMsg::Handshake {
+			// Parse CARGO_PKG_VERSION directly so pre-release labels
+			// (e.g. `0.18.0-alpha.1`) are preserved — macros::version!()
+			// only reads MAJOR/MINOR/PATCH and drops the pre-release.
+			version: env!("CARGO_PKG_VERSION")
+				.parse()
+				.expect("CARGO_PKG_VERSION must be a valid semver"),
+			exposure_type: E::runner_exposure_type(&state.config),
+		})
 		.await
 		.is_err()
 	{
-		error!("Failed to send exposure type, reconnecting");
+		error!("Failed to send handshake, reconnecting");
 		schedule_reconnect(&myself, state);
 		return;
 	}
@@ -506,8 +538,8 @@ where
 						});
 			}
 		}
-		ExposureTypeRequired => {
-			warn!("Server requested exposure type to be set again");
+		HandshakeRequired => {
+			warn!("Server requested handshake to be sent again");
 		}
 	}
 

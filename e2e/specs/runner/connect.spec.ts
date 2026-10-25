@@ -8,8 +8,15 @@ import {
 } from '@/prelude';
 import type { DockerVersion } from '@/prelude';
 import { isRunnerConnected } from '@/helpers/runner';
+import { waitFor } from '@/helpers/process';
 import { listRunnersAPI } from '@/helpers/runner-api';
-import { openRunnerDetail, statusBadge } from '@/helpers/ui/runner';
+import {
+	openRunnerDetail,
+	statusBadge,
+	infoTab,
+	runnerVersionInput,
+	neverConnectedCallout,
+} from '@/helpers/ui/runner';
 
 function dv(testInfo: { project: { metadata: Record<string, unknown> } }): DockerVersion {
 	return (testInfo.project.metadata.dockerVersion ?? '26') as DockerVersion;
@@ -52,6 +59,11 @@ test.describe('@docker runner connection lifecycle', () => {
 			const row = list.runners.find((r) => r.id === runner.runnerId);
 			expect(row?.connected).toBe(true);
 			expect(row?.lastSeen).not.toBeNull();
+
+			// Info shows the version it reported, current with the API, and no setup callout.
+			await infoTab(page).click();
+			await expect(runnerVersionInput(page)).toHaveValue(row!.version, { timeout: 10_000 });
+			await expect(neverConnectedCallout(page)).toHaveCount(0);
 		} finally {
 			await context.close();
 		}
@@ -89,5 +101,37 @@ test.describe('@docker runner connection lifecycle', () => {
 		} finally {
 			if (!disposed) await runner[Symbol.asyncDispose]();
 		}
+	});
+
+	test('a connected runner ships its system metrics to Mimir', async ({ api }, testInfo) => {
+		test.setTimeout(300_000);
+		await using user = await createUserWithWorkspace(api);
+		await using runner = await RunnerHandle.connect({
+			api,
+			user,
+			workspaceId: user.workspaceId,
+			dockerVersion: dv(testInfo),
+		});
+
+		// The runner's Alloy service scrapes the host every minute and remote-writes
+		// through the API's mimir proxy with the runner token. The workspace is left
+		// unconfigured in the observability stub, so this read reaches the real Mimir.
+		let values: string[] = [];
+		await waitFor(
+			async () => {
+				const res = await api.request<{ dataPoints: Array<{ value: string }> }>(
+					'GET',
+					`/workspace/${user.workspaceId}/runner/${runner.runnerId}/metrics/system_memory_usage`,
+					{ token: user.accessToken, clientIp: user.clientIp },
+				);
+				values = res.dataPoints.map((d) => d.value);
+				return values.length > 0;
+			},
+			{ timeoutMs: 180_000, intervalMs: 5000, label: 'runner memory usage in mimir' },
+		);
+		// Memory usage is a percentage of the DinD host's memory.
+		const usage = Number(values.at(-1));
+		expect(usage).toBeGreaterThan(0);
+		expect(usage).toBeLessThanOrEqual(100);
 	});
 });

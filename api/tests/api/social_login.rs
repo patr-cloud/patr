@@ -238,7 +238,7 @@ async fn social_login_setup_token_single_use() {
 	let setup_token = seed_github_setup(&setup, &email).await;
 
 	// First call succeeds.
-	setup
+	_ = setup
 		.make_web_dashboard_call(
 			ApiRequest::<SocialLoginSetupRequest>::builder()
 				.path(SocialLoginSetupPath {

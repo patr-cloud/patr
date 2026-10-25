@@ -4,7 +4,7 @@ import { ButtonVariant, Link, PageContainerHead } from "~/components";
 
 interface WorkspaceHeaderProps {
 	workspaceName?: string;
-	activeTab: "general" | "members" | "roles";
+	activeTab: "general" | "members" | "serviceAccounts" | "roles";
 	/** Extra tab-specific header actions, rendered alongside the built-in ones. */
 	actions?: () => JSX.Element;
 }
@@ -25,15 +25,21 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 								label: "Members",
 							},
 						]
-					: props.activeTab === "roles"
+					: props.activeTab === "serviceAccounts"
 						? [
 								{
-									label: "Roles",
+									label: "Service Accounts",
 								},
 							]
-						: []),
+						: props.activeTab === "roles"
+							? [
+									{
+										label: "Roles",
+									},
+								]
+							: []),
 			]}
-			subText="Manage your workspace settings, members, and roles."
+			subText="Manage your workspace settings, members, service accounts, and roles."
 			actions={() => (
 				<>
 					{props.actions?.()}
@@ -58,6 +64,13 @@ const WorkspaceHeader = (props: WorkspaceHeaderProps) => {
 						class={`pb-2 px-2 border-b-2 ${props.activeTab === "members" ? "border-primary" : "border-transparent"}`}
 					>
 						Members
+					</RouterLink>
+
+					<RouterLink
+						to="/workspace/service-accounts"
+						class={`pb-2 px-2 border-b-2 ${props.activeTab === "serviceAccounts" ? "border-primary" : "border-transparent"}`}
+					>
+						Service Accounts
 					</RouterLink>
 
 					<RouterLink

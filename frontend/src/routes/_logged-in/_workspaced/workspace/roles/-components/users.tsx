@@ -2,25 +2,45 @@ import { useParams } from "@tanstack/solid-router";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, For, Show, Suspense } from "solid-js";
 import { FiCheck, FiX } from "solid-icons/fi";
-import { BindingRows, Button, ButtonVariant, useToast } from "~/components";
+import { AccessRow, BindingRows, Button, ButtonVariant, useToast } from "~/components";
 import type { Binding } from "~/components/binding-rows";
 import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
-import { useMembersQuery } from "~/hooks/fetch";
-import { useIsAllowed } from "~/hooks";
+import { useMembersQuery, useRoleBindingsQuery } from "~/hooks/fetch";
+import { useGetPermissions, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { groupScopes, scopeResources } from "~/utils/scope";
+import { groupScopes, Scope, scopeResources } from "~/utils/scope";
 import { memberKeys, roleKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
 /**
- * The role's users, as one row per binding: who holds it, and where it applies.
+ * One holder of the role, read-only: who, and where the role applies to them.
+ * A service account's name links to its page when the viewer can see it.
+ */
+const HolderRow = (props: { name: string; scope: Scope; serviceAccountId?: string }) => {
+	const serviceAccountPermissions = useGetPermissions("serviceAccount", () => props.serviceAccountId ?? "");
+
+	return (
+		<AccessRow
+			label={props.name}
+			scope={props.scope}
+			href={
+				props.serviceAccountId && serviceAccountPermissions().view
+					? `/workspace/service-accounts/${props.serviceAccountId}`
+					: undefined
+			}
+		/>
+	);
+};
+
+/**
+ * The role's holders, as one row per binding: who holds it, and where it applies.
  * The same widget the members page uses, transposed — there the actor is fixed
  * and each row picks a role, here the role is fixed and each row picks a user.
  *
- * Reads the member list rather than `GET /rbac/role/:id/users`, because that
- * endpoint returns bare user ids with no scope — and a binding without its
- * scope is only half the story.
+ * Members are edited through the member list, since saving one rewrites all of
+ * their grants. Service accounts holding the role come from the role's bindings
+ * and are read-only here.
  */
 const UsersAssignedToRole = () => {
 	const params = useParams({ from: "/_logged-in/_workspaced/workspace/roles/$roleId" });
@@ -37,6 +57,23 @@ const UsersAssignedToRole = () => {
 	);
 
 	const assignableMembers = createMemo(() => (membersQuery.data?.members ?? []).filter((member) => !member.isOwner));
+
+	const bindingsQuery = useRoleBindingsQuery(() => params().roleId);
+
+	/** One binding per service account holding this role. */
+	const serviceAccountBindings = createMemo<Binding[]>(() =>
+		groupScopes(
+			(bindingsQuery.data ?? []).filter((binding) => binding.actor.type === "serviceAccount"),
+			(binding) => binding.actor.id,
+			(binding) => binding.resourceId,
+			workspaceId() ?? ""
+		)
+	);
+
+	const serviceAccountName = (id: string) => {
+		const actor = (bindingsQuery.data ?? []).find((binding) => binding.actor.id === id)?.actor;
+		return actor?.type === "serviceAccount" ? actor.name : id;
+	};
 
 	const userOptions = createMemo(() =>
 		assignableMembers().map((member) => ({
@@ -73,12 +110,6 @@ const UsersAssignedToRole = () => {
 	const memberName = (userId: string) => {
 		const member = assignableMembers().find((m) => m.userId === userId);
 		return member ? `${member.fullName} (${member.email})` : userId;
-	};
-
-	const scopeLabel = (binding: Binding) => {
-		if (binding.scope.scopeType !== "resources") return "Entire workspace";
-		const count = binding.scope.resources.length;
-		return `${count} resource${count === 1 ? "" : "s"}`;
 	};
 
 	const beginEditing = () => {
@@ -152,7 +183,7 @@ const UsersAssignedToRole = () => {
 		}
 
 		queryClient.invalidateQueries({ queryKey: memberKeys.all(wsId) });
-		queryClient.invalidateQueries({ queryKey: roleKeys.users(wsId, roleId) });
+		queryClient.invalidateQueries({ queryKey: roleKeys.bindings(wsId, roleId) });
 		setIsEditing(false);
 	};
 
@@ -212,12 +243,7 @@ const UsersAssignedToRole = () => {
 							<ul class="flex flex-col gap-2">
 								<For each={savedBindings()}>
 									{(binding) => (
-										<li class="flex items-center justify-between gap-3 px-3 py-2 border border-border-color rounded-xs">
-											<span class="text-white text-sm truncate">
-												{memberName(binding.subjectId)}
-											</span>
-											<span class="text-grey text-xs shrink-0">{scopeLabel(binding)}</span>
-										</li>
+										<HolderRow name={memberName(binding.subjectId)} scope={binding.scope} />
 									)}
 								</For>
 							</ul>
@@ -238,6 +264,26 @@ const UsersAssignedToRole = () => {
 					/>
 				</Show>
 			</Suspense>
+
+			<Show when={serviceAccountBindings().length > 0}>
+				<div class="flex flex-col gap-2">
+					<div class="flex flex-col gap-1">
+						<h3 class="text-lg text-white">Service accounts with this role</h3>
+						<p class="text-grey text-xs">Read-only here. Edit a service account's roles from its page.</p>
+					</div>
+					<ul class="flex flex-col gap-2">
+						<For each={serviceAccountBindings()}>
+							{(binding) => (
+								<HolderRow
+									name={serviceAccountName(binding.subjectId)}
+									scope={binding.scope}
+									serviceAccountId={binding.subjectId}
+								/>
+							)}
+						</For>
+					</ul>
+				</div>
+			</Show>
 		</div>
 	);
 };

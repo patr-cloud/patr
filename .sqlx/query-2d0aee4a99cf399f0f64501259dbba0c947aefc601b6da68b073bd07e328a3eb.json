@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE actor_client ADD CONSTRAINT actor_client_pk PRIMARY KEY(id), ADD CONSTRAINT actor_client_uq_id_actor_client_type_actor_id UNIQUE(id, actor_client_type, actor_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "2d0aee4a99cf399f0f64501259dbba0c947aefc601b6da68b073bd07e328a3eb"
+}
