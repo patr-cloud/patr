@@ -40,20 +40,14 @@ pub async fn complete_sign_up(
 		} else {
 			use std::{num::ParseFloatError, ops::Add};
 
-			use argon2::{
-				Algorithm,
-				PasswordHash,
-				PasswordHasher,
-				PasswordVerifier,
-				Version,
-				password_hash::generate_salt,
-			};
+			use argon2::{Algorithm, PasswordHash, PasswordVerifier, Version};
 			use axum::http::StatusCode;
 			use jsonwebtoken::EncodingKey;
+			use sha2::{Digest as _, Sha256};
 			use sqlx::types::ipnetwork::IpNetwork;
 			use time::OffsetDateTime;
 
-			use crate::models::access_token_data::AccessTokenData;
+			use crate::models::{access_token_data::AccessTokenData, permissions};
 			use crate::utils::cloudflare::validate_turnstile_token;
 
 			trace!("Validating Cloudflare Turnstile token");
@@ -231,23 +225,8 @@ pub async fn complete_sign_up(
 
 			trace!("Deleted user_to_sign_up entry");
 
-			let refresh_token = Uuid::new_v4().to_string();
-			let hashed_refresh_token = argon2::Argon2::new_with_secret(
-				state.config.password_pepper.as_ref(),
-				Algorithm::Argon2id,
-				Version::V0x13,
-				constants::HASHING_PARAMS,
-			)
-			.inspect_err(|err| {
-				error!("Error creating Argon2: {err}");
-			})
-			.map_err(ErrorType::server_error)?
-			.hash_password_with_salt(refresh_token.as_ref(), &generate_salt())
-			.inspect_err(|err| {
-				error!("Error hashing password: {err}");
-			})
-			.map_err(ErrorType::server_error)?
-			.to_string();
+			let refresh_token = permissions::generate_refresh_token();
+			let token_hash = hex::encode(Sha256::digest(&refresh_token));
 			let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
 			let ip_info = ip::lookup(client_ip, &state).await?;
@@ -330,7 +309,7 @@ pub async fn complete_sign_up(
 						original_login_id,
 						user_id,
 
-						refresh_token,
+						token_hash,
 						token_expiry,
 
 						created,
@@ -363,7 +342,7 @@ pub async fn complete_sign_up(
 				"#,
 				login_id,
 				user_id,
-				hashed_refresh_token,
+				token_hash,
 				refresh_token_expiry,
 				now,
 				client_ip,
@@ -398,8 +377,6 @@ pub async fn complete_sign_up(
 			.inspect_err(|err| {
 				info!("Error encoding JWT: {err}");
 			})?;
-
-			let refresh_token = format!("{login_id}.{refresh_token}");
 
 			AppResponse::builder()
 				.body(CompleteSignUpResponse {

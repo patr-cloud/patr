@@ -5,11 +5,12 @@ use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;
 use models::api::auth::*;
 use rustis::commands::StringCommands;
+use sha2::{Digest as _, Sha256};
 use sqlx::types::ipnetwork::IpNetwork;
 use time::OffsetDateTime;
 
 use crate::{
-	models::{access_token_data::AccessTokenData, social_login::GithubSetupPayload},
+	models::{access_token_data::AccessTokenData, permissions, social_login::GithubSetupPayload},
 	prelude::*,
 };
 
@@ -168,19 +169,8 @@ pub async fn social_login_setup(
 	.execute(&mut **database)
 	.await?;
 
-	let refresh_token = Uuid::new_v4().to_string();
-	let hashed_refresh_token = argon2::Argon2::new_with_secret(
-		state.config.password_pepper.as_ref(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.inspect_err(|err| error!("Error creating Argon2: {err}"))
-	.map_err(ErrorType::server_error)?
-	.hash_password_with_salt(refresh_token.as_bytes(), &generate_salt())
-	.inspect_err(|err| error!("Error hashing refresh token: {err}"))
-	.map_err(ErrorType::server_error)?
-	.to_string();
+	let refresh_token = permissions::generate_refresh_token();
+	let token_hash = hex::encode(Sha256::digest(&refresh_token));
 	let refresh_token_expiry = now.add(constants::INACTIVE_REFRESH_TOKEN_VALIDITY);
 
 	let ip_info = ip::lookup(client_ip, &state).await?;
@@ -260,7 +250,7 @@ pub async fn social_login_setup(
 				original_login_id,
 				user_id,
 
-				refresh_token,
+				token_hash,
 				token_expiry,
 
 				created,
@@ -293,7 +283,7 @@ pub async fn social_login_setup(
 		"#,
 		login_id,
 		user_id,
-		hashed_refresh_token,
+		token_hash,
 		refresh_token_expiry,
 		now,
 		IpNetwork::from(client_ip),
@@ -325,8 +315,6 @@ pub async fn social_login_setup(
 		&EncodingKey::from_secret(state.config.jwt_secret.as_ref()),
 	)
 	.inspect_err(|err| error!("Error encoding JWT: {err}"))?;
-
-	let refresh_token = format!("{login_id}.{refresh_token}");
 
 	AppResponse::builder()
 		.body(SocialLoginSetupResponse {

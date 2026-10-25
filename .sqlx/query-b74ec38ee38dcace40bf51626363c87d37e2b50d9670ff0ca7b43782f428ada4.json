@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX web_login_uq_token_hash ON web_login(token_hash);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b74ec38ee38dcace40bf51626363c87d37e2b50d9670ff0ca7b43782f428ada4"
+}

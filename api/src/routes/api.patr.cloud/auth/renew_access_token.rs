@@ -1,19 +1,15 @@
 use std::ops::Add;
 
-use argon2::{
-	Algorithm,
-	PasswordHash,
-	PasswordHasher,
-	PasswordVerifier,
-	Version,
-	password_hash::generate_salt,
-};
 use axum::http::StatusCode;
 use jsonwebtoken::EncodingKey;
 use models::api::auth::*;
+use sha2::{Digest as _, Sha256};
 use time::OffsetDateTime;
 
-use crate::{models::access_token_data::AccessTokenData, prelude::*};
+use crate::{
+	models::{access_token_data::AccessTokenData, permissions},
+	prelude::*,
+};
 
 pub async fn renew_access_token(
 	AppRequest {
@@ -34,39 +30,34 @@ pub async fn renew_access_token(
 		state,
 	}: AppRequest<'_, RenewAccessTokenRequest>,
 ) -> Result<AppResponse<RenewAccessTokenRequest>, ErrorType> {
-	info!(
-		"Renewing access token for refresh token: `{}`",
-		refresh_token.0.token()
-	);
+	info!("Renewing access token");
 
-	let Some((login_id, refresh_token)) = refresh_token.0.token().split_once('.') else {
+	let refresh_token = refresh_token.0.token();
+	if !refresh_token.starts_with(constants::REFRESH_TOKEN_PREFIX) ||
+		!permissions::has_valid_checksum(refresh_token)
+	{
+		debug!("Not a refresh token");
 		return Err(ErrorType::MalformedRefreshToken);
-	};
-	trace!("Split refresh token into loginId: {login_id}");
-
-	let login_id = Uuid::parse_str(login_id).map_err(|_| {
-		debug!("loginId `{login_id}` is not a valid Uuid");
-		ErrorType::MalformedRefreshToken
-	})?;
+	}
 
 	let now = OffsetDateTime::now_utc();
 
 	// Lock the web_login row so concurrent renews are serialized — single-use
-	// rotation requires verify+update to be atomic, otherwise both callers
-	// pass verification before either updates the hash.
+	// rotation requires lookup+update to be atomic, otherwise both callers
+	// find the row before either replaces the hash.
 	let row = query!(
 		r#"
 		SELECT
+			login_id,
 			token_expiry,
-			refresh_token,
 			user_id
 		FROM
 			web_login
 		WHERE
-			login_id = $1
+			token_hash = $1
 		FOR UPDATE;
 		"#,
-		login_id,
+		hex::encode(Sha256::digest(refresh_token)),
 	)
 	.fetch_optional(&mut **database)
 	.await?
@@ -74,72 +65,31 @@ pub async fn renew_access_token(
 	.inspect_err(|_| {
 		debug!("Could not find a row for that refresh token");
 	})?;
+	let login_id = row.login_id;
 
 	if row.token_expiry < now {
 		debug!("Token has expiry {}. It is expired.", row.token_expiry);
 		return Err(ErrorType::MalformedRefreshToken);
 	}
 
-	let success = argon2::Argon2::new_with_secret(
-		state.config.password_pepper.as_ref(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.inspect_err(|err| {
-		error!("Error creating Argon2: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.verify_password(
-		refresh_token.as_ref(),
-		&PasswordHash::new(&row.refresh_token).map_err(ErrorType::server_error)?,
-	)
-	.inspect_err(|err| {
-		info!("Error verifying refresh token: `{}`", err);
-	})
-	.is_ok();
-
-	if !success {
-		debug!("Token hash could not be verified");
-		return Err(ErrorType::MalformedRefreshToken);
-	}
-
 	// Rotate the refresh token. The previous one is invalidated by replacing
 	// its hash, so a leaked or stale token can be used at most once.
-	let new_refresh_token = Uuid::new_v4().to_string();
-	let hashed_new_refresh_token = argon2::Argon2::new_with_secret(
-		state.config.password_pepper.as_ref(),
-		Algorithm::Argon2id,
-		Version::V0x13,
-		constants::HASHING_PARAMS,
-	)
-	.inspect_err(|err| {
-		error!("Error creating Argon2: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.hash_password_with_salt(new_refresh_token.as_bytes(), &generate_salt())
-	.inspect_err(|err| {
-		error!("Error hashing refresh token: `{}`", err);
-	})
-	.map_err(ErrorType::server_error)?
-	.to_string();
+	let new_refresh_token = permissions::generate_refresh_token();
 
 	query!(
 		r#"
 		UPDATE
 			web_login
 		SET
-			refresh_token = $1
+			token_hash = $1
 		WHERE
 			login_id = $2;
 		"#,
-		hashed_new_refresh_token,
+		hex::encode(Sha256::digest(&new_refresh_token)),
 		login_id,
 	)
 	.execute(&mut **database)
 	.await?;
-
-	let new_refresh_token = format!("{login_id}.{new_refresh_token}");
 
 	let access_token = AccessTokenData {
 		iss: constants::JWT_ISSUER.to_string(),

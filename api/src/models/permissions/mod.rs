@@ -179,6 +179,48 @@ pub fn generate_runner_token() -> String {
 	)
 }
 
+/// Generates a new refresh token:
+/// [`REFRESH_TOKEN_PREFIX`][constants::REFRESH_TOKEN_PREFIX],
+/// [`OPAQUE_TOKEN_SECRET_LENGTH`][constants::OPAQUE_TOKEN_SECRET_LENGTH] random
+/// base62 characters, and a checksum of both.
+pub fn generate_refresh_token() -> String {
+	let body = format!(
+		"{}{}",
+		constants::REFRESH_TOKEN_PREFIX,
+		rand::rng()
+			.sample_iter(Alphanumeric)
+			.take(constants::OPAQUE_TOKEN_SECRET_LENGTH)
+			.map(char::from)
+			.collect::<String>()
+	);
+
+	format!(
+		"{body}{:0>width$}",
+		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+	)
+}
+
+/// Whether an opaque token ends in the checksum of everything before it. Only
+/// the checksum is checked: anyone can compute a valid one, so length or
+/// character checks wouldn't stop a crafted token.
+pub fn has_valid_checksum(token: &str) -> bool {
+	let Some((body, presented_checksum)) = token.split_at_checked(
+		token
+			.len()
+			.saturating_sub(constants::OPAQUE_TOKEN_CHECKSUM_LENGTH),
+	) else {
+		return false;
+	};
+
+	presented_checksum ==
+		format!(
+			"{:0>width$}",
+			base62::encode_fmt(crc32fast::hash(body.as_bytes())),
+			width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
+		)
+}
+
 /// Authenticate a JWT. Today every JWT is a web dashboard session; an OAuth
 /// application's token will carry a claim saying so and branch here.
 async fn authenticate_jwt(
@@ -314,21 +356,7 @@ async fn authenticate_opaque_token(
 		return Err(ErrorType::MalformedApiToken);
 	};
 
-	// The prefix and secret, and the checksum of both. Only the checksum is
-	// checked: anyone can compute a valid one, so length or character checks
-	// wouldn't stop a crafted token.
-	let Some((body, presented_checksum)) =
-		token.split_at_checked(token.len() - constants::OPAQUE_TOKEN_CHECKSUM_LENGTH)
-	else {
-		warn!("Invalid opaque token: the checksum isn't on a character boundary");
-		return Err(ErrorType::MalformedApiToken);
-	};
-	let calculated_checksum = format!(
-		"{:0>width$}",
-		base62::encode_fmt(crc32fast::hash(body.as_bytes())),
-		width = constants::OPAQUE_TOKEN_CHECKSUM_LENGTH,
-	);
-	if presented_checksum != calculated_checksum {
+	if !has_valid_checksum(token) {
 		warn!("Invalid opaque token: the checksum doesn't match");
 		return Err(ErrorType::MalformedApiToken);
 	}
