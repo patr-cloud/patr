@@ -1,10 +1,17 @@
-use std::{any::Any, collections::BTreeMap, net::IpAddr};
+use std::{
+	any::Any,
+	collections::{BTreeMap, HashMap},
+	net::IpAddr,
+};
 
 use axum::{
 	Router,
+	http::HeaderMap,
 	response::{IntoResponse, Response},
 	routing::{get, post},
 };
+use headers::{Authorization, HeaderMapExt, authorization::Basic};
+use sha2::{Digest, Sha256};
 use tower_http::catch_panic::CatchPanicLayer;
 
 use self::error::{OAuthError, OAuthErrorCode};
@@ -18,6 +25,10 @@ mod discovery;
 mod error;
 /// Reads the pending authorization request behind a consent screen.
 mod get_consent_request;
+/// The introspection endpoint.
+mod introspect;
+/// The revocation endpoint.
+mod revoke;
 /// Records the user's decision and hands back where to send them.
 mod submit_consent;
 /// The token endpoint.
@@ -43,6 +54,58 @@ pub async fn enforce_rate_limit(state: &AppState, client_ip: IpAddr) -> Result<(
 			"too many requests; slow down and try again",
 		)
 	})
+}
+
+/// Authenticates the client and returns its id. Takes credentials over Basic
+/// and in the form (RFC 6749 section 2.3.1), since Grafana's client tries
+/// Basic first. A public client presents none, and relies on PKCE.
+pub fn authenticate_client(
+	state: &AppState,
+	headers: &HeaderMap,
+	client_id: Option<&str>,
+	client_secret: Option<&str>,
+) -> Result<String, OAuthError> {
+	// Both halves of Basic are form-encoded before being base64'd.
+	let decode = |value: &str| {
+		serde_qs::from_str::<HashMap<String, String>>(&format!("v={value}"))
+			.ok()
+			.and_then(|mut map| map.remove("v"))
+			.unwrap_or_else(|| value.to_owned())
+	};
+
+	let (client_id, presented_secret) =
+		match (headers.typed_get::<Authorization<Basic>>(), client_id) {
+			(Some(basic), _) => (decode(basic.username()), Some(decode(basic.password()))),
+			(None, Some(client_id)) => (client_id.to_owned(), client_secret.map(str::to_owned)),
+			(None, None) => {
+				return Err(OAuthError::new(
+					OAuthErrorCode::InvalidClient,
+					"no client credentials were presented",
+				));
+			}
+		};
+
+	let Some(client) = state.config.oauth.clients.get(&client_id) else {
+		return Err(OAuthError::new(
+			OAuthErrorCode::InvalidClient,
+			"unknown client",
+		));
+	};
+
+	match (&client.client_secret, presented_secret) {
+		// Compared by digest, so the time taken doesn't leak how much matched.
+		(Some(expected), Some(presented))
+			if Sha256::digest(expected) == Sha256::digest(&presented) => {}
+		(None, None) => {}
+		_ => {
+			return Err(OAuthError::new(
+				OAuthErrorCode::InvalidClient,
+				"client authentication failed",
+			));
+		}
+	}
+
+	Ok(client_id)
 }
 
 /// Renders a panic on a raw OAuth route as a `server_error`, since a client
@@ -85,6 +148,8 @@ pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType
 				)
 				.route("/.well-known/jwks.json", get(discovery::jwks))
 				.route("/auth/oauth/token", post(token::token))
+				.route("/auth/oauth/revoke", post(revoke::revoke))
+				.route("/auth/oauth/introspect", post(introspect::introspect))
 				// OIDC Core section 5.3 requires both methods.
 				.route(
 					"/auth/oauth/userinfo",

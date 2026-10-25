@@ -23,6 +23,8 @@ pub async fn openid_configuration(
 		"authorization_endpoint": format!("{issuer}/auth/oauth/authorize"),
 		"token_endpoint": format!("{issuer}/auth/oauth/token"),
 		"userinfo_endpoint": format!("{issuer}/auth/oauth/userinfo"),
+		"revocation_endpoint": format!("{issuer}/auth/oauth/revoke"),
+		"introspection_endpoint": format!("{issuer}/auth/oauth/introspect"),
 		"jwks_uri": format!("{issuer}/.well-known/jwks.json"),
 		"response_types_supported": ["code"],
 		"subject_types_supported": ["public"],
@@ -33,6 +35,15 @@ pub async fn openid_configuration(
 			"client_secret_basic",
 			"client_secret_post",
 			"none",
+		],
+		"revocation_endpoint_auth_methods_supported": [
+			"client_secret_basic",
+			"client_secret_post",
+			"none",
+		],
+		"introspection_endpoint_auth_methods_supported": [
+			"client_secret_basic",
+			"client_secret_post",
 		],
 		"code_challenge_methods_supported": ["S256"],
 		"claims_supported": [

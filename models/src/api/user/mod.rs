@@ -17,6 +17,8 @@ mod get_user_info;
 mod list_user_workspaces;
 /// All endpoints related to MFA
 mod mfa;
+/// All endpoints related to the apps acting on a user's behalf
+mod oauth_grants;
 /// The endpoint to preview a workspace invite before accepting
 mod preview_workspace_invite;
 /// All endpoints related to social-login providers (list, disconnect, connect)
@@ -34,6 +36,7 @@ pub use self::{
 	get_user_info::*,
 	list_user_workspaces::*,
 	mfa::*,
+	oauth_grants::*,
 	preview_workspace_invite::*,
 	social_logins::*,
 	update_user_info::*,
