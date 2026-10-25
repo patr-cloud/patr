@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createEffect, createMemo, createSignal, For, Show, Suspense } from "solid-js";
 import {
-	AccessRow,
 	Button,
 	ButtonVariant,
 	BindingRows,
@@ -10,11 +9,12 @@ import {
 	PageContainer,
 	PageContainerBody,
 	Pagination,
+	UnsavedChangesGuard,
 	useToast,
 	Initials,
 } from "~/components";
-import type { Binding } from "~/components/binding-rows";
-import { FiCheck, FiCopy, FiEdit2, FiMail, FiTrash, FiX } from "solid-icons/fi";
+import { createBindingsDraft } from "~/components/binding-rows";
+import { FiCopy, FiMail, FiTrash } from "solid-icons/fi";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import {
 	createAuthenticatedAction,
@@ -83,8 +83,6 @@ const ManageWorkspace = () => {
 	);
 	const invitesQuery = useInvitesQuery();
 	const canModifyMembers = useIsAllowed("modifyRoles", "edit");
-
-	const roleNameMap = createMemo(() => new Map((rolesQuery.data?.roles ?? []).map((role) => [role.id, role.name])));
 
 	const roleOptions = createMemo(() =>
 		(rolesQuery.data?.roles ?? []).map((role) => ({ label: role.name, value: role.id }))
@@ -175,8 +173,6 @@ const ManageWorkspace = () => {
 	};
 
 	const [selectedKey, setSelectedKey] = createSignal<string | null>(null);
-	const [isEditing, setIsEditing] = createSignal(false);
-	const [editingBindings, setEditingBindings] = createSignal<Binding[]>([]);
 	const [pendingDelete, setPendingDelete] = createSignal(false);
 	// Accept links are only returned when an invite is created or resent, so the
 	// "copy link" button only appears for invites touched in this session.
@@ -201,29 +197,28 @@ const ManageWorkspace = () => {
 
 	const selected = createMemo(() => people().find((row) => row.key === selectedKey()) ?? null);
 
-	const selectRow = (key: string) => {
-		setSelectedKey(key);
-		setIsEditing(false);
-		setEditingBindings([]);
-		setPendingDelete(false);
-	};
-
-	const beginEditing = () => {
+	// The selected person's access, edited in place and saved with one button.
+	// The table shows one row per role, so flat grants are grouped.
+	const access = createBindingsDraft(() => {
 		const row = selected();
-		if (!row) return;
-		setEditingBindings(grantsToBindings(row.grants, workspaceId() ?? ""));
-		setIsEditing(true);
-	};
+		return row ? grantsToBindings(row.grants, workspaceId() ?? "") : [];
+	});
 
-	const cancelEditing = () => {
-		setIsEditing(false);
-		setEditingBindings([]);
+	const selectRow = (key: string) => {
+		if (key === selectedKey()) return;
+		// The draft belongs to the selected person, so leaving it would lose it.
+		if (access.isDirty()) {
+			toast("Save or discard your changes first", "warn");
+			return;
+		}
+		setSelectedKey(key);
+		setPendingDelete(false);
 	};
 
 	const { execute: saveBindings, isLoading: isSaving } = createAuthenticatedAction(async ({ workspaceId }) => {
 		const row = selected();
 		if (!row) return;
-		const grants = bindingsToGrants(editingBindings(), workspaceId);
+		const grants = bindingsToGrants(access.draft(), workspaceId);
 
 		if (row.kind === "member") {
 			const body: UpdateUserRolesInWorkspaceRequest = { roles: grants };
@@ -251,8 +246,7 @@ const ManageWorkspace = () => {
 			refetchInvites();
 		}
 
-		setIsEditing(false);
-		setEditingBindings([]);
+		access.markSaved();
 	});
 
 	const { execute: removePerson, isLoading: isRemoving } = createAuthenticatedAction(async ({ workspaceId }) => {
@@ -284,6 +278,8 @@ const ManageWorkspace = () => {
 		}
 
 		setPendingDelete(false);
+		// The person is gone, so is any draft of their access.
+		access.discard();
 		setSelectedKey(null);
 	});
 
@@ -317,12 +313,16 @@ const ManageWorkspace = () => {
 		}
 	};
 
-	// The list shows one row per role, so flat grants are grouped for display.
-	const displayBindings = (grants: RoleBindingGrant[]) => grantsToBindings(grants, workspaceId() ?? "");
+	/** Whether the selected person's access can be changed here at all. */
+	const canEditAccess = () => canModifyMembers() && !selected()?.isOwner;
 
 	return (
 		<>
 			<Title>Workspace Members | Patr</Title>
+			<UnsavedChangesGuard
+				when={access.isDirty}
+				message="You have unsaved changes to this person's access. If you leave now, they'll be lost."
+			/>
 			<PageContainer fillViewport>
 				<WorkspaceHeader
 					workspaceName={workspaceInfoQuery.data?.name}
@@ -425,27 +425,21 @@ const ManageWorkspace = () => {
 								<Show
 									when={selected()}
 									fallback={
-										<div class="bg-secondary-light rounded-xs p-lg text-grey text-sm flex items-center justify-center min-h-50">
+										<div class="p-lg text-grey text-sm flex items-center justify-center min-h-50">
 											Select someone to see their access.
 										</div>
 									}
 								>
 									{(row) => (
-										<div class="bg-secondary-light rounded-xs p-lg flex flex-col gap-5">
+										<div class="p-lg flex flex-col gap-5">
 											<div class="flex items-start justify-between gap-3">
 												<Initials
 													size="lg"
+													styleVariant="medium"
 													firstName={row().firstName}
 													lastName={row().lastName}
 												/>
-												<Show
-													when={
-														!isEditing() &&
-														!pendingDelete() &&
-														!row().isOwner &&
-														canModifyMembers()
-													}
-												>
+												<Show when={!pendingDelete() && canEditAccess()}>
 													<div class="flex items-center gap-2">
 														<Show when={row().kind === "invite"}>
 															<Show when={inviteLinks()[row().id]}>
@@ -467,14 +461,6 @@ const ManageWorkspace = () => {
 																Resend
 															</Button>
 														</Show>
-														<Button
-															variant={ButtonVariant.Outlined}
-															onClick={beginEditing}
-															class="flex items-center gap-2"
-														>
-															<FiEdit2 size={14} />
-															Edit access
-														</Button>
 														<button
 															aria-label={
 																row().kind === "invite"
@@ -486,27 +472,6 @@ const ManageWorkspace = () => {
 														>
 															<FiTrash size={16} />
 														</button>
-													</div>
-												</Show>
-												<Show when={isEditing()}>
-													<div class="flex items-center gap-2">
-														<Button
-															variant={ButtonVariant.Contained}
-															onClick={() => saveBindings().catch(() => {})}
-															loading={isSaving()}
-															class="flex items-center gap-2"
-														>
-															<FiCheck size={14} />
-															Save
-														</Button>
-														<Button
-															variant={ButtonVariant.Outlined}
-															onClick={cancelEditing}
-															class="flex items-center gap-2"
-														>
-															<FiX size={14} />
-															Cancel
-														</Button>
 													</div>
 												</Show>
 											</div>
@@ -521,59 +486,49 @@ const ManageWorkspace = () => {
 											<div class="flex flex-col gap-3">
 												<div class="flex items-center justify-between">
 													<h3 class="text-white text-sm font-medium">Access</h3>
-													<span class="text-grey text-xs">
-														{isEditing()
-															? editingBindings().length
-															: displayBindings(row().grants).length}
-													</span>
+													<span class="text-grey text-xs">{access.draft().length}</span>
 												</div>
-												<Show
-													when={isEditing()}
-													fallback={
-														<Show
-															when={displayBindings(row().grants).length > 0}
-															fallback={
-																<p class="text-grey text-sm italic">
-																	No roles assigned.
-																</p>
-															}
+												<BindingRows
+													workspaceId={workspaceId()!}
+													bindings={access.draft()}
+													onChange={access.setDraft}
+													subjectOptions={roleOptions()}
+													subjectPlaceholder="Select a role"
+													scopeRoleId={(roleId) => roleId}
+													addLabel="Add role"
+													emptyText="No roles assigned."
+													readOnly={!canEditAccess()}
+													footer={() => (
+														<a
+															href="/workspace/roles/new"
+															target="_blank"
+															rel="noopener noreferrer"
+															class="text-primary text-xs hover:underline self-start"
 														>
-															<ul class="flex flex-col gap-2">
-																<For each={displayBindings(row().grants)}>
-																	{(binding) => (
-																		<AccessRow
-																			label={
-																				roleNameMap().get(binding.subjectId) ||
-																				binding.subjectId
-																			}
-																			scope={binding.scope}
-																		/>
-																	)}
-																</For>
-															</ul>
-														</Show>
-													}
-												>
-													<BindingRows
-														workspaceId={workspaceId()!}
-														bindings={editingBindings()}
-														onChange={setEditingBindings}
-														subjectOptions={roleOptions()}
-														subjectPlaceholder="Select a role"
-														scopeRoleId={(roleId) => roleId}
-														addLabel="Add role"
-														emptyText="No roles assigned."
-														footer={() => (
-															<a
-																href="/workspace/roles/new"
-																target="_blank"
-																rel="noopener noreferrer"
-																class="text-primary text-xs hover:underline self-start"
+															or create a new role &rarr;
+														</a>
+													)}
+												/>
+												<Show when={canEditAccess()}>
+													<div class="flex items-center justify-end gap-3">
+														<Show when={access.isDirty()}>
+															<span class="text-grey text-sm">Unsaved changes</span>
+															<Button
+																variant={ButtonVariant.Outlined}
+																onClick={access.discard}
 															>
-																or create a new role &rarr;
-															</a>
-														)}
-													/>
+																Discard
+															</Button>
+														</Show>
+														<Button
+															variant={ButtonVariant.Contained}
+															onClick={() => saveBindings().catch(() => {})}
+															loading={isSaving()}
+															disabled={!access.isDirty()}
+														>
+															Save Changes
+														</Button>
+													</div>
 												</Show>
 											</div>
 

@@ -12,7 +12,6 @@ import {
 } from '@/prelude';
 import {
 	openMembersPage,
-	clickEditRoles,
 	removeRoleChip,
 	addRoleViaChipDropdown,
 	saveMemberRoles,
@@ -50,7 +49,6 @@ test.describe('member > roles [UI]', () => {
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
 		await withUI(browser, owner, async (page) => {
 			await page.getByText(invitee.email).click();
-			await clickEditRoles(page);
 			await addRoleViaChipDropdown(page, r2.name);
 			await saveMemberRoles(page);
 			await expectToast(page, /Roles updated successfully/i);
@@ -75,7 +73,6 @@ test.describe('member > roles [UI]', () => {
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id, r2.id]);
 		await withUI(browser, owner, async (page) => {
 			await page.getByText(invitee.email).click();
-			await clickEditRoles(page);
 			await removeRoleChip(page, r2.name);
 			await saveMemberRoles(page);
 			await expectToast(page, /Roles updated successfully/i);
@@ -91,7 +88,7 @@ test.describe('member > roles [UI]', () => {
 		expect(rows.length).toBe(1);
 	});
 
-	test('discards local edits when Cancel is clicked', async ({ browser, api }) => {
+	test('discards local edits when Discard is clicked', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		await using invitee = await createUserAccount(api);
 		const roles = await listRolesAPI(api, owner, owner.workspaceId);
@@ -99,7 +96,6 @@ test.describe('member > roles [UI]', () => {
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
 		await withUI(browser, owner, async (page) => {
 			await page.getByText(invitee.email).click();
-			await clickEditRoles(page);
 			await removeRoleChip(page, r1.name);
 			await cancelMemberRolesEdit(page);
 		});
@@ -124,7 +120,6 @@ test.describe('member > roles [UI]', () => {
 		await addMemberToWorkspace(api, owner, owner.workspaceId, invitee, [r1.id]);
 		await withUI(browser, owner, async (page) => {
 			await page.getByText(invitee.email).click();
-			await clickEditRoles(page);
 			const link = page.getByRole('link', { name: /create a new role/i });
 			await expect(link).toHaveAttribute('href', '/workspace/roles/new');
 		});
