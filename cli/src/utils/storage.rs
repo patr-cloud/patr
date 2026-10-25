@@ -66,17 +66,33 @@ impl fmt::Display for Channel {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum AuthState {
-	/// The user is logged in with an API token and (optionally) a selected
-	/// workspace.
+	/// The user is logged in and (optionally) has a selected workspace.
 	#[serde(rename_all = "camelCase")]
 	LoggedIn {
-		/// The user's access token.
+		/// The user's access token: an OAuth access token from `patr login`,
+		/// or an API token from `--token`.
 		token: BearerToken,
 		/// The currently selected workspace id.
 		current_workspace: Option<Uuid>,
+		/// How to renew `token`, when it came from `patr login`. An API token
+		/// has none.
+		#[serde(default, skip_serializing_if = "Option::is_none")]
+		session: Option<OAuthSession>,
 	},
 	/// The user is logged out. Serializes as `{}` so it flattens cleanly.
 	LoggedOut {},
+}
+
+/// What renews the access token of a browser login.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthSession {
+	/// The refresh token.
+	pub refresh_token: String,
+	/// When the access token expires, as unix seconds. Not a timestamp,
+	/// because a field that fails to parse fails the whole `untagged`
+	/// variant, which would log the user out.
+	pub token_expiry: i64,
 }
 
 impl Default for AuthState {

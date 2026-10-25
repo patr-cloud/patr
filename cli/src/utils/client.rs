@@ -133,6 +133,24 @@ where
 	}
 }
 
+/// POST a form to one of the OAuth endpoints, which [`make_request`] can't
+/// call: they take a form and answer outside the API's envelope.
+pub async fn make_form_request(
+	path: &str,
+	form: &[(&str, &str)],
+) -> Result<reqwest::Response, reqwest::Error> {
+	REQUEST_CLIENT
+		.get_or_init(initialize_client)
+		.post(format!("{}{path}", super::constants::API_BASE_URL))
+		.header(
+			reqwest::header::USER_AGENT,
+			super::constants::USER_AGENT.as_str(),
+		)
+		.form(form)
+		.send()
+		.await
+}
+
 /// Initialize a reqwest client that can be used across the application to make
 /// requests
 fn initialize_client() -> Client {
