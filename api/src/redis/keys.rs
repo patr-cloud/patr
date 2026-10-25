@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 
 use models::api::auth::SocialLoginProvider;
+use sha2::{Digest, Sha256};
 
 use crate::prelude::*;
 
@@ -132,4 +133,29 @@ pub fn social_login_state(provider: &SocialLoginProvider, state_token: &str) -> 
 /// Expires after 10 minutes. Consumed on first use.
 pub fn social_login_setup(provider: &SocialLoginProvider, setup_token: &str) -> String {
 	format!("socialLogin:{}:setup:{}", provider, setup_token)
+}
+
+/// A pending authorization request, parked between `/authorize` and the
+/// consent screen. Holds no user id: the user is bound at consent time from
+/// their own session, so a leaked link can't bind someone else's account.
+pub fn oauth_authorization_request(request_id: &Uuid) -> String {
+	format!("oauth:authorizationRequest:{}", request_id)
+}
+
+/// An issued authorization code, keyed by its SHA-256 so a Redis dump doesn't
+/// hand out live codes. Consumed with `GETDEL`, so a replay finds nothing.
+pub fn oauth_authorization_code(code: &str) -> String {
+	format!(
+		"oauth:authorizationCode:{}",
+		hex::encode(Sha256::digest(code.as_bytes()))
+	)
+}
+
+/// The pair a consumed refresh token minted, replayed to a client that raced
+/// itself inside the grace window. Written while the row's `FOR UPDATE` lock
+/// is held, so a racer can never see `consumed` set but the key missing — a
+/// miss inside the window means Redis lost it, and is refused without
+/// revoking the grant.
+pub fn oauth_replacement_tokens(token_hash: &str) -> String {
+	format!("oauth:replacementTokens:{}", token_hash)
 }

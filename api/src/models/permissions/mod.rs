@@ -383,7 +383,7 @@ async fn authenticate_opaque_token(
 			ActorClientType::Runner => {
 				runner::load_actor_auth_data(&mut *database, &token_hash).await?
 			}
-			ActorClientType::UserLogin(UserLoginType::WebLogin) => {
+			ActorClientType::UserLogin(UserLoginType::WebLogin | UserLoginType::OAuthLogin) => {
 				unreachable!("only the opaque token prefixes are parsed above")
 			}
 		};
