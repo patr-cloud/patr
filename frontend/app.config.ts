@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import devtools from "solid-devtools/vite";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -37,6 +38,9 @@ export default defineConfig({
 						generatedRouteTree: "./src/routeTree.gen.ts",
 					}),
 					tailwindcss(),
+					devtools({
+						autoname: true,
+					}),
 				],
 				esbuild: {
 					pure: ["console.log"],
