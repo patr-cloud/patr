@@ -61,11 +61,14 @@ export function descriptionInput(page: Page) {
 }
 
 /**
- * Picks a role in the last binding row. The options are portalled to the
- * body, so they're looked up on the page rather than under the trigger.
+ * Adds a role through the access editor's add row: pick it in the row's role
+ * dropdown (the first "Select a role" on the page), then press "Add role".
+ * Scope is left at the default, the entire workspace. The options are
+ * portalled to the body, so they're looked up on the page rather than under
+ * the trigger.
  */
 export async function selectBindingRole(page: Page, roleName: string): Promise<void> {
-	await page.getByPlaceholder('Select a role').last().click();
+	await page.getByPlaceholder('Select a role').first().click();
 	const escaped = roleName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	const option = page
 		.locator('div.cursor-pointer')
@@ -73,10 +76,10 @@ export async function selectBindingRole(page: Page, roleName: string): Promise<v
 		.first();
 	await option.scrollIntoViewIfNeeded({ timeout: 10_000 });
 	await option.click();
+	await page.getByRole('button', { name: /^Add role$/ }).click();
 }
 
 export async function addBindingRole(page: Page, roleName: string): Promise<void> {
-	await page.getByRole('button', { name: /^Add role$/ }).click();
 	await selectBindingRole(page, roleName);
 }
 
