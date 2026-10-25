@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE oauth_login SET revoked = $1 WHERE login_id = $2 AND revoked IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d14704c1f4e61c0ccfadcb74b07d9058997be54a62e4169016776948bdc89d99"
+}

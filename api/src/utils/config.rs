@@ -2,7 +2,9 @@ use std::{
 	collections::BTreeMap,
 	env,
 	fmt::{Display, Formatter},
+	fs,
 	net::SocketAddr,
+	path::{Path, PathBuf},
 };
 
 use config::{Case, Config, Environment, File};
@@ -369,6 +371,38 @@ pub struct OAuthConfig {
 	/// Keyed by `client_id`. Config file only: the env source can't express
 	/// the lists, and camel-cases key segments so `patr-cli` can't be written.
 	pub clients: BTreeMap<String, OAuthClientConfig>,
+	/// PKCS#8 PEM files holding the ES256 keys that sign tokens. The first
+	/// signs; all are published. Generate one with `openssl ecparam -name
+	/// prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt`.
+	#[serde(deserialize_with = "read_signing_keys")]
+	pub signing_keys: Vec<String>,
+}
+
+/// Reads the PEMs while the config is parsed, so a bad path fails the boot. A
+/// relative path falls back to `../`, like the config file itself.
+fn read_signing_keys<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+	D: serde::Deserializer<'de>,
+{
+	Vec::<PathBuf>::deserialize(deserializer)?
+		.into_iter()
+		.map(|path| {
+			fs::read_to_string(&path)
+				.or_else(|err| {
+					if path.is_relative() {
+						fs::read_to_string(Path::new("..").join(&path))
+					} else {
+						Err(err)
+					}
+				})
+				.map_err(|err| {
+					serde::de::Error::custom(format!(
+						"could not read the OAuth signing key at `{}`: {err}",
+						path.display()
+					))
+				})
+		})
+		.collect()
 }
 
 /// A single OAuth client, declared in the config.
