@@ -167,6 +167,41 @@ impl TestSetup {
 			.await
 	}
 
+	/// Make a raw form-encoded POST against the api-routed server, with
+	/// optional HTTP Basic credentials, as `/token` takes.
+	pub async fn make_raw_api_form_post(
+		&self,
+		path: &str,
+		form: &[(&str, &str)],
+		basic_auth: Option<(&str, &str)>,
+	) -> TestResponse {
+		self.make_raw_api_form_post_from_ip(path, form, basic_auth, random_ipv4().into())
+			.await
+	}
+
+	/// [`Self::make_raw_api_form_post`] from a fixed IP.
+	pub async fn make_raw_api_form_post_from_ip(
+		&self,
+		path: &str,
+		form: &[(&str, &str)],
+		basic_auth: Option<(&str, &str)>,
+		ip: std::net::IpAddr,
+	) -> TestResponse {
+		let mut request = self
+			.api
+			.post(path)
+			.add_header("X-Real-IP", ip.to_string())
+			.form(form);
+
+		if let Some((id, secret)) = basic_auth {
+			use base64::{Engine as _, prelude::BASE64_STANDARD};
+			let encoded = BASE64_STANDARD.encode(format!("{id}:{secret}"));
+			request = request.add_header("Authorization", format!("Basic {encoded}"));
+		}
+
+		request.await
+	}
+
 	/// Make a typed API call against the routes configured for
 	/// `ActorClientType::UserLogin(UserLoginType::ApiToken)` authentication. Use this for any test
 	/// that presents a `patr_at_…` API token in the
@@ -548,6 +583,17 @@ impl TestSetup {
 			.expect("failed to write redis key");
 	}
 
+	/// Delete the value at `key` from the test Redis.
+	pub async fn delete_redis_value(&self, key: &str) {
+		use rustis::commands::GenericCommands;
+
+		self.state
+			.redis
+			.del(key)
+			.await
+			.expect("failed to delete redis key");
+	}
+
 	/// Compute the current TOTP code for a base32-encoded secret. Used by MFA
 	/// tests that need to submit a valid OTP.
 	pub fn compute_totp(&self, secret_base32: &str) -> String {
@@ -596,6 +642,22 @@ impl TestSetup {
 				.expect("failed to delete rate limit keys");
 		}
 	}
+}
+
+/// The key `api/tests/Justfile` generates. Resolved against the manifest
+/// directory because cargo runs tests from `api/`.
+fn test_signing_key() -> String {
+	let path = concat!(
+		env!("CARGO_MANIFEST_DIR"),
+		"/../config/oauth-signing-key.pem"
+	);
+
+	std::fs::read_to_string(path).unwrap_or_else(|err| {
+		panic!(
+			"could not read the OAuth signing key at `{path}`: {err}. Run the tests via `just \
+			 api test`, which generates it."
+		)
+	})
 }
 
 /// Helps setup the test server and database for API tests. This is used by all
@@ -757,6 +819,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 		// forms of client authentication. The loopback redirect is the CLI's
 		// shape, whose port is deliberately ignored when matching.
 		oauth: OAuthConfig {
+			signing_keys: vec![test_signing_key()],
 			clients: [
 				(
 					"test-client".to_string(),

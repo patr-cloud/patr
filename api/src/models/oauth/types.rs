@@ -54,3 +54,14 @@ pub struct OAuthAuthorizationCode {
 	/// What the user consented with.
 	pub created_user_agent: String,
 }
+
+/// The pair a refresh token minted when it was consumed, kept in Redis for
+/// the grace window so a client racing itself gets the same pair back.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OAuthReplacementTokens {
+	/// The access token that was minted.
+	pub access_token: String,
+	/// The refresh token that was minted.
+	pub refresh_token: String,
+}
