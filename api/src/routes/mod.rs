@@ -70,6 +70,7 @@ cfg_if! {
 				state,
 				&[
 					ActorClientType::UserLogin(UserLoginType::ApiToken),
+					ActorClientType::UserLogin(UserLoginType::OAuthLogin),
 					ActorClientType::ServiceAccount,
 					ActorClientType::Runner,
 				],
@@ -126,6 +127,7 @@ cfg_if! {
 						&[
 							ActorClientType::UserLogin(UserLoginType::WebLogin),
 							ActorClientType::UserLogin(UserLoginType::ApiToken),
+							ActorClientType::UserLogin(UserLoginType::OAuthLogin),
 							ActorClientType::ServiceAccount,
 							ActorClientType::Runner,
 						],

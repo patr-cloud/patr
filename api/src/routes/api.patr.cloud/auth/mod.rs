@@ -17,7 +17,6 @@ mod login;
 /// The route to logout a user
 mod logout;
 /// All OAuth related routes
-#[expect(unused_variables)]
 mod oauth;
 /// The route to renew an access token
 mod renew_access_token;
