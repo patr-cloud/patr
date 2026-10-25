@@ -32,7 +32,7 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub id: OnlyId,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceCreated,
 		resource_type: ResourceType::Domain,

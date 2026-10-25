@@ -51,6 +51,6 @@ macros::declare_api_endpoint!(
 		/// details and the role grants they hold.
 		pub users: Vec<WorkspaceMember>,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

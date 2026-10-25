@@ -31,6 +31,6 @@ macros::declare_api_endpoint!(
 		/// resource it applies at.
 		pub role_bindings: Vec<RoleBindingGrant>,
 	},
-	client_type = [WebLogin, ApiToken],
+	client_type = [WebLogin, ApiToken, OAuthLogin],
 	audit_log = NoAuditLogger,
 );

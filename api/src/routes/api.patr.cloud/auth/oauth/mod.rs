@@ -3,7 +3,7 @@ use std::{any::Any, collections::BTreeMap, net::IpAddr};
 use axum::{
 	Router,
 	response::{IntoResponse, Response},
-	routing::post,
+	routing::{get, post},
 };
 use tower_http::catch_panic::CatchPanicLayer;
 
@@ -20,6 +20,8 @@ mod get_consent_request;
 mod submit_consent;
 /// The token endpoint.
 mod token;
+/// The UserInfo endpoint.
+mod userinfo;
 
 use self::{authorize::*, get_consent_request::*, submit_consent::*};
 
@@ -75,6 +77,11 @@ pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType
 		if host_client_types.contains(&ActorClientType::UserLogin(UserLoginType::OAuthLogin)) {
 			Router::new()
 				.route("/auth/oauth/token", post(token::token))
+				// OIDC Core section 5.3 requires both methods.
+				.route(
+					"/auth/oauth/userinfo",
+					get(userinfo::userinfo).post(userinfo::userinfo),
+				)
 				.layer(CatchPanicLayer::custom(on_protocol_panic))
 				.with_state(state.clone())
 		} else {

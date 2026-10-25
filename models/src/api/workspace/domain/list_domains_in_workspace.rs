@@ -30,6 +30,6 @@ macros::declare_api_endpoint!(
 		/// - is_verified - whether the domain is verified or not
 		pub domains: Vec<WithId<WorkspaceDomain>>,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );
