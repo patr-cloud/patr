@@ -36,3 +36,4 @@ mod m033_runner_identity;
 mod m034_seed_runner_regenerate_token_permission;
 mod m035_invalidate_web_logins_for_sub_claim;
 mod m036_hash_web_login_refresh_tokens;
+mod m037_oauth_provider;

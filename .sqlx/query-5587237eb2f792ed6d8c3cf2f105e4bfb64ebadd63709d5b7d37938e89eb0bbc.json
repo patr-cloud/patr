@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX oauth_login_idx_user_id_client_id ON oauth_login(user_id, client_id) WHERE revoked IS NULL;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "5587237eb2f792ed6d8c3cf2f105e4bfb64ebadd63709d5b7d37938e89eb0bbc"
+}
