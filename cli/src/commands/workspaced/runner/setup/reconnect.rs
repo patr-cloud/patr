@@ -47,6 +47,7 @@ pub(super) async fn execute(
 		AuthState::LoggedIn {
 			token,
 			current_workspace,
+			..
 		} => (Some(token), current_workspace),
 		AuthState::LoggedOut {} => (None, None),
 	};

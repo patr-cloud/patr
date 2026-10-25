@@ -5,6 +5,8 @@ mod client;
 /// The module that contains the extension traits that are used to extend
 /// functionalities to help make it easier to work with the CLI code
 mod ext_trait;
+/// The OAuth flow `patr login` runs, and the session it leaves behind
+pub mod oauth;
 /// A reusable search-and-select prompt widget for async search-based selection
 pub mod search_and_select;
 /// The storage module, used to store data between CLI sessions such as the

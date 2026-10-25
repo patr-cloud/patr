@@ -27,6 +27,7 @@ pub mod prelude {
 			AppState,
 			AuthState,
 			Channel,
+			OAuthSession,
 			SearchAndSelect,
 			ToJsonValue,
 			TtyExpectable,
