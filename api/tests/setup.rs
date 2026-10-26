@@ -40,6 +40,7 @@ use models::{
 };
 use preprocess::Preprocessable;
 use rand::{RngExt as _, distr::Alphanumeric};
+use rustis::client::PubSubStream;
 use serde::Serialize;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{
@@ -496,6 +497,21 @@ impl TestSetup {
 			.count()
 	}
 
+	/// Subscribe to the events the bridge publishes to a runner. The bridge only
+	/// publishes to runners that are online.
+	pub async fn subscribe_to_runner_events(
+		&self,
+		workspace_id: Uuid,
+		runner_id: Uuid,
+	) -> PubSubStream {
+		let mut stream = self.state.redis.create_pub_sub();
+		stream
+			.subscribe(api::redis::keys::runner_events(&workspace_id, &runner_id))
+			.await
+			.expect("failed to subscribe to runner events");
+		stream
+	}
+
 	/// The body of the last Cloudflare KV write made to a key, if any.
 	pub async fn last_cloudflare_kv_write(&self, key: &str) -> Option<serde_json::Value> {
 		let suffix = format!("/values/{key}");
@@ -800,6 +816,13 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 	api::worker::initialize(&state)
 		.await
 		.map_err(|e| anyhow::anyhow!("error initializing worker: {e}"))?;
+
+	// Every test process runs its own bridge against the shared database, so
+	// each notification can be published more than once.
+	tokio::spawn({
+		let state = state.clone();
+		async move { api::redis_publisher::run(&state).await }
+	});
 
 	// Seed deployment machine types (the table is created by db::initialize
 	// but never populated).

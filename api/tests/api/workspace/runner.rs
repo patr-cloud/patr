@@ -1993,7 +1993,7 @@ async fn is_connected(setup: &TestSetup, runner_id: Uuid) -> bool {
 
 /// Connect the runner to its data stream with `token`, hand shake as a private
 /// runner, and wait until the API shows it connected.
-async fn connect_runner(
+pub(super) async fn connect_runner(
 	setup: &TestSetup,
 	workspace_id: Uuid,
 	runner_id: Uuid,

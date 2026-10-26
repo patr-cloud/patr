@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT IS_RUNNER_ONLINE(is_connected, last_seen) AS \"online!\" FROM runner WHERE id = $1 AND workspace_id = $2 AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "online!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "10f00619bf1bb418ce906788658c546ef6f0c34a627ca8cb5a68af8cd72f3fb1"
+}

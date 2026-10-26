@@ -12,13 +12,12 @@ use cloudflare::{
 };
 #[cfg(feature = "cloud")]
 use models::cloudflare::kv::*;
-use models::{
-	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
-	utils::{Base64String, StringifiedU16},
-};
-use rustis::commands::PubSubCommands;
+use models::{api::workspace::deployment::*, rbac::ResourceType, utils::StringifiedU16};
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 
 /// The handler to stop a deployment in the workspace. This will stop
 /// the deployment. In case the deployment is already stopped, it will
@@ -40,7 +39,7 @@ pub async fn stop_deployment(
 				body: StopDeploymentRequestProcessed,
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		actor_data: _,
 		state,
@@ -49,21 +48,25 @@ pub async fn stop_deployment(
 	info!("Starting: Stop deployment");
 
 	// Set the deployment to stop
-	query!(
+	let deployment = query!(
 		r#"
 		UPDATE
 			deployment
 		SET
 			should_run = FALSE
 		WHERE
-			id = $1;
+			id = $1 AND
+			deleted IS NULL
+		RETURNING
+			runner,
+			should_run;
 		"#,
 		deployment_id
 	)
-	.execute(&mut **database)
-	.await?;
+	.fetch_optional(&mut **database)
+	.await?
+	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	// TODO Temporary workaround until audit logs and triggers are implemented
 	let ports = query!(
 		r#"
 		SELECT
@@ -87,159 +90,6 @@ pub async fn stop_deployment(
 	})
 	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
 
-	let environment_variables = query!(
-		r#"
-		SELECT
-			name,
-			value,
-			secret_id
-		FROM
-			deployment_environment_variable
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|env| {
-		let name = env.name;
-		let value = env.value.clone().map(EnvironmentVariableValue::String);
-
-		let secret_id = env
-			.secret_id
-			.map(|from_secret| EnvironmentVariableValue::Secret { from_secret });
-
-		let value = match (value.clone(), secret_id.clone()) {
-			(Some(value), None) => Some(value),
-			(None, Some(secret)) => Some(secret),
-			_ => None,
-		}
-		.ok_or_else(|| {
-			ErrorType::server_error(format!(
-				concat!(
-					"corrupted deployment, cannot find environment variable value. ",
-					"env name: `{}`, value: {:?}`, secret_id: {:?}, raw_value: {:?}, raw_secret_id: {:?}"
-				),
-				name, value, secret_id, env.value, env.secret_id
-			))
-		})?;
-
-		Ok((name, value))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
-
-	let config_mounts = query!(
-		r#"
-		SELECT
-			path,
-			file
-		FROM
-			deployment_config_mounts
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| {
-		let path = row.path;
-		let file = Base64String::from(row.file);
-
-		Ok((path, file))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
-
-	let volumes = query!(
-		r#"
-		SELECT
-			path
-		FROM
-			deployment_volume
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| (row.path, VolumeConfig {}))
-	.collect::<BTreeMap<_, _>>();
-
-	let row = query!(
-		r#"
-		SELECT
-			deployment.id,
-			deployment.name,
-			registry,
-			image_name,
-			image_tag,
-			deployment.runner,
-			CASE
-				WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable'
-				ELSE deployment.status
-			END AS "status!",
-			should_run,
-			repository_id,
-			min_horizontal_scale,
-			max_horizontal_scale,
-			machine_type,
-			deploy_on_push,
-			startup_probe_port,
-			startup_probe_path,
-			startup_probe_port_type AS "startup_probe_port_type?",
-			liveness_probe_port,
-			liveness_probe_path,
-			liveness_probe_port_type AS "liveness_probe_port_type?",
-			current_live_digest
-		FROM
-			deployment
-		INNER JOIN
-			runner
-		ON
-			runner.id = deployment.runner
-		WHERE
-			deployment.id = $1 AND
-			deployment.deleted IS NULL;
-		"#,
-		deployment_id
-	)
-	.fetch_one(&mut **database)
-	.await
-	.map_err(|err| match err {
-		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist,
-		err => err.into(),
-	})?;
-
-	let name = row.name;
-	let image_tag = row.image_tag;
-	let machine_type = row.machine_type;
-	let runner = row.runner;
-
-	let deploy_on_push = row.deploy_on_push;
-	let min_horizontal_scale = row.min_horizontal_scale as u16;
-	let max_horizontal_scale = row.max_horizontal_scale as u16;
-
-	let startup_probe = row
-		.startup_probe_port
-		.zip(row.startup_probe_path)
-		.map(|(port, path)| DeploymentProbe {
-			port: port as u16,
-			path,
-		});
-
-	let liveness_probe =
-		row.liveness_probe_port
-			.zip(row.liveness_probe_path)
-			.map(|(port, path)| DeploymentProbe {
-				port: port as u16,
-				path,
-			});
-
 	cfg_if! {
 		if #[cfg(feature = "cloud")] {
 			CloudflareClient::new(
@@ -260,59 +110,27 @@ pub async fn stop_deployment(
 				body: write_key::WriteKeyBody::Value(serde_json::to_vec(
 					&InternalKVData::Deployment {
 						ports: ports.keys().map(|port| port.value()).collect(),
-						runner_id: runner,
-						should_run: row.should_run,
+						runner_id: deployment.runner,
+						should_run: deployment.should_run,
 					},
 				)?),
 			})
 			.await?;
 		} else {
-			let _ = state; // Avoid unused variable warning
+			let _ = (state, ports); // Avoid unused variable warning
 		}
 	}
 
-	redis
-		.publish(
-			format!("{}/runner/{}/stream", workspace_id, runner),
-			serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::DeploymentUpdated {
-				deployment: WithId::new(
-					deployment_id,
-					Deployment {
-						name: name.to_string(),
-						registry: if row.registry == PatrRegistry.to_string() {
-							DeploymentRegistry::PatrRegistry {
-								registry: PatrRegistry,
-								repository_id: row.repository_id.unwrap(),
-							}
-						} else {
-							DeploymentRegistry::ExternalRegistry {
-								registry: row.registry,
-								image_name: row.image_name.unwrap(),
-							}
-						},
-						image_tag: image_tag.to_string(),
-						runner,
-						status: row.status,
-						should_run: row.should_run,
-						current_live_digest: row.current_live_digest,
-						machine_type,
-					},
-				),
-				running_details: DeploymentRunningDetails {
-					deploy_on_push,
-					min_horizontal_scale,
-					max_horizontal_scale,
-					ports,
-					environment_variables,
-					startup_probe,
-					liveness_probe,
-					config_mounts,
-					volumes,
-				},
-			})
-			.unwrap(),
-		)
-		.await?;
+	redis_publisher::mark_dirty(
+		database,
+		DirtyResource {
+			workspace_id,
+			runner_id: deployment.runner,
+			resource_type: ResourceType::Deployment,
+			resource_id: deployment_id,
+		},
+	)
+	.await?;
 
 	AppResponse::builder()
 		.body(StopDeploymentResponse)

@@ -8,10 +8,13 @@ use cloudflare::{
 		client::{ClientConfig, async_api::Client as CloudflareClient},
 	},
 };
-use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
-use rustis::commands::{GenericCommands as _, PubSubCommands};
+use models::{api::workspace::deployment::*, rbac::ResourceType};
+use rustis::commands::GenericCommands as _;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 
 /// The handler to delete a deployment in the workspace. This will delete the
 /// deployment from the workspace, and remove all resources associated with the
@@ -208,16 +211,16 @@ pub async fn delete_deployment(
 		}
 	}
 
-	// TODO Temporary workaround until audit logs and triggers are implemented
-	redis
-		.publish(
-			format!("{}/runner/{}/stream", workspace_id, runner),
-			serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::DeploymentDeleted {
-				id: deployment_id,
-			})
-			.unwrap(),
-		)
-		.await?;
+	redis_publisher::mark_dirty(
+		database,
+		DirtyResource {
+			workspace_id,
+			runner_id: runner,
+			resource_type: ResourceType::Deployment,
+			resource_id: deployment_id,
+		},
+	)
+	.await?;
 
 	AppResponse::builder()
 		.body(DeleteDeploymentResponse)

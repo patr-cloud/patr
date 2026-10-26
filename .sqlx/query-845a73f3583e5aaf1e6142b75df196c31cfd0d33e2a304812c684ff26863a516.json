@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE deployment SET should_run = TRUE, current_live_digest = COALESCE($2, current_live_digest) WHERE id = $1 RETURNING runner, should_run;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "runner",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "runner"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "should_run",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "should_run"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "845a73f3583e5aaf1e6142b75df196c31cfd0d33e2a304812c684ff26863a516"
+}

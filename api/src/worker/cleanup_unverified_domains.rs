@@ -9,8 +9,12 @@ use cloudflare::{
 		response::ApiFailure,
 	},
 };
+use models::rbac::ResourceType;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 
 /// The cron job that cleans up domains that have been unverified for more than
 /// 7 days. This includes domains that were previously verified and became
@@ -122,6 +126,26 @@ pub async fn cleanup_unverified_domains(_: Tick, data: Data<AppState>) -> Result
 			.execute(&data.database)
 			.await
 			.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
+
+			// Tell the runner that served the URL to drop it
+			if let Some(runner_id) = url.runner {
+				let mut conn = data
+					.database
+					.acquire()
+					.await
+					.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
+				redis_publisher::mark_dirty(
+					&mut conn,
+					DirtyResource {
+						workspace_id: domain.workspace_id,
+						runner_id,
+						resource_type: ResourceType::ManagedURL,
+						resource_id: url.id,
+					},
+				)
+				.await
+				.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
+			}
 		}
 
 		// Delete custom hostnames for this domain

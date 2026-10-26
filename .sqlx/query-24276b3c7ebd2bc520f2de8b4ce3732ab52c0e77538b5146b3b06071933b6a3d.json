@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT last_updated FROM secret WHERE id = $1 AND workspace_id = $2 AND deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "last_updated",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "secret",
+            "name": "last_updated"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "24276b3c7ebd2bc520f2de8b4ce3732ab52c0e77538b5146b3b06071933b6a3d"
+}

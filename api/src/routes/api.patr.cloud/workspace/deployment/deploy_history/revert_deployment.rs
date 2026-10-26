@@ -1,16 +1,10 @@
-use std::collections::BTreeMap;
-
 use axum::http::StatusCode;
-use models::{
-	api::workspace::{
-		deployment::{deploy_history::*, *},
-		runner::StreamRunnerDataForWorkspaceServerMsg,
-	},
-	utils::{Base64String, StringifiedU16},
-};
-use rustis::commands::PubSubCommands;
+use models::{api::workspace::deployment::deploy_history::*, rbac::ResourceType};
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 /// Revert a deployment to a previous deployment history, using the image
 /// digest.
 pub async fn revert_deployment(
@@ -32,7 +26,7 @@ pub async fn revert_deployment(
 				body: RevertDeploymentRequestProcessed,
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		actor_data: _,
 		state: _,
@@ -48,11 +42,11 @@ pub async fn revert_deployment(
 		r#"
 		SELECT
 			*
-        FROM
-            deployment_deploy_history
-        WHERE
-            deployment_id = $1 AND
-            image_digest = $2;
+		FROM
+			deployment_deploy_history
+		WHERE
+			deployment_id = $1 AND
+			image_digest = $2;
 		"#,
 		deployment_id,
 		image_digest
@@ -69,240 +63,34 @@ pub async fn revert_deployment(
 		return Err(ErrorType::ResourceDoesNotExist);
 	}
 
-	query!(
+	let runner = query!(
 		r#"
-        UPDATE
-            deployment
-        SET
-            current_live_digest = $1
-        WHERE
-            id = $2;
-        "#,
+		UPDATE
+			deployment
+		SET
+			current_live_digest = $1
+		WHERE
+			id = $2
+		RETURNING
+			runner;
+		"#,
 		image_digest,
 		deployment_id
 	)
-	.execute(&mut **database)
-	.await?;
-
-	// TODO Temporary workaround until audit logs and triggers are implemented
-	let ports = query!(
-		r#"
-		SELECT
-			port,
-			port_type
-		FROM
-			deployment_exposed_port
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| {
-		let port = row.port as u16;
-		let port_type = row.port_type;
-
-		Ok((StringifiedU16::new(port), port_type))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
-
-	let environment_variables = query!(
-		r#"
-		SELECT
-			name,
-			value,
-			secret_id
-		FROM
-			deployment_environment_variable
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|env| {
-		let name = env.name;
-		let value = env.value.clone().map(EnvironmentVariableValue::String);
-
-		let secret_id = env
-			.secret_id
-			.map(|from_secret| EnvironmentVariableValue::Secret { from_secret });
-
-		let value = match (value.clone(), secret_id.clone()) {
-			(Some(value), None) => Some(value),
-			(None, Some(secret)) => Some(secret),
-			_ => None,
-		}
-		.ok_or_else(|| {
-			ErrorType::server_error(format!(
-				concat!(
-					"corrupted deployment, cannot find environment variable value. ",
-					"env name: `{}`, value: {:?}`, secret_id: {:?}, raw_value: {:?}, raw_secret_id: {:?}"
-				),
-				name, value, secret_id, env.value, env.secret_id
-			))
-		})?;
-
-		Ok((name, value))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
-
-	let config_mounts = query!(
-		r#"
-		SELECT
-			path,
-			file
-		FROM
-			deployment_config_mounts
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| {
-		let path = row.path;
-		let file = Base64String::from(row.file);
-
-		Ok((path, file))
-	})
-	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
-
-	let volumes = query!(
-		r#"
-		SELECT
-			path
-		FROM
-			deployment_volume
-		WHERE
-			deployment_id = $1;
-		"#,
-		deployment_id
-	)
-	.fetch_all(&mut **database)
-	.await?
-	.into_iter()
-	.map(|row| (row.path, VolumeConfig {}))
-	.collect::<BTreeMap<_, _>>();
-
-	let row = query!(
-		r#"
-		SELECT
-			deployment.id,
-			deployment.name,
-			registry,
-			image_name,
-			image_tag,
-			deployment.runner,
-			CASE
-				WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable'
-				ELSE deployment.status
-			END AS "status!",
-			should_run,
-			repository_id,
-			min_horizontal_scale,
-			max_horizontal_scale,
-			machine_type,
-			deploy_on_push,
-			startup_probe_port,
-			startup_probe_path,
-			startup_probe_port_type AS "startup_probe_port_type?",
-			liveness_probe_port,
-			liveness_probe_path,
-			liveness_probe_port_type AS "liveness_probe_port_type?",
-			current_live_digest
-		FROM
-			deployment
-		INNER JOIN
-			runner
-		ON
-			runner.id = deployment.runner
-		WHERE
-			deployment.id = $1 AND
-			deployment.deleted IS NULL;
-		"#,
-		deployment_id
-	)
 	.fetch_one(&mut **database)
-	.await
-	.map_err(|err| match err {
-		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist,
-		err => err.into(),
-	})?;
+	.await?
+	.runner;
 
-	let name = row.name;
-	let image_tag = row.image_tag;
-	let machine_type = row.machine_type;
-	let runner = row.runner;
-
-	let deploy_on_push = row.deploy_on_push;
-	let min_horizontal_scale = row.min_horizontal_scale as u16;
-	let max_horizontal_scale = row.max_horizontal_scale as u16;
-
-	let startup_probe = row
-		.startup_probe_port
-		.zip(row.startup_probe_path)
-		.map(|(port, path)| DeploymentProbe {
-			port: port as u16,
-			path,
-		});
-
-	let liveness_probe =
-		row.liveness_probe_port
-			.zip(row.liveness_probe_path)
-			.map(|(port, path)| DeploymentProbe {
-				port: port as u16,
-				path,
-			});
-
-	redis
-		.publish(
-			format!("{}/runner/{}/stream", workspace_id, runner),
-			serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::DeploymentUpdated {
-				deployment: WithId::new(
-					deployment_id,
-					Deployment {
-						name: name.to_string(),
-						registry: if row.registry == PatrRegistry.to_string() {
-							DeploymentRegistry::PatrRegistry {
-								registry: PatrRegistry,
-								repository_id: row.repository_id.unwrap(),
-							}
-						} else {
-							DeploymentRegistry::ExternalRegistry {
-								registry: row.registry,
-								image_name: row.image_name.unwrap(),
-							}
-						},
-						image_tag: image_tag.to_string(),
-						runner,
-						status: row.status,
-						should_run: row.should_run,
-						current_live_digest: row.current_live_digest,
-						machine_type,
-					},
-				),
-				running_details: DeploymentRunningDetails {
-					deploy_on_push,
-					min_horizontal_scale,
-					max_horizontal_scale,
-					ports,
-					environment_variables,
-					startup_probe,
-					liveness_probe,
-					config_mounts,
-					volumes,
-				},
-			})
-			.unwrap(),
-		)
-		.await?;
+	redis_publisher::mark_dirty(
+		database,
+		DirtyResource {
+			workspace_id,
+			runner_id: runner,
+			resource_type: ResourceType::Deployment,
+			resource_id: deployment_id,
+		},
+	)
+	.await?;
 
 	AppResponse::builder()
 		.body(RevertDeploymentResponse)

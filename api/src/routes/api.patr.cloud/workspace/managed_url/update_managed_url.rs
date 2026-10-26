@@ -1,11 +1,12 @@
-use axum::http::StatusCode;
-use models::{
-	api::workspace::{managed_url::*, runner::StreamRunnerDataForWorkspaceServerMsg},
-	prelude::*,
-};
-use rustis::commands::PubSubCommands;
+use std::collections::BTreeSet;
 
-use crate::prelude::*;
+use axum::http::StatusCode;
+use models::{api::workspace::managed_url::*, prelude::*, rbac::ResourceType};
+
+use crate::{
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 
 /// The handler to update a managed URL.
 pub async fn update_managed_url(
@@ -29,7 +30,7 @@ pub async fn update_managed_url(
 					},
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		actor_data: _,
 		state,
@@ -80,8 +81,8 @@ pub async fn update_managed_url(
 		return Err(ErrorType::DomainNotVerified);
 	}
 
-	// Capture the old ProxyDeployment state (deployment + runner) so we can
-	// emit a delete to the old runner if the URL is moving away or repointing.
+	// Capture the old ProxyDeployment state (deployment + runner) so the old
+	// runner is told too if the URL is moving away or repointing.
 	let old_proxy_deployment = if matches!(
 		managed_url.url_type,
 		ManagedUrlTypeDiscriminant::ProxyDeployment
@@ -108,7 +109,6 @@ pub async fn update_managed_url(
 	let http_only;
 
 	let mut new_proxy_deployment = None::<(Uuid, Uuid)>;
-	let mut new_url_type_payload = None::<ManagedUrlType>;
 
 	match managed_url_type {
 		ManagedUrlType::ProxyDeployment {
@@ -138,10 +138,6 @@ pub async fn update_managed_url(
 			.ok_or(ErrorType::WrongParameters)?;
 
 			new_proxy_deployment = Some((deployment.runner, managed_url_deployment_id));
-			new_url_type_payload = Some(ManagedUrlType::ProxyDeployment {
-				deployment_id: managed_url_deployment_id,
-				port: managed_url_port,
-			});
 
 			url_type = ManagedUrlTypeDiscriminant::ProxyDeployment;
 			deployment_id = Some(managed_url_deployment_id);
@@ -215,64 +211,22 @@ pub async fn update_managed_url(
 		}
 	}
 
-	let new_runner = new_proxy_deployment.map(|(r, _)| r);
-
-	// Build the stream payload for create/update messages, if applicable.
-	let new_managed_url_payload = new_url_type_payload.map(|url_type| {
-		WithId::new(
-			managed_url_id,
-			ManagedUrl {
-				sub_domain: managed_url.sub_domain.clone(),
-				domain_id: managed_url.domain_id,
-				path: path.clone(),
-				url_type,
-				is_active: false,
+	for runner_id in old_proxy_deployment
+		.into_iter()
+		.chain(new_proxy_deployment)
+		.map(|(runner_id, _)| runner_id)
+		.collect::<BTreeSet<_>>()
+	{
+		redis_publisher::mark_dirty(
+			database,
+			DirtyResource {
+				workspace_id,
+				runner_id,
+				resource_type: ResourceType::ManagedURL,
+				resource_id: managed_url_id,
 			},
 		)
-	});
-
-	let old_runner = old_proxy_deployment.map(|(r, _)| r);
-	if old_runner == new_runner && new_runner.is_some() {
-		if let Some(payload) = new_managed_url_payload {
-			redis
-				.publish(
-					format!("{}/runner/{}/stream", workspace_id, new_runner.unwrap()),
-					serde_json::to_string(
-						&StreamRunnerDataForWorkspaceServerMsg::ManagedUrlUpdated {
-							managed_url: payload,
-						},
-					)
-					.unwrap(),
-				)
-				.await?;
-		}
-	} else {
-		if let Some(r) = old_runner {
-			redis
-				.publish(
-					format!("{}/runner/{}/stream", workspace_id, r),
-					serde_json::to_string(
-						&StreamRunnerDataForWorkspaceServerMsg::ManagedUrlDeleted {
-							id: managed_url_id,
-						},
-					)
-					.unwrap(),
-				)
-				.await?;
-		}
-		if let (Some(r), Some(payload)) = (new_runner, new_managed_url_payload) {
-			redis
-				.publish(
-					format!("{}/runner/{}/stream", workspace_id, r),
-					serde_json::to_string(
-						&StreamRunnerDataForWorkspaceServerMsg::ManagedUrlCreated {
-							managed_url: payload,
-						},
-					)
-					.unwrap(),
-				)
-				.await?;
-		}
+		.await?;
 	}
 
 	AppResponse::builder()

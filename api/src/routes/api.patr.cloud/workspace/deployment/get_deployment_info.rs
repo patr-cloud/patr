@@ -10,7 +10,7 @@ pub async fn get_deployment_info(
 		request:
 			ProcessedApiRequest {
 				path: GetDeploymentInfoPath {
-					workspace_id: _,
+					workspace_id,
 					deployment_id,
 				},
 				query: (),
@@ -144,9 +144,11 @@ pub async fn get_deployment_info(
 			runner.id = deployment.runner
 		WHERE
 			deployment.id = $1 AND
+			deployment.workspace_id = $2 AND
 			deployment.deleted IS NULL;
 		"#,
-		deployment_id
+		deployment_id,
+		workspace_id,
 	)
 	.fetch_optional(&mut **database)
 	.await?

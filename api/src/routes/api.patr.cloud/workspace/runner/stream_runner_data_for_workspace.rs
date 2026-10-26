@@ -231,7 +231,7 @@ async fn handle_websocket(
 		return;
 	};
 
-	let redis_channel = format!("{workspace_id}/runner/{runner_id}/stream");
+	let redis_channel = redis::keys::runner_events(&workspace_id, &runner_id);
 	let mut pub_sub = redis.create_pub_sub();
 
 	match pub_sub.subscribe(&redis_channel).await {

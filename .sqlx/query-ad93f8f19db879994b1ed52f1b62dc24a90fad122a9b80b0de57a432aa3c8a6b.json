@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT managed_url.id, deployment.runner AS \"runner?\" FROM managed_url LEFT JOIN deployment ON managed_url.deployment_id = deployment.id WHERE managed_url.sub_domain = $1 AND managed_url.domain_id = $2 AND managed_url.deleted IS NULL;",
+  "query": "SELECT id, runner FROM deployment WHERE repository_id = $1 AND image_tag = $2 AND deploy_on_push = TRUE AND should_run = TRUE AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
@@ -9,14 +9,14 @@
         "type_info": "Uuid",
         "origin": {
           "Table": {
-            "table": "managed_url",
+            "table": "deployment",
             "name": "id"
           }
         }
       },
       {
         "ordinal": 1,
-        "name": "runner?",
+        "name": "runner",
         "type_info": "Uuid",
         "origin": {
           "Table": {
@@ -28,14 +28,14 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Uuid"
+        "Uuid",
+        "Text"
       ]
     },
     "nullable": [
       false,
-      true
+      false
     ]
   },
-  "hash": "9a724c336616e8a79a2617f91e567a70395a8a440aeace0998e8562c5b0fec40"
+  "hash": "ad93f8f19db879994b1ed52f1b62dc24a90fad122a9b80b0de57a432aa3c8a6b"
 }
