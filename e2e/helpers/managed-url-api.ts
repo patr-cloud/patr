@@ -6,12 +6,12 @@ import { markDomainVerified } from '@/helpers/db';
 
 // REST helpers for managed URLs. Managed URLs hang off a (verified) domain and
 // every create/update/delete/verify call hits Cloudflare (the e2e CF mock).
-// The route base is /infrastructure/managed-url (workspace-wide, not under the
+// The route base is /managed-url (workspace-wide, not under the
 // domain). Update is POST.
 
 type Creds = { accessToken: string; clientIp: string };
 
-const base = (ws: string) => `/workspace/${ws}/infrastructure/managed-url`;
+const base = (ws: string) => `/workspace/${ws}/managed-url`;
 
 export function randomSubdomain(prefix = 'app'): string {
 	return `${prefix}${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`;

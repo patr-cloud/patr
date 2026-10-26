@@ -243,7 +243,7 @@ const RESOURCE_LIST_ENDPOINTS: Record<ResourceTypeName, string | null> = {
 	runner: "runner",
 	secret: "secret",
 	domain: "domain",
-	managedURL: "infrastructure/managed-url",
+	managedURL: "managed-url",
 	serviceAccount: "service-account",
 	// Not scopeable. A workspace is the scope's own boundary, and neither
 	// projects nor roles are things a permission is granted *on*.

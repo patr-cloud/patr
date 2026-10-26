@@ -155,7 +155,7 @@ const DomainInfo = () => {
 			}
 
 			const response = await httpRequest<CreateManagedURLResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/managed-url`,
 				{
 					method: "POST",
 					body: JSON.stringify(requestBody),

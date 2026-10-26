@@ -31,7 +31,7 @@ export const useManagedUrlsQuery = (
 				const qs = params.size > 0 ? `&${params.toString()}` : "";
 
 				const response = await httpRequest<ListManagedURLResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url?search[domainId]=${dId}${qs}`,
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/managed-url?search[domainId]=${dId}${qs}`,
 					{ method: "GET" }
 				);
 
