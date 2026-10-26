@@ -115,10 +115,9 @@ test.describe('secret > RBAC [UI]', () => {
 		}
 	});
 
-	// Listing is gated on membership alone (a runner lists secrets to catch
-	// missed rotations), so a member without any secret permission still sees
-	// the names — just no way to add one.
-	test('a member with no secret permission still sees the list', async ({ browser, api }) => {
+	// The list only returns the secrets a member can view, so a member without
+	// any secret permission gets the empty state, with no way to add one.
+	test('a member with no secret permission sees no secrets', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		const name = randomSecretName();
 		await createSecretAPI(api, owner, owner.workspaceId, name, 'listed');
@@ -129,8 +128,8 @@ test.describe('secret > RBAC [UI]', () => {
 		const page = await context.newPage();
 		try {
 			await openSecretList(page);
-			await expect(secretRow(page, name)).toBeVisible({ timeout: 15_000 });
-			await expect(emptyStateHeading(page)).toBeHidden();
+			await expect(emptyStateHeading(page)).toBeVisible({ timeout: 15_000 });
+			await expect(secretRow(page, name)).toHaveCount(0);
 			await expect(addSecretLink(page)).toHaveCount(0);
 		} finally {
 			await context.close();
