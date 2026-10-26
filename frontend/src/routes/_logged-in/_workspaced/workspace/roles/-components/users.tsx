@@ -1,9 +1,8 @@
 import { useParams } from "@tanstack/solid-router";
 import { useQueryClient } from "@tanstack/solid-query";
-import { createEffect, createMemo, createSignal, For, Show, Suspense } from "solid-js";
-import { FiCheck, FiX } from "solid-icons/fi";
-import { AccessRow, BindingRows, Button, ButtonVariant, useToast } from "~/components";
-import type { Binding } from "~/components/binding-rows";
+import { createMemo, createSignal, For, Show, Suspense } from "solid-js";
+import { AccessRow, BindingRows, Button, ButtonVariant, UnsavedChangesGuard, useToast } from "~/components";
+import { createBindingsDraft, type Binding } from "~/components/binding-rows";
 import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
 import { useMembersQuery, useRoleBindingsQuery } from "~/hooks/fetch";
@@ -98,29 +97,9 @@ const UsersAssignedToRole = () => {
 		})
 	);
 
-	const [isEditing, setIsEditing] = createSignal(false);
-	const [draft, setDraft] = createSignal<Binding[]>([]);
+	// Edited in place and saved with one button; follows refetches while clean.
+	const users = createBindingsDraft(savedBindings);
 	const [isSaving, setIsSaving] = createSignal(false);
-
-	// Keep the read-only view in step with refetches while not editing.
-	createEffect(() => {
-		if (!isEditing()) setDraft(savedBindings());
-	});
-
-	const memberName = (userId: string) => {
-		const member = assignableMembers().find((m) => m.userId === userId);
-		return member ? `${member.fullName} (${member.email})` : userId;
-	};
-
-	const beginEditing = () => {
-		setDraft(savedBindings());
-		setIsEditing(true);
-	};
-
-	const cancelEditing = () => {
-		setDraft(savedBindings());
-		setIsEditing(false);
-	};
 
 	/**
 	 * Writes one member's full grant list. There is no add/remove-single-role
@@ -145,7 +124,8 @@ const UsersAssignedToRole = () => {
 
 		const roleId = params().roleId;
 		const next = new Map(
-			draft()
+			users
+				.draft()
 				.filter((b) => b.subjectId)
 				.map((b) => [b.subjectId, b.scope])
 		);
@@ -167,7 +147,7 @@ const UsersAssignedToRole = () => {
 		}
 
 		if (writes.length === 0) {
-			setIsEditing(false);
+			users.markSaved();
 			return;
 		}
 
@@ -177,14 +157,15 @@ const UsersAssignedToRole = () => {
 
 		const failed = results.filter((ok) => !ok).length;
 		if (failed > 0) {
+			// Left dirty, so the failed writes can be retried.
 			toast(`Failed to update ${failed} of ${writes.length} members`, "error");
 		} else {
 			toast(writes.length === 1 ? "Member updated" : `${writes.length} members updated`, "success");
+			users.markSaved();
 		}
 
 		queryClient.invalidateQueries({ queryKey: memberKeys.all(wsId) });
 		queryClient.invalidateQueries({ queryKey: roleKeys.bindings(wsId, roleId) });
-		setIsEditing(false);
 	};
 
 	return (
@@ -196,74 +177,44 @@ const UsersAssignedToRole = () => {
 						Each row is one binding — the user, and where this role applies to them.
 					</p>
 				</div>
-				<Show when={canModifyRoles()}>
-					<Show
-						when={isEditing()}
-						fallback={
-							<Button variant={ButtonVariant.Outlined} onClick={beginEditing}>
-								Edit users
-							</Button>
-						}
-					>
-						<div class="flex items-center gap-2">
-							<Button
-								variant={ButtonVariant.Contained}
-								class="flex items-center gap-2"
-								loading={isSaving()}
-								onClick={() => save().catch(() => {})}
-							>
-								<FiCheck size={14} />
-								Save
-							</Button>
-							<Button
-								variant={ButtonVariant.Outlined}
-								class="flex items-center gap-2"
-								onClick={cancelEditing}
-							>
-								<FiX size={14} />
-								Cancel
-							</Button>
-						</div>
-					</Show>
-				</Show>
 			</div>
 
 			<Suspense
 				fallback={<div class="flex items-center justify-center py-8 text-grey text-sm">Loading users...</div>}
 			>
-				<Show
-					when={isEditing()}
-					fallback={
-						<Show
-							when={savedBindings().length > 0}
-							fallback={
-								<div class="text-grey text-center py-8">No users have been assigned this role yet</div>
-							}
-						>
-							<ul class="flex flex-col gap-2">
-								<For each={savedBindings()}>
-									{(binding) => (
-										<HolderRow name={memberName(binding.subjectId)} scope={binding.scope} />
-									)}
-								</For>
-							</ul>
-						</Show>
-					}
-				>
-					<BindingRows
-						workspaceId={workspaceId()!}
-						bindings={draft()}
-						onChange={setDraft}
-						subjectOptions={userOptions()}
-						subjectPlaceholder="Select a user"
-						// The role is fixed here, so every row's scope is bounded by
-						// this role's permissions regardless of who holds it.
-						scopeRoleId={() => params().roleId}
-						addLabel="Add user"
-						emptyText="No users have this role yet."
-					/>
-				</Show>
+				<BindingRows
+					workspaceId={workspaceId()!}
+					bindings={users.draft()}
+					onChange={users.setDraft}
+					subjectOptions={userOptions()}
+					subjectPlaceholder="Select a user"
+					// The role is fixed here, so every row's scope is bounded by
+					// this role's permissions regardless of who holds it.
+					scopeRoleId={() => params().roleId}
+					addLabel="Add user"
+					emptyText="No users have this role yet."
+					readOnly={!canModifyRoles()}
+				/>
 			</Suspense>
+
+			<Show when={canModifyRoles()}>
+				<div class="flex items-center justify-end gap-3">
+					<Show when={users.isDirty()}>
+						<span class="text-grey text-sm">Unsaved changes</span>
+						<Button variant={ButtonVariant.Outlined} onClick={users.discard}>
+							Discard
+						</Button>
+					</Show>
+					<Button
+						variant={ButtonVariant.Contained}
+						loading={isSaving()}
+						disabled={!users.isDirty()}
+						onClick={() => save().catch(() => {})}
+					>
+						Save Changes
+					</Button>
+				</div>
+			</Show>
 
 			<Show when={serviceAccountBindings().length > 0}>
 				<div class="flex flex-col gap-2">
@@ -284,6 +235,11 @@ const UsersAssignedToRole = () => {
 					</ul>
 				</div>
 			</Show>
+
+			<UnsavedChangesGuard
+				when={users.isDirty}
+				message="You have unsaved changes to this role's users. If you leave now, they'll be lost."
+			/>
 		</div>
 	);
 };

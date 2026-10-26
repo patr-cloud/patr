@@ -188,12 +188,15 @@ test.describe('service account > detail [UI]', () => {
 		});
 		await withPage(browser, owner, async (page) => {
 			await openServiceAccountDetail(page, account.id);
-			const chip = page.getByText(target.name, { exact: true });
-			await expect(chip).toBeVisible({ timeout: 10_000 });
+			// The binding's Resources cell names the scoped service account.
+			const resourceCell = page.getByText(target.name, { exact: true });
+			await expect(resourceCell).toBeVisible({ timeout: 10_000 });
 			await expect(page.getByText(target.id, { exact: true })).toHaveCount(0);
 
-			// The picker lists the workspace's service accounts by name.
-			await page.getByPlaceholder('Select Service Account').click();
+			// Editing the row opens its picker, which lists the workspace's
+			// service accounts by name. The target is already picked.
+			await page.getByRole('button', { name: /^Edit$/ }).click();
+			await page.getByPlaceholder('1 selected').click();
 			await expect(page.getByText(other.name, { exact: true })).toBeVisible({
 				timeout: 10_000,
 			});

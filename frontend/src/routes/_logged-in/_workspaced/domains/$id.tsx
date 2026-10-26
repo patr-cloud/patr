@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
-import { createSignal, ErrorBoundary, Show } from "solid-js";
+import { createEffect, createSignal, ErrorBoundary, Show } from "solid-js";
 import {
 	CreateManagedURLRequest,
 	CreateManagedURLResponse,
@@ -19,10 +19,17 @@ import {
 	PageContainer,
 	PageContainerBody,
 	PageContainerHead,
+	Pagination,
 	Table,
 	useToast,
 } from "~/components";
-import { createAuthenticatedAction, createFormAction } from "~/hooks";
+import {
+	createAuthenticatedAction,
+	createFormAction,
+	createPaginationState,
+	paginationSearch,
+	recoverFromOutOfBounds,
+} from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useApiEnvironmentQuery, useDomainInfoQuery, useManagedUrlsQuery } from "~/hooks/fetch";
 import { domainKeys, managedUrlKeys } from "~/hooks/query-keys";
@@ -61,8 +68,31 @@ const DomainInfo = () => {
 	const [target, setTarget] = createSignal<string | null>(null);
 	const [deploymentPort, setDeploymentPort] = createSignal<number | null>(null);
 
+	const search = Route.useSearch();
+	const pagination = createPaginationState({
+		search: () => search(),
+		navigate,
+	});
+
 	const domainInfoQuery = useDomainInfoQuery(() => params().id);
-	const managedUrlsQuery = useManagedUrlsQuery(() => params().id);
+	const managedUrlsQuery = useManagedUrlsQuery(
+		() => params().id,
+		() => search().page?.toString(),
+		() => search().count?.toString()
+	);
+
+	createEffect(() => {
+		const totalCount = managedUrlsQuery.data?.totalCount;
+		if (totalCount !== undefined) {
+			pagination.setTotalCount(totalCount);
+		}
+	});
+
+	recoverFromOutOfBounds(
+		() => managedUrlsQuery.isError,
+		() => managedUrlsQuery.error?.message,
+		pagination
+	);
 
 	const refetchDomainInfo = () => {
 		const wsId = workspaceId();
@@ -125,7 +155,7 @@ const DomainInfo = () => {
 			}
 
 			const response = await httpRequest<CreateManagedURLResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/managed-url`,
 				{
 					method: "POST",
 					body: JSON.stringify(requestBody),
@@ -404,6 +434,7 @@ const DomainInfo = () => {
 										)
 									}
 								/>
+								<Pagination class="w-full" state={pagination} loading={managedUrlsQuery.isFetching} />
 							</div>
 						</PageContainerBody>
 					</Show>
@@ -415,5 +446,6 @@ const DomainInfo = () => {
 
 export const Route = createFileRoute("/_logged-in/_workspaced/domains/$id")({
 	beforeLoad: ({ params }) => requireUuidParam(params.id),
+	validateSearch: paginationSearch,
 	component: DomainInfo,
 });

@@ -98,15 +98,12 @@ async fn mount_lookups(ids: &Ids, ports: Vec<u16>) -> &'static MockServer {
 	server
 }
 
-/// Mount `GET /workspace/{id}/infrastructure/managed-url`.
+/// Mount `GET /workspace/{id}/managed-url`.
 async fn mount_managed_url_list(server: &MockServer, ids: &Ids, urls: Vec<WithId<ManagedUrl>>) {
 	let total = urls.len();
 
 	Mock::given(method("GET"))
-		.and(path(format!(
-			"/workspace/{}/infrastructure/managed-url",
-			ids.workspace
-		)))
+		.and(path(format!("/workspace/{}/managed-url", ids.workspace)))
 		.respond_with(setup::success_list(ListManagedURLResponse { urls }, total))
 		.mount(server)
 		.await;
@@ -136,10 +133,7 @@ async fn create_when_none_matches() {
 
 	mount_managed_url_list(server, &ids, vec![]).await;
 	Mock::given(method("POST"))
-		.and(path(format!(
-			"/workspace/{}/infrastructure/managed-url",
-			ids.workspace
-		)))
+		.and(path(format!("/workspace/{}/managed-url", ids.workspace)))
 		.respond_with(setup::success(CreateManagedURLResponse {
 			id: OnlyId::only_id(ids.managed_url),
 		}))
@@ -153,7 +147,7 @@ async fn create_when_none_matches() {
 	let body = sole_body::<CreateManagedURLRequest>(
 		server,
 		"POST",
-		&format!("/workspace/{}/infrastructure/managed-url", ids.workspace),
+		&format!("/workspace/{}/managed-url", ids.workspace),
 	)
 	.await;
 
@@ -177,7 +171,7 @@ async fn update_when_one_matches() {
 	mount_managed_url_list(server, &ids, vec![existing_managed_url(&ids)]).await;
 	Mock::given(method("POST"))
 		.and(path(format!(
-			"/workspace/{}/infrastructure/managed-url/{}",
+			"/workspace/{}/managed-url/{}",
 			ids.workspace, ids.managed_url
 		)))
 		.respond_with(setup::success(UpdateManagedURLResponse))
@@ -192,7 +186,7 @@ async fn update_when_one_matches() {
 		server,
 		"POST",
 		&format!(
-			"/workspace/{}/infrastructure/managed-url/{}",
+			"/workspace/{}/managed-url/{}",
 			ids.workspace, ids.managed_url
 		),
 	)

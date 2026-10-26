@@ -45,7 +45,7 @@ const InviteMember = () => {
 	);
 
 	const [email, setEmail] = createSignal("");
-	const [bindings, setBindings] = createSignal<Binding[]>([{ subjectId: "", scope: { scopeType: "workspace" } }]);
+	const [bindings, setBindings] = createSignal<Binding[]>([]);
 
 	const roleOptions = createMemo(() =>
 		(rolesQuery.data?.roles ?? []).map((role) => ({ label: role.name, value: role.id }))
@@ -175,7 +175,7 @@ const InviteMember = () => {
 									subjectPlaceholder="Select a role"
 									scopeRoleId={(roleId) => roleId}
 									addLabel="Add role"
-									emptyText="No roles yet — add one below."
+									emptyText="No roles yet — add one above."
 									footer={() => (
 										<a
 											href="/workspace/roles/new"

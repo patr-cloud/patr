@@ -52,9 +52,14 @@ async function pickFromDropdown(page: Page, trigger: ReturnType<Page['locator']>
 	await option.click();
 }
 
-/** The role dropdown of the last binding row — the one just added. */
+/**
+ * Adds a role through the access editor's add row: pick it in the row's role
+ * dropdown (the first "Select a role" on the page), then press "Add role".
+ * Scope is left at the default, the entire workspace.
+ */
 export async function selectBindingRole(page: Page, roleName: string): Promise<void> {
-	await pickFromDropdown(page, page.getByPlaceholder('Select a role').last(), roleName);
+	await pickFromDropdown(page, page.getByPlaceholder('Select a role').first(), roleName);
+	await page.getByRole('button', { name: /^Add role$/ }).click();
 }
 
 /** A person's row in the list, located by email — invites and members alike. */
@@ -90,30 +95,24 @@ export async function openMemberDetail(page: Page, fullName: string): Promise<vo
 	await selectPerson(page, fullName);
 }
 
-export async function clickEditRoles(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /^Edit access$/ }).click();
-}
+// The access editor is always live for someone who can change it: edits stay a
+// local draft until "Save Changes", and "Discard" drops them.
 
 export async function removeRoleChip(page: Page, roleName: string): Promise<void> {
 	await page.getByRole('button', { name: `Remove ${roleName}` }).click();
 }
 
-/**
- * Adds a role to the person being edited: "Add role" appends an empty binding
- * row, then its own dropdown picks the role. (The old chip dropdown was a
- * multi-select over every role; a binding row carries one role and its scope.)
- */
+/** Adds a role to the selected person's draft, at the default workspace-wide scope. */
 export async function addRoleViaChipDropdown(page: Page, roleName: string): Promise<void> {
-	await page.getByRole('button', { name: /^Add role$/ }).click();
 	await selectBindingRole(page, roleName);
 }
 
 export async function saveMemberRoles(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /^Save$/ }).click();
+	await page.getByRole('button', { name: /^Save Changes$/ }).click();
 }
 
 export async function cancelMemberRolesEdit(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /^Cancel$/ }).click();
+	await page.getByRole('button', { name: /^Discard$/ }).click();
 }
 
 export async function clickRemoveMember(page: Page): Promise<void> {

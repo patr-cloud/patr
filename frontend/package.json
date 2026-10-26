@@ -38,6 +38,8 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
+		"@solidjs/start-devtools": "1.0.0-next.0",
+		"@solid-devtools/overlay": "^0.33.5",
 		"@tailwindcss/vite": "^4.3.3",
 		"@tanstack/router-cli": "^1.167.45",
 		"@types/js-cookie": "^3.0.6",
@@ -51,6 +53,7 @@
 		"eslint-plugin-solid": "^0.18.1",
 		"globals": "^17.13.0",
 		"prettier": "^3.9.10",
+		"solid-devtools": "^0.34.5",
 		"tailwindcss": "^4.3.3",
 		"typescript": "^6.0.3",
 		"vinxi": "^0.5.11"

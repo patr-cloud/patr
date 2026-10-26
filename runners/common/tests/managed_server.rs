@@ -172,7 +172,7 @@ pub async fn get_managed_server() -> Arc<ManagedServerState> {
 					get(get_deployment_info_handler),
 				)
 				.route(
-					"/workspace/{workspace_id}/infrastructure/managed-url",
+					"/workspace/{workspace_id}/managed-url",
 					get(list_managed_urls_handler),
 				)
 				.route(

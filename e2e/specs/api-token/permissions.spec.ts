@@ -11,14 +11,15 @@ import {
 import { createRunnerAPI } from '@/helpers/runner-api';
 import {
 	openTokenDetail,
-	clickSavePermissions,
+	clickSaveChanges,
 	enableWorkspaceCheckbox,
+	selectSuperAdminRadio,
 } from '@/helpers/ui/api-token';
 
 // Ceiling ∩ owner-permission enforcement, empty-ceiling PATCH, and the
 // permission-revocation / PATCH cache-invalidation cascades all live in the
 // Rust API suite (api/tests/api/user/api_token.rs). Here we cover the token
-// detail page's Save-Permissions UI over the permission-grant ceiling.
+// detail page's Save Changes UI over the permission-grant ceiling.
 
 // The id of `permName`, for use as a token ceiling grant.
 async function permId(
@@ -30,7 +31,7 @@ async function permId(
 }
 
 test.describe('api token > permissions [UI]', () => {
-	test('changes effective authz after Save Permissions on the token detail page', async ({
+	test('changes effective authz after Save Changes on the token detail page', async ({
 		browser,
 		api,
 	}) => {
@@ -51,7 +52,10 @@ test.describe('api token > permissions [UI]', () => {
 		const page = await context.newPage();
 		try {
 			await openTokenDetail(page, token.id);
-			await clickSavePermissions(page);
+			// Save stays disabled until something changes; the owner can widen
+			// the ceiling to super admin.
+			await selectSuperAdminRadio(page);
+			await clickSaveChanges(page);
 			await expect(page.getByText(/API Token updated successfully/i)).toBeVisible({
 				timeout: 15_000,
 			});
@@ -60,7 +64,7 @@ test.describe('api token > permissions [UI]', () => {
 		}
 	});
 
-	test('disables Save Permissions when no workspace is enabled on detail', async ({
+	test('disables Save Changes when no workspace is enabled on detail', async ({
 		browser,
 		api,
 	}) => {
@@ -75,7 +79,7 @@ test.describe('api token > permissions [UI]', () => {
 		try {
 			await openTokenDetail(page, token.id);
 			await enableWorkspaceCheckbox(page, owner.workspaceName);
-			await expect(page.getByRole('button', { name: /^Save Permissions$/ })).toBeDisabled();
+			await expect(page.getByRole('button', { name: /^Save Changes$/ })).toBeDisabled();
 		} finally {
 			await context.close();
 		}

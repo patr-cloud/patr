@@ -54,7 +54,7 @@ const CreateServiceAccount = () => {
 	const [nameError, setNameError] = createSignal("");
 	const [description, setDescription] = createSignal("");
 	const [descriptionError, setDescriptionError] = createSignal("");
-	const [bindings, setBindings] = createSignal<Binding[]>([{ subjectId: "", scope: { scopeType: "workspace" } }]);
+	const [bindings, setBindings] = createSignal<Binding[]>([]);
 	const [accessError, setAccessError] = createSignal("");
 	const [created, setCreated] = createSignal<{ id: string; name: string; token: string }>();
 	const [isLeaving, setIsLeaving] = createSignal(false);
@@ -232,7 +232,7 @@ const CreateServiceAccount = () => {
 												subjectPlaceholder="Select a role"
 												scopeRoleId={(roleId) => roleId}
 												addLabel="Add role"
-												emptyText="No roles yet — add one below."
+												emptyText="No roles yet — add one above."
 												footer={() => (
 													<a
 														href="/workspace/roles/new"

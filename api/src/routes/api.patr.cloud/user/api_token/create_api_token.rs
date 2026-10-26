@@ -233,6 +233,17 @@ pub async fn create_api_token(
 				.execute(&mut **database)
 				.await?;
 
+				// One (permission, scope) pair per row. The two UNNESTs zip by
+				// position, so the arrays must be built pairwise.
+				let (permission_ids, scope_ids) = permissions
+					.iter()
+					.flat_map(|(permission_id, scopes)| {
+						scopes
+							.iter()
+							.map(move |scope_id| (*permission_id, *scope_id))
+					})
+					.unzip::<_, _, Vec<_>, Vec<_>>();
+
 				query!(
 					r#"
 					INSERT INTO
@@ -250,12 +261,8 @@ pub async fn create_api_token(
 					"#,
 					token_id,
 					workspace_id,
-					&permissions.keys().copied().collect::<Vec<_>>() as _,
-					&permissions
-						.values()
-						.flat_map(|scopes| scopes.iter())
-						.copied()
-						.collect::<Vec<_>>() as _,
+					&permission_ids as _,
+					&scope_ids as _,
 				)
 				.execute(&mut **database)
 				.await

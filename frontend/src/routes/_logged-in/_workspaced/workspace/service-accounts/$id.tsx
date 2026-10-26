@@ -62,7 +62,6 @@ const ServiceAccountForm = (props: { serviceAccountId: string }) => {
 
 	// Checked before reading the data, so a cold roles query doesn't suspend the page.
 	const roles = createMemo(() => (rolesQuery.isSuccess ? rolesQuery.data.roles : []));
-	const roleNames = createMemo(() => new Map(roles().map((role) => [role.id, role.name])));
 	const roleOptions = createMemo(() => roles().map((role) => ({ label: role.name, value: role.id })));
 	const rolesSettled = () => isMounted() && (!canViewRoles() || !rolesQuery.isPending);
 
@@ -300,23 +299,16 @@ const ServiceAccountForm = (props: { serviceAccountId: string }) => {
 												this workspace.
 											</p>
 										</Show>
-										<Show
-											when={fetchedGrants().length > 0}
-											fallback={<p class="text-grey text-sm italic">No roles assigned.</p>}
-										>
-											<ul class="flex flex-col gap-2">
-												<For each={grantsToBindings(fetchedGrants(), workspaceId() ?? "")}>
-													{(binding) => (
-														<AccessRow
-															label={
-																roleNames().get(binding.subjectId) ?? binding.subjectId
-															}
-															scope={binding.scope}
-														/>
-													)}
-												</For>
-											</ul>
-										</Show>
+										<BindingRows
+											readOnly
+											workspaceId={workspaceId() ?? ""}
+											bindings={grantsToBindings(fetchedGrants(), workspaceId() ?? "")}
+											onChange={() => {}}
+											subjectOptions={roleOptions()}
+											subjectPlaceholder="Select a role"
+											scopeRoleId={(roleId) => roleId}
+											emptyText="No roles assigned."
+										/>
 									</>
 								}
 							>

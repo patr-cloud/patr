@@ -6,21 +6,32 @@ import { useAuthState, useLastWorkspaceId } from "~/hooks/state-hooks";
 import { managedUrlKeys } from "~/hooks/query-keys";
 import { httpRequest } from "~/utils/http-request";
 
-export const useManagedUrlsQuery = (domainId: Accessor<string>) => {
+export const useManagedUrlsQuery = (
+	domainId: Accessor<string>,
+	page: Accessor<string | undefined>,
+	count: Accessor<string | undefined>
+) => {
 	const [authState] = useAuthState();
 	const [workspaceId] = useLastWorkspaceId();
 
-	return createQuery<ListManagedURLResponse>(() => {
+	return createQuery(() => {
 		const auth = authState();
 		const wsId = workspaceId();
 		const dId = domainId();
+		const p = page();
+		const c = count();
 		return {
-			queryKey: managedUrlKeys.list(wsId ?? "", dId),
+			queryKey: managedUrlKeys.page(wsId ?? "", dId, p, c),
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!dId,
 			meta: { errorMessage: "Failed to fetch managed URLs" },
 			queryFn: async () => {
+				const params = new URLSearchParams();
+				if (p) params.set("page", p);
+				if (c) params.set("count", c);
+				const qs = params.size > 0 ? `&${params.toString()}` : "";
+
 				const response = await httpRequest<ListManagedURLResponse>(
-					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/infrastructure/managed-url?search[domainId]=${dId}`,
+					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/managed-url?search[domainId]=${dId}${qs}`,
 					{ method: "GET" }
 				);
 
@@ -28,7 +39,10 @@ export const useManagedUrlsQuery = (domainId: Accessor<string>) => {
 					throw new Error(response.data.error);
 				}
 
-				return response.data;
+				return {
+					urls: response.data.urls,
+					totalCount: Number(response.headers.get("x-total-count") ?? 0),
+				};
 			},
 		};
 	});

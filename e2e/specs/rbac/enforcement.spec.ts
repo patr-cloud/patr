@@ -92,7 +92,7 @@ test.describe('rbac > permission gating [UI]', () => {
 		}
 	});
 
-	test('hides the Edit access button on member detail from a member without modifyRoles', async ({
+	test('hides the access editor on member detail from a member without modifyRoles', async ({
 		browser,
 		api,
 	}) => {
@@ -110,7 +110,7 @@ test.describe('rbac > permission gating [UI]', () => {
 		const page = await context.newPage();
 		try {
 			await openMembersPage(page);
-			await expect(page.getByRole('button', { name: /^Edit access$/ })).toBeHidden({
+			await expect(page.getByRole('button', { name: /^Add role$/ })).toBeHidden({
 				timeout: 10_000,
 			});
 		} finally {
@@ -152,7 +152,7 @@ test.describe('rbac > permission gating [UI]', () => {
 		}
 	});
 
-	test('shows the Edit access button to a member with modifyRoles', async ({ browser, api }) => {
+	test('shows the access editor to a member with modifyRoles', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		const modifyId = await getPermissionId(
 			api,
@@ -176,10 +176,10 @@ test.describe('rbac > permission gating [UI]', () => {
 		const page = await context.newPage();
 		try {
 			await openMembersPage(page);
-			// Edit access lives on a member's detail view, and only for non-owner
-			// members — so open their own row rather than the owner's.
+			// The access editor lives on a member's detail view, and only for
+			// non-owner members — so open their own row rather than the owner's.
 			await openMemberDetail(page, `${b.firstName} ${b.lastName}`.trim());
-			await expect(page.getByRole('button', { name: /^Edit access$/ }).first()).toBeVisible({
+			await expect(page.getByRole('button', { name: /^Add role$/ }).first()).toBeVisible({
 				timeout: 10_000,
 			});
 		} finally {

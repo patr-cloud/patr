@@ -9,6 +9,10 @@ const ListResources = (props: {
 	resourceType: MaybeAccessor<string>;
 	selectedResources: MaybeAccessor<Set<string>>;
 	toggleResource: (resourceId: string) => void;
+	/** Overrides the default "Select <type>" placeholder. */
+	placeholder?: MaybeAccessor<string>;
+	/** The colour variant of the dropdown. */
+	styleVariant?: "light" | "medium" | "dark";
 }) => {
 	const resourcesQuery = useWorkspaceResourcesQuery(
 		() => get(props.workspaceId),
@@ -34,7 +38,8 @@ const ListResources = (props: {
 			<InputDropdownCheckbox
 				onToggle={props.toggleResource}
 				checked={() => Array.from(get(props.selectedResources))}
-				placeholder={`Select ${getResourceTypeLabel()}`}
+				placeholder={get(props.placeholder) ?? `Select ${getResourceTypeLabel()}`}
+				styleVariant={props.styleVariant}
 				options={() =>
 					allResources().map((resource) => ({
 						label: resource.name,

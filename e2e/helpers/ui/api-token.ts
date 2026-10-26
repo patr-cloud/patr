@@ -116,10 +116,7 @@ export async function readNewTokenFromModal(page: Page): Promise<string> {
 		timeout: 15_000,
 	});
 	// The token text starts with "patr_at_" — locate by that prefix.
-	const token = await page
-		.locator('text=/patr_at_[A-Za-z0-9]{38}/')
-		.first()
-		.innerText();
+	const token = await page.locator('text=/patr_at_[A-Za-z0-9]{38}/').first().innerText();
 	return token.trim();
 }
 
@@ -178,6 +175,7 @@ export async function submitDelete(page: Page): Promise<void> {
 	await submitInModal.click();
 }
 
-export async function clickSavePermissions(page: Page): Promise<void> {
-	await page.getByRole('button', { name: /^Save Permissions$/ }).click();
+// Detail page's single save. Only enabled once the name or permissions change.
+export async function clickSaveChanges(page: Page): Promise<void> {
+	await page.getByRole('button', { name: /^Save Changes$/ }).click();
 }

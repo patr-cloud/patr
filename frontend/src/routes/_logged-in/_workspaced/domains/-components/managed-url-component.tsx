@@ -43,7 +43,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 
 	const { execute: deleteUrl, isLoading: isDeleting } = createAuthenticatedAction(async ({ workspaceId }) => {
 		const response = await httpRequest<void>(
-			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url/${props.managedUrl.id}`,
+			`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/managed-url/${props.managedUrl.id}`,
 			{
 				method: "DELETE",
 			}
@@ -202,7 +202,7 @@ const ManagedUrlComponent = (props: ManagedUrlComponentProps) => {
 			};
 
 			const response = await httpRequest<UpdateManagedURLResponse>(
-				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/infrastructure/managed-url/${props.managedUrl.id}`,
+				`${import.meta.env.VITE_BASE_URL}/api/workspace/${workspaceId}/managed-url/${props.managedUrl.id}`,
 				{
 					method: "POST",
 					body: JSON.stringify(requestBody),

@@ -1,4 +1,5 @@
 import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
+import { getResourceEndpoint } from "~/utils/func";
 
 /**
  * The editor's view of where a grant applies.
@@ -59,3 +60,17 @@ export const bindingsToGrants = (
 				resourceId,
 			}))
 		);
+
+/**
+ * The resource type a set of permissions can be narrowed to, if any.
+ *
+ * Only permissions that all act on one listable resource type can be scoped to
+ * specific resources. Mixed types, or types with no list endpoint (workspace,
+ * role), only apply to the entire workspace.
+ */
+export const scopableResourceType = (resourceTypes: string[]): string | undefined => {
+	const unique = new Set(resourceTypes);
+	if (unique.size !== 1) return undefined;
+	const [only] = unique;
+	return getResourceEndpoint(only) ? only : undefined;
+};

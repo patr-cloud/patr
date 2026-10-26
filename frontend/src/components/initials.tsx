@@ -1,6 +1,6 @@
 import { mergeProps } from "solid-js";
 import { Color } from "~/utils/color";
-import { get, getColorClasses } from "~/utils/func";
+import { get, getColorClasses, variantBgClass } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
 interface InitialsProps {
@@ -18,6 +18,8 @@ interface InitialsProps {
 	color?: Color;
 	/** Background color of the circle. Defaults to `bg-secondary-dark`. */
 	bgColor?: Color;
+	/** A secondary shade for the circle, like the inputs' variants. Ignored when `bgColor` is set. */
+	styleVariant?: "light" | "medium" | "dark";
 }
 
 const sizeClasses = {
@@ -44,7 +46,10 @@ const Initials = (rawProps: InitialsProps) => {
 		return (firstName?.slice(0, 2) ?? "??").toUpperCase();
 	};
 
-	const bgClass = () => (props.bgColor ? getColorClasses(props.bgColor).bg : "bg-secondary-dark");
+	const bgClass = () => {
+		if (props.bgColor) return getColorClasses(props.bgColor).bg;
+		return props.styleVariant ? variantBgClass(props.styleVariant) : "bg-secondary-dark";
+	};
 
 	return (
 		<div
