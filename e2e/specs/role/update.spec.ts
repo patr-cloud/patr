@@ -133,7 +133,7 @@ test.describe('role > update [UI]', () => {
 
 			await page.getByRole('button', { name: /^Leave$/ }).click();
 			// Navigation proceeded to the Users tab (role has no members).
-			await expect(page.getByText(/No users have been assigned this role yet/i)).toBeVisible({
+			await expect(page.getByText(/No users have this role yet/i)).toBeVisible({
 				timeout: 10_000,
 			});
 		} finally {
@@ -153,7 +153,7 @@ test.describe('role > update [UI]', () => {
 		try {
 			await openRoleDetail(page, role.id);
 			await page.getByRole('link', { name: /^Users$/ }).click();
-			await expect(page.getByText(/No users have been assigned this role yet/i)).toBeVisible({
+			await expect(page.getByText(/No users have this role yet/i)).toBeVisible({
 				timeout: 10_000,
 			});
 			await page.getByRole('link', { name: /^Edit Permissions$/ }).click();
@@ -173,7 +173,7 @@ test.describe('role > update [UI]', () => {
 			await page.goto(`/workspace/roles/${role.id}?tab=users`, {
 				waitUntil: 'domcontentloaded',
 			});
-			await expect(page.getByText(/No users have been assigned this role yet/i)).toBeVisible({
+			await expect(page.getByText(/No users have this role yet/i)).toBeVisible({
 				timeout: 10_000,
 			});
 		} finally {
