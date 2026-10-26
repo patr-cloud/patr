@@ -30,7 +30,7 @@ pub async fn list_secrets_for_workspace(
 		database,
 		redis: _,
 		client_ip: _,
-		actor_data: _,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, ListSecretsForWorkspaceRequest>,
 ) -> Result<AppResponse<ListSecretsForWorkspaceRequest>, ErrorType> {
@@ -42,29 +42,31 @@ pub async fn list_secrets_for_workspace(
 		SELECT
 			secret.id,
 			secret.name AS "name: String",
-			resource.created AS "created: OffsetDateTime",
+			resource.created AS "created!: OffsetDateTime",
 			secret.last_updated AS "last_updated: OffsetDateTime",
 			COUNT(*) OVER() AS "total_count!"
 		FROM
 			secret
 		INNER JOIN
-			resource
+			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
 		ON
 			secret.id = resource.id
 		WHERE
 			secret.workspace_id = $1 AND
 			secret.deleted IS NULL AND
-			($2::TEXT IS NULL OR secret.name ILIKE '%' || $2 || '%') AND
-			($3::TIMESTAMPTZ IS NULL OR resource.created >= $3) AND
-			($4::TIMESTAMPTZ IS NULL OR resource.created <= $4) AND
-			($5::TIMESTAMPTZ IS NULL OR secret.last_updated >= $5) AND
-			($6::TIMESTAMPTZ IS NULL OR secret.last_updated <= $6)
+			($4::TEXT IS NULL OR secret.name ILIKE '%' || $4 || '%') AND
+			($5::TIMESTAMPTZ IS NULL OR resource.created >= $5) AND
+			($6::TIMESTAMPTZ IS NULL OR resource.created <= $6) AND
+			($7::TIMESTAMPTZ IS NULL OR secret.last_updated >= $7) AND
+			($8::TIMESTAMPTZ IS NULL OR secret.last_updated <= $8)
 		ORDER BY
 			resource.created DESC
-		LIMIT $7
-		OFFSET $8;
+		LIMIT $9
+		OFFSET $10;
 		"#,
 		workspace_id,
+		actor_data.login_id,
+		Permission::Secret(SecretPermission::View) as _,
 		name_filter,
 		created_filter.as_ref().map(|created| created.start()),
 		created_filter.as_ref().map(|created| created.end()),

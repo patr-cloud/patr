@@ -5,7 +5,7 @@ use models::{
 	utils::ListResourceQuery,
 };
 
-use super::{all, setup_permission_test};
+use super::{all, grants, setup_permission_test};
 use crate::prelude::*;
 
 #[tokio::test]
@@ -239,14 +239,13 @@ async fn secret_delete_permission_grants_delete() {
 	assert!(response.status_code().is_success());
 }
 
+/// A member without `secret::view` gets an empty list, not every secret.
 #[tokio::test]
-async fn secret_list_needs_only_membership() {
+async fn secret_list_hides_secrets_without_view() {
 	let setup = setup().await.expect("failed to setup test server");
-	// A role with an unrelated permission: listing is gated on membership, not
-	// on any secret permission.
 	let (admin, ws_id, user_b) =
 		setup_permission_test(&setup, vec![(Permission::ViewRoles, all())]).await;
-	let secret = setup.create_test_secret(&admin.access_token, ws_id).await;
+	setup.create_test_secret(&admin.access_token, ws_id).await;
 
 	let response = setup
 		.make_web_dashboard_call(
@@ -267,17 +266,66 @@ async fn secret_list_needs_only_membership() {
 				})
 				.build(),
 		)
-		.await
-		.json::<ApiSuccessResponseBody<ListSecretsForWorkspaceResponse>>();
+		.await;
 
-	assert!(
-		response
-			.response
-			.secrets
-			.iter()
-			.any(|listed| listed.id == secret.id),
-		"any workspace member should be able to list secrets"
-	);
+	assert_eq!("0", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListSecretsForWorkspaceResponse>>();
+	assert!(body.response.secrets.is_empty());
+}
+
+/// The total count only covers the secrets the member can view.
+#[tokio::test]
+async fn secret_view_include_list_counts_only_listed_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let secret1 = setup
+		.create_test_secret(&admin.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_secret(&admin.access_token, workspace.id)
+		.await;
+
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Secret(SecretPermission::View))],
+		)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_grants(
+			&admin.access_token,
+			workspace.id,
+			grants(role.id, &[secret1.id]),
+		)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListSecretsForWorkspaceRequest>::builder()
+				.path(ListSecretsForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListSecretsForWorkspaceRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 100,
+					page: 0,
+					additional_query: (),
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListSecretsForWorkspaceResponse>>();
+	assert_eq!(1, body.response.secrets.len());
+	assert_eq!(secret1.id, body.response.secrets[0].id);
 }
 
 #[tokio::test]

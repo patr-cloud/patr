@@ -22,6 +22,7 @@ use models::{
 			managed_url::*,
 			rbac::{role::*, user::*},
 			runner::*,
+			secret::*,
 		},
 	},
 	rbac::{
@@ -31,8 +32,10 @@ use models::{
 		ManagedURLPermission,
 		Permission,
 		RunnerPermission,
+		SecretPermission,
 		WorkspacePermission,
 	},
+	utils::ListResourceQuery,
 };
 
 use super::{mint_token_raw, probe_modify_roles};
@@ -948,6 +951,60 @@ async fn api_token_scoped_view_lists_only_listed_runner() {
 	let body = response.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>();
 	assert_eq!(1, body.response.runners.len());
 	assert_eq!(runner1.id, body.response.runners[0].id);
+}
+
+/// A token scoped to one secret lists and counts only that secret.
+#[tokio::test]
+async fn api_token_scoped_view_lists_only_listed_secret() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let secret1 = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+	setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+
+	let view_perm = setup.get_permission_id(Permission::Secret(SecretPermission::View));
+	let api_token = setup
+		.create_test_api_token(
+			&user.access_token,
+			BTreeMap::from([(
+				workspace.id,
+				WorkspacePermission::Member {
+					permissions: BTreeMap::from([(view_perm, BTreeSet::from([secret1.id]))]),
+				},
+			)]),
+		)
+		.await;
+	let token_bearer = BearerToken::from_str(&api_token.token).unwrap();
+
+	let response = setup
+		.make_api_call(
+			ApiRequest::<ListSecretsForWorkspaceRequest>::builder()
+				.path(ListSecretsForWorkspacePath {
+					workspace_id: workspace.id,
+				})
+				.headers(ListSecretsForWorkspaceRequestHeaders {
+					authorization: token_bearer,
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count: 100,
+					page: 0,
+					additional_query: (),
+				})
+				.build(),
+		)
+		.await;
+
+	assert_eq!("1", response.header("x-total-count"));
+	let body = response.json::<ApiSuccessResponseBody<ListSecretsForWorkspaceResponse>>();
+	assert_eq!(1, body.response.secrets.len());
+	assert_eq!(secret1.id, body.response.secrets[0].id);
 }
 
 /// A token scoped to one domain lists and counts only that domain.
