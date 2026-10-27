@@ -2154,8 +2154,10 @@ async fn create_deployment_cross_workspace_repo_500() {
 	);
 }
 
+/// A runner that doesn't exist is refused the same way as one in another
+/// workspace, so the response doesn't tell the two apart.
 #[tokio::test]
-async fn create_deployment_nonexistent_runner_500() {
+async fn create_deployment_nonexistent_runner_400() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -2171,15 +2173,42 @@ async fn create_deployment_nonexistent_runner_500() {
 		patr_body(repo.id, Uuid::nil(), mt),
 	)
 	.await;
-	assert!(
-		resp.status_code().is_server_error(),
-		"a nonexistent runner should fail the FK → 500, got {}",
-		resp.status_code()
+	assert_eq!(
+		resp.status_code(),
+		StatusCode::BAD_REQUEST,
+		"a nonexistent runner must be refused like one in another workspace"
 	);
 }
 
 #[tokio::test]
-async fn create_deployment_cross_workspace_runner_accepted() {
+async fn update_deployment_nonexistent_runner_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.runner = Uuid::nil();
+	let resp = send_update(&setup, &user.access_token, workspace.id, dep.id, body).await;
+	assert_eq!(
+		resp.status_code(),
+		StatusCode::BAD_REQUEST,
+		"moving a deployment to a nonexistent runner must be refused like one in another workspace"
+	);
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(
+		info.deployment.runner, runner.id,
+		"a refused move must leave the deployment where it was"
+	);
+}
+
+#[tokio::test]
+async fn create_deployment_cross_workspace_runner_400() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -2188,8 +2217,6 @@ async fn create_deployment_cross_workspace_runner_accepted() {
 		.await;
 	let mt = first_machine_type(&setup, workspace.id).await;
 
-	// The runner FK references runner(id) only (NOT workspace-scoped), so a
-	// runner from another workspace is accepted. Pin this isolation gap.
 	let other = setup.create_test_user().await;
 	let other_ws = setup.create_test_workspace(&other.access_token).await;
 	let other_runner = setup
@@ -2203,10 +2230,43 @@ async fn create_deployment_cross_workspace_runner_accepted() {
 		patr_body(repo.id, other_runner.id, mt),
 	)
 	.await;
-	assert!(
-		resp.status_code().is_success(),
-		"a cross-workspace runner is accepted (FK not workspace-scoped), got {}",
-		resp.status_code()
+	assert_eq!(
+		resp.status_code(),
+		StatusCode::BAD_REQUEST,
+		"a runner from another workspace must be refused"
+	);
+}
+
+#[tokio::test]
+async fn update_deployment_cross_workspace_runner_400() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let dep = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	let other = setup.create_test_user().await;
+	let other_ws = setup.create_test_workspace(&other.access_token).await;
+	let other_runner = setup
+		.create_test_runner(&other.access_token, other_ws.id)
+		.await;
+
+	let mut body = full_update(&setup, &user.access_token, workspace.id, dep.id).await;
+	body.runner = other_runner.id;
+	let resp = send_update(&setup, &user.access_token, workspace.id, dep.id, body).await;
+	assert_eq!(
+		resp.status_code(),
+		StatusCode::BAD_REQUEST,
+		"moving a deployment to a runner in another workspace must be refused"
+	);
+	let info = get_info(&setup, &user.access_token, workspace.id, dep.id).await;
+	assert_eq!(
+		info.deployment.runner, runner.id,
+		"a refused move must leave the deployment where it was"
 	);
 }
 

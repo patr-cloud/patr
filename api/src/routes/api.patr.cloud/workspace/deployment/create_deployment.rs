@@ -188,6 +188,11 @@ pub async fn create_deployment(
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(err) if err.is_unique_violation() => ErrorType::ResourceAlreadyExists,
+		sqlx::Error::Database(err)
+			if err.constraint() == Some("deployment_fk_runner_workspace_id") =>
+		{
+			ErrorType::WrongParameters
+		}
 		err => ErrorType::server_error(err),
 	})?;
 

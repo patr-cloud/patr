@@ -211,7 +211,15 @@ pub async fn update_deployment(
 		deployment_id,
 	)
 	.fetch_one(&mut **database)
-	.await?
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::Database(err)
+			if err.constraint() == Some("deployment_fk_runner_workspace_id") =>
+		{
+			ErrorType::WrongParameters
+		}
+		err => ErrorType::server_error(err),
+	})?
 	.runner;
 
 	// END DEFERRED CONSTRAINT

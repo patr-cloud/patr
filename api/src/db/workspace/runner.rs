@@ -40,8 +40,8 @@ pub async fn initialize_runner_indices(
 	query!(
 		r#"
 		ALTER TABLE runner
-		ADD CONSTRAINT runner_pk
-		PRIMARY KEY(id);
+			ADD CONSTRAINT runner_pk PRIMARY KEY(id),
+			ADD CONSTRAINT runner_uq_id_workspace_id UNIQUE(id, workspace_id);
 		"#
 	)
 	.execute(&mut *connection)

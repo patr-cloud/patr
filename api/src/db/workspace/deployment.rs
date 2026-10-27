@@ -276,8 +276,8 @@ pub async fn initialize_deployment_constraints(
 			ADD CONSTRAINT deployment_chk_image_name_is_valid CHECK(
 				image_name ~ '^[a-zA-Z0-9\-_ \./]{4,255}$'
 			),
-			ADD CONSTRAINT deployment_fk_runner 
-				FOREIGN KEY(runner) REFERENCES runner(id),
+			ADD CONSTRAINT deployment_fk_runner_workspace_id
+				FOREIGN KEY(runner, workspace_id) REFERENCES runner(id, workspace_id),
 			ADD CONSTRAINT deployment_chk_min_horizontal_scale_u8 CHECK(
 				min_horizontal_scale >= 0 AND
 				min_horizontal_scale <= 256 AND
