@@ -10,6 +10,8 @@ mod get_user_details;
 mod get_user_info;
 mod list_workspaces;
 mod mfa;
+/// The endpoints to manage the apps acting on a user's behalf
+mod oauth_grants;
 /// The endpoint to preview a workspace invite before accepting
 mod preview_workspace_invite;
 #[cfg(feature = "cloud")]
@@ -34,6 +36,7 @@ pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType
 	Router::new()
 		.merge(api_token::setup_routes(state, host_client_types).await)
 		.merge(mfa::setup_routes(state, host_client_types).await)
+		.merge(oauth_grants::setup_routes(state, host_client_types).await)
 		.merge(
 			#[cfg(feature = "cloud")]
 			{
