@@ -45,6 +45,10 @@ export PATR__SOCIAL_LOGIN__GITHUB__CLIENT_ID   := "e2e-disabled"
 export PATR__SOCIAL_LOGIN__GITHUB__CLIENT_SECRET := "e2e-disabled"
 export PATR__SOCIAL_LOGIN__GITHUB__CALLBACK_URL := "http://localhost:3001/login/github"
 export PATR__SOCIAL_LOGIN__GITHUB__CONNECT_CALLBACK_URL := "http://localhost:3001/profile/github/callback"
+
+# OAuth clients live in e2e/config/api.json, not here: the env source cannot
+# express their lists or preserve a client id verbatim. Everything else stays
+# on env vars, which take precedence over the file.
 # OCI registry Bearer challenge — the docker-login realm + service the registry
 # endpoints advertise in WWW-Authenticate. Match the values the suite's docker
 # flow expects (the realm must be reachable from the docker client).

@@ -157,6 +157,16 @@ impl TestSetup {
 		req.json(&body).await
 	}
 
+	/// Make a raw GET against the api-routed server, for a request the typed
+	/// helpers can't express: a deliberately malformed query, or one whose
+	/// redirect is the result. Redirects are not followed.
+	pub async fn make_raw_api_get(&self, path: &str) -> TestResponse {
+		self.api
+			.get(path)
+			.add_header("X-Real-IP", random_ipv4().to_string())
+			.await
+	}
+
 	/// Make a typed API call against the routes configured for
 	/// `ActorClientType::UserLogin(UserLoginType::ApiToken)` authentication. Use this for any test
 	/// that presents a `patr_at_…` API token in the
@@ -874,6 +884,7 @@ pub async fn setup() -> Result<TestSetup, anyhow::Error> {
 			&state,
 			&[
 				ActorClientType::UserLogin(UserLoginType::ApiToken),
+				ActorClientType::UserLogin(UserLoginType::OAuthLogin),
 				ActorClientType::ServiceAccount,
 				ActorClientType::Runner,
 			],

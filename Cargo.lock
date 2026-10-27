@@ -261,6 +261,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "typed-builder",
+ "url",
  "wiremock",
  "woothee",
  "zeroize",

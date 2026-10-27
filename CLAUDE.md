@@ -59,6 +59,8 @@ The same codebase builds two flavors. The **cloud** build is the public `patr.cl
 
 Copy `config/api.sample.json` → `config/api.json` (and `config/runner.docker.sample.json` → `config/runner.docker.json` for the runner). Any config value is env-overridable with `PATR__SECTION__KEY` (double underscore = nesting).
 
+`oauth.clients` is the exception: it is config-file only. Env overrides flatten one field per variable, which cannot express its lists (the config crate only splits them when `try_parsing` is enabled globally, which would coerce every other value too) and mangles the client id, since each key segment is camel-cased on the way in — `E2E` arrives as `e2E`, and `patr-cli` cannot be written at all.
+
 ## Git
 
 - Branches: `feature/<name>`, `fix/<name>`, `refactor/<name>`.

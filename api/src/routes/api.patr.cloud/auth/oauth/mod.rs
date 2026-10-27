@@ -1,54 +1,38 @@
+use std::collections::BTreeMap;
+
 use axum::Router;
 
 use crate::prelude::*;
 
-/// The endpoint to authorize a user.
-///
-/// This is the first step. The third-party app opens a browser and sends the
-/// user to this endpoint on our API. Here, the user logs in (using the
-/// frontend) and gives the third-party app permission to access their data in
-/// the API. This endpoint is used to authorize a user using OAuth2.1. It
-/// returns a temporary code that can be exchanged for an access token and a
-/// refresh token.
+/// The authorization endpoint.
 mod authorize;
-/// The endpoint to get details about the access token and refresh token.
-///
-/// The third-party app can call this endpoint to get information about the
-/// access token and refresh token. This is useful for debugging and monitoring
-/// the tokens. It’s like asking, "Is this key still good?" This endpoint is
-/// used to get details about the access token and refresh token. It returns
-/// information about the token, such as the user ID, the scopes, and the expiry
-/// time.
-mod introspect;
-/// The endpoint to revoke an access token.
-///
-/// If the user or the third-party app wants to stop the app’s access (like
-/// logging out or revoking permission), the app can call this endpoint to tell
-/// the API to deactivate the access token and refresh token. This endpoint is
-/// used to revoke an access token. This is useful when a user wants to log out
-/// of a third-party app. The access token is invalidated and the user will have
-/// to log in again to get a new access token.
-mod revoke;
-/// The endpoint to exchange a temporary code for an access token and a refresh
-/// token.
-///
-/// After the user approves the third-party app, the API  server gives the app a
-/// temporary code. The app sends this code to the /token endpoint to exchange
-/// it for an access token and a refresh token. The access token is what the
-/// third-party app will use to access the user’s data on the API. This endpoint
-/// is used to exchange a temporary code for an access token and a
-/// refresh token. The temporary code is obtained by authorizing a user using
-/// the [`authorize()`] endpoint.
-mod token;
+/// The OAuth errors that go back to a client.
+mod error;
+/// Reads the pending authorization request behind a consent screen.
+mod get_consent_request;
+/// Records the user's decision and hands back where to send them.
+mod submit_consent;
 
-use self::{authorize::*, introspect::*, revoke::*, token::*};
+use self::{authorize::*, get_consent_request::*, submit_consent::*};
 
-/// Sets up the oauth routes
+/// Appends query parameters to a URI, keeping any query it already has (RFC
+/// 6749 section 3.1.2).
+pub fn append_query_params(uri: &str, params: &[(&str, String)]) -> String {
+	let encoded = serde_qs::to_string(&params.iter().cloned().collect::<BTreeMap<_, _>>())
+		.unwrap_or_default();
+	if encoded.is_empty() {
+		return uri.to_owned();
+	}
+
+	let separator = if uri.contains('?') { '&' } else { '?' };
+	format!("{uri}{separator}{encoded}")
+}
+
+/// Sets up the OAuth routes.
 #[instrument(skip(state))]
 pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType]) -> Router {
 	Router::new()
 		.mount_endpoint(authorize, state, host_client_types)
-		.mount_endpoint(introspect, state, host_client_types)
-		.mount_endpoint(revoke, state, host_client_types)
-		.mount_endpoint(token, state, host_client_types)
+		.mount_auth_endpoint(get_consent_request, state, host_client_types)
+		.mount_auth_endpoint(submit_consent, state, host_client_types)
 }
