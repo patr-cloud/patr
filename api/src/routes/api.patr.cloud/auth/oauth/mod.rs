@@ -12,6 +12,8 @@ use crate::prelude::*;
 
 /// The authorization endpoint.
 mod authorize;
+/// The provider metadata and the JWKS.
+mod discovery;
 /// The OAuth errors that go back to a client.
 mod error;
 /// Reads the pending authorization request behind a consent screen.
@@ -76,6 +78,12 @@ pub async fn setup_routes(state: &AppState, host_client_types: &[ActorClientType
 	let protocol_routes =
 		if host_client_types.contains(&ActorClientType::UserLogin(UserLoginType::OAuthLogin)) {
 			Router::new()
+				// Relative to the API root, so both hang off the issuer.
+				.route(
+					"/.well-known/openid-configuration",
+					get(discovery::openid_configuration),
+				)
+				.route("/.well-known/jwks.json", get(discovery::jwks))
 				.route("/auth/oauth/token", post(token::token))
 				// OIDC Core section 5.3 requires both methods.
 				.route(
