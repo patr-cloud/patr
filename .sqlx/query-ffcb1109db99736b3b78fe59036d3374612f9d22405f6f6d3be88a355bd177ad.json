@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT oauth_refresh_token.id, oauth_refresh_token.login_id, oauth_refresh_token.expiry, oauth_refresh_token.consumed, oauth_login.client_id, oauth_login.user_id, oauth_login.scope, oauth_login.revoked FROM oauth_refresh_token INNER JOIN oauth_login ON oauth_refresh_token.login_id = oauth_login.login_id WHERE oauth_refresh_token.token_hash = $1 FOR UPDATE OF oauth_refresh_token;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "oauth_refresh_token",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "login_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "oauth_refresh_token",
+            "name": "login_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "expiry",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "oauth_refresh_token",
+            "name": "expiry"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "consumed",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "oauth_refresh_token",
+            "name": "consumed"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "client_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "oauth_login",
+            "name": "client_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "oauth_login",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "scope",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "oauth_login",
+            "name": "scope"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "revoked",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "oauth_login",
+            "name": "revoked"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "ffcb1109db99736b3b78fe59036d3374612f9d22405f6f6d3be88a355bd177ad"
+}
