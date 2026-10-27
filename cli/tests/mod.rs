@@ -13,5 +13,7 @@ pub mod setup;
 pub mod apply;
 /// Tests for `patr login`.
 pub mod login;
+/// Tests for the OAuth session `patr login` leaves behind.
+pub mod oauth;
 /// Tests for `patr runner`.
 pub mod runner;

@@ -1288,6 +1288,7 @@ checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 name = "cli"
 version = "0.18.0"
 dependencies = [
+ "base64 0.23.1",
  "clap",
  "comfy-table",
  "common",
@@ -1306,6 +1307,7 @@ dependencies = [
  "models",
  "open",
  "preprocess",
+ "rand 0.10.3",
  "reqwest 0.13.5",
  "self-replace",
  "semver",

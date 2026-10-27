@@ -1,7 +1,10 @@
+use std::str::FromStr;
+
 use clap::{Args, Parser, Subcommand};
+use time::OffsetDateTime;
 
 use self::workspaced::WorkspacedCommand;
-use crate::prelude::*;
+use crate::{prelude::*, utils::oauth};
 
 /// The command to apply a configuration to a workspace.
 mod apply;
@@ -93,6 +96,8 @@ pub async fn execute(
 	global_args: GlobalArgs,
 	state: AppState,
 ) -> Result<CommandOutput, AppError> {
+	let state = renew_session(&command, &global_args, state).await?;
+
 	match command {
 		GlobalCommand::Login => login::execute(global_args, state).await,
 		GlobalCommand::Logout => logout::execute(global_args, state).await,
@@ -104,6 +109,57 @@ pub async fn execute(
 			workspaced::execute(commands, global_args, state).await
 		}
 	}
+}
+
+/// Renews an OAuth access token about to expire, once, before the command
+/// runs. A CLI run lasts seconds, so that's enough for all of it. A rejected
+/// refresh clears the session, so only commands that need a login fail, and
+/// any other failure leaves it as it is.
+async fn renew_session(
+	command: &GlobalCommand,
+	global_args: &GlobalArgs,
+	mut state: AppState,
+) -> Result<AppState, AppError> {
+	if global_args.token.is_some() ||
+		matches!(
+			command,
+			GlobalCommand::Login |
+				GlobalCommand::Logout |
+				GlobalCommand::Upgrade(_) |
+				GlobalCommand::Uninstall(_)
+		) {
+		return Ok(state);
+	}
+
+	let AuthState::LoggedIn {
+		current_workspace,
+		session: Some(session),
+		..
+	} = &state.auth
+	else {
+		return Ok(state);
+	};
+
+	// A minute's margin covers clock skew and a slow command.
+	if session.token_expiry - OffsetDateTime::now_utc().unix_timestamp() >= 60 {
+		return Ok(state);
+	}
+
+	state.auth = match oauth::refresh(&session.refresh_token).await {
+		Ok(oauth::RefreshOutcome::Refreshed(tokens)) => AuthState::LoggedIn {
+			token: BearerToken::from_str(&tokens.access_token)?,
+			current_workspace: *current_workspace,
+			session: Some(tokens.session),
+		},
+		Ok(oauth::RefreshOutcome::Rejected) => AuthState::LoggedOut {},
+		Err(err) => {
+			eprintln!("Couldn't renew your login: {err}");
+			return Ok(state);
+		}
+	};
+	state.clone().save()?;
+
+	Ok(state)
 }
 
 /// Builds the version string shown by `patr --version`.

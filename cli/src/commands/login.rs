@@ -1,33 +1,23 @@
 use std::str::FromStr;
 
-use inquire::Password;
 use models::{ApiSuccessResponseBody, api::user::*, prelude::*};
 
-use crate::prelude::*;
+use crate::{prelude::*, utils::oauth};
 
 /// A command that logs the user into their Patr account.
 pub(super) async fn execute(
 	global_args: GlobalArgs,
 	mut state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	// Prompt for the token
-	let token = global_args.token.unwrap_or_else(|| {
-		let token_url = format!("{}/profile/api-tokens/new", constants::FRONTEND_BASE_URL);
-
-		eprintln!("Opening your browser to create a new API token...");
-		match open::that(&token_url) {
-			Ok(()) => eprintln!("Opened '{}' successfully.", token_url),
-			Err(_err) => {
-				eprintln!("If the browser did not open, please visit '{}'", token_url)
-			}
+	// `--token` takes an API token, for CI, which has nothing to refresh.
+	// Otherwise the browser logs the user in.
+	let (token, session) = match global_args.token {
+		Some(token) => (token, None),
+		None => {
+			let tokens = oauth::login().await?;
+			(tokens.access_token, Some(tokens.session))
 		}
-
-		Password::new("Paste your API token here:")
-			.with_help_message("Create an API token in your browser and paste it here")
-			.without_confirmation()
-			.prompt()
-			.expect_tty("Failed to read API token")
-	});
+	};
 
 	if token.starts_with("patr_rn_") {
 		return Err(AppError::ParseError(
@@ -80,6 +70,7 @@ pub(super) async fn execute(
 	state.auth = AuthState::LoggedIn {
 		token: BearerToken::from_str(&token)?,
 		current_workspace,
+		session,
 	};
 	state.save()?;
 

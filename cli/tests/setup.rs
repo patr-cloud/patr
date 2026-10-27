@@ -49,13 +49,14 @@ pub async fn reset() -> &'static MockServer {
 	server
 }
 
-/// A logged-in state pointing at `workspace_id`.
+/// A logged-in state pointing at `workspace_id`, holding an API token.
 pub fn state(workspace_id: Uuid) -> AppState {
 	AppState {
 		target_channel: Channel::Alpha,
 		auth: AuthState::LoggedIn {
 			token: "patrv1.test-token".parse::<BearerToken>().unwrap(),
 			current_workspace: Some(workspace_id),
+			session: None,
 		},
 	}
 }

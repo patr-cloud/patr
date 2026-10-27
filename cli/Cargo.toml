@@ -25,6 +25,7 @@ package-managed = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+base64              = { workspace = true, features = ["default"] }
 clap                = { workspace = true, features = ["cargo", "default", "derive", "env", "string"] }
 comfy-table         = { workspace = true, features = ["default"] }
 common              = { workspace = true, features = [] }
@@ -43,7 +44,8 @@ macros              = { workspace = true, features = [] }
 models              = { workspace = true, features = [] }
 open                = { workspace = true, features = [] }
 preprocess          = { workspace = true, features = [] }
-reqwest             = { workspace = true, features = ["default", "json"] }
+rand                = { workspace = true, features = ["default"] }
+reqwest             = { workspace = true, features = ["default", "form", "json"] }
 self-replace        = { workspace = true, features = [] }
 semver              = { workspace = true, features = [] }
 serde               = { workspace = true, features = ["default", "derive"] }
