@@ -22,7 +22,7 @@ macros::declare_api_endpoint!(
 			permission: Permission::ServiceAccount(ServiceAccountPermission::Delete),
 		}
 	},
-	client_type = [WebLogin, ApiToken],
+	client_type = [WebLogin, ApiToken, OAuthLogin],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceDeleted,
 		resource_type: ResourceType::ServiceAccount,

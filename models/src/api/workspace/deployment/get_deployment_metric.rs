@@ -38,6 +38,6 @@ macros::declare_api_endpoint!(
 		/// The metric data points
 		pub data_points: Vec<MetricDataPoint>
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

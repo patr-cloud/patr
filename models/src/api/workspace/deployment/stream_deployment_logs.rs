@@ -37,6 +37,6 @@ macros::declare_stream_endpoint!(
 		},
 	},
 	client_msg = {},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

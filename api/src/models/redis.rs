@@ -52,6 +52,18 @@ pub enum ActorAuthDataCacheKind {
 		/// When the user was created.
 		created: OffsetDateTime,
 	},
+	/// A grant to an OAuth client, acting for a user.
+	#[serde(rename_all = "camelCase")]
+	OAuthLogin {
+		/// The user's email.
+		email: String,
+		/// The user's first name.
+		first_name: String,
+		/// The user's last name.
+		last_name: String,
+		/// When the user was created.
+		created: OffsetDateTime,
+	},
 	/// A user's API token.
 	#[serde(rename_all = "camelCase")]
 	ApiToken {

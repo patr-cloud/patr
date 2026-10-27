@@ -56,6 +56,28 @@ pub(super) async fn load_actor_auth_data(
 	// is renewed, and would also keep an old, expired JWT alive as long as
 	// the session itself was still fresh. Both are wrong.
 
+	let permissions = load_user_permissions(&mut *database, &user.id).await?;
+
+	Ok(ActorAuthDataCache {
+		login_id: *login_id,
+		actor_id: user.id,
+		kind: ActorAuthDataCacheKind::WebLogin {
+			email: user.email,
+			first_name: user.first_name,
+			last_name: user.last_name,
+			created: user.created,
+		},
+		permissions,
+		created_at,
+	})
+}
+
+/// The permissions a user holds on every workspace they belong to, with no
+/// ceiling: what a web session or an OAuth grant acts with.
+pub(super) async fn load_user_permissions(
+	database: &mut DatabaseConnection,
+	user_id: &Uuid,
+) -> Result<BTreeMap<Uuid, WorkspacePermission>, ErrorType> {
 	let mut permissions = BTreeMap::<Uuid, WorkspacePermission>::new();
 
 	query!(
@@ -67,7 +89,7 @@ pub(super) async fn load_actor_auth_data(
 		WHERE
 			super_admin_id = $1;
 		"#,
-		user.id,
+		user_id,
 	)
 	.fetch_all(&mut *database)
 	.await?
@@ -88,7 +110,7 @@ pub(super) async fn load_actor_auth_data(
 		WHERE
 			user_id = $1;
 		"#,
-		user.id,
+		user_id,
 	)
 	.fetch_all(&mut *database)
 	.await?
@@ -124,7 +146,7 @@ pub(super) async fn load_actor_auth_data(
 		WHERE
 			workspace_user.user_id = $1;
 		"#,
-		user.id,
+		user_id,
 	)
 	.fetch_all(&mut *database)
 	.await?
@@ -150,16 +172,5 @@ pub(super) async fn load_actor_auth_data(
 			.insert(row.scope_id);
 	});
 
-	Ok(ActorAuthDataCache {
-		login_id: *login_id,
-		actor_id: user.id,
-		kind: ActorAuthDataCacheKind::WebLogin {
-			email: user.email,
-			first_name: user.first_name,
-			last_name: user.last_name,
-			created: user.created,
-		},
-		permissions,
-		created_at,
-	})
+	Ok(permissions)
 }

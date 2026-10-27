@@ -17,6 +17,6 @@ macros::declare_api_endpoint!(
 		/// The list of workspaces that the user is a part of.
 		pub workspaces: Vec<WithId<Workspace>>,
 	},
-	client_type = [WebLogin, ApiToken],
+	client_type = [WebLogin, ApiToken, OAuthLogin],
 	audit_log = NoAuditLogger,
 );

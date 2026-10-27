@@ -1,5 +1,7 @@
 /// The claims carried by the tokens this provider issues.
 pub mod claims;
+/// The identity claims a grant's scopes let a client see.
+pub mod identity;
 /// The keys that sign those tokens.
 pub mod keys;
 /// The payloads the authorization code flow parks in Redis.

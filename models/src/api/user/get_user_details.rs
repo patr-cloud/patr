@@ -23,6 +23,6 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub basic_user_info: WithId<BasicUserInfo>,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );
