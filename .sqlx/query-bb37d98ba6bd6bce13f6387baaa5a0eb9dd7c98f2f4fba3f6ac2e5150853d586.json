@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE oauth_refresh_token ADD CONSTRAINT oauth_refresh_token_fk_login_id FOREIGN KEY(login_id) REFERENCES oauth_login(login_id), ADD CONSTRAINT oauth_refresh_token_chk_created_before_expiry CHECK(created < expiry);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "bb37d98ba6bd6bce13f6387baaa5a0eb9dd7c98f2f4fba3f6ac2e5150853d586"
+}

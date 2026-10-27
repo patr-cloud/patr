@@ -10,13 +10,15 @@ use crate::UserLoginType;
 ///
 /// Mirrors the database's two levels: `ACTOR_CLIENT_TYPE` separates a user
 /// login from a service account and a runner ([`ActorClientTypeDiscriminant`]
-/// decodes it), and `USER_LOGIN_TYPE` beneath it separates a web session from
-/// an API token ([`UserLoginType`]).
+/// decodes it), and `USER_LOGIN_TYPE` beneath it separates a web session, an
+/// API token and an OAuth grant ([`UserLoginType`]).
 ///
 /// - [`UserLogin`][Self::UserLogin]`(`[`WebLogin`][UserLoginType::WebLogin]`)`: the web dashboard,
 ///   authenticated via JWT.
 /// - [`UserLogin`][Self::UserLogin]`(`[`ApiToken`][UserLoginType::ApiToken]`)`: third-party
 ///   applications, authenticated via user API tokens (`patr_at_…`).
+/// - [`UserLogin`][Self::UserLogin]`(`[`OAuthLogin`][UserLoginType::OAuthLogin]`)`: an OAuth client
+///   acting for a user, authenticated via the ES256 access token it was issued.
 /// - [`ServiceAccount`][Self::ServiceAccount]: non-human identities for automation, authenticated
 ///   via service account tokens (`patr_sa_…`).
 /// - [`Runner`][Self::Runner]: a runner, authenticated via its runner token (`patr_rn_…`).
@@ -32,7 +34,7 @@ use crate::UserLoginType;
 	doc = "The database's `ACTOR_CLIENT_TYPE`: a user login, a service account or a runner"
 )]
 pub enum ActorClientType {
-	/// One of a user's logins: a web session or an API token
+	/// One of a user's logins: a web session, an API token or an OAuth grant
 	UserLogin(UserLoginType),
 	/// A service account's token
 	ServiceAccount,
@@ -45,6 +47,7 @@ impl Display for ActorClientType {
 		match self {
 			Self::UserLogin(UserLoginType::WebLogin) => write!(f, "WebLogin"),
 			Self::UserLogin(UserLoginType::ApiToken) => write!(f, "ApiToken"),
+			Self::UserLogin(UserLoginType::OAuthLogin) => write!(f, "OAuthLogin"),
 			Self::ServiceAccount => write!(f, "ServiceAccount"),
 			Self::Runner => write!(f, "Runner"),
 		}

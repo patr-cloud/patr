@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE oauth_refresh_token ADD CONSTRAINT oauth_refresh_token_pk PRIMARY KEY(id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "564b2638e35a7701a8279e172bceefacae99d84d8e7c821b8bc663d935d8b7b8"
+}

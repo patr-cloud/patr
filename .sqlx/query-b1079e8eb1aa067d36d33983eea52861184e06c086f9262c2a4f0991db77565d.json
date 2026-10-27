@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE TABLE oauth_refresh_token(id UUID NOT NULL, login_id UUID NOT NULL, token_hash TEXT NOT NULL, created TIMESTAMPTZ NOT NULL, expiry TIMESTAMPTZ NOT NULL, consumed TIMESTAMPTZ);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b1079e8eb1aa067d36d33983eea52861184e06c086f9262c2a4f0991db77565d"
+}
