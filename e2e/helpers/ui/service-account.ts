@@ -68,7 +68,11 @@ export function descriptionInput(page: Page) {
  * the trigger.
  */
 export async function selectBindingRole(page: Page, roleName: string): Promise<void> {
-	await page.getByPlaceholder('Select a role').first().click();
+	const trigger = page.getByPlaceholder('Select a role').first();
+	await trigger.click();
+	// The role picker loads a page at a time, so the option may not be loaded
+	// yet. Typing searches the server for it.
+	await trigger.fill(roleName);
 	const escaped = roleName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	const option = page
 		.locator('div.cursor-pointer')

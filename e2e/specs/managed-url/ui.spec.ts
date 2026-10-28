@@ -66,6 +66,40 @@ test.describe('managed-url > detail [UI]', () => {
 		}
 	});
 
+	test('a deployment URL links to its deployment, with no trailing slash', async ({
+		browser,
+		api,
+	}) => {
+		const { user, domain, dep } = await setup(api);
+		const sub = randomSubdomain();
+		// The API stores the root path as "/".
+		await createManagedUrlAPI(
+			api,
+			user,
+			user.workspaceId,
+			proxyDeploymentBody({
+				domainId: domain.id,
+				deploymentId: dep.id,
+				port: 80,
+				subDomain: sub,
+			}),
+		);
+		const context = await newContext(browser, user.clientIp);
+		await loginAs(context, user, { workspaceId: user.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openDomainDetail(page, domain.id);
+			await expect(
+				page.getByRole('link', { name: `${sub}.${domain.domain}`, exact: true }),
+			).toBeVisible({ timeout: 15_000 });
+			await expect(
+				page.getByRole('link', { name: `${dep.name}:80`, exact: true }),
+			).toHaveAttribute('href', `/deployments/${dep.id}`);
+		} finally {
+			await context.close();
+		}
+	});
+
 	test('delete a managed URL via the domain detail row (two-step)', async ({ browser, api }) => {
 		const { user, domain, dep } = await setup(api);
 		const sub = randomSubdomain();

@@ -72,8 +72,9 @@ default: install up test down
 install:
     pnpm install
     pnpm exec playwright install --with-deps chromium
-    pnpm --dir ../frontend install
-    pnpm --dir ../frontend build
+    # Run from frontend/ so corepack picks its pinned pnpm, not e2e's default.
+    cd ../frontend && pnpm install
+    cd ../frontend && pnpm build
 
 up:
     docker compose -f docker-compose.yml up -d --wait
