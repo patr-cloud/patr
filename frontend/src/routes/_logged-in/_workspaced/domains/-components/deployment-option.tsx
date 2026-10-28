@@ -17,33 +17,39 @@ const DeploymentOption = (props: DeploymentOptionProps) => {
 
 	const deploymentInfoQuery = useDeploymentInfoQuery(() => props.deployment || "");
 
+	// Guarded on status rather than reading `data` straight: picking a deployment
+	// re-keys the info query, and a pending read would suspend the whole route,
+	// blanking the page and scrolling it to the top.
+	const deployments = () => (deploymentsQuery.isSuccess ? deploymentsQuery.data.deployments : []);
+	const deploymentInfo = () => (deploymentInfoQuery.isSuccess ? deploymentInfoQuery.data : undefined);
+
 	return (
 		<div class="flex items-center gap-2 flex-4">
 			<InputDropdown
-				class={deploymentInfoQuery.data ? `flex-2` : `flex-4`}
+				class={deploymentInfo() ? `flex-2` : `flex-4`}
 				onSelect={(value) => {
 					props.onSelectDeployment(value);
 				}}
 				styleVariant="medium"
+				placeholder="Select deployment"
 				value={props.deployment || undefined}
-				options={
-					deploymentsQuery.data?.deployments.map((deployment) => ({
-						value: deployment.id,
-						label: deployment.name,
-					})) || []
-				}
+				options={deployments().map((deployment) => ({
+					value: deployment.id,
+					label: deployment.name,
+				}))}
 			/>
 
-			<Show when={deploymentInfoQuery.data}>
+			<Show when={deploymentInfo()}>
 				<InputDropdown
 					class="flex-2"
 					styleVariant="medium"
+					placeholder="Port"
 					onSelect={(value) => {
 						props.onPortChange(Number(value));
 					}}
 					value={String(props.port) || undefined}
 					options={
-						Object.keys(deploymentInfoQuery.data?.ports || {}).map((port) => ({
+						Object.keys(deploymentInfo()?.ports || {}).map((port) => ({
 							value: String(port),
 							label: `${port}`,
 						})) || []

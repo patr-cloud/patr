@@ -15,6 +15,10 @@ interface BindingRowProps {
 	/** Subjects this row may switch to: every subject not already used by another row. */
 	subjectOptions: InputDropdownOption[];
 	subjectPlaceholder: string;
+	/** Paging and server search for `subjectOptions`; see [BindingRows]. */
+	onLoadMoreSubjects?: () => void;
+	isLoadingMoreSubjects?: () => boolean;
+	onSearchSubjects?: (text: string) => void;
 	scopeRoleId: (subjectId: string) => string;
 	/** Resolves a scoped resource id to a display name. */
 	resourceName: (resourceId: string) => string;
@@ -116,6 +120,9 @@ const RowEditor = (props: BindingRowProps) => {
 				options={props.subjectOptions}
 				value={subjectId}
 				onSelect={selectSubject}
+				onLoadMore={props.onLoadMoreSubjects}
+				isLoadingMore={props.isLoadingMoreSubjects}
+				onSearch={props.onSearchSubjects}
 			/>
 			<div class="sm:col-span-2 min-w-0">
 				<ScopePicker

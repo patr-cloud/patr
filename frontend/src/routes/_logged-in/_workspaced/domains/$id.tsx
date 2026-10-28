@@ -31,7 +31,7 @@ import {
 	recoverFromOutOfBounds,
 } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useApiEnvironmentQuery, useDomainInfoQuery, useManagedUrlsQuery } from "~/hooks/fetch";
+import { useApiEnvironmentQuery, useDomainInfoQuery, useManagedUrlsQuery, useResourcesInfoQuery } from "~/hooks/fetch";
 import { domainKeys, managedUrlKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { DEPLOYMENT_DOMAIN, IS_CLOUD } from "~/utils/env";
@@ -80,6 +80,20 @@ const DomainInfo = () => {
 		() => search().page?.toString(),
 		() => search().count?.toString()
 	);
+
+	// Resolve the page's deployment targets to names, in one lookup.
+	const deploymentsInfoQuery = useResourcesInfoQuery(() => [
+		...new Set(
+			(managedUrlsQuery.data?.urls ?? []).flatMap((url) =>
+				url.type === "proxyDeployment" ? [url.deploymentId] : []
+			)
+		),
+	]);
+	const deploymentName = (deploymentId: string) => {
+		// Checked through status first so a cold lookup doesn't suspend the table.
+		if (!deploymentsInfoQuery.isSuccess || deploymentsInfoQuery.isPlaceholderData) return "…";
+		return deploymentsInfoQuery.data?.get(deploymentId)?.name ?? undefined;
+	};
 
 	createEffect(() => {
 		const totalCount = managedUrlsQuery.data?.totalCount;
@@ -430,6 +444,7 @@ const DomainInfo = () => {
 												domainInfo={domainInfoQuery.data}
 												managedUrl={item}
 												onUpdate={refetchManagedUrls}
+												deploymentName={deploymentName}
 											/>
 										)
 									}

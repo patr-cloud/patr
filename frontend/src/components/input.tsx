@@ -1,6 +1,6 @@
 import { FiChevronDown, FiEye, FiEyeOff } from "solid-icons/fi";
 import { debounce } from "@solid-primitives/scheduled";
-import { createSignal, For, mergeProps, Show, JSX } from "solid-js";
+import { createSignal, For, mergeProps, onMount, Show, JSX } from "solid-js";
 import { Portal } from "solid-js/web";
 import { useClickOutside } from "~/hooks";
 import { createDropdownPosition } from "~/hooks/dropdown-position";
@@ -216,6 +216,8 @@ interface InputProps {
 	 * the dropdown opens or closes) is reported straight away.
 	 */
 	onSearch?: (text: string) => void;
+	/** Focuses the input once it mounts, e.g. the first field of a modal. */
+	autofocus?: boolean;
 }
 
 /** How long typing has to pause before the text is reported to `onSearch`. */
@@ -446,6 +448,10 @@ const Input = (rawProps: InputProps) => {
 				})}
 				type={props.type}
 				maxLength={props.maxLength}
+				// The HTML attribute doesn't fire for elements mounted later, like a modal's.
+				ref={(el) => {
+					if (props.autofocus) onMount(() => el.focus());
+				}}
 			/>
 			<Show
 				when={hasSuggestions()}
