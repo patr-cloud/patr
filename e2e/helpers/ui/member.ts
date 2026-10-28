@@ -44,6 +44,9 @@ export async function submitInvite(page: Page): Promise<void> {
  */
 async function pickFromDropdown(page: Page, trigger: ReturnType<Page['locator']>, label: string) {
 	await trigger.click();
+	// The role picker loads a page at a time, so the option may not be loaded
+	// yet. Typing searches the server for it.
+	await trigger.fill(label);
 	const option = page
 		.locator('div.cursor-pointer')
 		.filter({ hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) })

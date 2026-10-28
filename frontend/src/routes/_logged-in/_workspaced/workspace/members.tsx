@@ -32,7 +32,7 @@ import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
 import { httpRequest } from "~/utils/http-request";
 import { bindingsToGrants, grantsToBindings } from "~/utils/scope";
 import WorkspaceHeader from "./-components/workspace-header";
-import { useWorkspaceInfoQuery, useAllRolesQuery, useMembersQuery, useInvitesQuery } from "~/hooks/fetch";
+import { useWorkspaceInfoQuery, useRolePicker, useMembersQuery, useInvitesQuery } from "~/hooks/fetch";
 import type { WorkspaceMember } from "~/hooks/fetch/members";
 import { useQueryClient } from "@tanstack/solid-query";
 import { memberKeys, inviteKeys } from "~/hooks/query-keys";
@@ -69,24 +69,12 @@ const ManageWorkspace = () => {
 	const queryClient = useQueryClient();
 
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
-	// The role picker in each binding row is a single-page list, so it needs
-	// every role in one shot — passing the largest allowed page size avoids a
-	// second round trip for workspaces with the typical 30-50 roles. If your
-	// workspace exceeds 100 roles, swap this for a paginated dropdown.
-	const rolesQuery = useAllRolesQuery(
-		() => undefined,
-		() => "100"
-	);
 	const membersQuery = useMembersQuery(
 		() => search().page?.toString(),
 		() => search().count?.toString()
 	);
 	const invitesQuery = useInvitesQuery();
 	const canModifyMembers = useIsAllowed("modifyRoles", "edit");
-
-	const roleOptions = createMemo(() =>
-		(rolesQuery.data?.roles ?? []).map((role) => ({ label: role.name, value: role.id }))
-	);
 
 	// An expired invite is still listed for a while so it can be resent, but its
 	// link no longer works — say so rather than showing it as merely pending.
@@ -203,6 +191,7 @@ const ManageWorkspace = () => {
 		const row = selected();
 		return row ? grantsToBindings(row.grants, workspaceId() ?? "") : [];
 	});
+	const rolePicker = useRolePicker(() => access.draft().map((binding) => binding.subjectId));
 
 	const selectRow = (key: string) => {
 		if (key === selectedKey()) return;
@@ -492,7 +481,11 @@ const ManageWorkspace = () => {
 													workspaceId={workspaceId()!}
 													bindings={access.draft()}
 													onChange={access.setDraft}
-													subjectOptions={roleOptions()}
+													subjectOptions={rolePicker.options()}
+													subjectLabel={rolePicker.label}
+													onLoadMoreSubjects={rolePicker.onLoadMore}
+													isLoadingMoreSubjects={rolePicker.isLoadingMore}
+													onSearchSubjects={rolePicker.onSearch}
 													subjectPlaceholder="Select a role"
 													scopeRoleId={(roleId) => roleId}
 													addLabel="Add role"

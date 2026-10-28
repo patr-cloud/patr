@@ -68,6 +68,13 @@ interface BindingRowsProps {
 	 */
 	subjectOptions: InputDropdownOption[];
 	subjectPlaceholder: string;
+	/** Names a subject, for subjects `subjectOptions` may not hold yet (paged lists). */
+	subjectLabel?: (subjectId: string) => string;
+	/** For paged `subjectOptions`: loads the next page, near the dropdown's bottom. */
+	onLoadMoreSubjects?: () => void;
+	isLoadingMoreSubjects?: () => boolean;
+	/** For paged `subjectOptions`: searches on the server with the typed text. */
+	onSearchSubjects?: (text: string) => void;
 	/**
 	 * The role whose permissions bound a binding's resource types, given its
 	 * subject. Identity on the member screens (the subject *is* the role); the
@@ -97,12 +104,17 @@ const BindingRows = (props: BindingRowsProps) => {
 	const [newScope, setNewScope] = createSignal<Scope>({ scopeType: "workspace" });
 
 	const subjectLabels = createMemo(() => new Map(props.subjectOptions.map((o) => [o.value, o.label])));
-	const subjectLabel = (subjectId: string) => subjectLabels().get(subjectId) ?? subjectId;
+	const subjectLabel = (subjectId: string) =>
+		props.subjectLabel?.(subjectId) ?? subjectLabels().get(subjectId) ?? subjectId;
 
 	/** The subjects not bound by any row other than `exceptIndex`. */
 	const freeSubjects = (exceptIndex?: number) => {
 		const taken = new Set(props.bindings.filter((_, i) => i !== exceptIndex).map((binding) => binding.subjectId));
-		return props.subjectOptions.filter((option) => !taken.has(option.value));
+		const free = props.subjectOptions.filter((option) => !taken.has(option.value));
+		// A paged list may not hold the row's own subject yet; its editor still has to show it.
+		const own = exceptIndex === undefined ? undefined : props.bindings[exceptIndex]?.subjectId;
+		if (own === undefined || free.some((option) => option.value === own)) return free;
+		return [{ label: subjectLabel(own), value: own }, ...free];
 	};
 
 	// Resolve scoped resource ids to names for the table, in one lookup.
@@ -163,6 +175,9 @@ const BindingRows = (props: BindingRowsProps) => {
 							options={freeSubjects()}
 							value={() => newSubjectId()}
 							onSelect={selectNewSubject}
+							onLoadMore={props.onLoadMoreSubjects}
+							isLoadingMore={props.isLoadingMoreSubjects}
+							onSearch={props.onSearchSubjects}
 						/>
 						<div class="sm:col-span-2 min-w-0">
 							{/* Scope needs a subject first: without one there are no
@@ -202,6 +217,9 @@ const BindingRows = (props: BindingRowsProps) => {
 									subjectLabel={subjectLabel}
 									subjectOptions={freeSubjects(index())}
 									subjectPlaceholder={props.subjectPlaceholder}
+									onLoadMoreSubjects={props.onLoadMoreSubjects}
+									isLoadingMoreSubjects={props.isLoadingMoreSubjects}
+									onSearchSubjects={props.onSearchSubjects}
 									scopeRoleId={props.scopeRoleId}
 									resourceName={resourceName}
 									editing={editingIndex() === index()}

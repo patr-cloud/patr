@@ -21,7 +21,7 @@ import {
 } from "~/components";
 import type { Binding } from "~/components/binding-rows";
 import { createFormAction, useGetPermissions, useIsAllowed } from "~/hooks";
-import { useAllRolesQuery } from "~/hooks/fetch";
+import { useRolePicker } from "~/hooks/fetch";
 import { roleKeys, serviceAccountKeys } from "~/hooks/query-keys";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { REGISTRY_DOMAIN } from "~/utils/env";
@@ -42,14 +42,6 @@ const CreateServiceAccount = () => {
 	const canCreate = useIsAllowed("serviceAccount", "create");
 	const canViewRoles = useIsAllowed("viewRoles", "view");
 
-	// Listing roles needs its own permission. Without it there's no workspace
-	// to fetch for, which keeps the query off rather than failing.
-	const rolesQuery = useAllRolesQuery(
-		() => undefined,
-		() => "100",
-		() => (canViewRoles() ? (workspaceId() ?? undefined) : undefined)
-	);
-
 	const [name, setName] = createSignal("");
 	const [nameError, setNameError] = createSignal("");
 	const [description, setDescription] = createSignal("");
@@ -62,8 +54,11 @@ const CreateServiceAccount = () => {
 
 	const createdPermissions = useGetPermissions("serviceAccount", () => created()?.id ?? "");
 
-	const roleOptions = createMemo(() =>
-		(rolesQuery.data?.roles ?? []).map((role) => ({ label: role.name, value: role.id }))
+	// Listing roles needs its own permission. Without it there's no workspace
+	// to fetch for, which keeps the query off rather than failing.
+	const rolePicker = useRolePicker(
+		() => bindings().map((binding) => binding.subjectId),
+		() => (canViewRoles() ? (workspaceId() ?? undefined) : undefined)
 	);
 
 	// A resource-scoped grant with nothing selected reaches nothing.
@@ -228,7 +223,11 @@ const CreateServiceAccount = () => {
 													setBindings(next);
 													setAccessError("");
 												}}
-												subjectOptions={roleOptions()}
+												subjectOptions={rolePicker.options()}
+												subjectLabel={rolePicker.label}
+												onLoadMoreSubjects={rolePicker.onLoadMore}
+												isLoadingMoreSubjects={rolePicker.isLoadingMore}
+												onSearchSubjects={rolePicker.onSearch}
 												subjectPlaceholder="Select a role"
 												scopeRoleId={(roleId) => roleId}
 												addLabel="Add role"

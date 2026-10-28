@@ -7,6 +7,8 @@ import {
 	listRolesAPI,
 	loginAs,
 	getOwnUserId,
+	getPermissionId,
+	createRoleAPI,
 } from '@/prelude';
 import { DEBUG_OTP } from '@/helpers/config';
 import { sql } from '@/helpers/db';
@@ -284,6 +286,47 @@ test.describe('member > invite [UI]', () => {
 		} finally {
 			await context.close();
 		}
+	});
+});
+
+// The role picker loads roles a page at a time. A new workspace is seeded with
+// more roles than one page holds, so both paths to a later role are covered.
+test.describe('member > invite > role picker [UI]', () => {
+	// ROLE_PICKER_PAGE_SIZE in frontend/src/hooks/fetch/roles.tsx.
+	const PAGE_SIZE = 20;
+
+	test('scrolling the role picker loads the next page of roles', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const roles = await listRolesAPI(api, owner, owner.workspaceId);
+		expect(roles.length).toBeGreaterThan(PAGE_SIZE);
+		await withUI(browser, owner, async (page) => {
+			await openInvitePage(page);
+			await page.getByPlaceholder('Select a role').first().click();
+			// The options are portalled into the open dropdown's list.
+			const options = page.locator('div.overflow-y-auto.z-50 > div.cursor-pointer');
+			await expect(options).toHaveCount(PAGE_SIZE);
+			await options.last().scrollIntoViewIfNeeded();
+			await expect(options).toHaveCount(roles.length);
+		});
+	});
+
+	test('typing in the role picker finds a role on any page', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const viewId = await getPermissionId(
+			api,
+			owner.accessToken,
+			owner.workspaceId,
+			owner.clientIp,
+			'viewRoles',
+		);
+		const name = `Picker ${crypto.randomUUID().slice(0, 8)}`;
+		await createRoleAPI(api, owner, owner.workspaceId, { name, permissions: [viewId] });
+		await withUI(browser, owner, async (page) => {
+			await openInvitePage(page);
+			// Searches the server, wherever the new role landed in the list.
+			await selectBindingRole(page, name);
+			await expect(page.getByText(name, { exact: true })).toBeVisible();
+		});
 	});
 });
 

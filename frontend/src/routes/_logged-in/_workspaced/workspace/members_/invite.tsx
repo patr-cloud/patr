@@ -18,7 +18,7 @@ import type { Binding } from "~/components/binding-rows";
 import { createFormAction, useIsAllowed } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { scopeResources } from "~/utils/scope";
-import { useAllRolesQuery, useWorkspaceInfoQuery } from "~/hooks/fetch";
+import { useRolePicker, useWorkspaceInfoQuery } from "~/hooks/fetch";
 import { InviteUserToWorkspaceRequest } from "~/bindings/InviteUserToWorkspaceRequest";
 import { InviteUserToWorkspaceResponse } from "~/bindings/InviteUserToWorkspaceResponse";
 import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
@@ -39,17 +39,11 @@ const InviteMember = () => {
 	const canModifyMembers = useIsAllowed("modifyRoles", "edit");
 
 	const workspaceInfoQuery = useWorkspaceInfoQuery();
-	const rolesQuery = useAllRolesQuery(
-		() => undefined,
-		() => "100"
-	);
 
 	const [email, setEmail] = createSignal("");
 	const [bindings, setBindings] = createSignal<Binding[]>([]);
 
-	const roleOptions = createMemo(() =>
-		(rolesQuery.data?.roles ?? []).map((role) => ({ label: role.name, value: role.id }))
-	);
+	const rolePicker = useRolePicker(() => bindings().map((binding) => binding.subjectId));
 
 	const grants = createMemo<RoleBindingGrant[]>(() =>
 		bindings()
@@ -171,7 +165,11 @@ const InviteMember = () => {
 									workspaceId={workspaceId()!}
 									bindings={bindings()}
 									onChange={setBindings}
-									subjectOptions={roleOptions()}
+									subjectOptions={rolePicker.options()}
+									subjectLabel={rolePicker.label}
+									onLoadMoreSubjects={rolePicker.onLoadMore}
+									isLoadingMoreSubjects={rolePicker.isLoadingMore}
+									onSearchSubjects={rolePicker.onSearch}
 									subjectPlaceholder="Select a role"
 									scopeRoleId={(roleId) => roleId}
 									addLabel="Add role"

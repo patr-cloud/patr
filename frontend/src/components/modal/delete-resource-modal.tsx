@@ -36,6 +36,7 @@ const DeleteModal = (props: {
 							type={InputType.Text}
 							styleVariant="medium"
 							class="mb-3"
+							autofocus
 							value={resourceNameInput()}
 							onInput={(e) => setResourceNameInput((e.target as HTMLInputElement).value)}
 						/>

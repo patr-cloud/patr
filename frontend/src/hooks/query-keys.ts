@@ -41,6 +41,8 @@ export const roleKeys = {
 		[...roleKeys.all(workspaceId), "list", page, count] as const,
 	allRoles: (workspaceId: string, page: string | undefined, count: string | undefined) =>
 		[...roleKeys.all(workspaceId), "allRoles", page, count] as const,
+	infiniteList: (workspaceId: string, search: string) =>
+		[...roleKeys.all(workspaceId), "infiniteList", search] as const,
 	detail: (workspaceId: string, roleId: string) => [...roleKeys.all(workspaceId), "detail", roleId] as const,
 	bindings: (workspaceId: string, roleId: string) => [...roleKeys.all(workspaceId), "bindings", roleId] as const,
 };

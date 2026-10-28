@@ -1,4 +1,4 @@
-import { createSignal, untrack } from "solid-js";
+import { createSignal, Show, untrack } from "solid-js";
 import {
 	GetDomainInfoInWorkspaceResponse,
 	ManagedUrl,
@@ -6,7 +6,7 @@ import {
 	UpdateManagedURLResponse,
 	WithId,
 } from "~/bindings";
-import { Button, ButtonVariant, Input, InputDropdown, LoadingSpinner, useToast, InfoPopup } from "~/components";
+import { Button, ButtonVariant, Input, InputDropdown, Link, LoadingSpinner, useToast, InfoPopup } from "~/components";
 import { createAuthenticatedAction, createFormAction } from "~/hooks";
 import { useApiEnvironmentQuery } from "~/hooks/fetch";
 import { DEPLOYMENT_DOMAIN, IS_CLOUD } from "~/utils/env";
@@ -22,6 +22,8 @@ interface ManageUrlRowProps {
 	managedUrl: WithId<ManagedUrl>;
 	domainInfo: GetDomainInfoInWorkspaceResponse;
 	onUpdate: () => void;
+	/** Name of a deployment by id; "…" while loading, undefined if it's gone. */
+	deploymentName: (deploymentId: string) => string | undefined;
 }
 
 const ManageUrlRow = (props: ManageUrlRowProps) => {
@@ -86,10 +88,33 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 							rel="noopener noreferrer"
 						>
 							{props.managedUrl.subDomain}.{props.domainInfo.name}
-							{props.managedUrl.path}
+							{/* The API stores the root as "/", which would read as a trailing slash. */}
+							{props.managedUrl.path === "/" ? "" : props.managedUrl.path}
 						</a>
 					</td>
-					<td class="flex-2 flex items-center justify-center">{domainTypeToTitle(props.managedUrl.type)}</td>
+					<td class="flex-2 flex items-center justify-center gap-1 min-w-0">
+						{domainTypeToTitle(props.managedUrl.type)}
+						<Show when={props.managedUrl.type === "proxyDeployment" && props.managedUrl}>
+							{(url) => (
+								<>
+									&nbsp;·&nbsp;
+									<Show
+										when={props.deploymentName(url().deploymentId)}
+										fallback={<span class="text-grey">Unknown deployment</span>}
+									>
+										{(name) => (
+											<Link
+												href={`/deployments/${url().deploymentId}`}
+												class="inline hover:underline"
+											>
+												{name()}:{url().port}
+											</Link>
+										)}
+									</Show>
+								</>
+							)}
+						</Show>
+					</td>
 
 					<td class="flex-2 flex items-center justify-center">
 						<div class="flex gap-2 items-center">
