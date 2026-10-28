@@ -92,7 +92,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 							{props.managedUrl.path === "/" ? "" : props.managedUrl.path}
 						</a>
 					</td>
-					<td class="flex-2 flex items-center justify-center gap-1 min-w-0">
+					<td class="flex-4 flex items-center justify-center gap-1 min-w-0">
 						{domainTypeToTitle(props.managedUrl.type)}
 						<Show when={props.managedUrl.type === "proxyDeployment" && props.managedUrl}>
 							{(url) => (
@@ -149,7 +149,7 @@ const ManageUrlRow = (props: ManageUrlRowProps) => {
 						</div>
 					</td>
 
-					<td class="flex-4 flex items-center justify-center">
+					<td class="flex-2 flex items-center justify-center">
 						<div class="flex gap-2 items-center">
 							{shouldDelete() ? (
 								<>
