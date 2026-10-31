@@ -1,25 +1,11 @@
 use clap::Args as ClapArgs;
 use comfy_table::Table;
-use common::prelude::{RunnerMode, RunnerSettings};
+use common::prelude::RunnerSettings;
 use docker::prelude::DockerSettings;
 use models::api::workspace::runner::*;
-use serde::Serialize;
 use serde_json::Value;
 
 use crate::prelude::*;
-
-/// JSON output shape for a self-hosted runner (mode = `selfHosted`).
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SelfHostedOutput {
-	/// Path to the config file on disk.
-	config: String,
-	/// Runner kind. Always `docker`.
-	#[serde(rename = "type")]
-	runner_type: String,
-	/// Always `"selfHosted"` for this variant.
-	mode: &'static str,
-}
 
 /// The arguments for the `runner current` command.
 #[derive(Debug, Clone, ClapArgs)]
@@ -62,59 +48,43 @@ async fn render_runner() -> Result<(String, Value), AppError> {
 
 	let runner_type_str = "docker";
 
-	match config.mode {
-		RunnerMode::SelfHosted { .. } => {
-			let mut table = Table::new();
-			table.add_row(["Config".to_string(), config_path.display().to_string()]);
-			table.add_row(["Type".to_string(), runner_type_str.to_string()]);
-			table.add_row(["Mode".to_string(), "Self-hosted".to_string()]);
-			let json = SelfHostedOutput {
-				config: config_path.display().to_string(),
-				runner_type: runner_type_str.to_string(),
-				mode: "selfHosted",
-			}
-			.to_json_value();
-			Ok((table.to_string(), json))
-		}
-		RunnerMode::Managed {
-			workspace_id,
-			runner_id,
-			api_token,
-			..
-		} => {
-			let runner = make_request(
-				ApiRequest::<GetRunnerInfoRequest>::builder()
-					.path(GetRunnerInfoPath {
-						workspace_id,
-						runner_id,
-					})
-					.headers(GetRunnerInfoRequestHeaders {
-						authorization: api_token,
-						user_agent: constants::USER_AGENT,
-					})
-					.build(),
-			)
-			.await?
-			.body
-			.runner;
+	let RunnerSettings {
+		workspace_id,
+		runner_id,
+		api_token,
+		..
+	} = config;
 
-			let connected = if runner.data.connected {
-				"✅ Connected"
-			} else {
-				"❌ Disconnected"
-			};
+	let runner = make_request(
+		ApiRequest::<GetRunnerInfoRequest>::builder()
+			.path(GetRunnerInfoPath {
+				workspace_id,
+				runner_id,
+			})
+			.headers(GetRunnerInfoRequestHeaders {
+				authorization: api_token,
+				user_agent: constants::USER_AGENT,
+			})
+			.build(),
+	)
+	.await?
+	.body
+	.runner;
 
-			let mut table = Table::new();
-			table.add_row(["Config".to_string(), config_path.display().to_string()]);
-			table.add_row(["Type".to_string(), runner_type_str.to_string()]);
-			table.add_row(["Mode".to_string(), "Managed".to_string()]);
-			table.add_row(["Workspace ID".to_string(), workspace_id.to_string()]);
-			table.add_row(["Runner ID".to_string(), runner_id.to_string()]);
-			table.add_row(["Runner Name".to_string(), runner.data.name.clone()]);
-			table.add_row(["Status".to_string(), connected.to_string()]);
+	let connected = if runner.data.connected {
+		"✅ Connected"
+	} else {
+		"❌ Disconnected"
+	};
 
-			let json = GetRunnerInfoResponse { runner }.to_json_value();
-			Ok((table.to_string(), json))
-		}
-	}
+	let mut table = Table::new();
+	table.add_row(["Config".to_string(), config_path.display().to_string()]);
+	table.add_row(["Type".to_string(), runner_type_str.to_string()]);
+	table.add_row(["Workspace ID".to_string(), workspace_id.to_string()]);
+	table.add_row(["Runner ID".to_string(), runner_id.to_string()]);
+	table.add_row(["Runner Name".to_string(), runner.data.name.clone()]);
+	table.add_row(["Status".to_string(), connected.to_string()]);
+
+	let json = GetRunnerInfoResponse { runner }.to_json_value();
+	Ok((table.to_string(), json))
 }

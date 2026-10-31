@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::Args as ClapArgs;
-use common::prelude::{RunnerMode, RunnerSettings, RunningEnvironment};
+use common::prelude::{RunnerSettings, RunningEnvironment};
 use inquire::{Select, Text};
 use models::api::{user::*, workspace::runner::*};
 
@@ -90,7 +90,7 @@ pub(super) async fn execute(
 
 	// Ask everything before creating the runner, so an aborted prompt doesn't
 	// leave an unused runner behind.
-	let (database, bind_address, data) = prompt_settings(&config_path)?;
+	let (database, data) = prompt_settings(&config_path)?;
 
 	let CreateRunnerResponse { id, token } = make_request(
 		ApiRequest::<CreateRunnerRequest>::builder()
@@ -106,19 +106,16 @@ pub(super) async fn execute(
 	.body;
 
 	let config = RunnerSettings {
-		mode: RunnerMode::Managed {
-			workspace_id,
-			runner_id: id.id,
-			api_token: BearerToken::from_str(&token)?,
-			user_agent: constants::USER_AGENT,
-		},
+		workspace_id,
+		runner_id: id.id,
+		api_token: BearerToken::from_str(&token)?,
+		user_agent: constants::USER_AGENT,
 		environment: if cfg!(debug_assertions) {
 			RunningEnvironment::Development
 		} else {
 			RunningEnvironment::Production
 		},
 		database,
-		bind_address,
 		data,
 	};
 

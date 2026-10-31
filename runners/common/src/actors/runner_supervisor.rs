@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 
-use models::rbac::ResourceType;
 use ractor::{Actor, ActorProcessingErr, ActorRef, concurrency::JoinHandle};
 
 use super::{
@@ -8,28 +7,6 @@ use super::{
 	websocket::{WebSocketActor, WebSocketActorArgs},
 };
 use crate::prelude::*;
-
-/// Messages for the [`RunnerSupervisor`].
-///
-/// These are the messages that external callers (HTTP routes) send. The
-/// RunnerSupervisor forwards them to the ResourceSupervisor internally.
-#[derive(Debug)]
-pub enum RunnerSupervisorMessage {
-	/// A resource was created or updated. Forward to ResourceSupervisor.
-	UpsertResource {
-		/// The UUID of the resource to create or update.
-		resource_id: Uuid,
-		/// The type of resource.
-		resource_type: ResourceType,
-	},
-	/// A resource was deleted. Forward to ResourceSupervisor.
-	DeleteResource {
-		/// The UUID of the resource to delete.
-		resource_id: Uuid,
-		/// The type of resource being deleted.
-		resource_type: ResourceType,
-	},
-}
 
 /// Arguments passed to [`RunnerSupervisor::pre_start`].
 pub struct RunnerSupervisorArgs<E: RunnerExecutor> {
@@ -53,13 +30,12 @@ pub struct RunnerSupervisorState<E: RunnerExecutor> {
 	pub supervisor_ref: ActorRef<ResourceSupervisorMessage>,
 	/// Join handle for the ResourceSupervisor actor task.
 	pub supervisor_handle: JoinHandle<()>,
-	/// `None` in self-hosted mode.
-	pub ws: Option<(ActorRef<super::websocket::WebSocketMessage>, JoinHandle<()>)>,
+	/// Reference to the WebSocketActor child actor and its join handle.
+	pub ws: (ActorRef<super::websocket::WebSocketMessage>, JoinHandle<()>),
 }
 
 /// Top-level supervisor actor. Spawns and supervises the ResourceSupervisor
-/// and WebSocketActor (managed mode). Restarts children on failure. HTTP
-/// routes send messages here, which are forwarded to the ResourceSupervisor.
+/// and WebSocketActor. Restarts children on failure.
 pub struct RunnerSupervisor<E: RunnerExecutor> {
 	/// Marker for the executor generic.
 	_phantom: PhantomData<E>,
@@ -79,7 +55,7 @@ where
 	E: RunnerExecutor + Send + Sync + 'static,
 {
 	type Arguments = RunnerSupervisorArgs<E>;
-	type Msg = RunnerSupervisorMessage;
+	type Msg = ();
 	type State = RunnerSupervisorState<E>;
 
 	async fn pre_start(
@@ -100,26 +76,20 @@ where
 		)
 		.await?;
 
-		let ws = if args.config.mode.is_managed() {
-			let (ws_ref, ws_handle) = WebSocketActor::<E>::spawn_linked(
-				Some("websocket".to_string()),
-				WebSocketActor::new(),
-				WebSocketActorArgs {
-					config: args.config.clone(),
-					database: args.database.clone(),
-					supervisor_ref: supervisor_ref.clone(),
-				},
-				myself.get_cell(),
-			)
-			.await?;
+		let (ws_ref, ws_handle) = WebSocketActor::<E>::spawn_linked(
+			Some("websocket".to_string()),
+			WebSocketActor::new(),
+			WebSocketActorArgs {
+				config: args.config.clone(),
+				database: args.database.clone(),
+				supervisor_ref: supervisor_ref.clone(),
+			},
+			myself.get_cell(),
+		)
+		.await?;
 
-			let _ = supervisor_ref
-				.send_message(ResourceSupervisorMessage::SetWebSocketRef(ws_ref.clone()));
-
-			Some((ws_ref, ws_handle))
-		} else {
-			None
-		};
+		let _ =
+			supervisor_ref.send_message(ResourceSupervisorMessage::SetWebSocketRef(ws_ref.clone()));
 
 		Ok(RunnerSupervisorState {
 			config: args.config,
@@ -127,35 +97,8 @@ where
 			runner_state: args.runner_state,
 			supervisor_ref,
 			supervisor_handle,
-			ws,
+			ws: (ws_ref, ws_handle),
 		})
-	}
-
-	async fn handle(
-		&self,
-		_myself: ActorRef<Self::Msg>,
-		message: Self::Msg,
-		state: &mut Self::State,
-	) -> Result<(), ActorProcessingErr> {
-		// Forward to the ResourceSupervisor.
-		let forwarded = match message {
-			RunnerSupervisorMessage::UpsertResource {
-				resource_id,
-				resource_type,
-			} => ResourceSupervisorMessage::UpsertResource {
-				resource_id,
-				resource_type,
-			},
-			RunnerSupervisorMessage::DeleteResource {
-				resource_id,
-				resource_type,
-			} => ResourceSupervisorMessage::DeleteResource {
-				resource_id,
-				resource_type,
-			},
-		};
-		let _ = state.supervisor_ref.send_message(forwarded);
-		Ok(())
 	}
 
 	async fn handle_supervisor_evt(
@@ -195,7 +138,7 @@ where
 					database: state.database.clone(),
 					config: state.config.clone(),
 					runner_state: state.runner_state.clone(),
-					websocket_ref: state.ws.as_ref().map(|(ws_ref, _)| ws_ref.clone()),
+					websocket_ref: Some(state.ws.0.clone()),
 				},
 				myself.get_cell(),
 			)
@@ -203,11 +146,7 @@ where
 
 			state.supervisor_ref = new_ref;
 			state.supervisor_handle = new_handle;
-		} else if state
-			.ws
-			.as_ref()
-			.is_some_and(|(ws_ref, _)| ws_ref.get_id() == actor_id)
-		{
+		} else if state.ws.0.get_id() == actor_id {
 			let (new_ws_ref, new_ws_handle) = WebSocketActor::<E>::spawn_linked(
 				Some("websocket".to_string()),
 				WebSocketActor::new(),
@@ -226,7 +165,7 @@ where
 					new_ws_ref.clone(),
 				));
 
-			state.ws = Some((new_ws_ref, new_ws_handle));
+			state.ws = (new_ws_ref, new_ws_handle);
 		}
 
 		Ok(())

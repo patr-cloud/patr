@@ -1,6 +1,5 @@
 use std::{
 	fmt::{Display, Formatter},
-	net::SocketAddr,
 	str::FromStr,
 };
 
@@ -12,11 +11,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunnerSettings<D> {
-	/// The mode the runner is running in. This will determine if the runner is
-	/// running in self-hosted mode or managed mode (connecting to the Patr
-	/// server).
-	#[serde(flatten)]
-	pub mode: RunnerMode,
+	/// The workspace ID to connect the runner for.
+	pub workspace_id: Uuid,
+	/// The runner ID to connect the runner for.
+	pub runner_id: Uuid,
+	/// The bearer token for the runner to access the API
+	pub api_token: BearerToken,
+	/// The user agent that the runner uses to access the API
+	#[serde(skip, default = "get_user_agent")]
+	pub user_agent: UserAgent,
 	/// The environment the application is running in. This is set at runtime
 	/// based on an environment variable and if the application is compiled with
 	/// debug mode.
@@ -24,8 +27,6 @@ pub struct RunnerSettings<D> {
 	pub environment: RunningEnvironment,
 	/// The configuration for the database to connect to
 	pub database: DatabaseConfig,
-	/// The address to listen on
-	pub bind_address: SocketAddr,
 	/// Additional settings for the runner.
 	#[serde(flatten)]
 	pub data: D,
@@ -88,18 +89,22 @@ where
 	#[instrument(skip(self))]
 	pub fn into_base(self) -> RunnerSettings<()> {
 		let RunnerSettings {
-			mode,
+			workspace_id,
+			runner_id,
+			api_token,
+			user_agent,
 			environment,
 			database,
-			bind_address,
 			data: _,
 		} = self;
 
 		RunnerSettings::<()> {
-			mode,
+			workspace_id,
+			runner_id,
+			api_token,
+			user_agent,
 			environment,
 			database,
-			bind_address,
 			data: (),
 		}
 	}
@@ -123,57 +128,6 @@ fn default_running_environment() -> RunningEnvironment {
 		"dev" | "development" => RunningEnvironment::Development,
 		"prod" | "production" => RunningEnvironment::Production,
 		_ => panic!("Unknown running environment found!"),
-	}
-}
-
-/// The mode the runner is running in. This will determine if the runner is
-/// running in self-hosted mode or managed mode (connecting to the Patr server).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", tag = "mode")]
-pub enum RunnerMode {
-	/// This runner is running in self-hosted mode. This means that the runner
-	/// will run all deployments on the runner itself.
-	#[serde(rename_all = "camelCase")]
-	SelfHosted {
-		/// The Pepper used to hash passwords
-		password_pepper: String,
-		/// The secret used to sign JWTs
-		jwt_secret: String,
-	},
-	/// This runner is running in managed mode. This means that the runner will
-	/// connect to the Patr server to get the deployments to run.
-	#[serde(rename_all = "camelCase")]
-	Managed {
-		/// The workspace ID to connect the runner for.
-		workspace_id: Uuid,
-		/// The runner ID to connect the runner for.
-		runner_id: Uuid,
-		/// The bearer token for the runner to access the API
-		api_token: BearerToken,
-		/// The user agent that the runner uses to access the API
-		#[serde(skip, default = "get_user_agent")]
-		user_agent: UserAgent,
-	},
-}
-
-impl RunnerMode {
-	/// Check if the runner is running in self-hosted mode
-	pub fn is_self_hosted(&self) -> bool {
-		matches!(self, RunnerMode::SelfHosted { .. })
-	}
-
-	/// Check if the runner is running in managed mode
-	pub fn is_managed(&self) -> bool {
-		matches!(self, RunnerMode::Managed { .. })
-	}
-
-	/// Get the runner ID for the runner, if it is running in managed mode
-	/// otherwise return a nil UUID
-	pub fn get_runner_id(&self) -> Uuid {
-		match self {
-			Self::Managed { runner_id, .. } => *runner_id,
-			Self::SelfHosted { .. } => Uuid::nil(),
-		}
 	}
 }
 

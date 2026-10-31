@@ -19,22 +19,16 @@ use crate::prelude::*;
 
 /// Ensure the Grafana Alloy log collector service is running with the latest
 /// config. Creates or updates the Alloy Docker config and global Swarm service.
-///
-/// This should only be called in managed mode — the caller is responsible for
-/// checking the runner mode before calling this function.
 pub async fn update_alloy_service(
 	docker: &Docker,
 	settings: &RunnerSettings<DockerSettings>,
 ) -> Result<(), RunnerError> {
-	let RunnerMode::Managed {
+	let RunnerSettings {
 		workspace_id,
 		runner_id,
 		api_token,
 		..
-	} = &settings.mode
-	else {
-		return Ok(());
-	};
+	} = settings;
 
 	let loki_url = match settings.environment {
 		RunningEnvironment::Production => "https://loki.patr.cloud",

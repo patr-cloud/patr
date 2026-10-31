@@ -17,33 +17,18 @@ pub enum RunnerError {
 	/// Error parsing the configuration file for the runner
 	#[error("error parsing configuration: {0}")]
 	ConfigurationError(#[from] config::ConfigError),
-	/// Error while setting up the Axum server for the runner
-	#[error("error initializing the server: {0}")]
-	ServerSetupError(io::Error),
 	/// Error while setting the global default subscriber for tracing
 	#[error("error setting the global default subscriber: {0}")]
 	TracingSubscriberError(#[from] SetGlobalDefaultError),
 	/// The runner does not support this operation
 	#[error("operation not supported by the runner")]
 	Unsupported,
-	/// The runner was stopped by an exit signal
-	#[error("runner quitting. exit signal received")]
-	ExitSignalReceived,
 	/// There was an error while running something on the host
 	#[error("error with host: {0}")]
 	HostError(String),
-	/// There was an error while setting up the Nginx server
-	#[error("error setting up nginx: {0}")]
-	NginxSetupError(io::Error),
-	/// There was an error while running nginx
-	#[error("error running nginx: {0}")]
-	NginxExecError(io::Error),
 	/// There was an error while setting up the Cloudflare Tunnel
 	#[error("error setting up Cloudflare Tunnel: {0}")]
 	CloudflareTunnelSetupError(io::Error),
-	/// There was an error while running the Cloudflare Tunnel
-	#[error("error running Cloudflare Tunnel: {0}")]
-	CloudflareTunnelExecError(io::Error),
 }
 
 impl RunnerError {

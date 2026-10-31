@@ -1,9 +1,8 @@
-use std::{net::SocketAddr, sync::OnceLock};
+use std::sync::OnceLock;
 
 use opentelemetry_sdk::logs::SdkLoggerProvider;
 use ractor::Actor;
 use tokio::{
-	net::TcpListener,
 	task,
 	time::{self, Duration},
 };
@@ -31,12 +30,12 @@ where
 {
 	/// Database connection pool for SQLite access.
 	database: sqlx::Pool<DatabaseType>,
-	/// Runner configuration (settings, mode, bind address, etc.).
+	/// Runner configuration (settings, credentials, database, etc.).
 	config: RunnerSettings<E::Settings>,
 	/// Executor-specific initialized state (e.g. Docker client).
 	runner_state: E::InitializedState,
-	/// OTLP logger provider for managed-mode log export (None in self-hosted)
-	logger_provider: Option<SdkLoggerProvider>,
+	/// OTLP logger provider for managed-mode log export
+	logger_provider: SdkLoggerProvider,
 }
 
 impl<E> Runner<E>
@@ -86,15 +85,10 @@ where
 		})
 	}
 
-	/// Run the runner. This function will start the actor tree, HTTP server,
-	/// and block until the exit signal is received.
+	/// Run the runner. This function will start the actor tree and block until
+	/// the exit signal is received.
 	#[instrument(skip(self))]
-	pub async fn run(mut self) -> Result<!, RunnerError> {
-		debug!("Attempting to listen on {}", self.config.bind_address);
-		let tcp_listener = TcpListener::bind(self.config.bind_address)
-			.await
-			.map_err(RunnerError::ServerSetupError)?;
-
+	pub async fn run(self) -> Result<!, RunnerError> {
 		// Spawn the exit signal handler
 		task::spawn(async move {
 			info!("Listening for exit signal");
@@ -114,8 +108,7 @@ where
 		});
 
 		// Start the actor tree. The RunnerSupervisor spawns and supervises
-		// the ResourceSupervisor and WebSocketActor as children. HTTP routes
-		// send messages to the RunnerSupervisor, which forwards them.
+		// the ResourceSupervisor and WebSocketActor as children.
 		let (root_ref, root_handle) = RunnerSupervisor::<E>::spawn(
 			Some("runner-supervisor".to_string()),
 			RunnerSupervisor::new(),
@@ -128,49 +121,20 @@ where
 		.await
 		.map_err(RunnerError::host)?;
 
-		// Build AppState for the HTTP server
-		let state = AppState::<E> {
-			database: self.database.clone(),
-			config: self.config.clone(),
-			runner_state: self.runner_state.clone(),
-			supervisor_ref: root_ref.clone(),
-		};
-
-		// Run the HTTP server
-		info!(
-			"Listening for connections on http://{}",
-			tcp_listener
-				.local_addr()
-				.map_err(RunnerError::ServerSetupError)?
-		);
-
-		axum::serve(
-			tcp_listener,
-			crate::routes::setup_routes(&state)
-				.await
-				.into_make_service_with_connect_info::<SocketAddr>(),
-		)
-		.with_graceful_shutdown(
-			GLOBAL_CANCEL_TOKEN
-				.get_or_init(CancellationToken::new)
-				.cancelled(),
-		)
-		.await
-		.map_err(RunnerError::ServerSetupError)?;
-
-		info!("HTTP server stopped");
+		GLOBAL_CANCEL_TOKEN
+			.get_or_init(CancellationToken::new)
+			.cancelled()
+			.await;
 
 		// Stop the actor tree — RunnerSupervisor stops its children.
 		root_ref.stop(Some("runner shutting down".to_string()));
 		root_handle.await.map_err(RunnerError::host)?;
 
 		// Flush OTLP logs before exiting
-		if let Some(provider) = self.logger_provider.take() {
-			crate::utils::observability::flush_observability(provider);
-		}
+		crate::utils::observability::flush_observability(self.logger_provider);
 
 		info!("Runner exited");
-		// The server has stopped, so we need to exit. This is a divergent
+		// The runner has stopped, so we need to exit. This is a divergent
 		// function (returns !) so we need to loop or exit.
 		std::process::exit(0);
 	}
@@ -203,5 +167,5 @@ async fn exit_signal() {
 	GLOBAL_CANCEL_TOKEN
 		.get_or_init(CancellationToken::new)
 		.cancel();
-	info!("Shutdown signal received, shutting down server gracefully");
+	info!("Shutdown signal received, shutting down runner gracefully");
 }

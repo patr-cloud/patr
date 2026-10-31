@@ -98,8 +98,6 @@ pub enum ErrorType {
 	RoleIsImmutable,
 	/// Another instance of the same runner ID is already connected
 	RunnerAlreadyConnected,
-	/// The operation is not allowed in the current runner mode
-	InvalidRunnerMode,
 	/// The domain is not a root domain
 	NotRootDomain,
 	/// The domain is not a domain with an ICANN TLD
@@ -181,7 +179,6 @@ impl ErrorType {
 			Self::RoleInUse => StatusCode::CONFLICT,
 			Self::RoleIsImmutable => StatusCode::FORBIDDEN,
 			Self::RunnerAlreadyConnected => StatusCode::CONFLICT,
-			Self::InvalidRunnerMode => StatusCode::FORBIDDEN,
 			Self::NotRootDomain => StatusCode::BAD_REQUEST,
 			Self::NotIcannDomain => StatusCode::BAD_REQUEST,
 			Self::DomainNotVerified => StatusCode::PRECONDITION_FAILED,
@@ -250,9 +247,6 @@ impl ErrorType {
 			Self::RoleIsImmutable => "Default roles cannot be edited or deleted",
 			Self::RunnerAlreadyConnected => {
 				"Another instance of the same runner ID is already connected"
-			}
-			Self::InvalidRunnerMode => {
-				"That operation is not allowed in the mode the runner is currently in"
 			}
 			Self::NotRootDomain => {
 				concat!(

@@ -3,7 +3,7 @@
 use std::{iter, os::unix::fs::PermissionsExt, path::Path, process::Stdio};
 
 use cli::prelude::*;
-use common::prelude::{DatabaseConfig, RunnerMode, RunnerSettings, RunningEnvironment};
+use common::prelude::{DatabaseConfig, RunnerSettings, RunningEnvironment};
 use docker::prelude::DockerSettings;
 use models::api::{
 	user::*,
@@ -103,16 +103,14 @@ async fn mount_runner_info(
 		.await;
 }
 
-/// Write a config for `runner_id` holding [`OLD_TOKEN`], with a bind address
-/// setup wouldn't default to, so a rewrite that loses it is visible.
+/// Write a config for `runner_id` holding [`OLD_TOKEN`], with an HTTP ingress
+/// port setup wouldn't default to, so a rewrite that loses it is visible.
 fn write_config(config_path: &Path, ids: &Ids, runner_id: Uuid) {
 	let config = RunnerSettings {
-		mode: RunnerMode::Managed {
-			workspace_id: ids.workspace,
-			runner_id,
-			api_token: OLD_TOKEN.parse().unwrap(),
-			user_agent: constants::USER_AGENT,
-		},
+		workspace_id: ids.workspace,
+		runner_id,
+		api_token: OLD_TOKEN.parse().unwrap(),
+		user_agent: constants::USER_AGENT,
 		environment: RunningEnvironment::Development,
 		database: DatabaseConfig {
 			file: config_path
@@ -121,7 +119,6 @@ fn write_config(config_path: &Path, ids: &Ids, runner_id: Uuid) {
 				.to_string(),
 			connection_limit: 10,
 		},
-		bind_address: "127.0.0.1:4100".parse().unwrap(),
 		data: DockerSettings {
 			docker_swarm_listen_addr: "127.0.0.1:2377".to_string(),
 			ingress_http_listen_port: 8080,
@@ -145,10 +142,7 @@ fn read_config(config_path: &Path) -> RunnerSettings<DockerSettings> {
 
 /// The token the runner config at `config_path` holds.
 fn config_token(config_path: &Path) -> String {
-	match read_config(config_path).mode {
-		RunnerMode::Managed { api_token, .. } => api_token.0.token().to_string(),
-		RunnerMode::SelfHosted { .. } => panic!("expected a managed runner config"),
-	}
+	read_config(config_path).api_token.0.token().to_string()
 }
 
 /// A temp dir and the runner config path inside it. The dir must outlive the
@@ -192,7 +186,6 @@ async fn reconnect_with_token_updates_only_the_token() {
 	let config_path = Path::new(&config_path);
 	let config = read_config(config_path);
 	assert_eq!(config_token(config_path), NEW_TOKEN);
-	assert_eq!(config.bind_address, "127.0.0.1:4100".parse().unwrap());
 	assert_eq!(config.data.ingress_http_listen_port, 8080);
 	assert_eq!(
 		std::fs::metadata(config_path).unwrap().permissions().mode() & 0o777,

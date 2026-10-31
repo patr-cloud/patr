@@ -1,23 +1,18 @@
-use std::net::{Ipv4Addr, SocketAddr};
-
 use common::{db, prelude::*};
 
 /// A runner config around the database at `file`, for the migrations, which
 /// take one.
 fn settings(file: String) -> RunnerSettings<()> {
 	RunnerSettings {
-		mode: RunnerMode::Managed {
-			workspace_id: Uuid::nil(),
-			runner_id: Uuid::nil(),
-			api_token: "test-token".parse().unwrap(),
-			user_agent: "integration-tests/0.1.0".parse().unwrap(),
-		},
+		workspace_id: Uuid::nil(),
+		runner_id: Uuid::nil(),
+		api_token: "test-token".parse().unwrap(),
+		user_agent: "integration-tests/0.1.0".parse().unwrap(),
 		environment: RunningEnvironment::Development,
 		database: DatabaseConfig {
 			file,
 			connection_limit: 5,
 		},
-		bind_address: SocketAddr::from((Ipv4Addr::LOCALHOST, 0)),
 		data: (),
 	}
 }

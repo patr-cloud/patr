@@ -40,7 +40,7 @@ For the feature in front of you:
    - Hard-coded SaaS domains in code, emails or the UI break self-hosted.
    - Features that quietly assume Cloudflare, GitHub or a public hostname.
    - The e2e suite runs in cloud mode only, so self-hosted behaviour needs checking another way.
-   - The runner's SelfHosted mode is legacy: it gets compile fixes only, never parity.
+   - The runner has no self-hosted mode of its own. A self-hosted operator runs the `api` without `cloud`, but the runner's API URLs aren't configurable yet (`CLI_TODO.md`), so self-hosted has no runner path until they are.
 
 ## Scoping mode
 

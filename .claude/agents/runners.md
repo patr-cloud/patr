@@ -14,7 +14,7 @@ A feature can add a field to a deployment, and the API will happily store it whi
 - `config/runner.docker.sample.json`.
 - The runner side of the runner protocol. The API side belongs to the api agent, and compatibility between the two is both agents' concern.
 
-`runners/kubernetes` is a reference only. It isn't built; don't extend it. The runner's SelfHosted mode, with its embedded UI and API, is legacy and being removed: give it minimal compile fixes only, never feature parity. The CLI compiles the Docker runner in, but the `patr runner …` commands belong to the cli agent.
+`runners/kubernetes` is a reference only. It isn't built; don't extend it. The CLI compiles the Docker runner in, but the `patr runner …` commands belong to the cli agent.
 
 Read `runners/CLAUDE.md`, `runners/common/CLAUDE.md` and `runners/docker/CLAUDE.md` before anything else. Pay particular attention to these rules:
 - `new()` must be cheap;
@@ -75,7 +75,5 @@ When a plan assigns you runner work:
   - `cargo clippy -p common` and `cargo clippy -p docker`;
   - `cargo nextest run --package common`;
   - `cargo check -p cli`, since the CLI embeds the runner.
-  
-  `runners/common` needs `frontend/.output/public` to exist; create it with `mkdir -p` if it's missing.
 - Say in your report whether the change needs the runner fleet upgraded once it's released.
 - Never commit. Report back what changed, what you verified, and anything you couldn't do.

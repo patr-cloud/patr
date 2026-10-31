@@ -1,5 +1,3 @@
-#![feature(impl_trait_in_assoc_type)]
-
 //! Common utilities for the runner. This library contains all the things you
 //! will need to make a runner. All it needs are the implementations of how the
 //! runner handles the resources (such as deployments, databases, etc).
@@ -8,9 +6,6 @@
 /// types (DeploymentActor, ResourceSupervisor, WebSocketActor,
 /// RunnerSupervisor) and their message enums.
 pub mod actors;
-/// This module contains the main application logic. Most of the app requests,
-/// states, and mounting of endpoints are done here
-pub mod app;
 /// The database module contains all the database related functions. Such as
 /// initializing the database, getting the connection, etc.
 pub mod db;
@@ -24,13 +19,10 @@ pub mod executor;
 /// Database migrations organized by version. Uses `inventory` for automatic
 /// registration and tracks individual migrations in a `migrations` table.
 pub mod migrations;
-/// All the Routes for the self-hosted Patr is defined here.
-pub mod routes;
 /// All the runner related structs and functions.
 pub mod runner;
-/// This module contains all the utilities used by the API. This includes things
-/// like the config parser, the [`tower::Layer`]s that are used to parse the
-/// requests, etc.
+/// This module contains all the utilities used by the runner. This includes
+/// things like the config parser, the upstream API client, etc.
 pub mod utils;
 
 /// The prelude module contains all the things you need to import to get
@@ -41,11 +33,10 @@ pub mod prelude {
 	pub use sqlx::Row;
 
 	pub use crate::{
-		app::{AppRequest, AppState},
 		error::RunnerError,
 		executor::RunnerExecutor,
 		runner::Runner,
-		utils::{RouterExt, assets::*, client, config::*, constants, ext_traits::*, secrets},
+		utils::{client, config::*, constants, secrets},
 	};
 
 	/// The type of the database connection. A mutable reference to this should

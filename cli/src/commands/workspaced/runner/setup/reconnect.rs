@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::Args as ClapArgs;
-use common::prelude::{RunnerMode, RunnerSettings, RunningEnvironment};
+use common::prelude::{RunnerSettings, RunningEnvironment};
 use docker::prelude::DockerSettings;
 use inquire::{Confirm, Password, PasswordDisplayMode, Select, Text};
 use models::api::{user::*, workspace::runner::*};
@@ -113,14 +113,10 @@ pub(super) async fn execute(
 		.ok()
 		.and_then(|config| serde_json::from_str::<RunnerSettings<DockerSettings>>(&config).ok());
 	// The runner this machine already runs, if it's in this workspace.
-	let configured_runner_id = existing.as_ref().and_then(|config| match config.mode {
-		RunnerMode::Managed {
-			workspace_id: existing_workspace_id,
-			runner_id,
-			..
-		} if existing_workspace_id == workspace_id => Some(runner_id),
-		_ => None,
-	});
+	let configured_runner_id = existing
+		.as_ref()
+		.filter(|config| config.workspace_id == workspace_id)
+		.map(|config| config.runner_id);
 
 	let runner_id = match (args.runner_id, &user_token) {
 		(Some(runner_id), _) => runner_id,
@@ -253,8 +249,8 @@ pub(super) async fn execute(
 	}
 
 	let token_only = existing.is_some();
-	let (database, bind_address, data) = match existing {
-		Some(existing) => (existing.database, existing.bind_address, existing.data),
+	let (database, data) = match existing {
+		Some(existing) => (existing.database, existing.data),
 		None => prompt_settings(&config_path)?,
 	};
 
@@ -283,19 +279,16 @@ pub(super) async fn execute(
 	};
 
 	let config = RunnerSettings {
-		mode: RunnerMode::Managed {
-			workspace_id,
-			runner_id,
-			api_token,
-			user_agent: constants::USER_AGENT,
-		},
+		workspace_id,
+		runner_id,
+		api_token,
+		user_agent: constants::USER_AGENT,
 		environment: if cfg!(debug_assertions) {
 			RunningEnvironment::Development
 		} else {
 			RunningEnvironment::Production
 		},
 		database,
-		bind_address,
 		data,
 	};
 

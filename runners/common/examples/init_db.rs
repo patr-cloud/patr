@@ -5,11 +5,7 @@
 //! Creates a SQLite database at the given path with the runner's current
 //! schema, so `just prepare` can describe the runner's queries against it.
 
-use std::{
-	env,
-	net::{Ipv4Addr, SocketAddr},
-	process,
-};
+use std::{env, process};
 
 use common::{db, prelude::*};
 
@@ -23,18 +19,15 @@ async fn main() {
 	// Migrations take the runner's config, but there's no runner here, so it's a
 	// placeholder around the database file.
 	let config = RunnerSettings {
-		mode: RunnerMode::Managed {
-			workspace_id: Uuid::nil(),
-			runner_id: Uuid::nil(),
-			api_token: "placeholder".parse().expect("a valid placeholder token"),
-			user_agent: "init-db".parse().expect("a valid placeholder user agent"),
-		},
+		workspace_id: Uuid::nil(),
+		runner_id: Uuid::nil(),
+		api_token: "placeholder".parse().expect("a valid placeholder token"),
+		user_agent: "init-db".parse().expect("a valid placeholder user agent"),
 		environment: RunningEnvironment::Development,
 		database: DatabaseConfig {
 			file,
 			connection_limit: 1,
 		},
-		bind_address: SocketAddr::from((Ipv4Addr::LOCALHOST, 0)),
 		data: (),
 	};
 

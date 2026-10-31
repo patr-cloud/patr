@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, net::SocketAddr, sync::Arc, time::Duration};
+use std::{collections::BTreeMap, sync::Arc, time::Duration};
 
 use common::{
 	actors::runner_supervisor::{RunnerSupervisor, RunnerSupervisorArgs},
@@ -36,18 +36,15 @@ async fn setup_managed() -> (
 	let mock_state = MockExecutorState::new();
 
 	let config = RunnerSettings::<()> {
-		mode: RunnerMode::Managed {
-			workspace_id,
-			runner_id,
-			api_token: "test-token".parse().unwrap(),
-			user_agent: "integration-tests/0.1.0".parse().unwrap(),
-		},
+		workspace_id,
+		runner_id,
+		api_token: "test-token".parse().unwrap(),
+		user_agent: "integration-tests/0.1.0".parse().unwrap(),
 		environment: RunningEnvironment::Development,
 		database: DatabaseConfig {
 			file: db_path.to_string_lossy().to_string(),
 			connection_limit: 5,
 		},
-		bind_address: SocketAddr::from(([127, 0, 0, 1], 0)),
 		data: (),
 	};
 

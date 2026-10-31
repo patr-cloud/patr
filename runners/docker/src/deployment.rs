@@ -74,17 +74,12 @@ pub(crate) async fn upsert(
 	// `{workspace_id}/{repo_name}` path the registry expects.
 	let image_path = match &registry {
 		DeploymentRegistry::PatrRegistry { repository_id, .. } => {
-			let RunnerMode::Managed {
+			let RunnerSettings {
 				workspace_id,
 				api_token,
 				user_agent,
 				..
-			} = &settings.mode
-			else {
-				return Err(RunnerError::UpstreamServerError(ErrorType::server_error(
-					"PatrRegistry deployment encountered in self-hosted mode",
-				)));
-			};
+			} = settings;
 			let repository = client::make_request(
 				ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
 					.path(GetContainerRepositoryInfoPath {
@@ -125,17 +120,10 @@ pub(crate) async fn upsert(
 	// Build registry credentials for both image pull and Swarm task scheduling.
 	// Patr registry images need managed-mode auth; external registries are
 	// pulled anonymously here.
-	let registry_auth = if let RunnerMode::Managed {
-		workspace_id: _,
-		runner_id: _,
-		user_agent: _,
-		api_token,
-	} = &settings.mode &&
-		registry.is_patr_registry()
-	{
+	let registry_auth = if registry.is_patr_registry() {
 		Some(DockerCredentials {
 			username: Some("patr".to_string()),
-			password: Some(api_token.0.token().to_string()),
+			password: Some(settings.api_token.0.token().to_string()),
 			serveraddress: Some(registry.registry_url()),
 			..Default::default()
 		})
@@ -314,19 +302,12 @@ pub(crate) async fn upsert(
 							let value = match value {
 								EnvironmentVariableValue::String(value) => value,
 								EnvironmentVariableValue::Secret { from_secret } => {
-									let RunnerMode::Managed {
+									let RunnerSettings {
 										workspace_id,
 										runner_id,
 										api_token,
-										user_agent: _,
-									} = &settings.mode
-									else {
-										return Err(RunnerError::UpstreamServerError(
-											ErrorType::server_error(
-												"Secret environment variable encountered in self-hosted mode",
-											),
-										));
-									};
+										..
+									} = settings;
 									secrets::get_secret_value(
 										*runner_id,
 										api_token,
@@ -337,7 +318,7 @@ pub(crate) async fn upsert(
 								}
 							};
 
-							Ok(format!("{}={}", key, value))
+							Ok::<_, RunnerError>(format!("{}={}", key, value))
 						})
 						.try_collect::<Vec<_>>()
 						.await?,
