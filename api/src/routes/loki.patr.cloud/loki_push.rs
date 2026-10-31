@@ -68,8 +68,10 @@ pub(super) async fn handle_loki_push(
 	};
 	let mut redis_conn = state.redis.clone();
 
-	for stream in &mut push_request.streams {
-		let Ok(new_labels) = super::common::validate_and_rewrite_labels(
+	let stream_count = push_request.streams.len();
+	let mut streams = Vec::with_capacity(stream_count);
+	for mut stream in std::mem::take(&mut push_request.streams) {
+		match super::common::validate_and_rewrite_labels(
 			&mut database,
 			&mut redis_conn,
 			&stream.labels,
@@ -77,16 +79,31 @@ pub(super) async fn handle_loki_push(
 			&workspace_id,
 		)
 		.await
-		.inspect_err(|err| {
-			warn!("Label validation failed: {}", err);
-		}) else {
-			return Response::builder()
-				.status(StatusCode::FORBIDDEN)
-				.body(Body::from("Label validation failed"))
-				.unwrap();
-		};
-		stream.labels = new_labels;
+		{
+			Ok(Some(new_labels)) => {
+				stream.labels = new_labels;
+				streams.push(stream);
+			}
+			Ok(None) => (),
+			Err(err) => {
+				error!("Failed to validate a stream's labels: {:?}", err);
+				return Response::builder()
+					.status(StatusCode::INTERNAL_SERVER_ERROR)
+					.body(Body::from("Internal Server Error"))
+					.unwrap();
+			}
+		}
 	}
+
+	// Every stream was dropped, so there's nothing to forward. Answer the way
+	// Loki answers an accepted push, so the runner doesn't retry them.
+	if streams.is_empty() && stream_count > 0 {
+		return Response::builder()
+			.status(StatusCode::NO_CONTENT)
+			.body(Body::empty())
+			.unwrap();
+	}
+	push_request.streams = streams;
 
 	// Re-encode → snappy compress → forward
 	let encoded = push_request.encode_to_vec();
