@@ -72,7 +72,7 @@ RUN cargo binstall --locked worker-build
 
 RUN curl -fsSL https://fnm.vercel.app/install | bash
 ENV PATH="/home/vscode/.local/share/fnm:${PATH}"
-RUN fnm install --lts --corepack-enabled
+RUN fnm install 24 --corepack-enabled
 
 # `patr` should build and run the local CLI
 RUN echo "alias patr='cargo patr'" >> /home/vscode/.bashrc
