@@ -2,8 +2,8 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
 import { Button, UnsavedChangesGuard, useToast } from "~/components";
-import { useAuthState } from "~/hooks";
-import { useDeploymentInfoQuery } from "~/hooks/fetch";
+import { useAuthState, useIsMounted } from "~/hooks";
+import { useDeploymentInfoQuery, useUserPermissionsQuery } from "~/hooks/fetch";
 import { useGetPermissions } from "~/hooks/is-allowed";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -18,6 +18,11 @@ interface DeploymentEnvironmentProps {
 	deploymentId: string;
 }
 
+/** Tells a user who can't edit the deployment why a section has no way to add to it. */
+const NoEditAccess = (props: { section: string }) => (
+	<p class="w-full text-center text-sm text-grey font-bold italic">You don't have access to edit {props.section}.</p>
+);
+
 /** What the deployment's container is given at startup: env vars, config files and volumes. */
 const DeploymentEnvironment = (props: DeploymentEnvironmentProps) => {
 	const [authState] = useAuthState();
@@ -27,6 +32,12 @@ const DeploymentEnvironment = (props: DeploymentEnvironmentProps) => {
 
 	const deploymentQuery = useDeploymentInfoQuery(() => props.deploymentId);
 	const deploymentPermissions = useGetPermissions("deployment", () => props.deploymentId);
+	const userPermissionsQuery = useUserPermissionsQuery();
+	const isMounted = useIsMounted();
+
+	// Permissions read as all-false until they load, so wait for them, or editors
+	// see the no-access note flash on page load.
+	const showNoEditAccess = () => isMounted() && !!userPermissionsQuery.data && !deploymentPermissions().edit;
 
 	// Local draft, seeded once from the query. The update sends the whole
 	// deployment, so the fields this tab doesn't touch ride along unchanged.
@@ -107,57 +118,76 @@ const DeploymentEnvironment = (props: DeploymentEnvironmentProps) => {
 	return (
 		<form onSubmit={onSubmitUpdate} class="flex flex-col gap-6 justify-between w-full flex-1">
 			<div class="flex flex-col gap-4 items-start w-full">
-				<div class="flex flex-col gap-1 w-full">
-					<h2 class="text-lg text-white font-semibold">Environment Variables</h2>
-					<p class="text-sm text-grey">
-						Passed to the container on startup. Anything sensitive can be stored as a workspace secret
-						instead, so the value never lives on the deployment.
-					</p>
-				</div>
+				<section class="flex flex-col gap-4 items-start w-full">
+					<div class="flex flex-col gap-1 w-full">
+						<h2 class="text-lg text-white font-semibold">Environment Variables</h2>
+						<p class="text-sm text-grey">
+							Passed to the container on startup. Anything sensitive can be stored as a workspace secret
+							instead, so the value never lives on the deployment.
+						</p>
+					</div>
 
-				<EnvList
-					disabled={() => !deploymentPermissions().edit}
-					value={() => deploymentQuery.data?.environmentVariables ?? {}}
-					onChange={(next) =>
-						setLocalInfo((prev) => (prev ? { ...prev, environmentVariables: next } : undefined))
-					}
-					onValidityChange={setEnvValid}
-					onSecretCreated={() => toast("Secret created. Update the deployment to start using it.", "success")}
-				/>
+					<EnvList
+						disabled={() => !deploymentPermissions().edit}
+						value={() => deploymentQuery.data?.environmentVariables ?? {}}
+						onChange={(next) =>
+							setLocalInfo((prev) => (prev ? { ...prev, environmentVariables: next } : undefined))
+						}
+						onValidityChange={setEnvValid}
+						onSecretCreated={() =>
+							toast("Secret created. Update the deployment to start using it.", "success")
+						}
+					/>
+					<Show when={showNoEditAccess()}>
+						<NoEditAccess section="environment variables" />
+					</Show>
+				</section>
 
-				<div class="border-t border-border-color w-full mt-2" />
+				<div class="border-t border-border-color w-full" />
 
-				<div class="flex flex-col gap-1 w-full">
-					<h2 class="text-lg text-white font-semibold">Config Files</h2>
-					<p class="text-sm text-grey">Files mounted into the container at the given paths.</p>
-				</div>
+				<section class="flex flex-col gap-4 items-start w-full">
+					<div class="flex flex-col gap-1 w-full">
+						<h2 class="text-lg text-white font-semibold">Config Files</h2>
+						<p class="text-sm text-grey">Files mounted into the container at the given paths.</p>
+					</div>
 
-				<ConfigMount
-					showLabel={false}
-					disabled={() => !deploymentPermissions().edit}
-					value={() => deploymentQuery.data?.configMounts ?? {}}
-					onChange={(next) => setLocalInfo((prev) => (prev ? { ...prev, configMounts: next } : undefined))}
-					onValidityChange={setConfigMountsValid}
-				/>
+					<ConfigMount
+						showLabel={false}
+						disabled={() => !deploymentPermissions().edit}
+						value={() => deploymentQuery.data?.configMounts ?? {}}
+						onChange={(next) =>
+							setLocalInfo((prev) => (prev ? { ...prev, configMounts: next } : undefined))
+						}
+						onValidityChange={setConfigMountsValid}
+					/>
+					<Show when={showNoEditAccess()}>
+						<NoEditAccess section="config files" />
+					</Show>
+				</section>
 
-				<div class="border-t border-border-color w-full mt-2" />
+				<div class="border-t border-border-color w-full" />
 
-				<div class="flex flex-col gap-1 w-full">
-					<h2 class="text-lg text-white font-semibold">Volumes</h2>
-					<p class="text-sm text-grey">
-						Directories whose contents survive restarts and redeploys. A deployment with volumes runs a
-						single replica.
-					</p>
-				</div>
+				<section class="flex flex-col gap-4 items-start w-full">
+					<div class="flex flex-col gap-1 w-full">
+						<h2 class="text-lg text-white font-semibold">Volumes</h2>
+						<p class="text-sm text-grey">
+							Directories whose contents survive restarts and redeploys. A deployment with volumes runs a
+							single replica.
+						</p>
+					</div>
 
-				<VolumeMount
-					showLabel={false}
-					disabled={() => !deploymentPermissions().edit}
-					value={() => deploymentQuery.data?.volumes ?? {}}
-					configMountPaths={() => Object.keys(localInfo()?.configMounts ?? {})}
-					onChange={(next) => setLocalInfo((prev) => (prev ? { ...prev, volumes: next } : undefined))}
-					onValidityChange={setVolumesValid}
-				/>
+					<VolumeMount
+						showLabel={false}
+						disabled={() => !deploymentPermissions().edit}
+						value={() => deploymentQuery.data?.volumes ?? {}}
+						configMountPaths={() => Object.keys(localInfo()?.configMounts ?? {})}
+						onChange={(next) => setLocalInfo((prev) => (prev ? { ...prev, volumes: next } : undefined))}
+						onValidityChange={setVolumesValid}
+					/>
+					<Show when={showNoEditAccess()}>
+						<NoEditAccess section="volumes" />
+					</Show>
+				</section>
 			</div>
 
 			<Show when={deploymentPermissions().edit}>

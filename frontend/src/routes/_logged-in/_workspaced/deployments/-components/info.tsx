@@ -15,10 +15,16 @@ import {
 	UnsavedChangesGuard,
 	useToast,
 } from "~/components";
-import { useAuthState } from "~/hooks";
-import { useGetPermissions } from "~/hooks/is-allowed";
+import { useAuthState, useIsMounted } from "~/hooks";
+import useIsAllowed, { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useDeploymentInfoQuery, useRunnerInfoQuery, useRunnersInfiniteQuery } from "~/hooks/fetch";
+import {
+	useContainerRegistryInfoQuery,
+	useDeploymentInfoQuery,
+	useRunnerInfoQuery,
+	useRunnersInfiniteQuery,
+	useUserPermissionsQuery,
+} from "~/hooks/fetch";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { REGISTRY_DOMAIN } from "~/utils/env";
@@ -80,6 +86,26 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 		return info && info.registry === REGISTRY_DOMAIN && "repositoryId" in info
 			? (info.repositoryId as string)
 			: undefined;
+	};
+
+	const isMounted = useIsMounted();
+	const userPermissionsQuery = useUserPermissionsQuery();
+	const canViewRepository = useIsAllowed("containerRegistryRepository", "view", () => patrRepositoryId() ?? "");
+
+	// Skipped without access to the repository: the request could only fail.
+	const repositoryQuery = useContainerRegistryInfoQuery(() =>
+		canViewRepository() ? (patrRepositoryId() ?? "") : ""
+	);
+
+	/**
+	 * What the image field shows for a Patr registry image: the repository's name.
+	 * Falls back to its ID when the name can't be read, and stays blank while that's unknown.
+	 */
+	const patrImageName = () => {
+		// Read through `isSuccess` so a pending fetch doesn't suspend the form.
+		if (repositoryQuery.isSuccess) return repositoryQuery.data.repository.name;
+		const noAccess = isMounted() && userPermissionsQuery.isFetched && !canViewRepository();
+		return noAccess || repositoryQuery.isError ? (patrRepositoryId() ?? "") : "";
 	};
 
 	/** The image's Docker Hub page, when it's pulled from Docker Hub. */
@@ -348,7 +374,7 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 								const info = localInfo();
 								if (!info) return "";
 								if (info.registry === REGISTRY_DOMAIN) {
-									return "repositoryId" in info ? (info.repositoryId as string) : "";
+									return patrImageName();
 								}
 								return "imageName" in info ? info.imageName : "";
 							})()}

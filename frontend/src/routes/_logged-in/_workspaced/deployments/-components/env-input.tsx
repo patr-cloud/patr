@@ -122,6 +122,10 @@ const EnvInput = (props: EnvInputProps) => {
 
 	const hasAnyError = createMemo(() => rows().some((r) => Object.keys(rowError(r)).length > 0));
 
+	// The blank draft row is how a variable gets added, so it's left out when nothing can be.
+	const visibleRows = () =>
+		get(props.disabled) ? rows().filter((r) => r.key !== "" || !valueIsEmpty(r.value)) : rows();
+
 	const committedMap = (): Record<string, EnvironmentVariableValue> => {
 		const out: Record<string, EnvironmentVariableValue> = {};
 		const counts = keyCounts();
@@ -180,23 +184,25 @@ const EnvInput = (props: EnvInputProps) => {
 			<Show when={get(props.label)}>{(label) => <Label parentClass="flex-2 mt-6" label={label()} />}</Show>
 			<div class="flex flex-col flex-10 gap-1 w-full">
 				{/* Column headings, mirroring the row's columns below. */}
-				<div class="flex items-center gap-4 w-full text-sm text-grey">
-					<span class="flex-5 ml-0.75">Key</span>
-					<span class="flex-7 ml-0.75">Value</span>
-					<div class="invisible flex" aria-hidden="true">
-						<ValueTypeToggle value={() => "string"} onChange={() => {}} />
+				<Show when={visibleRows().length > 0}>
+					<div class="flex items-center gap-4 w-full text-sm text-grey">
+						<span class="flex-5 ml-0.75">Key</span>
+						<span class="flex-7 ml-0.75">Value</span>
+						<div class="invisible flex" aria-hidden="true">
+							<ValueTypeToggle value={() => "string"} onChange={() => {}} />
+						</div>
+						<Button
+							type="button"
+							variant={ButtonVariant.Outlined}
+							class="flex-1 flex items-center gap-2 invisible"
+							color={Color.Error}
+						>
+							<FiTrash2 size={16} />
+						</Button>
 					</div>
-					<Button
-						type="button"
-						variant={ButtonVariant.Outlined}
-						class="flex-1 flex items-center gap-2 invisible"
-						color={Color.Error}
-					>
-						<FiTrash2 size={16} />
-					</Button>
-				</div>
+				</Show>
 
-				<Index each={rows()}>
+				<Index each={visibleRows()}>
 					{(row) => {
 						const errs = () => rowError(row());
 						const keyErr = () => errs().key;
