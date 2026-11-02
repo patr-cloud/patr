@@ -105,6 +105,26 @@ export async function fillFirstEnv(page: Page, key: string, value: string): Prom
 	await page.locator('input[placeholder="Enter Env Value"]').first().fill(value);
 }
 
+// Key inputs of every environment-variable row, including the blank draft row.
+export function envKeyInputs(page: Page) {
+	return page.locator('input[placeholder="Enter Env Name"]');
+}
+
+// The config-mount add row's path input (config-mount.tsx).
+export function configMountPathInput(page: Page) {
+	return page.locator('#deployment-config-filename');
+}
+
+// The volume add row's path input (volume-mount.tsx).
+export function volumePathInput(page: Page) {
+	return page.locator('#deployment-volume-path');
+}
+
+// The line a section on the Configuration tab shows a user who can't edit it (environment.tsx).
+export function noEditAccessNote(page: Page, section: string) {
+	return page.getByText(`You don't have access to edit ${section}.`);
+}
+
 // ---------- .env upload modal (env-upload-modal.tsx) ----------
 
 // Opens the review modal and hands it `contents` as a .env file. The file input
@@ -229,6 +249,10 @@ export function noSuchTab(page: Page) {
 
 export function infoNameInput(page: Page) {
 	return page.locator('input[name="deployment-name"]');
+}
+
+export function infoImageNameInput(page: Page) {
+	return page.locator('input[placeholder="Image Name"]');
 }
 
 export function infoImageTagInput(page: Page) {
