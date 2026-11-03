@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT oauth_login.login_id FROM oauth_refresh_token INNER JOIN oauth_login ON oauth_refresh_token.login_id = oauth_login.login_id WHERE oauth_refresh_token.token_hash = $1 AND oauth_login.client_id = $2;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "login_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "oauth_login",
+            "name": "login_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6053acefc5f75bf19e2a6acac9cdb9b00661d50c4b8d8aa1b8a4e9cab2b267bf"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT login_id FROM oauth_login WHERE login_id = $1 AND revoked IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "login_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "oauth_login",
+            "name": "login_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1c66f6ed632a5a034206d13b75d2e5dc24fd56b9f1e543192e44212d189a0460"
+}

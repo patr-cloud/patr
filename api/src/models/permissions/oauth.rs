@@ -1,41 +1,9 @@
-use jsonwebtoken::{Algorithm, Validation};
 use time::OffsetDateTime;
 
 use crate::{
-	models::{
-		oauth::{self, claims::OAuthAccessTokenClaims, keys},
-		redis::{ActorAuthDataCache, ActorAuthDataCacheKind},
-	},
+	models::redis::{ActorAuthDataCache, ActorAuthDataCacheKind},
 	prelude::*,
-	utils::config::AppConfig,
 };
-
-/// Decodes `token` as one of our OAuth access tokens, checking its signature,
-/// `typ`, issuer, audience and expiry. `None` if it isn't one.
-pub(super) fn decode_access_token(
-	config: &AppConfig,
-	token: &str,
-) -> Option<OAuthAccessTokenClaims> {
-	let header = jsonwebtoken::decode_header(token).ok()?;
-	// RFC 9068. An id token is signed with the same key, so this and the
-	// audience are what keep one from being used here.
-	if header.alg != Algorithm::ES256 || header.typ.as_deref() != Some("at+jwt") {
-		return None;
-	}
-
-	let key = keys::get_key_by_id(config, header.kid.as_deref()?).ok()??;
-
-	let mut validation = Validation::new(Algorithm::ES256);
-	validation.set_issuer(&[oauth::issuer(config)]);
-	validation.set_audience(&[oauth::issuer(config)]);
-	validation.set_required_spec_claims(&["iss", "sub", "aud", "exp"]);
-	validation.validate_nbf = true;
-
-	jsonwebtoken::decode::<OAuthAccessTokenClaims>(token, &key.decoding_key().ok()?, &validation)
-		.inspect_err(|err| warn!("Invalid OAuth access token: {err}"))
-		.ok()
-		.map(|data| data.claims)
-}
 
 /// Load everything the cache holds for the OAuth grant `login_id`: the user
 /// behind it and their permissions. A revoked grant has nothing to load.

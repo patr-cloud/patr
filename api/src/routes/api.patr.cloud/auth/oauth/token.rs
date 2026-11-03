@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{
 	Form,
 	Json,
@@ -11,9 +9,8 @@ use axum::{
 	response::{IntoResponse, Response},
 };
 use base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD};
-use headers::{Authorization, HeaderMapExt, authorization::Basic};
 use jsonwebtoken::Header;
-use rustis::commands::{GenericCommands, SetExpiration, StringCommands};
+use rustis::commands::{SetExpiration, StringCommands};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::types::ipnetwork::IpNetwork;
@@ -126,7 +123,12 @@ async fn handle(
 	headers: &HeaderMap,
 	body: TokenRequest,
 ) -> Result<TokenResponse, OAuthError> {
-	let client_id = authenticate_client(state, headers, &body)?;
+	let client_id = super::authenticate_client(
+		state,
+		headers,
+		body.client_id.as_deref(),
+		body.client_secret.as_deref(),
+	)?;
 
 	match body.grant_type.as_str() {
 		"authorization_code" => exchange_code(state, &client_id, body).await,
@@ -136,57 +138,6 @@ async fn handle(
 			format!("`{other}` is not a grant type this server implements"),
 		)),
 	}
-}
-
-/// Authenticates the client and returns its id. Takes credentials over Basic
-/// and in the form (RFC 6749 section 2.3.1), since Grafana's client tries
-/// Basic first. A public client presents none, and relies on PKCE.
-fn authenticate_client(
-	state: &AppState,
-	headers: &HeaderMap,
-	body: &TokenRequest,
-) -> Result<String, OAuthError> {
-	// Both halves of Basic are form-encoded before being base64'd.
-	let decode = |value: &str| {
-		serde_qs::from_str::<HashMap<String, String>>(&format!("v={value}"))
-			.ok()
-			.and_then(|mut map| map.remove("v"))
-			.unwrap_or_else(|| value.to_owned())
-	};
-
-	let (client_id, presented_secret) =
-		match (headers.typed_get::<Authorization<Basic>>(), &body.client_id) {
-			(Some(basic), _) => (decode(basic.username()), Some(decode(basic.password()))),
-			(None, Some(client_id)) => (client_id.clone(), body.client_secret.clone()),
-			(None, None) => {
-				return Err(OAuthError::new(
-					OAuthErrorCode::InvalidClient,
-					"no client credentials were presented",
-				));
-			}
-		};
-
-	let Some(client) = state.config.oauth.clients.get(&client_id) else {
-		return Err(OAuthError::new(
-			OAuthErrorCode::InvalidClient,
-			"unknown client",
-		));
-	};
-
-	match (&client.client_secret, presented_secret) {
-		// Compared by digest, so the time taken doesn't leak how much matched.
-		(Some(expected), Some(presented))
-			if Sha256::digest(expected) == Sha256::digest(&presented) => {}
-		(None, None) => {}
-		_ => {
-			return Err(OAuthError::new(
-				OAuthErrorCode::InvalidClient,
-				"client authentication failed",
-			));
-		}
-	}
-
-	Ok(client_id)
 }
 
 /// Exchanges an authorization code for tokens, creating the grant.
@@ -569,7 +520,9 @@ async fn rotate_refresh_token(
 			"Refresh token replay detected for grant `{}`, revoking it",
 			row.login_id
 		);
-		revoke_grant(state, &mut connection, &row.login_id).await?;
+		oauth::revoke_grant(&mut connection, &mut state.redis.clone(), &row.login_id)
+			.await
+			.map_err(OAuthError::server_error)?;
 		connection.commit().await?;
 
 		return Err(OAuthError::new(
@@ -653,64 +606,4 @@ async fn rotate_refresh_token(
 		Some(refresh_token),
 		row.scope,
 	))
-}
-
-/// Revokes a grant and every refresh token issued under it.
-async fn revoke_grant(
-	state: &AppState,
-	connection: &mut DatabaseTransaction,
-	login_id: &Uuid,
-) -> Result<(), OAuthError> {
-	let now = OffsetDateTime::now_utc();
-
-	query!(
-		r#"
-		UPDATE
-			oauth_login
-		SET
-			revoked = $1
-		WHERE
-			login_id = $2 AND
-			revoked IS NULL;
-		"#,
-		now,
-		login_id,
-	)
-	.execute(&mut **connection)
-	.await?;
-
-	let tokens = query!(
-		r#"
-		UPDATE
-			oauth_refresh_token
-		SET
-			consumed = COALESCE(consumed, $1)
-		WHERE
-			login_id = $2
-		RETURNING
-			token_hash;
-		"#,
-		now,
-		login_id,
-	)
-	.fetch_all(&mut **connection)
-	.await?;
-
-	let mut redis = state.redis.clone();
-
-	// Or a grant revoked mid-window would keep replaying a live pair.
-	if !tokens.is_empty() {
-		redis
-			.del(
-				tokens
-					.into_iter()
-					.map(|token| redis::keys::oauth_replacement_tokens(&token.token_hash))
-					.collect::<Vec<_>>(),
-			)
-			.await?;
-	}
-
-	permissions::mark_login_stale(&mut redis, login_id)
-		.await
-		.map_err(OAuthError::server_error)
 }
