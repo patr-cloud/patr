@@ -10,6 +10,7 @@ import {
 	OtpInput,
 	useToast,
 	Turnstile,
+	type TurnstileHandle,
 } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { createSignal, Show } from "solid-js";
@@ -34,6 +35,7 @@ const Login = () => {
 	const [showMfa, setShowMfa] = createSignal(false);
 	const [mfaOtp, setMfaOtp] = createSignal("");
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+	let turnstile: TurnstileHandle | undefined;
 	const [inputs, setInputs] = createSignal<InputFields>({
 		email: "",
 		password: "",
@@ -116,6 +118,8 @@ const Login = () => {
 			method: "POST",
 			body: JSON.stringify(requestBody),
 		});
+		setTurnstileToken("");
+		turnstile?.reset();
 
 		if (loginResp.ok) {
 			console.log("Login successful");
@@ -248,6 +252,7 @@ const Login = () => {
 					{IS_CLOUD && (
 						<div class="mt-6 flex justify-center">
 							<Turnstile
+								ref={(handle) => (turnstile = handle)}
 								onVerify={setTurnstileToken}
 								onExpire={() => setTurnstileToken("")}
 								onError={() => setTurnstileToken("")}

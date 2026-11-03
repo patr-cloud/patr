@@ -2,7 +2,17 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, onMount, Show } from "solid-js";
 import { CompleteSignUpRequest, ResendOtpRequest } from "~/bindings";
-import { Alert, Button, ButtonVariant, Input, InputType, OtpInput, useToast, Turnstile } from "~/components";
+import {
+	Alert,
+	Button,
+	ButtonVariant,
+	Input,
+	InputType,
+	OtpInput,
+	useToast,
+	Turnstile,
+	type TurnstileHandle,
+} from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { cloudOnly, IS_CLOUD } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
@@ -13,6 +23,7 @@ const ConfirmSignUp = () => {
 
 	const search = Route.useSearch();
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+	let turnstile: TurnstileHandle | undefined;
 
 	// Get the email from URL params or navigation state
 	const initialEmail = search().email || "";
@@ -56,6 +67,8 @@ const ConfirmSignUp = () => {
 			method: "POST",
 			body: JSON.stringify(body),
 		});
+		setTurnstileToken("");
+		turnstile?.reset();
 
 		if (resp.ok) {
 			toast("Account verified! You can now log in.", "success");
@@ -161,6 +174,7 @@ const ConfirmSignUp = () => {
 				{IS_CLOUD && (
 					<div class="mt-6 flex justify-center">
 						<Turnstile
+							ref={(handle) => (turnstile = handle)}
 							onVerify={setTurnstileToken}
 							onExpire={() => setTurnstileToken("")}
 							onError={() => setTurnstileToken("")}

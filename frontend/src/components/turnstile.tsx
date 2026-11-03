@@ -22,7 +22,17 @@ declare global {
 	}
 }
 
+/**
+ * Imperative handle on a rendered widget. A Turnstile token is single-use, so a
+ * form calls `reset` after each request that sent one, to get a fresh token
+ * for the next submit.
+ */
+export interface TurnstileHandle {
+	reset: () => void;
+}
+
 interface TurnstileProps {
+	ref?: (handle: TurnstileHandle) => void;
 	onVerify: (token: string) => void;
 	onExpire?: () => void;
 	onError?: () => void;
@@ -60,6 +70,14 @@ const Turnstile = (props: TurnstileProps) => {
 	};
 
 	onMount(() => {
+		props.ref?.({
+			reset: () => {
+				const id = widgetId();
+				if (id && window.turnstile) {
+					window.turnstile.reset(id);
+				}
+			},
+		});
 		tryRender();
 	});
 

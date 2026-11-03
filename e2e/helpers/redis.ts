@@ -1,10 +1,11 @@
 import { Redis } from 'ioredis';
 import { queryUser } from '@/helpers/db';
 
-// Single shared connection. Redis is on the host port mapped by docker-compose.
+// Single shared connection. Redis is on the host port mapped by docker-compose,
+// or wherever PATR__REDIS__PORT points the API.
 const redis = new Redis({
 	host: '127.0.0.1',
-	port: 16379,
+	port: Number(process.env.PATR__REDIS__PORT ?? 16379),
 	lazyConnect: true,
 });
 

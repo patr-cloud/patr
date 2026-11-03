@@ -50,8 +50,10 @@ export async function newContext(
 	// Turnstile token; with the production frontend build the page is interactive
 	// instantly, so under parallel workers the real async CF script can land after
 	// the test already checked the button — leaving it stuck disabled. Block that
-	// script and provide a stub that fires the always-passes test token at once
-	// (and again on reset, for re-verify flows). The backend accepts it verbatim.
+	// script and provide a stub that fires a token at once, and a new one on each
+	// reset. Real tokens are single-use, so each is distinct, letting specs check
+	// that a form doesn't resend a spent one. The backend's always-passes test
+	// secret accepts any of them.
 	await context.route('https://challenges.cloudflare.com/**', (route) => route.abort());
 
 	// Block the external Google Fonts pulled in by `app.css`
@@ -65,14 +67,18 @@ export async function newContext(
 	await context.route('https://fonts.gstatic.com/**', (route) => route.abort());
 
 	await context.addInitScript((token: string) => {
-		const state: { callback: ((t: string) => void) | null } = { callback: null };
+		const state: { callback: ((t: string) => void) | null; issued: number } = {
+			callback: null,
+			issued: 0,
+		};
+		const issue = () => state.callback?.(`${token}.${++state.issued}`);
 		(window as unknown as { turnstile: unknown }).turnstile = {
 			render: (_container: unknown, options: { callback?: (t: string) => void }) => {
 				state.callback = options?.callback ?? null;
-				options?.callback?.(token);
+				issue();
 				return 'stub-widget';
 			},
-			reset: () => state.callback?.(token),
+			reset: issue,
 			remove: () => {},
 		};
 	}, TURNSTILE_TOKEN);
