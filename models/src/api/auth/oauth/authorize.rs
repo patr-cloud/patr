@@ -1,58 +1,38 @@
-use serde::{Deserialize, Serialize};
-
 use crate::prelude::*;
 
-/// The type of request that the third-party app is making.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default, ts_rs::TS)]
-#[serde(rename_all = "snake_case")]
-pub enum OAuthAuthorizeResponseType {
-	/// The third-party app is requesting a temporary authorization code.
-	#[serde(rename = "code")]
-	#[default]
-	AuthorizationCode,
-}
-
-/// The method used to hash the code challenge.
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq, ts_rs::TS)]
-#[serde(rename_all = "snake_case")]
-pub enum CodeChallengeHashMethod {
-	/// The code challenge is hashed using the SHA-256 algorithm.
-	#[serde(rename = "S256")]
-	#[default]
-	SHA256,
-	/// The code challenge is not hashed (plain text).
-	#[serde(rename = "plain")]
-	Plain,
-}
-
 macros::declare_api_endpoint!(
-	/// The endpoint to authorize a user.
-	///
-	/// This is the first step. The third-party app opens a browser and sends the
-	/// user to this endpoint on our API. Here, the user logs in (using the
-	/// frontend) and gives the third-party app permission to access their data in
-	/// the API. This endpoint is used to authorize a user using OAuth2.1. It
-	/// returns a temporary code that can be exchanged for an access token and a
-	/// refresh token.
+	/// Where a client sends the browser to start a login. Parks the request
+	/// and redirects to the consent screen with its id. The query is
+	/// `snake_case`, as OAuth defines it.
 	OAuthAuthorize,
 	GET "/auth/oauth/authorize",
 	query = {
-		/// The request type that the third-party app is making
-		pub response_type: OAuthAuthorizeResponseType,
-		/// The client ID of the third-party app
+		/// The client asking.
+		#[serde(rename = "client_id")]
 		pub client_id: String,
-		/// The redirect URI of the third-party app
-		#[serde(default, skip_serializing_if = "Option::is_none")]
+		/// Where to send the browser afterwards.
+		#[serde(rename = "redirect_uri")]
 		pub redirect_uri: Option<String>,
-		/// The scopes requested by the third-party app
-		pub scope: String,
-		/// The state of the request, if any
+		/// Must be `code`.
+		#[serde(rename = "response_type")]
+		pub response_type: Option<String>,
+		/// Space-separated identity scopes.
+		pub scope: Option<String>,
+		/// The client's CSRF token, echoed back untouched.
 		pub state: Option<String>,
-		/// The hashed value of a code challenge (as per PKCE)
-		pub code_challenge: String,
-		/// The method used to hash the code challenge
-		pub code_challenge_method: CodeChallengeHashMethod,
+		/// The OIDC nonce, bound into the id token.
+		pub nonce: Option<String>,
+		/// The PKCE challenge.
+		#[serde(rename = "code_challenge")]
+		pub code_challenge: Option<String>,
+		/// Must be `S256`.
+		#[serde(rename = "code_challenge_method")]
+		pub code_challenge_method: Option<String>,
 	},
-	client_type = [WebLogin],
+	response_headers = {
+		/// The consent screen, or the client's redirect URI with an error.
+		pub location: Location,
+	},
+	client_type = [OAuthLogin],
 	audit_log = NoAuditLogger,
 );

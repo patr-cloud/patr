@@ -100,10 +100,13 @@ export default createMiddleware({
 			});
 		}
 
+		// So the login page can send them back where they were going.
+		const returnTo = encodeURIComponent(url.pathname + url.search);
+
 		return new Response(null, {
 			status: 302,
 			headers: {
-				Location: "/login",
+				Location: `/login?returnTo=${returnTo}`,
 				"Set-Cookie": authCookie("", 0),
 			},
 		});

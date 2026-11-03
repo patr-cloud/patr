@@ -107,6 +107,7 @@ pub async fn serve(state: &AppState) {
 							state,
 							&[
 								ActorClientType::UserLogin(UserLoginType::ApiToken),
+								ActorClientType::UserLogin(UserLoginType::OAuthLogin),
 								ActorClientType::ServiceAccount,
 								ActorClientType::Runner,
 							],
