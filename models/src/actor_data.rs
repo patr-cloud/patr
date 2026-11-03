@@ -8,7 +8,7 @@ use typed_builder::TypedBuilder;
 use crate::{prelude::*, rbac::WorkspacePermission, utils::ActorClientType};
 
 /// How a user authenticated. Mirrors the database's `USER_LOGIN_TYPE`: a user
-/// holds many logins, and each is either a web session or an API token.
+/// holds many logins, and each is a web session, an API token or an OAuth grant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(
@@ -21,6 +21,8 @@ pub enum UserLoginType {
 	WebLogin,
 	/// A user API token (`patr_at_…`).
 	ApiToken,
+	/// A grant to an OAuth client, authenticated via its ES256 access token.
+	OAuthLogin,
 }
 
 /// The actor making the authenticated request. Mirrors the database's

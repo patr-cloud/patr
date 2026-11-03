@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO oauth_client(client_id, name, logo_url, client_uri) VALUES ($1, $2, $3, $4) ON CONFLICT(client_id) DO UPDATE SET name = EXCLUDED.name, logo_url = EXCLUDED.logo_url, client_uri = EXCLUDED.client_uri;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b518cc8e5d282b83612a9d53cdce56548acbf4827868c82a6cacf214f0792af7"
+}

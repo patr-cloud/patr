@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE UNIQUE INDEX oauth_refresh_token_uq_token_hash ON oauth_refresh_token(token_hash);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "335b8a708bfe9242d2dd64355b7a4cf897b2f71240d4ca1bf6a811be4233f5c6"
+}

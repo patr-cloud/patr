@@ -62,6 +62,10 @@ async fn main() {
 		.await
 		.expect("error initializing database");
 
+	db::sync_oauth_clients(&state)
+		.await
+		.expect("error syncing OAuth clients");
+
 	worker::initialize(&state)
 		.await
 		.expect("error initializing worker");
