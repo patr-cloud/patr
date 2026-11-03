@@ -38,6 +38,9 @@ pub enum AppError {
 	/// An error that occurred while running a runner.
 	#[error("runner error: {0}")]
 	RunnerError(String),
+	/// An error that occurred while logging in through the browser.
+	#[error("login error: {0}")]
+	OAuthError(String),
 }
 
 impl From<ApiErrorResponse> for AppError {

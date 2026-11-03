@@ -19,7 +19,16 @@ Every command module has a `pub struct Args` (deriving `clap::Args`; empty if no
 
 ## State
 
-`AppState` is persisted to `~/.local/share/patr/cli/config.json` (`utils::storage`), mode `0600` since it holds the token. Debug builds use the repo's `config/cli.json` instead, and `CONFIG_PATH` overrides both. Two fields: `target_channel: Channel` and `auth: AuthState` (an `#[serde(untagged)]` enum — `LoggedIn { token, current_workspace }` or `LoggedOut`). **The nested-enum shape is deliberate** — `current_workspace` can't exist without a `token`, so it's unrepresentable as two optional fields. To mutate: `load()` the full state, modify `state.auth`, `state.save()` — don't build a fresh `AppState` (you'd drop `target_channel`). `load()` falls back to `Default` on any error.
+`AppState` is persisted to `~/.local/share/patr/cli/config.json` (`utils::storage`), mode `0600` since it holds the token. Debug builds use the repo's `config/cli.json` instead, and `CONFIG_PATH` overrides both. Two fields: `target_channel: Channel` and `auth: AuthState` (an `#[serde(untagged)]` enum — `LoggedIn { token, current_workspace, session }` or `LoggedOut`). **The nested-enum shape is deliberate** — `current_workspace` can't exist without a `token`, so it's unrepresentable as two optional fields, and likewise `session` (an `OAuthSession`: refresh token and expiry) is all or nothing. Destructure `LoggedIn` with `..`; the two places that build it (`login`, `workspace switch`) name every field, and `switch` has to carry `session` over. Because the enum is untagged, a field that fails to parse fails the whole variant and logs the user out, which is why `token_expiry` is unix seconds. To mutate: `load()` the full state, modify `state.auth`, `state.save()` — don't build a fresh `AppState` (you'd drop `target_channel`). `load()` falls back to `Default` on any error.
+
+## Login and the OAuth session
+
+`patr login` runs the RFC 8252 loopback flow (`utils::oauth`): bind a port on `127.0.0.1`, send the browser to the API's `/auth/oauth/authorize`, wait for the code, and exchange it with PKCE. `patr-cli` is a public client registered in the API's `oauth.clients` with `http://127.0.0.1/callback`; the server ignores the port for loopback redirects. `--token` still takes an API token, for CI, and has no session.
+
+- `commands::execute` renews the access token once before dispatch, when it's within a minute of expiring, and saves the rotated pair. Skipped for `--token`, `login`, `logout`, `upgrade` and `uninstall`.
+- A rejected refresh (`invalid_grant` and the like) clears the session, so only commands that need a login fail. Any other failure leaves the session as it is and the command carries on.
+- `patr logout` revokes the grant through `/auth/oauth/revoke`, best-effort, and clears the session either way.
+- The OAuth endpoints take forms and answer outside the API's envelope, so they go through `make_form_request`, not `make_request`.
 
 ## Errors
 
@@ -27,7 +36,7 @@ Single `AppError` enum (`error.rs`), returned from every `execute`. Network erro
 
 ## API client
 
-`utils::client::make_request` is the **only** way to hit the API — pass a typed `ApiRequest<E>` where `E: ApiEndpoint` (from `models`). It handles path/query encoding, user-agent, auth injection, deserialization. The reqwest client is a `OnceLock<Client>` — reuse it. `constants::{API_BASE_URL, FRONTEND_BASE_URL}` switch on `cfg!(debug_assertions)`.
+`utils::client::make_request` is the **only** way to hit the API's endpoints — pass a typed `ApiRequest<E>` where `E: ApiEndpoint` (from `models`). The OAuth protocol endpoints are the exception, through `make_form_request`. It handles path/query encoding, user-agent, auth injection, deserialization. The reqwest client is a `OnceLock<Client>` — reuse it. `constants::{API_BASE_URL, FRONTEND_BASE_URL}` switch on `cfg!(debug_assertions)`.
 
 ## TTY / systemd / self-lifecycle
 
@@ -78,6 +87,6 @@ reverted. Concretely:
 API and asserts on the exact request bodies. `constants::API_BASE_URL` is a compile-time
 constant, so the recipe builds the tests with `PATR_TEST_API_BASE_URL` set — plain
 `cargo test -p cli` will point them at a real API and fail. One fixed port means one shared
-server, hence `--test-threads=1`.
+server, hence `--test-threads=1`. Tests of anything that saves the state run the `patr` binary with a temp `HOME` and `CONFIG_PATH` (see `tests/oauth`, `tests/runner/setup.rs`), so they never touch the real login.
 
 The tests build debug, so the release side of a `cfg!(debug_assertions)` branch (`AppState`'s config paths, `FRONTEND_BASE_URL`) never runs in them. Check it by hand.

@@ -23,11 +23,7 @@ pub(super) async fn execute(
 	args: Args,
 	mut state: AppState,
 ) -> Result<CommandOutput, AppError> {
-	let AuthState::LoggedIn {
-		token,
-		current_workspace: _,
-	} = state.auth.clone()
-	else {
+	let AuthState::LoggedIn { token, session, .. } = state.auth.clone() else {
 		return Err(AppError::NotLoggedIn);
 	};
 
@@ -71,6 +67,7 @@ pub(super) async fn execute(
 	state.auth = AuthState::LoggedIn {
 		token,
 		current_workspace: Some(workspace.id),
+		session,
 	};
 	state.save()?;
 
