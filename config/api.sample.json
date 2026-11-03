@@ -60,6 +60,9 @@
 		"token": "dev-root-token"
 	},
 	"oauth": {
+		"signingKeys": [
+			"config/oauth-signing-key.pem"
+		],
 		"clients": {
 			"patr-cli": {
 				"name": "Patr CLI",
