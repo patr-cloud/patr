@@ -144,6 +144,12 @@ test.describe('mfa — login with MFA', () => {
 		// Fresh context, attempt login again.
 		const context2 = await newContext(browser);
 		const page2 = await context2.newPage();
+		const turnstileTokens: string[] = [];
+		page2.on('request', (request) => {
+			if (request.method() === 'POST' && request.url().includes('/api/auth/sign-in')) {
+				turnstileTokens.push(request.postDataJSON().cfTurnstileToken);
+			}
+		});
 		try {
 			await openLoginPage(page2);
 			await fillLoginForm(page2, { email: user.email, password: user.password });
@@ -155,6 +161,10 @@ test.describe('mfa — login with MFA', () => {
 			// Refresh Turnstile state and re-submit.
 			await submitLogin(page2);
 			await waitForLoggedIn(page2);
+			// The first submit spent its Turnstile token, so the MFA submit must
+			// carry a fresh one or Cloudflare rejects it.
+			expect(turnstileTokens).toHaveLength(2);
+			expect(turnstileTokens[1]).not.toBe(turnstileTokens[0]);
 		} finally {
 			await context2.close();
 		}

@@ -4,7 +4,7 @@ const { Pool } = pg;
 
 const pool = new Pool({
 	host: '127.0.0.1',
-	port: 15432,
+	port: Number(process.env.PATR__DATABASE__PORT ?? 15432),
 	user: 'postgres',
 	password: 'postgres',
 	database: 'api',

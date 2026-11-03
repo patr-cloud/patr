@@ -2,7 +2,17 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
 import { CreateAccountRequest, SocialLoginInitiateResponse } from "~/bindings";
-import { Alert, Button, Input, InputType, PasswordInput, PasswordStrength, useToast, Turnstile } from "~/components";
+import {
+	Alert,
+	Button,
+	Input,
+	InputType,
+	PasswordInput,
+	PasswordStrength,
+	useToast,
+	Turnstile,
+	type TurnstileHandle,
+} from "~/components";
 import { createAsyncAction } from "~/hooks";
 import { ButtonVariant } from "~/utils/color";
 import { cloudOnly, IS_CLOUD } from "~/utils/env";
@@ -59,6 +69,7 @@ const SignUp = () => {
 	const [confirmPassword, setConfirmPassword] = createSignal("");
 
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+	let turnstile: TurnstileHandle | undefined;
 	const [errors, setErrors] = createSignal<FieldErrors>({ ...emptyErrors });
 
 	const [showPasswordStrength, setShowPasswordStrength] = createSignal(false);
@@ -126,6 +137,8 @@ const SignUp = () => {
 			method: "POST",
 			body: JSON.stringify(requestBody),
 		});
+		setTurnstileToken("");
+		turnstile?.reset();
 
 		if (resp.ok) {
 			navigate({ to: "/sign-up/confirm", search: { email: email(), otp: undefined } });
@@ -292,6 +305,7 @@ const SignUp = () => {
 					{IS_CLOUD && (
 						<div class="mt-6 flex justify-center">
 							<Turnstile
+								ref={(handle) => (turnstile = handle)}
 								onVerify={setTurnstileToken}
 								onExpire={() => setTurnstileToken("")}
 								onError={() => setTurnstileToken("")}

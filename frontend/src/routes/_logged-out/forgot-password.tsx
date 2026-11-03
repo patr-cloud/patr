@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/solid-router";
 import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
-import { Alert, Button, Input, InputType, useToast, Turnstile } from "~/components";
+import { Alert, Button, Input, InputType, useToast, Turnstile, type TurnstileHandle } from "~/components";
 import { ButtonVariant } from "~/utils/color";
 import { httpRequest } from "~/utils/http-request";
 import { createAsyncAction } from "~/hooks";
@@ -12,6 +12,7 @@ const ForgotPassword = () => {
 	const [emailError, setEmailError] = createSignal("");
 	const [submitted, setSubmitted] = createSignal(false);
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+	let turnstile: TurnstileHandle | undefined;
 
 	const { execute: handleSubmit, isLoading } = createAsyncAction(async () => {
 		if (!email().trim()) {
@@ -31,6 +32,8 @@ const ForgotPassword = () => {
 				cfTurnstileToken: turnstileToken(),
 			}),
 		});
+		setTurnstileToken("");
+		turnstile?.reset();
 
 		if (resp.ok) {
 			setSubmitted(true);
@@ -130,6 +133,7 @@ const ForgotPassword = () => {
 						{/* Turnstile Widget */}
 						<div class="mt-6 flex justify-center">
 							<Turnstile
+								ref={(handle) => (turnstile = handle)}
 								onVerify={setTurnstileToken}
 								onExpire={() => setTurnstileToken("")}
 								onError={() => setTurnstileToken("")}

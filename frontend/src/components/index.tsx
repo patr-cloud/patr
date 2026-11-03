@@ -23,7 +23,7 @@ import UsageBar from "~/components/usage-bar";
 import ContainerGrid from "~/components/container-grid";
 import BgOnboard from "~/components/bg-onboard";
 import { ToastProvider, useToast } from "~/components/toast";
-import Turnstile from "~/components/turnstile";
+import Turnstile, { type TurnstileHandle } from "~/components/turnstile";
 import ToggleSwitch from "~/components/toggle-switch";
 import Modal from "~/components/modal";
 import { ModalContainer } from "~/components/modal";
@@ -79,6 +79,7 @@ export {
 	ToastProvider,
 	useToast,
 	Turnstile,
+	type TurnstileHandle,
 	ToggleSwitch,
 	Modal,
 	ModalContainer,

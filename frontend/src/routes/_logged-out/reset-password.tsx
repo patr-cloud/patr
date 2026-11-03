@@ -12,6 +12,7 @@ import {
 	PasswordInput,
 	PasswordStrength,
 	Turnstile,
+	type TurnstileHandle,
 	useToast,
 } from "~/components";
 import { createAsyncAction } from "~/hooks";
@@ -38,6 +39,7 @@ const ResetPassword = () => {
 	const [confirmPassword, setConfirmPassword] = createSignal("");
 	const [confirmPasswordError, setConfirmPasswordError] = createSignal("");
 	const [turnstileToken, setTurnstileToken] = createSignal<string>("");
+	let turnstile: TurnstileHandle | undefined;
 
 	const [showPasswordStrength, setShowPasswordStrength] = createSignal(false);
 	const [passwordAnchor, setPasswordAnchor] = createSignal<HTMLDivElement>();
@@ -89,6 +91,8 @@ const ResetPassword = () => {
 			method: "POST",
 			body: JSON.stringify(body),
 		});
+		setTurnstileToken("");
+		turnstile?.reset();
 
 		if (resp.ok) {
 			toast("Password reset. You can now log in.", "success");
@@ -205,6 +209,7 @@ const ResetPassword = () => {
 				{/* Turnstile Widget */}
 				<div class="mt-6 flex justify-center">
 					<Turnstile
+						ref={(handle) => (turnstile = handle)}
 						onVerify={setTurnstileToken}
 						onExpire={() => setTurnstileToken("")}
 						onError={() => setTurnstileToken("")}
