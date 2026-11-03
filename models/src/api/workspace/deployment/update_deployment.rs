@@ -44,7 +44,7 @@ macros::declare_api_endpoint!(
 		#[serde(flatten)]
 		pub running_details: DeploymentRunningDetails,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::Deployment,

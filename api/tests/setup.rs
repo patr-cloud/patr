@@ -167,6 +167,24 @@ impl TestSetup {
 			.await
 	}
 
+	/// Make a raw GET against the api-routed server with a bearer token.
+	pub async fn make_raw_api_get_authed(&self, path: &str, token: &str) -> TestResponse {
+		self.api
+			.get(path)
+			.add_header("X-Real-IP", random_ipv4().to_string())
+			.add_header("Authorization", format!("Bearer {token}"))
+			.await
+	}
+
+	/// Make a raw POST against the api-routed server with a bearer token.
+	pub async fn make_raw_api_post_authed(&self, path: &str, token: &str) -> TestResponse {
+		self.api
+			.post(path)
+			.add_header("X-Real-IP", random_ipv4().to_string())
+			.add_header("Authorization", format!("Bearer {token}"))
+			.await
+	}
+
 	/// Make a raw form-encoded POST against the api-routed server, with
 	/// optional HTTP Basic credentials, as `/token` takes.
 	pub async fn make_raw_api_form_post(

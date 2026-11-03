@@ -1,5 +1,6 @@
 use jsonwebtoken::{
 	Algorithm,
+	DecodingKey,
 	EncodingKey,
 	jwk::{Jwk, PublicKeyUse, ThumbprintHash},
 };
@@ -14,6 +15,13 @@ pub struct SigningKey {
 	pub encoding_key: EncodingKey,
 	/// The public half, ready to publish.
 	pub jwk: Jwk,
+}
+
+impl SigningKey {
+	/// The public half, for verifying.
+	pub fn decoding_key(&self) -> Result<DecodingKey, ErrorType> {
+		DecodingKey::from_jwk(&self.jwk).map_err(ErrorType::server_error)
+	}
 }
 
 /// Every signing key in the config, in declared order.
@@ -49,4 +57,9 @@ pub fn get_signing_key(config: &AppConfig) -> Result<SigningKey, ErrorType> {
 		.into_iter()
 		.next()
 		.ok_or_else(|| ErrorType::server_error("no OAuth signing key is configured"))
+}
+
+/// The key a token names in its `kid`, if it's one of ours.
+pub fn get_key_by_id(config: &AppConfig, kid: &str) -> Result<Option<SigningKey>, ErrorType> {
+	Ok(load_keys(config)?.into_iter().find(|key| key.kid == kid))
 }

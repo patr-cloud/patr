@@ -37,6 +37,6 @@ macros::declare_api_endpoint!(
 		/// - description - The description of the resource type
 		pub resource_types: Vec<WithId<ResourceType>>,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

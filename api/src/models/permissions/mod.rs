@@ -8,7 +8,11 @@ use time::OffsetDateTime;
 use tokio::sync::OnceCell;
 
 use crate::{
-	models::{access_token_data::AccessTokenData, redis::ActorAuthDataCacheKind},
+	models::{
+		access_token_data::AccessTokenData,
+		oauth::claims::OAuthAccessTokenClaims,
+		redis::ActorAuthDataCacheKind,
+	},
 	prelude::*,
 	utils::config::AppConfig,
 };
@@ -55,6 +59,8 @@ pub async fn get_permission_id(database: &mut DatabaseConnection, permission: Pe
 
 /// Loads the auth data of a user API token.
 mod api_token;
+/// Loads the auth data of an OAuth grant.
+mod oauth;
 /// Loads the auth data of a runner.
 mod runner;
 /// Loads the auth data of a service account.
@@ -75,9 +81,10 @@ pub use self::cache::{
 
 /// Authenticate a bearer token and return who is making the request.
 ///
-/// A token is either a JWT ([`authenticate_jwt`]) or an opaque API token,
+/// A token is a web dashboard JWT ([`authenticate_jwt`]), an OAuth access
+/// token ([`authenticate_oauth_access_token`]), or an opaque API token,
 /// service account token or runner token ([`authenticate_opaque_token`]).
-/// Both are cached — JWTs by their login ID, opaque tokens by their hash — so
+/// All are cached — JWTs by their login ID, opaque tokens by their hash — so
 /// a hit costs no database round trip; a miss looks the login up, verifies
 /// it, loads its permissions and caches the lot until the token expires or
 /// something marks it stale (see [`cache`]).
@@ -104,6 +111,12 @@ pub async fn authenticate(
 
 	if accepts_jwt && let Ok(claims) = AccessTokenData::decode(token, &config.jwt_secret) {
 		return authenticate_jwt(database, redis, claims).await;
+	}
+
+	if accepted_client_types.contains(&ActorClientType::UserLogin(UserLoginType::OAuthLogin)) &&
+		let Some(claims) = oauth::decode_access_token(config, token)
+	{
+		return authenticate_oauth_access_token(database, redis, claims).await;
 	}
 
 	if !accepts_opaque_token {
@@ -221,8 +234,7 @@ pub fn has_valid_checksum(token: &str) -> bool {
 		)
 }
 
-/// Authenticate a JWT. Today every JWT is a web dashboard session; an OAuth
-/// application's token will carry a claim saying so and branch here.
+/// Authenticate a web dashboard session's JWT.
 async fn authenticate_jwt(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
@@ -331,6 +343,62 @@ async fn authenticate_jwt(
 		.build())
 }
 
+/// Authenticate an OAuth access token, whose signature and claims
+/// [`oauth::decode_access_token`] has already checked. Cached by its grant,
+/// like a JWT by its login.
+async fn authenticate_oauth_access_token(
+	database: &mut DatabaseConnection,
+	redis: &mut RedisClient,
+	claims: OAuthAccessTokenClaims,
+) -> Result<RequestActorData, ErrorType> {
+	let cache_key = redis::keys::auth_data_for_login_id(&claims.sid);
+	let entry = if let Some(entry) = cache::read(redis, &cache_key).await {
+		trace!("Cached auth data found for OAuth grant `{}`", claims.sid);
+		entry
+	} else {
+		let entry = oauth::load_actor_auth_data(&mut *database, &claims.sid).await?;
+
+		cache::write(
+			redis,
+			&cache_key,
+			&entry,
+			constants::CACHED_PERMISSIONS_VALIDITY,
+		)
+		.await;
+
+		entry
+	};
+
+	if claims.sub != entry.actor_id {
+		warn!("OAuth access token `sub` does not match the user owning `sid`");
+		return Err(ErrorType::MalformedAccessToken);
+	}
+
+	let ActorAuthDataCacheKind::OAuthLogin {
+		email,
+		first_name,
+		last_name,
+		created,
+	} = entry.kind
+	else {
+		warn!("OAuth access token presented for a login that is not an OAuth grant");
+		return Err(ErrorType::AuthorizationTokenInvalid);
+	};
+
+	Ok(RequestActorData::builder()
+		.id(entry.actor_id)
+		.actor(ActorData::User {
+			email,
+			first_name,
+			last_name,
+			login: UserLoginType::OAuthLogin,
+		})
+		.created(created)
+		.login_id(claims.sid)
+		.permissions(entry.permissions)
+		.build())
+}
+
 /// Authenticate an opaque token: a user API token (`patr_at_…`), a service
 /// account token (`patr_sa_…`) or a runner token (`patr_rn_…`). The prefix
 /// says which, so a kind this route doesn't take is turned away before
@@ -425,8 +493,8 @@ async fn authenticate_opaque_token(
 			(ActorData::ServiceAccount { name }, created)
 		}
 		ActorAuthDataCacheKind::Runner { name, created } => (ActorData::Runner { name }, created),
-		ActorAuthDataCacheKind::WebLogin { .. } => {
-			error!("A web login's cache entry was found under an opaque token's hash");
+		ActorAuthDataCacheKind::WebLogin { .. } | ActorAuthDataCacheKind::OAuthLogin { .. } => {
+			error!("A login's cache entry was found under an opaque token's hash");
 			return Err(ErrorType::server_error(
 				"web login cached under a token hash",
 			));

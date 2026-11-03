@@ -31,7 +31,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(none)]
 		pub value: Option<String>,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = AppAuditLogger {
 		audit_log_type: AuditLogType::ResourceUpdated,
 		resource_type: ResourceType::Secret,

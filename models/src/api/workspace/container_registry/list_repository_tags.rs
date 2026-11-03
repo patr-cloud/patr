@@ -49,6 +49,6 @@ macros::declare_api_endpoint!(
 		/// List of tags in the current container repository
 		pub tags: Vec<ContainerRepositoryTagAndDigestInfo>
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );

@@ -51,6 +51,6 @@ macros::declare_api_endpoint!(
 		/// any ID that could not be resolved in this workspace.
 		pub resources: Vec<Option<WithId<ResourceInfo>>>,
 	},
-	client_type = [ApiToken, ServiceAccount, WebLogin],
+	client_type = [ApiToken, OAuthLogin, ServiceAccount, WebLogin],
 	audit_log = NoAuditLogger,
 );
