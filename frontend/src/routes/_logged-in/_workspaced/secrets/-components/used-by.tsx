@@ -65,7 +65,12 @@ const UsedByList = (props: UsedByProps) => {
 						{(deployment) => (
 							<li class="flex items-baseline justify-between gap-md py-sm">
 								<div class="flex-1 flex items-center gap-xs min-w-0">
-									<span role="img" aria-label={deployment.status} title={deployment.status} class="flex">
+									<span
+										role="img"
+										aria-label={deployment.status}
+										title={deployment.status}
+										class="flex"
+									>
 										<StatusDot status={deployment.status} />
 									</span>
 									<Link
@@ -81,8 +86,9 @@ const UsedByList = (props: UsedByProps) => {
 										{(variable) => (
 											<span
 												title={variable}
-												class={`font-mono text-xs truncate max-w-full ${variable === props.secretName ? "text-grey" : "text-primary"
-													}`}
+												class={`font-mono text-xs truncate max-w-full ${
+													variable === props.secretName ? "text-grey" : "text-primary"
+												}`}
 											>
 												{variable}
 											</span>
@@ -111,7 +117,11 @@ const UsedBy = (props: UsedByProps) => (
 				<>
 					<Heading />
 					<p class="text-error text-sm mt-md">Couldn't load the deployments using this secret.</p>
-					<Button variant={ButtonVariant.Plain} onClick={reset} class="text-sm mt-xs self-start cursor-pointer">
+					<Button
+						variant={ButtonVariant.Plain}
+						onClick={reset}
+						class="text-sm mt-xs self-start cursor-pointer"
+					>
 						Retry
 					</Button>
 				</>

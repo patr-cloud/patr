@@ -160,115 +160,119 @@ const SecretDetailPage = () => {
 							<Show when={secretInfoQuery.data?.secret}>
 								{(secret) => (
 									<div class="flex flex-1 min-h-0 flex-col lg:flex-row gap-8 lg:items-stretch">
-									<form
-										noValidate
-										onSubmit={onSubmit}
-										class="flex-2 flex flex-col gap-8 w-full min-w-0 min-h-0 overflow-y-auto"
-									>
-										<div class="flex flex-col gap-4 w-full">
-											<div class="flex gap-8 items-start w-full">
-												<Label parentClass="flex-2 pt-2.5" for="secret-name" label="Name" />
-												<div class="flex-10 flex flex-col">
-													<Input
-														id="secret-name"
-														name="secret-name"
-														placeholder="OPENAI_API_KEY"
-														type={InputType.Text}
-														value={name() ?? ""}
-														onInput={(e) => {
-															setName(e.currentTarget.value);
-															setError("");
-														}}
-													/>
+										<form
+											noValidate
+											onSubmit={onSubmit}
+											class="flex-2 flex flex-col gap-8 w-full min-w-0 min-h-0 overflow-y-auto"
+										>
+											<div class="flex flex-col gap-4 w-full">
+												<div class="flex gap-8 items-start w-full">
+													<Label parentClass="flex-2 pt-2.5" for="secret-name" label="Name" />
+													<div class="flex-10 flex flex-col">
+														<Input
+															id="secret-name"
+															name="secret-name"
+															placeholder="OPENAI_API_KEY"
+															type={InputType.Text}
+															value={name() ?? ""}
+															onInput={(e) => {
+																setName(e.currentTarget.value);
+																setError("");
+															}}
+														/>
+													</div>
 												</div>
-											</div>
 
-											<div class="flex gap-8 items-start w-full">
-												<Label parentClass="flex-2 pt-2.5" label="Created" />
-												<p class="flex-10 text-white text-sm pt-2.5">
-													{formatRelativeTime(secret().created)}
-												</p>
-											</div>
+												<div class="flex gap-8 items-start w-full">
+													<Label parentClass="flex-2 pt-2.5" label="Created" />
+													<p class="flex-10 text-white text-sm pt-2.5">
+														{formatRelativeTime(secret().created)}
+													</p>
+												</div>
 
-											<div class="flex gap-8 items-start w-full">
-												<Label parentClass="flex-2 pt-2.5" label="Last updated" />
-												<p class="flex-10 text-white text-sm pt-2.5">
-													{formatRelativeTime(secret().lastUpdated)}
-												</p>
-											</div>
+												<div class="flex gap-8 items-start w-full">
+													<Label parentClass="flex-2 pt-2.5" label="Last updated" />
+													<p class="flex-10 text-white text-sm pt-2.5">
+														{formatRelativeTime(secret().lastUpdated)}
+													</p>
+												</div>
 
-											<div class="flex gap-8 items-start w-full">
-												<Label parentClass="flex-2 pt-2.5" for="secret-value" label="Value" />
-												<div class="flex-10 flex flex-col">
-													<Show
-														when={editingValue()}
-														fallback={
-															<div class="flex items-center gap-4 pt-2.5">
-																<p class="text-grey text-sm">
-																	The current value is hidden and can't be viewed. It
-																	stays unchanged unless you update it.
+												<div class="flex gap-8 items-start w-full">
+													<Label
+														parentClass="flex-2 pt-2.5"
+														for="secret-value"
+														label="Value"
+													/>
+													<div class="flex-10 flex flex-col">
+														<Show
+															when={editingValue()}
+															fallback={
+																<div class="flex items-center gap-4 pt-2.5">
+																	<p class="text-grey text-sm">
+																		The current value is hidden and can't be viewed.
+																		It stays unchanged unless you update it.
+																	</p>
+																	<Button
+																		type="button"
+																		variant={ButtonVariant.Plain}
+																		onClick={() => setEditingValue(true)}
+																		class="text-sm whitespace-nowrap cursor-pointer"
+																	>
+																		Update value
+																	</Button>
+																</div>
+															}
+														>
+															<PasswordInput
+																id="secret-value"
+																name="secret-value"
+																autocomplete="new-password"
+																placeholder="Enter the new value"
+																value={value()}
+																onInput={(e) => {
+																	setValue(e.currentTarget.value);
+																	setError("");
+																}}
+															/>
+															<div class="flex items-center gap-4 mt-1">
+																<p class="text-grey text-xs">
+																	Saving replaces the current value. Deployments using
+																	this secret restart with the new one.
 																</p>
 																<Button
 																	type="button"
 																	variant={ButtonVariant.Plain}
-																	onClick={() => setEditingValue(true)}
-																	class="text-sm whitespace-nowrap cursor-pointer"
+																	onClick={() => {
+																		setEditingValue(false);
+																		setValue("");
+																	}}
+																	class="text-xs whitespace-nowrap cursor-pointer"
 																>
-																	Update value
+																	Cancel
 																</Button>
 															</div>
-														}
-													>
-														<PasswordInput
-															id="secret-value"
-															name="secret-value"
-															autocomplete="new-password"
-															placeholder="Enter the new value"
-															value={value()}
-															onInput={(e) => {
-																setValue(e.currentTarget.value);
-																setError("");
-															}}
-														/>
-														<div class="flex items-center gap-4 mt-1">
-															<p class="text-grey text-xs">
-																Saving replaces the current value. Deployments using
-																this secret restart with the new one.
-															</p>
-															<Button
-																type="button"
-																variant={ButtonVariant.Plain}
-																onClick={() => {
-																	setEditingValue(false);
-																	setValue("");
-																}}
-																class="text-xs whitespace-nowrap cursor-pointer"
-															>
-																Cancel
-															</Button>
-														</div>
-													</Show>
-													<Show when={error()}>
-														<div class="mt-1">
-															<Alert message={error()} type="error" />
-														</div>
-													</Show>
+														</Show>
+														<Show when={error()}>
+															<div class="mt-1">
+																<Alert message={error()} type="error" />
+															</div>
+														</Show>
+													</div>
 												</div>
 											</div>
-										</div>
 
-										<div class="w-full flex justify-end">
-											<Button
-												variant={ButtonVariant.Contained}
-												type="submit"
-												loading={isLoading}
-												loadingContent={() => <span>Saving...</span>}
-											>
-												Save Changes
-											</Button>
-										</div>
-									</form>
-									<UsedBy secretId={secret().id} secretName={secret().name} />
+											<div class="w-full flex justify-end">
+												<Button
+													variant={ButtonVariant.Contained}
+													type="submit"
+													loading={isLoading}
+													loadingContent={() => <span>Saving...</span>}
+												>
+													Save Changes
+												</Button>
+											</div>
+										</form>
+										<UsedBy secretId={secret().id} secretName={secret().name} />
 									</div>
 								)}
 							</Show>
