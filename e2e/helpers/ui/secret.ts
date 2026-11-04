@@ -80,6 +80,38 @@ export function saveButton(page: Page) {
 	return page.getByRole('button', { name: /^(Save Changes|Saving\.\.\.)$/ });
 }
 
+// ---------- "Used by" panel (detail page) ----------
+
+export function usedByPanel(page: Page) {
+	return page.locator('aside').filter({ has: page.getByRole('heading', { name: 'Used by' }) });
+}
+
+export function usedByRows(page: Page) {
+	return usedByPanel(page).getByRole('listitem');
+}
+
+export function usedByRow(page: Page, deploymentName: string) {
+	return usedByRows(page).filter({ hasText: deploymentName });
+}
+
+// A row's variable name. Each carries its full name as a title, since long ones truncate.
+export function usedByVariable(page: Page, deploymentName: string, variable: string) {
+	return usedByRow(page, deploymentName).locator(`[title="${variable}"]`);
+}
+
+export function usedByEmptyMessage(page: Page) {
+	return usedByPanel(page).getByText('No deployments you can view use this secret.');
+}
+
+// Scrolls the panel's list to the bottom, which is what loads the next page.
+export async function scrollUsedByToEnd(page: Page): Promise<void> {
+	await usedByPanel(page)
+		.locator('ul')
+		.evaluate((list) => {
+			list.scrollTop = list.scrollHeight;
+		});
+}
+
 // ---------- Delete modal ----------
 
 // The detail-header delete trigger (default DeleteModal trigger button). Only

@@ -8,6 +8,10 @@ import {
 	getPermissionId,
 } from '@/prelude';
 import type { ApiClient, UserHandle } from '@/prelude';
+import { seedMachineType } from '@/helpers/db';
+import { createContainerRepo } from '@/helpers/registry';
+import { createRunnerAPI } from '@/helpers/runner-api';
+import { createDeploymentAPI } from '@/helpers/deployment-api';
 import { createSecretAPI, randomSecretName } from '@/helpers/secret-api';
 import {
 	openSecretList,
@@ -16,6 +20,8 @@ import {
 	emptyStateHeading,
 	openSecretDetail,
 	deleteTrigger,
+	usedByRow,
+	usedByEmptyMessage,
 } from '@/helpers/ui/secret';
 
 // Secret RBAC at the API layer (view/create/edit/delete gating, and a
@@ -131,6 +137,67 @@ test.describe('secret > RBAC [UI]', () => {
 			await expect(emptyStateHeading(page)).toBeVisible({ timeout: 15_000 });
 			await expect(secretRow(page, name)).toHaveCount(0);
 			await expect(addSecretLink(page)).toHaveCount(0);
+		} finally {
+			await context.close();
+		}
+	});
+});
+
+test.describe('secret > used by RBAC [UI]', () => {
+	test.beforeAll(async () => {
+		await seedMachineType();
+	});
+
+	async function ownerWithSecretInUse(api: ApiClient, owner: Owner) {
+		const secret = await createSecretAPI(
+			api,
+			owner,
+			owner.workspaceId,
+			randomSecretName(),
+			'in-use',
+		);
+		const runner = await createRunnerAPI(api, owner, owner.workspaceId);
+		const repo = await createContainerRepo(api, owner, owner.workspaceId);
+		const deployment = await createDeploymentAPI(api, owner, owner.workspaceId, {
+			repositoryId: repo.id,
+			runnerId: runner.id,
+			environmentVariables: { API_KEY: { fromSecret: secret.id } },
+		});
+		return { secret, deployment };
+	}
+
+	test('a member without deployment::view sees no deployments', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const { secret, deployment } = await ownerWithSecretInUse(api, owner);
+		const viewId = await permId(api, owner, 'secret::view');
+		await using member = await createSecondMemberWithRole(api, owner, [viewId]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openSecretDetail(page, secret.id);
+			await expect(usedByEmptyMessage(page)).toBeVisible({ timeout: 15_000 });
+			await expect(usedByRow(page, deployment.name)).toHaveCount(0);
+		} finally {
+			await context.close();
+		}
+	});
+
+	test('a member with deployment::view sees the deployment', async ({ browser, api }) => {
+		await using owner = await createUserWithWorkspace(api);
+		const { secret, deployment } = await ownerWithSecretInUse(api, owner);
+		const viewId = await permId(api, owner, 'secret::view');
+		const deploymentViewId = await permId(api, owner, 'deployment::view');
+		await using member = await createSecondMemberWithRole(api, owner, [
+			viewId,
+			deploymentViewId,
+		]);
+		const context = await newContext(browser, member.clientIp);
+		await loginAs(context, member, { workspaceId: owner.workspaceId });
+		const page = await context.newPage();
+		try {
+			await openSecretDetail(page, secret.id);
+			await expect(usedByRow(page, deployment.name)).toBeVisible({ timeout: 15_000 });
 		} finally {
 			await context.close();
 		}

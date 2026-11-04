@@ -1,12 +1,15 @@
 use models::{
 	ApiSuccessResponseBody,
 	api::workspace::secret::*,
-	rbac::{Permission, SecretPermission},
+	rbac::{DeploymentPermission, Permission, SecretPermission},
 	utils::ListResourceQuery,
 };
 
 use super::{all, grants, setup_permission_test};
-use crate::prelude::*;
+use crate::{
+	api::workspace::secret::{list_secret_deployments, use_secret_as},
+	prelude::*,
+};
 
 #[tokio::test]
 async fn secret_create_permission_grants_access() {
@@ -356,6 +359,121 @@ async fn secret_non_member_denied() {
 	assert!(
 		response.status_code().is_client_error(),
 		"a non-member must not read another workspace's secret, got {}",
+		response.status_code()
+	);
+}
+
+/// `secret::view` doesn't imply `deployment::view`, so the list must not reveal
+/// the names or variables of deployments the caller can't view.
+#[tokio::test]
+async fn secret_deployments_only_lists_deployments_the_caller_can_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let runner = setup
+		.create_test_runner(&admin.access_token, workspace.id)
+		.await;
+	let secret = setup
+		.create_test_secret(&admin.access_token, workspace.id)
+		.await;
+	let visible = setup
+		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
+		.await;
+	let hidden = setup
+		.create_test_deployment(&admin.access_token, workspace.id, runner.id)
+		.await;
+	use_secret_as(&setup, workspace.id, visible.id, secret.id, "API_KEY").await;
+	use_secret_as(&setup, workspace.id, hidden.id, secret.id, "API_KEY").await;
+
+	let secret_role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Secret(SecretPermission::View))],
+		)
+		.await;
+	let deployment_role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::Deployment(DeploymentPermission::View))],
+		)
+		.await;
+	let mut member_grants = grants(secret_role.id, &[workspace.id]);
+	member_grants.extend(grants(deployment_role.id, &[visible.id]));
+	let member = setup
+		.add_user_to_workspace_with_grants(&admin.access_token, workspace.id, member_grants)
+		.await;
+
+	let response = list_secret_deployments(
+		&setup,
+		&member.access_token,
+		workspace.id,
+		secret.id,
+		0,
+		100,
+	)
+	.await;
+	assert_eq!("1", response.header("x-total-count"));
+	let deployments = response
+		.json::<ApiSuccessResponseBody<ListSecretDeploymentsResponse>>()
+		.response
+		.deployments;
+
+	assert_eq!(
+		deployments
+			.iter()
+			.map(|deployment| deployment.id)
+			.collect::<Vec<_>>(),
+		vec![visible.id]
+	);
+}
+
+#[tokio::test]
+async fn secret_deployments_empty_without_deployment_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, ws_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(Permission::Secret(SecretPermission::View), all())],
+	)
+	.await;
+	let runner = setup.create_test_runner(&admin.access_token, ws_id).await;
+	let secret = setup.create_test_secret(&admin.access_token, ws_id).await;
+	let deployment = setup
+		.create_test_deployment(&admin.access_token, ws_id, runner.id)
+		.await;
+	use_secret_as(&setup, ws_id, deployment.id, secret.id, "API_KEY").await;
+
+	let response =
+		list_secret_deployments(&setup, &user_b.access_token, ws_id, secret.id, 0, 100).await;
+
+	response.assert_status(StatusCode::OK);
+	assert_eq!("0", response.header("x-total-count"));
+	assert!(
+		response
+			.json::<ApiSuccessResponseBody<ListSecretDeploymentsResponse>>()
+			.response
+			.deployments
+			.is_empty()
+	);
+}
+
+#[tokio::test]
+async fn secret_deployments_denied_without_secret_view() {
+	let setup = setup().await.expect("failed to setup test server");
+	let (admin, ws_id, user_b) = setup_permission_test(
+		&setup,
+		vec![(Permission::Deployment(DeploymentPermission::View), all())],
+	)
+	.await;
+	let secret = setup.create_test_secret(&admin.access_token, ws_id).await;
+
+	let response =
+		list_secret_deployments(&setup, &user_b.access_token, ws_id, secret.id, 0, 100).await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"deployment::view must not grant reading a secret's deployments, got {}",
 		response.status_code()
 	);
 }
