@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT deployment.id, deployment.name AS \"name: String\", deployment.status, ARRAY_AGG(deployment_environment_variable.name ORDER BY deployment_environment_variable.name) AS \"variables!: Vec<String>\", COUNT(*) OVER() AS \"total_count!\" FROM deployment_environment_variable INNER JOIN deployment ON deployment.id = deployment_environment_variable.deployment_id INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($3, $4) AS resource ON deployment.id = resource.id WHERE deployment_environment_variable.secret_id = $1 AND deployment_environment_variable.workspace_id = $2 AND deployment.deleted IS NULL AND ($5::TEXT IS NULL OR deployment.name ILIKE '%' || $5 || '%') AND ($6::DEPLOYMENT_STATUS[] IS NULL OR deployment.status = ANY($6)) GROUP BY deployment.id, deployment.name, deployment.status ORDER BY deployment.name LIMIT $7 OFFSET $8;",
+  "query": "SELECT deployment.id, deployment.name AS \"name: String\", deployment.status, ARRAY_AGG(deployment_environment_variable.name ORDER BY deployment_environment_variable.name) AS \"variables!: Vec<String>\", COUNT(*) OVER() AS \"total_count!\" FROM deployment_environment_variable INNER JOIN deployment ON deployment.id = deployment_environment_variable.deployment_id INNER JOIN RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($3, $4) AS resource ON deployment.id = resource.id WHERE deployment_environment_variable.secret_id = $1 AND deployment_environment_variable.workspace_id = $2 AND ($5::TEXT IS NULL OR deployment.name ILIKE '%' || $5 || '%') AND ($6::DEPLOYMENT_STATUS[] IS NULL OR deployment.status = ANY($6)) GROUP BY deployment.id ORDER BY deployment.name LIMIT $7 OFFSET $8;",
   "describe": {
     "columns": [
       {
@@ -111,5 +111,5 @@
       null
     ]
   },
-  "hash": "f100f913f969d258b7b7f329f92c5463935228705d75269295f3ee56807b2f65"
+  "hash": "2d16f2fe4b2c5b5fc10d12d160616a79e7c7fd898b60e023fccae40faa3fe161"
 }

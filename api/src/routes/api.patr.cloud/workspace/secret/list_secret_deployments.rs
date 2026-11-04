@@ -82,16 +82,13 @@ pub async fn list_secret_deployments(
 		WHERE
 			deployment_environment_variable.secret_id = $1 AND
 			deployment_environment_variable.workspace_id = $2 AND
-			deployment.deleted IS NULL AND
 			($5::TEXT IS NULL OR deployment.name ILIKE '%' || $5 || '%') AND
 			(
 				$6::DEPLOYMENT_STATUS[] IS NULL OR
 				deployment.status = ANY($6)
 			)
 		GROUP BY
-			deployment.id,
-			deployment.name,
-			deployment.status
+			deployment.id
 		ORDER BY
 			deployment.name
 		LIMIT $7
