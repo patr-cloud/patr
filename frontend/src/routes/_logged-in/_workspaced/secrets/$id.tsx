@@ -102,7 +102,9 @@ const SecretDetailPage = () => {
 				return;
 			}
 
-			queryClient.invalidateQueries({ queryKey: secretKeys.all(wsId) });
+			// Only mark them stale: refetching this page's queries now would 401, since
+			// the secret is gone, and toast an error. The list refetches when it mounts.
+			queryClient.invalidateQueries({ queryKey: secretKeys.all(wsId), refetchType: "none" });
 			toast("Secret deleted successfully", "success");
 			navigate({ to: "/secrets" });
 		}

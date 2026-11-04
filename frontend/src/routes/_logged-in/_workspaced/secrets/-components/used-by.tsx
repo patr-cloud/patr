@@ -1,4 +1,4 @@
-import { createEffect, ErrorBoundary, For, Show, Suspense } from "solid-js";
+import { createEffect, ErrorBoundary, For, onCleanup, Show, Suspense } from "solid-js";
 import { Button, ButtonVariant, Link, LoadingSpinner, StatusDot } from "~/components";
 import { useSecretDeploymentsQuery } from "~/hooks/fetch";
 import { Color } from "~/utils/color";
@@ -49,8 +49,14 @@ const UsedByList = (props: UsedByProps) => {
 	};
 
 	// A list that doesn't overflow never scrolls, so keep loading until it does.
+	// Not after a failed page though, or this retries forever. That's the Retry row's job.
+	const fillPanel = () => {
+		if (query.isFetchNextPageError) return;
+		if (listRef && listRef.scrollHeight <= listRef.clientHeight) loadMore();
+	};
+
 	createEffect(() => {
-		if (query.data && listRef && listRef.scrollHeight <= listRef.clientHeight) loadMore();
+		if (query.data) fillPanel();
 	});
 
 	return (
@@ -69,8 +75,14 @@ const UsedByList = (props: UsedByProps) => {
 					<span>Variable</span>
 				</div>
 				<ul
-					ref={listRef}
-					class="flex-1 min-h-0 overflow-y-auto"
+					ref={(el) => {
+						listRef = el;
+						// The panel growing can leave nothing to scroll, with more still to load.
+						const observer = new ResizeObserver(fillPanel);
+						observer.observe(el);
+						onCleanup(() => observer.disconnect());
+					}}
+					class="flex-1 pt-4 flex flex-col gap-2 min-h-0 overflow-y-auto"
 					onScroll={(e) => {
 						const el = e.currentTarget;
 						if (el.scrollHeight - el.scrollTop - el.clientHeight < 40) loadMore();
@@ -78,7 +90,7 @@ const UsedByList = (props: UsedByProps) => {
 				>
 					<For each={deployments()}>
 						{(deployment) => (
-							<li class="flex items-baseline justify-between gap-md py-sm">
+							<li class="flex items-baseline justify-between gap-md">
 								<div class="flex-1 flex items-center gap-xs min-w-0">
 									<span
 										role="img"
@@ -114,8 +126,13 @@ const UsedByList = (props: UsedByProps) => {
 						)}
 					</For>
 					<Show when={query.isFetchingNextPage}>
-						<li class="flex justify-center py-sm text-grey">
+						<li aria-hidden="true" class="flex justify-center text-grey">
 							<LoadingSpinner size={16} />
+						</li>
+					</Show>
+					<Show when={query.isFetchNextPageError && !query.isFetchingNextPage}>
+						<li class="flex flex-col pb-sm">
+							<LoadError onRetry={() => query.fetchNextPage()} />
 						</li>
 					</Show>
 				</ul>
