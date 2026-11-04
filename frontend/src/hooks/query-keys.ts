@@ -97,6 +97,7 @@ export const secretKeys = {
 	list: (workspaceId: string, page: string | undefined, count: string | undefined) =>
 		[...secretKeys.all(workspaceId), "list", page, count] as const,
 	detail: (workspaceId: string, id: string) => [...secretKeys.all(workspaceId), "detail", id] as const,
+	deployments: (workspaceId: string, id: string) => [...secretKeys.all(workspaceId), "deployments", id] as const,
 };
 
 export const serviceAccountKeys = {

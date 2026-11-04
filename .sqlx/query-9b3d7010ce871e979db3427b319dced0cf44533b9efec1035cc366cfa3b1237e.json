@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE INDEX deployment_environment_variable_idx_secret_id_workspace_id ON deployment_environment_variable (secret_id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "9b3d7010ce871e979db3427b319dced0cf44533b9efec1035cc366cfa3b1237e"
+}

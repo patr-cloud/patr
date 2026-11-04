@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use models::{
 	ApiSuccessResponseBody,
-	api::workspace::secret::*,
+	api::workspace::{deployment::DeploymentStatus, secret::*},
 	utils::{ListResourceQuery, Uuid},
 };
 
@@ -700,5 +700,245 @@ async fn create_secret_name_length_bounds() {
 				response.status_code()
 			);
 		}
+	}
+}
+
+/// Point a deployment's env var at a secret directly: `create_test_deployment`
+/// has no way to pass environment variables.
+pub async fn use_secret_as(
+	setup: &TestSetup,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+	secret_id: Uuid,
+	variable: &str,
+) {
+	setup
+		.execute_sql(&format!(
+			"INSERT INTO deployment_environment_variable(deployment_id, workspace_id, name, value, \
+			 secret_id) VALUES ('{deployment_id}', '{workspace_id}', '{variable}', NULL, \
+			 '{secret_id}');"
+		))
+		.await;
+}
+
+/// Send a list-secret-deployments request and return the raw response.
+pub async fn list_secret_deployments(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	secret_id: Uuid,
+	page: usize,
+	count: usize,
+) -> axum_test::TestResponse {
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<ListSecretDeploymentsRequest>::builder()
+				.path(ListSecretDeploymentsPath {
+					workspace_id,
+					secret_id,
+				})
+				.headers(ListSecretDeploymentsRequestHeaders {
+					authorization: token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.query(ListResourceQuery {
+					sort: None,
+					search: Default::default(),
+					count,
+					page,
+					additional_query: (),
+				})
+				.build(),
+		)
+		.await
+}
+
+#[tokio::test]
+async fn list_secret_deployments_returns_deployments_and_variables() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+	let other_secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+
+	let first = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let second = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let unrelated = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	use_secret_as(&setup, workspace.id, first.id, secret.id, "API_KEY").await;
+	use_secret_as(&setup, workspace.id, second.id, secret.id, "PAYMENT_KEY").await;
+	use_secret_as(
+		&setup,
+		workspace.id,
+		unrelated.id,
+		other_secret.id,
+		"API_KEY",
+	)
+	.await;
+
+	let response =
+		list_secret_deployments(&setup, &user.access_token, workspace.id, secret.id, 0, 100).await;
+	assert_eq!("2", response.header("x-total-count"));
+	let deployments = response
+		.json::<ApiSuccessResponseBody<ListSecretDeploymentsResponse>>()
+		.response
+		.deployments;
+
+	let mut expected = vec![
+		(first.name.to_lowercase(), first.id, "API_KEY"),
+		(second.name.to_lowercase(), second.id, "PAYMENT_KEY"),
+	];
+	expected.sort_by_key(|(name, ..)| name.clone());
+
+	assert_eq!(
+		deployments
+			.iter()
+			.map(|deployment| (
+				deployment.name.to_lowercase(),
+				deployment.id,
+				deployment.variables.clone()
+			))
+			.collect::<Vec<_>>(),
+		expected
+			.into_iter()
+			.map(|(name, id, variable)| (name, id, vec![variable.to_string()]))
+			.collect::<Vec<_>>(),
+		"only this secret's deployments should be listed, sorted by name"
+	);
+	assert!(
+		deployments
+			.iter()
+			.all(|deployment| deployment.status == DeploymentStatus::Stopped),
+		"each deployment should carry its status"
+	);
+}
+
+/// The primary key is `(deployment_id, name)`, so one deployment can use a
+/// secret under several names. That's still one deployment.
+#[tokio::test]
+async fn list_secret_deployments_groups_variables_by_deployment() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	use_secret_as(&setup, workspace.id, deployment.id, secret.id, "B_KEY").await;
+	use_secret_as(&setup, workspace.id, deployment.id, secret.id, "A_KEY").await;
+
+	let response =
+		list_secret_deployments(&setup, &user.access_token, workspace.id, secret.id, 0, 100).await;
+	assert_eq!("1", response.header("x-total-count"));
+	let deployments = response
+		.json::<ApiSuccessResponseBody<ListSecretDeploymentsResponse>>()
+		.response
+		.deployments;
+
+	assert_eq!(deployments.len(), 1);
+	assert_eq!(deployments[0].id, deployment.id);
+	assert_eq!(deployments[0].variables, vec!["A_KEY", "B_KEY"]);
+}
+
+#[tokio::test]
+async fn list_secret_deployments_of_an_unused_secret_is_empty() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+
+	let response =
+		list_secret_deployments(&setup, &user.access_token, workspace.id, secret.id, 0, 100).await;
+
+	response.assert_status(StatusCode::OK);
+	assert_eq!("0", response.header("x-total-count"));
+	assert!(
+		response
+			.json::<ApiSuccessResponseBody<ListSecretDeploymentsResponse>>()
+			.response
+			.deployments
+			.is_empty()
+	);
+}
+
+#[tokio::test]
+async fn list_secret_deployments_paginates_by_deployment() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let secret = setup
+		.create_test_secret(&user.access_token, workspace.id)
+		.await;
+	for _ in 0..3 {
+		let deployment = setup
+			.create_test_deployment(&user.access_token, workspace.id, runner.id)
+			.await;
+		// Two variables each, so counting rows instead of deployments would show.
+		use_secret_as(&setup, workspace.id, deployment.id, secret.id, "A_KEY").await;
+		use_secret_as(&setup, workspace.id, deployment.id, secret.id, "B_KEY").await;
+	}
+
+	let mut ids = Vec::new();
+	for (page, expected_len) in [(0, 2), (1, 1)] {
+		let response =
+			list_secret_deployments(&setup, &user.access_token, workspace.id, secret.id, page, 2)
+				.await;
+		assert_eq!("3", response.header("x-total-count"));
+		let deployments = response
+			.json::<ApiSuccessResponseBody<ListSecretDeploymentsResponse>>()
+			.response
+			.deployments;
+		assert_eq!(deployments.len(), expected_len, "page {page}");
+		ids.extend(deployments.iter().map(|deployment| deployment.id));
+	}
+	ids.sort();
+	ids.dedup();
+	assert_eq!(ids.len(), 3, "pages should not repeat a deployment");
+
+	list_secret_deployments(&setup, &user.access_token, workspace.id, secret.id, 5, 2)
+		.await
+		.assert_status(StatusCode::BAD_REQUEST);
+}
+
+/// The authenticator only proves the id is some resource in the workspace, so
+/// the handler has to check that it's a secret.
+#[tokio::test]
+async fn list_secret_deployments_refuses_an_id_of_another_type() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+
+	for id in [deployment.id, runner.id, workspace.id] {
+		list_secret_deployments(&setup, &user.access_token, workspace.id, id, 0, 100)
+			.await
+			.assert_status(StatusCode::NOT_FOUND);
 	}
 }

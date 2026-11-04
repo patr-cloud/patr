@@ -48,6 +48,7 @@ import LogLine from "~/components/log-line";
 import LogTerminal from "~/components/log-terminal";
 import RangeSlider from "~/components/range-slider";
 import StatusChip from "~/components/status-chip";
+import StatusDot from "~/components/status-dot";
 import OtpInput from "~/components/otp-input";
 import ChipInput from "~/components/chip-input";
 import PasswordStrength from "~/components/password-strength";
@@ -107,6 +108,7 @@ export {
 	LogLine,
 	LogTerminal,
 	StatusChip,
+	StatusDot,
 	OtpInput,
 	ChipInput,
 	PasswordStrength,
