@@ -326,7 +326,7 @@ const ManageWorkspace = () => {
 				/>
 				<PageContainerBody class="flex flex-col justify-between gap-4">
 					<div class="flex flex-col gap-6 flex-1 min-h-0">
-						<div class="flex flex-1 min-h-0 flex-col lg:flex-row gap-6 lg:items-stretch">
+						<div class="flex flex-1 min-h-0 flex-col lg:flex-row lg:items-stretch">
 							{/* Narrow rail: the editor beside it is what needs the room. It
 							  scrolls on its own too — a long member list would otherwise be
 							  clipped now that the page doesn't scroll. */}
