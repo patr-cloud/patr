@@ -86,8 +86,11 @@ export function usedByPanel(page: Page) {
 	return page.locator('aside').filter({ has: page.getByRole('heading', { name: 'Used by' }) });
 }
 
+// Only the deployments: the list can also hold a loading spinner or a Retry row.
 export function usedByRows(page: Page) {
-	return usedByPanel(page).getByRole('listitem');
+	return usedByPanel(page)
+		.getByRole('listitem')
+		.filter({ has: page.getByRole('link') });
 }
 
 export function usedByRow(page: Page, deploymentName: string) {
