@@ -1707,7 +1707,7 @@ async fn deploy_on_create_sets_deploying() {
 }
 
 #[tokio::test]
-async fn create_deployment_image_tag_lowercased() {
+async fn create_deployment_image_tag_keeps_case() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
@@ -1727,7 +1727,7 @@ async fn create_deployment_image_tag_lowercased() {
 		.response;
 
 	let info = get_info(&setup, &user.access_token, workspace.id, created.id.id).await;
-	assert_eq!(info.deployment.image_tag, "latest-v2");
+	assert_eq!(info.deployment.image_tag, "Latest-V2");
 }
 
 #[tokio::test]
