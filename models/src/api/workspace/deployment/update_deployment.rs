@@ -31,7 +31,7 @@ macros::declare_api_endpoint!(
 		#[preprocess(trim, regex = RESOURCE_NAME_REGEX)]
 		pub name: String,
 		/// The image tag to use
-		#[preprocess(trim, lowercase, regex = DEPLOYMENT_IMAGE_TAG_REGEX)]
+		#[preprocess(trim, regex = DEPLOYMENT_IMAGE_TAG_REGEX)]
 		pub image_tag: String,
 		/// The runner to use to run the deployment
 		#[preprocess(none)]
