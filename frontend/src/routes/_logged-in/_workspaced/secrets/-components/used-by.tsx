@@ -21,10 +21,21 @@ const Heading = (props: { count?: number }) => (
 	</div>
 );
 
+const LoadError = (props: { onRetry: () => void }) => (
+	<>
+		<p class="text-error text-sm mt-md">Couldn't load the deployments using this secret.</p>
+		<Button variant={ButtonVariant.Plain} onClick={props.onRetry} class="text-sm mt-xs self-start cursor-pointer">
+			Retry
+		</Button>
+	</>
+);
+
 /**
- * Everything that reads the query. Reading it suspends and throws, so this sits
- * inside the panel's own boundaries, or a slow or failed list would take the
- * secret's form down with it.
+ * Everything that reads the query. Reading it suspends, so this sits inside the
+ * panel's own boundaries, or a slow list would blank the secret's form too.
+ *
+ * A failed query doesn't throw here: `data` is just undefined. So check `isError`
+ * before treating no rows as an unused secret.
  */
 const UsedByList = (props: UsedByProps) => {
 	const query = useSecretDeploymentsQuery(() => props.secretId);
@@ -47,7 +58,11 @@ const UsedByList = (props: UsedByProps) => {
 			<Heading count={totalCount()} />
 			<Show
 				when={deployments().length > 0}
-				fallback={<p class="text-grey text-sm mt-md">No deployments you can view use this secret.</p>}
+				fallback={
+					<Show when={!query.isError} fallback={<LoadError onRetry={() => query.refetch()} />}>
+						<p class="text-grey text-sm mt-md">No deployments you can view use this secret.</p>
+					</Show>
+				}
 			>
 				<div class="flex justify-between gap-md mt-md pl-3.5 pb-xs border-b border-border-color text-grey text-xs uppercase tracking-wide">
 					<span>Deployment</span>
@@ -116,14 +131,7 @@ const UsedBy = (props: UsedByProps) => (
 			fallback={(_err, reset) => (
 				<>
 					<Heading />
-					<p class="text-error text-sm mt-md">Couldn't load the deployments using this secret.</p>
-					<Button
-						variant={ButtonVariant.Plain}
-						onClick={reset}
-						class="text-sm mt-xs self-start cursor-pointer"
-					>
-						Retry
-					</Button>
+					<LoadError onRetry={reset} />
 				</>
 			)}
 		>
