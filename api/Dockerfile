@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY . .
 
+ARG PATR_BUILD_VERSION
 ENV SQLX_OFFLINE=true
 RUN cargo build --release --package api --locked
 

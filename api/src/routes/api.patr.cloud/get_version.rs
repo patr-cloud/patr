@@ -20,12 +20,12 @@ pub async fn get_version(
 ) -> Result<AppResponse<GetVersionRequest>, ErrorType> {
 	AppResponse::builder()
 		.body(GetVersionResponse {
-			// Parse CARGO_PKG_VERSION directly so pre-release labels
-			// (e.g. `0.18.0-alpha.1`) are preserved — macros::version!()
-			// only reads MAJOR/MINOR/PATCH and drops the pre-release.
-			version: env!("CARGO_PKG_VERSION")
+			// CI bakes the channel's full version (e.g. `0.18.0-alpha.1`) into
+			// PATR_BUILD_VERSION; Cargo.toml only ever holds the bare release.
+			version: option_env!("PATR_BUILD_VERSION")
+				.unwrap_or(env!("CARGO_PKG_VERSION"))
 				.parse()
-				.expect("CARGO_PKG_VERSION must be a valid semver"),
+				.expect("PATR_BUILD_VERSION must be a valid semver"),
 		})
 		.headers(())
 		.status_code(StatusCode::OK)

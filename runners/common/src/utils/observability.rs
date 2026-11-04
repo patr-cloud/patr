@@ -101,6 +101,12 @@ where
 						tracing_subscriber::filter::Targets::new()
 							.with_target(E::runner_internal_name(), LevelFilter::TRACE)
 							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+							// `query!` logs every query at INFO, which drowns the
+							// reconcile loop out.
+							.with_target(
+								concat!(env!("CARGO_PKG_NAME"), "::queries"),
+								LevelFilter::OFF,
+							)
 							.with_target("models", LevelFilter::TRACE)
 							.with_target("frontend", LevelFilter::TRACE),
 					)
@@ -127,6 +133,10 @@ where
 						tracing_subscriber::filter::Targets::new()
 							.with_target(E::runner_internal_name(), LevelFilter::TRACE)
 							.with_target(env!("CARGO_PKG_NAME"), LevelFilter::TRACE)
+							.with_target(
+								concat!(env!("CARGO_PKG_NAME"), "::queries"),
+								LevelFilter::OFF,
+							)
 							.with_target("models", LevelFilter::TRACE)
 							.with_target("frontend", LevelFilter::TRACE),
 					)

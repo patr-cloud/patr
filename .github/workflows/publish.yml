@@ -126,7 +126,9 @@ jobs:
             TAG_FLAGS="$TAG_FLAGS -t $TAG"
           done
 
-          docker build $TAG_FLAGS -f api/Dockerfile .
+          docker build $TAG_FLAGS \
+            --build-arg PATR_BUILD_VERSION=${{ needs.version.outputs.build_version }} \
+            -f api/Dockerfile .
           for TAG in "${TAG_ARRAY[@]}"; do
             docker push "$TAG"
           done
@@ -362,6 +364,7 @@ jobs:
           docker build $TAG_FLAGS \
             --build-arg PATR_BUILD_CHANNEL=$CHANNEL \
             --build-arg PATR_BUILD_SHA=${{ github.sha }} \
+            --build-arg PATR_BUILD_VERSION=${{ needs.version.outputs.build_version }} \
             -f cli/Dockerfile .
           for TAG in "${TAG_ARRAY[@]}"; do
             docker push "$TAG"
