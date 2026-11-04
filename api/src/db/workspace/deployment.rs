@@ -246,6 +246,18 @@ pub async fn initialize_deployment_indices(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE INDEX
+			deployment_environment_variable_idx_secret_id_workspace_id
+		ON
+			deployment_environment_variable
+		(secret_id, workspace_id);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }
 
