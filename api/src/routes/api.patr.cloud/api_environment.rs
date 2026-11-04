@@ -35,7 +35,9 @@ pub async fn get_api_environment(
 
 	AppResponse::builder()
 		.body(GetApiEnvironmentResponse {
-			version: env!("CARGO_PKG_VERSION").to_string(),
+			version: option_env!("PATR_BUILD_VERSION")
+				.unwrap_or(env!("CARGO_PKG_VERSION"))
+				.to_string(),
 			deployment_type,
 			base_domain,
 		})

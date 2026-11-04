@@ -32,6 +32,9 @@ RUN apt update && apt install -y build-essential clang
 
 ARG PATR_BUILD_CHANNEL
 ARG PATR_BUILD_SHA
+# Left as a bare ARG so a build without it falls back to the Cargo.toml version
+# instead of baking in an empty string.
+ARG PATR_BUILD_VERSION
 ENV PATR_BUILD_CHANNEL=${PATR_BUILD_CHANNEL}
 ENV PATR_BUILD_SHA=${PATR_BUILD_SHA}
 
