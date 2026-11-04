@@ -24,6 +24,7 @@ import { DeleteSecretResponse, UpdateSecretRequest, UpdateSecretResponse } from 
 import { httpRequest } from "~/utils/http-request";
 import { formatRelativeTime } from "~/utils/func";
 import { requireUuidParam } from "~/utils/validation";
+import UsedBy from "./-components/used-by";
 
 const SecretDetailPage = () => {
 	const params = Route.useParams();
@@ -110,7 +111,8 @@ const SecretDetailPage = () => {
 	return (
 		<>
 			<Title>Secret | Patr</Title>
-			<PageContainer>
+			{/* Bound to the viewport so that the "Used by" list scrolls on its own. */}
+			<PageContainer fillViewport>
 				<PageContainerHead
 					breadcrumbs={[
 						{
@@ -157,7 +159,12 @@ const SecretDetailPage = () => {
 						>
 							<Show when={secretInfoQuery.data?.secret}>
 								{(secret) => (
-									<form noValidate onSubmit={onSubmit} class="flex flex-col gap-8 w-full">
+									<div class="flex flex-1 min-h-0 flex-col lg:flex-row gap-8 lg:items-stretch">
+									<form
+										noValidate
+										onSubmit={onSubmit}
+										class="flex-2 flex flex-col gap-8 w-full min-w-0 min-h-0 overflow-y-auto"
+									>
 										<div class="flex flex-col gap-4 w-full">
 											<div class="flex gap-8 items-start w-full">
 												<Label parentClass="flex-2 pt-2.5" for="secret-name" label="Name" />
@@ -261,6 +268,8 @@ const SecretDetailPage = () => {
 											</Button>
 										</div>
 									</form>
+									<UsedBy secretId={secret().id} secretName={secret().name} />
+									</div>
 								)}
 							</Show>
 						</Suspense>

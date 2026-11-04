@@ -27,7 +27,7 @@ import {
 	useContainerTagsQuery,
 } from "./container-registry";
 import { useDomainsQuery, useDomainInfoQuery } from "./domains";
-import { useSecretsQuery, useSecretInfoQuery } from "./secrets";
+import { useSecretsQuery, useSecretInfoQuery, useSecretDeploymentsQuery } from "./secrets";
 import { useServiceAccountsQuery, useServiceAccountQuery } from "./service-accounts";
 import { useManagedUrlsQuery } from "./managed-urls";
 import { useRunnerMetricsQuery, useDeploymentMetricsQuery } from "./metrics";
@@ -71,6 +71,7 @@ export {
 	useDomainInfoQuery,
 	useSecretsQuery,
 	useSecretInfoQuery,
+	useSecretDeploymentsQuery,
 	useServiceAccountsQuery,
 	useServiceAccountQuery,
 	useManagedUrlsQuery,

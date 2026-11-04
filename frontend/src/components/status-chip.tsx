@@ -1,3 +1,4 @@
+import StatusDot from "~/components/status-dot";
 import { get } from "~/utils/func";
 import { MaybeAccessor } from "~/utils/types";
 
@@ -23,14 +24,12 @@ const StatusChip = (props: StatusChipProps) => {
 					bg: "bg-success/10",
 					border: "border-success/20",
 					text: "text-success",
-					dot: "bg-success shadow-[0_0_6px_rgba(71,201,108,0.5)]",
 				};
 			case "errored":
 				return {
 					bg: "bg-error/10",
 					border: "border-error/20",
 					text: "text-error",
-					dot: "bg-error shadow-[0_0_6px_rgba(214,43,54,0.5)]",
 				};
 			case "stopped":
 			case "unreachable":
@@ -39,23 +38,14 @@ const StatusChip = (props: StatusChipProps) => {
 					bg: "bg-white/6",
 					border: "border-white/10",
 					text: "text-grey",
-					dot: "bg-grey opacity-50",
 				};
 			default:
 				return {
 					bg: "bg-warning/10",
 					border: "border-warning/20",
 					text: "text-warning",
-					dot: "bg-warning",
 				};
 		}
-	};
-
-	const dotAnimation = () => {
-		if (props.status === "deploying") {
-			return { animation: "pulse-dot 1.5s ease-in-out infinite" };
-		}
-		return undefined;
 	};
 
 	const chipAnimation = () => {
@@ -75,14 +65,12 @@ const StatusChip = (props: StatusChipProps) => {
 		}
 	};
 
-	const dotSize = () => (size() === "md" ? "w-1.75 h-1.75" : "w-1.5 h-1.5");
-
 	return (
 		<span
 			class={`inline-flex items-center gap-1.5 font-medium rounded-xs border capitalize tracking-wide ${sizeClasses()} ${config().bg} ${config().border} ${config().text} ${get(props.class) ?? ""}`}
 			style={chipAnimation()}
 		>
-			<span class={`rounded-full shrink-0 ${dotSize()} ${config().dot}`} style={dotAnimation()} />
+			<StatusDot status={props.status} size={size()} />
 			{props.status}
 		</span>
 	);
