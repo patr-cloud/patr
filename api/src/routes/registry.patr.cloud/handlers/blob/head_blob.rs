@@ -114,7 +114,9 @@ pub async fn head_blob(
 		warn!("Repository `{workspace_id}/{repo_name}` not found");
 		RegistryError::builder()
 			.status(StatusCode::NOT_FOUND)
-			.message("Repository not found")
+			.message(format!(
+				"Repository `{repo_name}` not found, or you don't have access to it"
+			))
 			.code(ErrorCode::NameUnknown)
 			.build()
 	})
@@ -156,7 +158,9 @@ pub async fn head_blob(
 		} else {
 			RegistryError::builder()
 				.status(StatusCode::NOT_FOUND)
-				.message("Repository not found")
+				.message(format!(
+					"Repository `{repo_name}` not found, or you don't have access to it"
+				))
 				.code(ErrorCode::NameUnknown)
 				.build()
 		}
