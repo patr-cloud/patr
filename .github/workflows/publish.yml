@@ -221,7 +221,7 @@ jobs:
             archive_ext: tar.gz
             features: ""
           - target: aarch64-apple-darwin
-            runner: macos-14
+            runner: macos-26
             artifact_name: patr-darwin-arm64
             binary_name: patr
             archive_ext: zip
@@ -242,7 +242,7 @@ jobs:
             archive_ext: tar.gz
             features: package-managed
           - target: aarch64-apple-darwin
-            runner: macos-14
+            runner: macos-26
             artifact_name: patr-darwin-arm64-brew
             binary_name: patr
             archive_ext: zip
