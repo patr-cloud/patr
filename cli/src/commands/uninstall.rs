@@ -41,6 +41,11 @@ pub async fn execute(
 		.filter(|p| p.exists())
 		.into_iter()
 		.collect::<Vec<_>>();
+	let runner_databases = ["db", "db-wal", "db-shm"]
+		.into_iter()
+		.map(|extension| crate::utils::runner_config_path().with_extension(extension))
+		.filter(|p| p.exists())
+		.collect::<Vec<_>>();
 
 	// Layer 1 confirm (unless -y or --purge).
 	if !args.yes && !args.purge {
@@ -55,6 +60,9 @@ pub async fn execute(
 		}
 		for p in &runner_configs {
 			eprintln!("  - Runner config ({})", p.display());
+		}
+		for p in &runner_databases {
+			eprintln!("  - Runner database ({})", p.display());
 		}
 		if !runner_configs.is_empty() && Path::new("/run/systemd/system").exists() {
 			eprintln!("  - Installed systemd services for the above runners, if any");
@@ -194,12 +202,12 @@ pub async fn execute(
 		}
 	}
 
-	// Remove runner config files.
-	for config_path in &runner_configs {
-		if let Err(e) = std::fs::remove_file(config_path) &&
+	// Remove runner config and database files.
+	for path in runner_configs.iter().chain(&runner_databases) {
+		if let Err(e) = std::fs::remove_file(path) &&
 			e.kind() != std::io::ErrorKind::NotFound
 		{
-			eprintln!("Warning: failed to remove {}: {e}", config_path.display());
+			eprintln!("Warning: failed to remove {}: {e}", path.display());
 		}
 	}
 

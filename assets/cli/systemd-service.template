@@ -15,6 +15,7 @@ Environment=PATR_ENV=prod
 NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=/var/run/docker.sock
+ReadWritePaths={database_dir}
 
 [Install]
 WantedBy=multi-user.target
