@@ -30,7 +30,7 @@ const DeploymentCard = (props: { item: WithId<Deployment> }) => {
 		>
 			<div class="flex justify-between items-start gap-2 mb-2">
 				<h3 class="font-medium text-white truncate min-w-0">{props.item.name}</h3>
-				<StatusChip status={props.item.status} />
+				<StatusChip status={props.item.status} resourceType="deployment" />
 			</div>
 			<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-grey">
 				<dt>Image</dt>
@@ -113,7 +113,7 @@ const RunnerDeployments = (props: RunnerDeploymentsProps) => {
 									<span class="truncate">{item.name}</span>
 								</td>
 								<td class="flex-2 flex items-center justify-center min-w-0">
-									<StatusChip status={item.status} />
+									<StatusChip status={item.status} resourceType="deployment" />
 								</td>
 								<td class="flex-4 flex items-center justify-start min-w-0">
 									<DeploymentImageName item={item} />

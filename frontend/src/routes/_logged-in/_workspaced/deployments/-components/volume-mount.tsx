@@ -144,7 +144,7 @@ const VolumeMount = (props: VolumeMountProps) => {
 						<Label
 							parentClass="flex-2"
 							label="Volumes"
-							comments="Directories that persist across restarts. Single replica only."
+							comments="Directories kept across restarts and stops. Single replica only."
 						/>
 					</Show>
 					<div class="flex-10 flex flex-col gap-1 w-full">
@@ -247,7 +247,9 @@ const VolumeMount = (props: VolumeMountProps) => {
 						<div class="flex-2" />
 					</Show>
 					<small class="flex-10 text-xxs text-grey">
-						Removing a volume keeps its data on the runner; re-adding the same path restores it.
+						Volumes are kept while the deployment is stopped and deleted with it. Moving it to another
+						runner deletes them from the old runner; the data isn't copied over. Removing a path keeps its
+						volume, and re-adding the path restores it.
 					</small>
 				</div>
 			</Show>

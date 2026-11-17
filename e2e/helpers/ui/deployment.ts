@@ -40,6 +40,16 @@ export function deploymentRow(page: Page, name: string) {
 	return page.getByRole('table').getByText(name, { exact: true });
 }
 
+// The status chip in a deployment's table row, by its label ("Running", "Image
+// pull failed", "Runner offline", ...). Also works on the runner's Deployments tab.
+export function deploymentRowStatus(page: Page, name: string, label: string) {
+	return page
+		.getByRole('table')
+		.getByRole('row')
+		.filter({ hasText: name })
+		.getByText(label, { exact: true });
+}
+
 // ---------- Create (/deployments/new) ----------
 
 export async function openDeploymentCreate(page: Page): Promise<void> {
@@ -234,9 +244,22 @@ export function environmentTab(page: Page) {
 	return page.getByRole('button', { name: 'Configuration', exact: true });
 }
 
-// The Start (FiPlay) / Stop (FiPause) buttons are icon-only; locate them by
-// their position in the header action row. Start shows only when stopped, Stop
-// only when not-stopped. We expose count-based predicates rather than text.
+// The Start (FiPlay) / Stop (FiPause) buttons are icon-only, so they're found by
+// their aria-label. Start shows while the deployment is meant to be stopped
+// (`shouldRun` false), Stop while it's meant to run, whatever its status.
+export function startButton(page: Page) {
+	return page.getByRole('button', { name: 'Start deployment', exact: true });
+}
+
+export function stopButton(page: Page) {
+	return page.getByRole('button', { name: 'Stop deployment', exact: true });
+}
+
+// The header's status chip, by its label.
+export function detailStatus(page: Page, label: string) {
+	return page.getByText(label, { exact: true });
+}
+
 export function noPermissionsHeading(page: Page) {
 	return page.getByText("Can't View Resource", { exact: true });
 }

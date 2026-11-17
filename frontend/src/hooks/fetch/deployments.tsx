@@ -22,7 +22,7 @@ export const useDeploymentsQuery = (page: Accessor<string | undefined>, count: A
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn",
 			meta: { errorMessage: "Failed to fetch deployments" },
 			refetchInterval: (query: { state: { data?: { deployments: { status: string }[] } } }) =>
-				query.state.data?.deployments?.some((d) => d.status === "deploying")
+				query.state.data?.deployments?.some((d) => d.status === "deploying" || d.status === "stopping")
 					? DEPLOYING_REFETCH_INTERVAL
 					: false,
 			queryFn: async () => {
@@ -62,7 +62,9 @@ export const useDeploymentInfoQuery = (id: Accessor<string>) => {
 			enabled: !!wsId && !!auth && auth.type === "LoggedIn" && !!deploymentId,
 			meta: { errorMessage: "Failed to fetch deployment info" },
 			refetchInterval: (query: { state: { data?: GetDeploymentInfoResponse } }) =>
-				query.state.data?.status === "deploying" ? DEPLOYING_REFETCH_INTERVAL : false,
+				query.state.data?.status === "deploying" || query.state.data?.status === "stopping"
+					? DEPLOYING_REFETCH_INTERVAL
+					: false,
 			queryFn: async () => {
 				const response = await httpRequest<GetDeploymentInfoResponse>(
 					`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/deployment/${deploymentId}`,

@@ -30,6 +30,7 @@ export type DeploymentInfo = {
 	imageName?: string;
 	imageTag: string;
 	status: string;
+	shouldRun: boolean;
 	runner: string;
 	machineType: string;
 	currentLiveDigest: string | null;
