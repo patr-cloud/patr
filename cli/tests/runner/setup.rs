@@ -16,7 +16,10 @@ use wiremock::{
 	matchers::{header, method, path},
 };
 
-use crate::{apply::requests, setup};
+use crate::{
+	apply::requests,
+	setup::{self, run},
+};
 
 /// The token a logged-in [`setup::state`] sends.
 const USER_TOKEN: &str = "patrv1.test-token";
@@ -43,17 +46,6 @@ impl Ids {
 			other_runner: Uuid::parse_str("00000000000000000000000000000022").unwrap(),
 		}
 	}
-}
-
-/// Run `patr <argv>` against the stub API.
-async fn run(state: AppState, argv: &[&str]) -> Result<CommandOutput, AppError> {
-	use clap::Parser;
-
-	let AppArgs { args, command } =
-		AppArgs::try_parse_from(iter::once("patr").chain(argv.iter().copied()))
-			.expect("failed to parse args");
-
-	cli::commands::execute(command, args, state).await
 }
 
 /// Mount `GET /user/workspaces` returning the test workspace.
@@ -550,6 +542,59 @@ async fn new_names_the_runner_this_machine_runs() {
 			ids.workspace, ids.other_runner
 		)]
 	);
+	assert_eq!(config_token(Path::new(&config_path)), OLD_TOKEN);
+}
+
+/// With `--force`, replacing another runner's config still warns, and without a
+/// TTY it needs `-y`. Nothing is created and the config is kept. This runs the
+/// binary with a null stdin, since the test's own stdin is a terminal when the
+/// suite is run by hand.
+#[tokio::test]
+async fn new_force_needs_yes_without_a_tty() {
+	let ids = Ids::new();
+	let server = setup::reset().await;
+	let (dir, config_path) = config_dir();
+
+	write_config(Path::new(&config_path), &ids, ids.other_runner);
+
+	let state_path = dir.path().join("cli.json");
+	std::fs::write(
+		&state_path,
+		serde_json::to_string(&setup::state(ids.workspace)).unwrap(),
+	)
+	.expect("failed to write the CLI state");
+
+	let output = tokio::process::Command::new(env!("CARGO_BIN_EXE_patr"))
+		.args([
+			"-w",
+			&ids.workspace.to_string(),
+			"runner",
+			"setup",
+			"new",
+			"--name",
+			"test-runner",
+			"-f",
+			"-c",
+			&config_path,
+		])
+		.env("HOME", dir.path())
+		.env("CONFIG_PATH", &state_path)
+		.env_remove("XDG_DATA_HOME")
+		.stdin(Stdio::null())
+		.output()
+		.await
+		.expect("failed to run patr");
+
+	let stderr = String::from_utf8_lossy(&output.stderr);
+	assert!(
+		!output.status.success(),
+		"setup replaced the config without `-y`"
+	);
+	assert!(
+		stderr.contains("takes over this host") && stderr.contains("Pass `-y` to confirm"),
+		"setup failed for another reason: {stderr}"
+	);
+	assert!(requests(server).await.is_empty());
 	assert_eq!(config_token(Path::new(&config_path)), OLD_TOKEN);
 }
 

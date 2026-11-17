@@ -1,6 +1,9 @@
 use clap::Args as ClapArgs;
 use inquire::Select;
-use models::api::{user::*, workspace::deployment::*};
+use models::api::{
+	user::*,
+	workspace::{deployment::*, runner::*},
+};
 
 use crate::prelude::*;
 
@@ -101,14 +104,13 @@ pub async fn execute(
 		}
 	}
 
-	let deployment_id = args
+	let deployment = args
 		.name
 		.and_then(|name| {
 			let id = Uuid::parse_str(&name).ok();
 			deployments
 				.iter()
 				.find(|r| r.name == name || id.filter(|id| r.id == *id).is_some())
-				.map(|deployment| deployment.id)
 		})
 		.unwrap_or_else(|| {
 			let name = Select::new(
@@ -125,14 +127,33 @@ pub async fn execute(
 				.iter()
 				.find(|&deployment| &deployment.name == name)
 				.unwrap_or_else(|| panic!("No deployment found with name: `{}`", name))
-				.id
 		});
+
+	let runner = match make_request(
+		ApiRequest::<GetRunnerInfoRequest>::builder()
+			.path(GetRunnerInfoPath {
+				workspace_id,
+				runner_id: deployment.runner,
+			})
+			.headers(GetRunnerInfoRequestHeaders {
+				authorization: token.clone(),
+				user_agent: constants::USER_AGENT,
+			})
+			.build(),
+	)
+	.await
+	.map_err(AppError::from)
+	{
+		Ok(response) => Some(response.body.runner.data),
+		Err(AppError::ApiError(ErrorType::Unauthorized)) => None,
+		Err(err) => return Err(err),
+	};
 
 	let response = make_request(
 		ApiRequest::<StartDeploymentRequest>::builder()
 			.path(StartDeploymentPath {
 				workspace_id,
-				deployment_id,
+				deployment_id: deployment.id,
 			})
 			.query(StartDeploymentQuery {
 				force_restart: args.force_restart,
@@ -147,10 +168,20 @@ pub async fn execute(
 	.body;
 
 	CommandOutput::builder()
-		.text(format!(
-			"Started deployment `{}` successfully",
-			deployment_id
-		))
+		.text(match runner {
+			Some(runner) if runner.connected => format!(
+				"Start requested. The runner \"{}\" will deploy \"{}\".",
+				runner.name, deployment.name
+			),
+			Some(runner) => format!(
+				concat!(
+					"Start requested. The runner \"{}\" is offline, so \"{}\" ",
+					"will start once it reconnects.",
+				),
+				runner.name, deployment.name
+			),
+			None => "Start requested.".to_string(),
+		})
 		.json(response.to_json_value())
 		.build()
 		.into_result()

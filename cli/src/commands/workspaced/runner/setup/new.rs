@@ -11,7 +11,7 @@ use common::prelude::{RunnerSettings, RunningEnvironment};
 use inquire::{Select, Text};
 use models::api::{user::*, workspace::runner::*};
 
-use super::{SetupOutput, another_runners_config, prompt_settings};
+use super::{SetupOutput, another_runners_config, confirm_takeover, prompt_settings};
 use crate::prelude::*;
 
 /// Args for `patr runner setup new`.
@@ -20,6 +20,9 @@ pub struct Args {
 	/// The name of the new runner. Asks if not given.
 	#[arg(short = 'n', long = "name")]
 	pub name: Option<String>,
+	/// Replace another runner's config, with `--force`, without asking
+	#[arg(short = 'y', long = "yes")]
+	pub yes: bool,
 }
 
 /// Creates a runner in the workspace and sets this host up to run it.
@@ -37,8 +40,11 @@ pub(super) async fn execute(
 	else {
 		return Err(AppError::NotLoggedIn);
 	};
-	if config_path.exists() && !force {
-		return Err(another_runners_config(&config_path, Some(&user_token)).await);
+	if config_path.exists() {
+		if !force {
+			return Err(another_runners_config(&config_path, Some(&user_token)).await);
+		}
+		confirm_takeover(args.yes)?;
 	}
 
 	let workspaces = make_request(

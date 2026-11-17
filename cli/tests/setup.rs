@@ -3,7 +3,7 @@
 use std::{io::Write, net::TcpListener};
 
 use cli::prelude::*;
-use models::{ApiSuccessResponseBody, utils::BearerToken};
+use models::{ApiErrorResponseBody, ApiSuccessResponseBody, utils::BearerToken};
 use serde::Serialize;
 use tempfile::NamedTempFile;
 use tokio::sync::OnceCell;
@@ -77,6 +77,18 @@ pub fn success_list(body: impl Serialize, total_count: usize) -> ResponseTemplat
 	success(body).insert_header("x-total-count", total_count.to_string().as_str())
 }
 
+/// The API's error envelope for `error`, with that error's default status
+/// code. Built from the real response type, like [`success`].
+pub fn error(error: ErrorType) -> ResponseTemplate {
+	ResponseTemplate::new(error.default_status_code().as_u16()).set_body_json(
+		ApiErrorResponseBody {
+			success: models::utils::False,
+			error,
+			message: error.message().into(),
+		},
+	)
+}
+
 /// Write an IaaC config file to a temp file and hand back the handle.
 ///
 /// The handle must stay alive for as long as the path is used — dropping it
@@ -87,6 +99,17 @@ pub fn config_file(contents: &str) -> NamedTempFile {
 		.expect("failed to write temp config file");
 	file.flush().expect("failed to flush temp config file");
 	file
+}
+
+/// Run `patr <argv>` against the stub API.
+pub async fn run(state: AppState, argv: &[&str]) -> Result<CommandOutput, AppError> {
+	use clap::Parser;
+
+	let AppArgs { args, command } =
+		AppArgs::try_parse_from(std::iter::once("patr").chain(argv.iter().copied()))
+			.expect("failed to parse args");
+
+	cli::commands::execute(command, args, state).await
 }
 
 /// Run `patr apply` against the given config file contents.
