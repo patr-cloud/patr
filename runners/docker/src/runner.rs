@@ -208,14 +208,14 @@ impl RunnerExecutor for DockerRunner {
 	async fn get_deployment_status(
 		&self,
 		deployment_id: Uuid,
-	) -> Result<DeploymentStatus, RunnerError> {
+	) -> Result<ObservedDeploymentStatus, RunnerError> {
 		deployment::get_status(self, deployment_id).await
 	}
 
 	async fn next_deployment_status(
 		&self,
 		deployment_id: Uuid,
-	) -> Result<DeploymentStatus, RunnerError> {
+	) -> Result<ObservedDeploymentStatus, RunnerError> {
 		tokio::time::sleep(Duration::from_secs(5)).await;
 		self.get_deployment_status(deployment_id).await
 	}

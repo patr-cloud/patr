@@ -15,6 +15,8 @@ pub enum ExecutorCall {
 	Stop(Uuid),
 	GetStatus(Uuid),
 	ListRunning,
+	UpsertManagedUrl(Uuid),
+	DeleteManagedUrl(Uuid),
 }
 
 /// Shared mutable state backing all MockExecutor instances in a test.
@@ -23,13 +25,15 @@ pub enum ExecutorCall {
 /// - `calls`: append-only log of every method invocation, in order. Tests assert on this to verify
 ///   the actor called the right methods.
 /// - `statuses`: what `get_deployment_status()` returns per deployment. Default (missing key)
-///   returns `DeploymentStatus::Stopped`.
+///   returns `ObservedDeploymentStatus::Stopped`.
+/// - `upserted`: the last deployment `upsert_deployment()` was called with, per deployment.
 /// - `upsert_errors` / `delete_errors`: if set for a deployment ID, the corresponding method
 ///   returns this error string as `RunnerError`.
 /// - `running`: the list of UUIDs returned by `list_running_deployments()`.
 pub struct MockExecutorState {
 	pub calls: Mutex<Vec<ExecutorCall>>,
-	pub statuses: Mutex<BTreeMap<Uuid, DeploymentStatus>>,
+	pub statuses: Mutex<BTreeMap<Uuid, ObservedDeploymentStatus>>,
+	pub upserted: Mutex<BTreeMap<Uuid, Deployment>>,
 	pub upsert_errors: Mutex<BTreeMap<Uuid, String>>,
 	pub delete_errors: Mutex<BTreeMap<Uuid, String>>,
 	pub running: Mutex<Vec<Uuid>>,
@@ -40,6 +44,7 @@ impl MockExecutorState {
 		Arc::new(Self {
 			calls: Mutex::new(Vec::new()),
 			statuses: Mutex::new(BTreeMap::new()),
+			upserted: Mutex::new(BTreeMap::new()),
 			upsert_errors: Mutex::new(BTreeMap::new()),
 			delete_errors: Mutex::new(BTreeMap::new()),
 			running: Mutex::new(Vec::new()),
@@ -97,6 +102,11 @@ impl RunnerExecutor for MockExecutor {
 		if let Some(err_msg) = self.state.upsert_errors.lock().unwrap().get(&id) {
 			return Err(RunnerError::host(std::io::Error::other(err_msg.clone())));
 		}
+		self.state
+			.upserted
+			.lock()
+			.unwrap()
+			.insert(id, deployment.data);
 		Ok(())
 	}
 
@@ -141,7 +151,7 @@ impl RunnerExecutor for MockExecutor {
 	async fn get_deployment_status(
 		&self,
 		deployment_id: Uuid,
-	) -> Result<DeploymentStatus, RunnerError> {
+	) -> Result<ObservedDeploymentStatus, RunnerError> {
 		self.state
 			.calls
 			.lock()
@@ -155,29 +165,39 @@ impl RunnerExecutor for MockExecutor {
 			.unwrap()
 			.get(&deployment_id)
 			.copied()
-			.unwrap_or(DeploymentStatus::Stopped))
+			.unwrap_or(ObservedDeploymentStatus::Stopped))
 	}
 
 	async fn next_deployment_status(
 		&self,
 		_deployment_id: Uuid,
-	) -> Result<DeploymentStatus, RunnerError> {
+	) -> Result<ObservedDeploymentStatus, RunnerError> {
 		// Never resolves — tests use polling via CheckStatus instead.
 		std::future::pending().await
 	}
 
 	async fn upsert_managed_url(
 		&self,
-		_managed_url_id: Uuid,
+		managed_url_id: Uuid,
 		_host: String,
 		_path: String,
 		_deployment_id: Uuid,
 		_port: u16,
 	) -> Result<(), RunnerError> {
+		self.state
+			.calls
+			.lock()
+			.unwrap()
+			.push(ExecutorCall::UpsertManagedUrl(managed_url_id));
 		Ok(())
 	}
 
-	async fn delete_managed_url(&self, _managed_url_id: Uuid) -> Result<(), RunnerError> {
+	async fn delete_managed_url(&self, managed_url_id: Uuid) -> Result<(), RunnerError> {
+		self.state
+			.calls
+			.lock()
+			.unwrap()
+			.push(ExecutorCall::DeleteManagedUrl(managed_url_id));
 		Ok(())
 	}
 

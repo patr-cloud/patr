@@ -13,10 +13,10 @@ database-url-var = "RUNNER_DATABASE_URL"
 'machine_type'             = "models::prelude::Uuid"
 'max_horizontal_scale'     = "u16"
 'min_horizontal_scale'     = "u16"
+'observed_status'          = "models::api::workspace::deployment::ObservedDeploymentStatus"
 'repository_id'            = "models::prelude::Uuid"
 'startup_probe_port'       = "u16"
 'startup_probe_port_type'  = "models::api::workspace::deployment::ExposedPortType"
-'status'                   = "models::api::workspace::deployment::DeploymentStatus"
 
 [macros.table-overrides.'deployment_environment_variable']
 'deployment_id' = "models::prelude::Uuid"

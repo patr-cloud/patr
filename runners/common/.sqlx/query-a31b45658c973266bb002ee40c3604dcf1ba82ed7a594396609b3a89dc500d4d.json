@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id FROM deployment WHERE deleted IS NULL;",
+  "query": "SELECT id FROM deployment;",
   "describe": {
     "columns": [
       {
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "1ee2b1f7b2672438cb76d0897d0ff3caa3edfba2f076e24fe0429b2e249f9938"
+  "hash": "a31b45658c973266bb002ee40c3604dcf1ba82ed7a594396609b3a89dc500d4d"
 }

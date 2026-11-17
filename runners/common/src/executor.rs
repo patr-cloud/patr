@@ -97,7 +97,7 @@ pub trait RunnerExecutor: Sized {
 	fn get_deployment_status(
 		&self,
 		deployment_id: Uuid,
-	) -> impl Future<Output = Result<DeploymentStatus, RunnerError>> + Send;
+	) -> impl Future<Output = Result<ObservedDeploymentStatus, RunnerError>> + Send;
 
 	/// This function listens for changes to the deployment status and returns
 	/// the new status when it's updated. This can be used to watch for status
@@ -105,7 +105,7 @@ pub trait RunnerExecutor: Sized {
 	fn next_deployment_status(
 		&self,
 		deployment_id: Uuid,
-	) -> impl Future<Output = Result<DeploymentStatus, RunnerError>> + Send;
+	) -> impl Future<Output = Result<ObservedDeploymentStatus, RunnerError>> + Send;
 
 	/// Create or update a managed URL on the runner. The `host` is already
 	/// resolved to a fully-qualified hostname (e.g. `myapp.example.com`) by the

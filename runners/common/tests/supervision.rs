@@ -152,7 +152,7 @@ async fn reconcile_stops_orphaned_actors() {
 		.statuses
 		.lock()
 		.unwrap()
-		.insert(id, DeploymentStatus::Running);
+		.insert(id, ObservedDeploymentStatus::Running);
 
 	setup.notify_upsert(id);
 

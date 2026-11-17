@@ -1,16 +1,16 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT status FROM deployment WHERE id = $1 AND deleted IS NULL;",
+  "query": "SELECT should_run FROM deployment WHERE id = $1 AND deleted IS NULL;",
   "describe": {
     "columns": [
       {
-        "name": "status",
+        "name": "should_run",
         "ordinal": 0,
-        "type_info": "Text",
+        "type_info": "Bool",
         "origin": {
           "Table": {
             "table": "deployment",
-            "name": "status"
+            "name": "should_run"
           }
         }
       }
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "8c33768bb5d30d90e77fa9afca79c7245f24cdfc980bed62149824ae401e320c"
+  "hash": "d3aad20f02cadbc189c0112b9a6c7f3c1c9e897b7617c8c7a51b26d9abdfb014"
 }

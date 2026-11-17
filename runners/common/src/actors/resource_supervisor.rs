@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, marker::PhantomData, time::Duration};
 
-use models::{api::workspace::deployment::DeploymentStatus, rbac::ResourceType};
+use models::{api::workspace::deployment::ObservedDeploymentStatus, rbac::ResourceType};
 use ractor::{Actor, ActorProcessingErr, ActorRef, concurrency::JoinHandle};
 
 use super::{
@@ -41,15 +41,16 @@ pub enum ResourceSupervisorMessage {
 	/// Full reconciliation: diff DB state vs running actors.
 	/// Self-sent on startup, on a periodic timer, and after WS reconnect.
 	Reconcile,
-	/// A child resource actor reports a status change. The supervisor updates
-	/// SQLite and forwards the update to the WebSocket actor (managed mode).
+	/// A child resource actor wrote a new observed status to
+	/// `deployment.observed_status`. The supervisor tells the WebSocket actor
+	/// to publish it.
 	ResourceStatusChanged {
 		/// The UUID of the resource whose status changed.
 		resource_id: Uuid,
 		/// The type of resource reporting the status change.
 		resource_type: ResourceType,
-		/// The new status of the resource.
-		status: DeploymentStatus,
+		/// The new observed status of the resource.
+		status: ObservedDeploymentStatus,
 	},
 	/// Set or update the WebSocket actor reference. Sent after the WS actor
 	/// starts, since it has a circular dependency (WS needs supervisor ref,
@@ -216,7 +217,7 @@ where
 				status,
 			} => {
 				// Forward the status update to the WebSocket actor for upstream
-				// notification (managed mode only).
+				// notification.
 				if let Some(ws_ref) = &state.websocket_ref {
 					let _ = ws_ref.send_message(WebSocketMessage::SendStatusUpdate {
 						resource_id,

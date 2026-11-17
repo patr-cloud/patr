@@ -1,6 +1,7 @@
 //! In-test server that impersonates the upstream Patr API for managed mode
 //! tests. Handles both WebSocket streams (runner data) and REST endpoints
-//! (ListDeployment, GetDeploymentInfo, ListSecretsForWorkspace) on port 3000.
+//! (ListDeployment, GetDeploymentInfo, ListManagedURL, GetDomainInfoInWorkspace,
+//! ListSecretsForWorkspace) on port 3000.
 //!
 //! Each runner connects with a unique `runner_id` in the WS path, so
 //! multiple tests can share the same server without interference.
@@ -18,6 +19,7 @@ use axum::{
 	extract::{
 		Path,
 		Query,
+		RawQuery,
 		State,
 		ws::{Message, WebSocket, WebSocketUpgrade},
 	},
@@ -30,7 +32,7 @@ use futures::{SinkExt, StreamExt};
 use http::StatusCode;
 use models::{
 	ApiErrorResponseBody,
-	api::workspace::{deployment::*, managed_url::*, runner::*, secret::*},
+	api::workspace::{deployment::*, domain::*, managed_url::*, runner::*, secret::*},
 	utils::False,
 };
 use tokio::sync::{OnceCell, broadcast};
@@ -38,7 +40,7 @@ use tokio::sync::{OnceCell, broadcast};
 /// Per-runner state for the test server. Each runner_id gets its own channel
 /// pair for sending server messages and receiving client messages.
 pub struct RunnerChannel {
-	/// Send server messages (DeploymentCreated, etc.) to this runner.
+	/// Send server messages (DeploymentUpdated, etc.) to this runner.
 	pub server_tx: broadcast::Sender<String>,
 	/// Client messages (Handshake, DeploymentStatusUpdated)
 	/// received from this runner.
@@ -59,6 +61,16 @@ pub struct ManagedServerState {
 	/// Secrets to return from the ListSecretsForWorkspace REST call, keyed by
 	/// secret_id.
 	pub secrets: Mutex<BTreeMap<Uuid, WithId<Secret>>>,
+	/// Managed URLs to return from the ListManagedURL REST call, keyed by
+	/// managed_url_id.
+	pub managed_urls: Mutex<BTreeMap<Uuid, WithId<ManagedUrl>>>,
+	/// Domain names to return from the GetDomainInfoInWorkspace REST call,
+	/// keyed by domain_id.
+	pub domains: Mutex<BTreeMap<Uuid, String>>,
+	/// List calls that fail, keyed by `{workspace_id}/{list}` (list being
+	/// "deployment", "managedUrl" or "secret"), with how many times each
+	/// failure was served.
+	pub list_errors: Mutex<BTreeMap<String, (StatusCode, usize)>>,
 }
 
 impl ManagedServerState {
@@ -67,6 +79,9 @@ impl ManagedServerState {
 			runners: Mutex::new(BTreeMap::new()),
 			deployments: Mutex::new(BTreeMap::new()),
 			secrets: Mutex::new(BTreeMap::new()),
+			managed_urls: Mutex::new(BTreeMap::new()),
+			domains: Mutex::new(BTreeMap::new()),
+			list_errors: Mutex::new(BTreeMap::new()),
 		})
 	}
 
@@ -139,9 +154,94 @@ impl ManagedServerState {
 			.insert(deployment.id, (deployment, details));
 	}
 
+	/// Stop returning a deployment from the REST list/get endpoints.
+	pub fn remove_deployment(&self, deployment_id: Uuid) {
+		self.deployments.lock().unwrap().remove(&deployment_id);
+	}
+
 	/// Add (or replace) a secret that the REST list endpoint will return.
 	pub fn add_secret(&self, secret: WithId<Secret>) {
 		self.secrets.lock().unwrap().insert(secret.id, secret);
+	}
+
+	/// Stop returning a secret from the REST list endpoint.
+	pub fn remove_secret(&self, secret_id: Uuid) {
+		self.secrets.lock().unwrap().remove(&secret_id);
+	}
+
+	/// Add (or replace) a managed URL that the REST list endpoint will return,
+	/// along with its domain's name.
+	pub fn add_managed_url(&self, managed_url: WithId<ManagedUrl>, domain: &str) {
+		self.domains
+			.lock()
+			.unwrap()
+			.insert(managed_url.domain_id, domain.to_string());
+		self.managed_urls
+			.lock()
+			.unwrap()
+			.insert(managed_url.id, managed_url);
+	}
+
+	/// Make a list call fail with `status` for a workspace, until cleared.
+	pub fn fail_list(&self, workspace_id: Uuid, list: &'static str, status: StatusCode) {
+		self.list_errors
+			.lock()
+			.unwrap()
+			.insert(format!("{workspace_id}/{list}"), (status, 0));
+	}
+
+	/// How many times a failing list call has been served.
+	pub fn list_failures_served(&self, workspace_id: Uuid, list: &'static str) -> usize {
+		self.list_errors
+			.lock()
+			.unwrap()
+			.get(&format!("{workspace_id}/{list}"))
+			.map(|(_, served)| *served)
+			.unwrap_or_default()
+	}
+
+	/// Let every list call succeed for a workspace again.
+	pub fn clear_list_errors(&self, workspace_id: Uuid) {
+		self.list_errors
+			.lock()
+			.unwrap()
+			.retain(|key, _| !key.starts_with(&format!("{workspace_id}/")));
+	}
+
+	/// The error response a failing list call returns, if it's set to fail.
+	fn list_error(
+		&self,
+		workspace_id: Uuid,
+		list: &'static str,
+	) -> Option<axum::response::Response> {
+		let mut list_errors = self.list_errors.lock().unwrap();
+		let (status, served) = list_errors.get_mut(&format!("{workspace_id}/{list}"))?;
+		*served += 1;
+		let error = if *status == StatusCode::TOO_MANY_REQUESTS {
+			ErrorType::RateLimitExceeded
+		} else {
+			ErrorType::InternalServerError
+		};
+		Some(
+			(
+				*status,
+				Json(ApiErrorResponseBody {
+					success: False,
+					error,
+					message: "Injected failure".to_string(),
+				}),
+			)
+				.into_response(),
+		)
+	}
+
+	/// Close a runner's WS connection. The runner reconnects, and resyncs on
+	/// the new connection.
+	pub fn disconnect_runner(&self, runner_id: Uuid) {
+		if let Some(channel) = self.runners.lock().unwrap().get_mut(&runner_id) {
+			// Dropping the only sender ends the connection's write task.
+			channel.server_tx = broadcast::channel(64).0;
+		}
 	}
 }
 
@@ -178,6 +278,10 @@ pub async fn get_managed_server() -> Arc<ManagedServerState> {
 				.route(
 					"/workspace/{workspace_id}/secret",
 					get(list_secrets_handler),
+				)
+				.route(
+					"/workspace/{workspace_id}/domain/{domain_id}",
+					get(get_domain_info_handler),
 				)
 				.with_state(state.clone());
 
@@ -300,14 +404,29 @@ async fn handle_ws(
 }
 
 async fn list_deployments_handler(
-	Path(_workspace_id): Path<Uuid>,
-	Query(query): Query<ListResourceQuery<Deployment, ()>>,
+	Path(workspace_id): Path<Uuid>,
+	RawQuery(query): RawQuery,
 	State(state): State<Arc<ManagedServerState>>,
-) -> impl IntoResponse {
+) -> axum::response::Response {
+	if let Some(error) = state.list_error(workspace_id, "deployment") {
+		return error;
+	}
+
+	// Parsed the way the API parses it, so the nested `search` filter survives.
+	let query = serde_qs::from_str::<ListResourceQuery<Deployment, ()>>(
+		query.as_deref().unwrap_or_default(),
+	)
+	.unwrap();
 	let deployments = state.deployments.lock().unwrap();
 	let all = deployments
 		.values()
 		.map(|(d, _)| d.clone())
+		.filter(|d| {
+			query
+				.search
+				.runner
+				.is_none_or(|runner| runner.resource_id == d.runner)
+		})
 		.collect::<Vec<_>>();
 	let total_count = all.len();
 
@@ -320,26 +439,71 @@ async fn list_deployments_handler(
 			deployments: page_items,
 		})),
 	)
+		.into_response()
 }
 
 async fn list_managed_urls_handler(
-	Path(_workspace_id): Path<Uuid>,
-	Query(_query): Query<ListResourceQuery<ManagedUrl, ()>>,
-	State(_state): State<Arc<ManagedServerState>>,
-) -> impl IntoResponse {
+	Path(workspace_id): Path<Uuid>,
+	Query(query): Query<ListResourceQuery<ManagedUrl, ()>>,
+	State(state): State<Arc<ManagedServerState>>,
+) -> axum::response::Response {
+	if let Some(error) = state.list_error(workspace_id, "managedUrl") {
+		return error;
+	}
+
+	let managed_urls = state.managed_urls.lock().unwrap();
+	let total_count = managed_urls.len();
+	let page_items = managed_urls
+		.values()
+		.skip(query.page * query.count)
+		.take(query.count)
+		.cloned()
+		.collect();
+
 	(
-		TypedHeader(TotalCountHeader(0)),
+		TypedHeader(TotalCountHeader(total_count)),
 		Json(ApiSuccessResponseBody::new(ListManagedURLResponse {
-			urls: Vec::new(),
+			urls: page_items,
 		})),
 	)
+		.into_response()
+}
+
+async fn get_domain_info_handler(
+	Path((_workspace_id, domain_id)): Path<(Uuid, Uuid)>,
+	State(state): State<Arc<ManagedServerState>>,
+) -> impl IntoResponse {
+	let name = state
+		.domains
+		.lock()
+		.unwrap()
+		.get(&domain_id)
+		.cloned()
+		.unwrap();
+
+	Json(ApiSuccessResponseBody::new(
+		GetDomainInfoInWorkspaceResponse {
+			workspace_domain: WithId::new(
+				domain_id,
+				WorkspaceDomain {
+					name,
+					last_verified: None,
+					is_verified: true,
+				},
+			),
+		},
+	))
 }
 
 async fn list_secrets_handler(
-	Path(_workspace_id): Path<Uuid>,
+	Path(workspace_id): Path<Uuid>,
 	Query(query): Query<ListResourceQuery<Secret, ()>>,
 	State(state): State<Arc<ManagedServerState>>,
-) -> impl IntoResponse {
+) -> axum::response::Response {
+	if let Some(error) = state.list_error(workspace_id, "secret") {
+		return error;
+	}
+
 	let secrets = state.secrets.lock().unwrap();
 	let total_count = secrets.len();
 	let page_items = secrets
@@ -357,6 +521,7 @@ async fn list_secrets_handler(
 			},
 		)),
 	)
+		.into_response()
 }
 
 async fn get_deployment_info_handler(

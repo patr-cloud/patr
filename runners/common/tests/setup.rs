@@ -114,12 +114,11 @@ impl TestSetup {
 
 	/// Insert a minimal test deployment into SQLite. Returns the deployment ID.
 	pub async fn create_test_deployment(&self) -> Uuid {
-		self.create_test_deployment_with_status(DeploymentStatus::Deploying)
-			.await
+		self.create_test_deployment_with_should_run(true).await
 	}
 
-	/// Insert a test deployment with a specific initial status.
-	pub async fn create_test_deployment_with_status(&self, status: DeploymentStatus) -> Uuid {
+	/// Insert a test deployment that should, or shouldn't, be running.
+	pub async fn create_test_deployment_with_should_run(&self, should_run: bool) -> Uuid {
 		let id = Uuid::new_v4();
 
 		let deployment = Deployment {
@@ -129,7 +128,12 @@ impl TestSetup {
 				image_name: "nginx".to_string(),
 			},
 			image_tag: "latest".to_string(),
-			status,
+			status: if should_run {
+				DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying)
+			} else {
+				DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped)
+			},
+			should_run,
 			runner: Uuid::nil(),
 			current_live_digest: None,
 			machine_type: Uuid::parse_str("b3cf3771fa394281bfdfeb2e65a061b6").unwrap(),

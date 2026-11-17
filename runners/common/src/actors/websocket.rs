@@ -7,30 +7,38 @@ use std::{
 
 use futures::{Sink, SinkExt, StreamExt};
 use http::StatusCode;
-use models::api::workspace::{
-	deployment::*,
-	domain::{
-		GetDomainInfoInWorkspacePath,
-		GetDomainInfoInWorkspaceRequest,
-		GetDomainInfoInWorkspaceRequestHeaders,
+use models::{
+	api::workspace::{
+		deployment::*,
+		domain::{
+			GetDomainInfoInWorkspacePath,
+			GetDomainInfoInWorkspaceRequest,
+			GetDomainInfoInWorkspaceRequestHeaders,
+		},
+		managed_url::{
+			ListManagedURLPath,
+			ListManagedURLRequest,
+			ListManagedURLRequestHeaders,
+			ManagedUrlType,
+		},
+		runner::*,
+		secret::{
+			ListSecretsForWorkspacePath,
+			ListSecretsForWorkspaceRequest,
+			ListSecretsForWorkspaceRequestHeaders,
+		},
 	},
-	managed_url::{
-		ListManagedURLPath,
-		ListManagedURLRequest,
-		ListManagedURLRequestHeaders,
-		ManagedUrlType,
-	},
-	runner::*,
-	secret::{
-		ListSecretsForWorkspacePath,
-		ListSecretsForWorkspaceRequest,
-		ListSecretsForWorkspaceRequestHeaders,
-	},
+	utils::ResourceSearcher,
 };
 use ractor::{Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
 use ractor_actors::streams::spawn_stream_pump;
+use time::OffsetDateTime;
 
-use super::{db_helpers, resource_supervisor::ResourceSupervisorMessage};
+use super::{
+	db_helpers,
+	deployment::get_local_deployment_info,
+	resource_supervisor::ResourceSupervisorMessage,
+};
 use crate::prelude::*;
 
 /// Type-erased WS sink. The concrete type from `stream_request` is opaque
@@ -44,12 +52,13 @@ type BoxedWsSink = Pin<Box<dyn Sink<StreamRunnerDataForWorkspaceClientMsg, Error
 /// SQLite and forwards status updates from resource actors back upstream.
 #[derive(Debug)]
 pub enum WebSocketMessage {
-	/// A resource actor reports a status change to send upstream.
+	/// A resource actor reports a status change to send upstream. Dropped while
+	/// disconnected, since every resync sends them all.
 	SendStatusUpdate {
 		/// The UUID of the resource whose status changed.
 		resource_id: Uuid,
 		/// The new status to report upstream.
-		status: DeploymentStatus,
+		status: ObservedDeploymentStatus,
 	},
 	/// Attempt to (re)connect to the upstream WebSocket.
 	Connect,
@@ -176,14 +185,10 @@ where
 						status,
 					};
 					if sink.send(msg).await.is_err() {
-						// Sink errored — connection is dead. Drop it, requeue
-						// the message so it's retried after reconnect, and
-						// wait for StreamEnded to trigger reconnect.
+						// Sink errored — connection is dead. Drop it and wait for
+						// StreamEnded to trigger reconnect, whose resync sends
+						// this status again.
 						state.ws_sink = None;
-						let _ = myself.send_message(WebSocketMessage::SendStatusUpdate {
-							resource_id,
-							status,
-						});
 					}
 				}
 			}
@@ -390,20 +395,26 @@ where
 	// We need workspace_id + auth for domain resolution on managed URL events.
 	let RunnerSettings {
 		workspace_id,
+		runner_id,
 		api_token,
 		user_agent,
 		..
 	} = state.config.clone();
 
 	match msg {
-		DeploymentCreated {
-			deployment,
-			running_details,
-		} |
 		DeploymentUpdated {
 			deployment,
 			running_details,
 		} => {
+			if deployment.runner != runner_id {
+				// A deployment that moved off this runner arrives as a
+				// `DeploymentDeleted`, so this one was never ours.
+				warn!(
+					deployment_id = %deployment.id,
+					"Received a deployment for another runner — ignoring"
+				);
+				return Ok(());
+			}
 			let deployment_id = deployment.id;
 			let mut transaction = state.database.begin().await?;
 			db_helpers::upsert_deployment_in_database(
@@ -421,6 +432,25 @@ where
 				});
 		}
 		DeploymentDeleted { id } => {
+			// The deployment's managed URLs go with it, so read them first to
+			// tell their owners too.
+			let managed_url_ids = query!(
+				r#"
+				SELECT
+					id
+				FROM
+					managed_url
+				WHERE
+					deployment_id = $1;
+				"#,
+				id
+			)
+			.fetch_all(&state.database)
+			.await?
+			.into_iter()
+			.map(|row| row.id)
+			.collect::<Vec<_>>();
+
 			let mut transaction = state.database.begin().await?;
 			db_helpers::delete_deployment_in_database(&mut transaction, id).await?;
 			transaction.commit().await?;
@@ -430,8 +460,18 @@ where
 					resource_id: id,
 					resource_type: ResourceType::Deployment,
 				});
+
+			for managed_url_id in managed_url_ids {
+				let _ =
+					state
+						.supervisor_ref
+						.send_message(ResourceSupervisorMessage::DeleteResource {
+							resource_id: managed_url_id,
+							resource_type: ResourceType::ManagedURL,
+						});
+			}
 		}
-		ManagedUrlCreated { managed_url } | ManagedUrlUpdated { managed_url } => {
+		ManagedUrlUpdated { managed_url } => {
 			let ManagedUrlType::ProxyDeployment {
 				deployment_id,
 				port,
@@ -539,8 +579,9 @@ where
 	Ok(())
 }
 
-/// Handle the periodic `FullResync`: re-fetch all deployments from the
-/// upstream API and reconcile with SQLite.
+/// Handle the periodic `FullResync`: re-fetch this runner's deployments, their
+/// managed URLs and the workspace's secrets from the upstream API, then write
+/// only what differs from SQLite.
 async fn handle_full_resync<E>(
 	myself: ActorRef<WebSocketMessage>,
 	state: &mut WebSocketActorState<E>,
@@ -558,45 +599,24 @@ where
 
 	info!("Starting full resync with upstream API");
 
-	let mut transaction = state.database.begin().await?;
-
-	// Clear managed URLs first so the deployment-FK they reference is free
-	// to be cleared next.
-	db_helpers::delete_all_managed_urls_in_database(&mut transaction).await?;
-
-	// Clear all deployment-related tables.
-	query!("DELETE FROM deployment_volume;")
-		.execute(&mut *transaction)
-		.await?;
-	query!("DELETE FROM deployment_deploy_history;")
-		.execute(&mut *transaction)
-		.await?;
-	query!("DELETE FROM deployment_config_mounts;")
-		.execute(&mut *transaction)
-		.await?;
-	query!("DELETE FROM deployment_exposed_port;")
-		.execute(&mut *transaction)
-		.await?;
-	query!("DELETE FROM deployment_environment_variable;")
-		.execute(&mut *transaction)
-		.await?;
-	query!("DELETE FROM deployment;")
-		.execute(&mut *transaction)
-		.await?;
-	query!("DELETE FROM secret;")
-		.execute(&mut *transaction)
-		.await?;
-
-	// Paginate through all deployments from the upstream API.
-	let mut page: usize = 0;
+	// Everything is fetched before anything is written. Any failed call (a 429,
+	// a 5xx, a dropped connection) aborts the resync with SQLite untouched,
+	// instead of reading as resources that were deleted.
+	let mut deployments = BTreeMap::<Uuid, (Deployment, DeploymentRunningDetails)>::new();
+	let mut page = 0usize;
 
 	loop {
-		let response = match client::make_request(
+		let response = client::make_request(
 			ApiRequest::<ListDeploymentRequest>::builder()
 				.path(ListDeploymentPath { workspace_id })
 				.query(ListResourceQuery {
 					sort: Default::default(),
-					search: Default::default(),
+					search: DeploymentSearchParams {
+						runner: Some(ResourceSearcher {
+							resource_id: runner_id,
+						}),
+						..Default::default()
+					},
 					count: ListResourceQuery::DEFAULT_PAGE_SIZE,
 					page,
 					additional_query: (),
@@ -609,31 +629,15 @@ where
 				.build(),
 		)
 		.await
-		{
-			Ok(response) => response,
-			// Paginating past the last page returns PageOutOfBounds — that's the
-			// normal end-of-list signal during resync, not a failure.
-			Err(err) if matches!(err.body.error, ErrorType::PageOutOfBounds) => break,
-			Err(err) => return Err(RunnerError::UpstreamServerError(err.body.error).into()),
-		};
+		.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?;
+		let total_count = response.headers.total_count.0 as usize;
 
-		if page * ListResourceQuery::DEFAULT_PAGE_SIZE >= response.headers.total_count.0 as usize {
-			break;
-		}
-
-		for deployment in response
-			.body
-			.deployments
-			.into_iter()
-			.filter(|d| d.runner == runner_id)
-		{
-			let deployment_id = deployment.id;
-
+		for deployment in response.body.deployments {
 			let info = client::make_request(
 				ApiRequest::<GetDeploymentInfoRequest>::builder()
 					.path(GetDeploymentInfoPath {
 						workspace_id,
-						deployment_id,
+						deployment_id: deployment.id,
 					})
 					.query(())
 					.headers(GetDeploymentInfoRequestHeaders {
@@ -644,41 +648,29 @@ where
 					.build(),
 			)
 			.await
-			.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?;
+			.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?
+			.body;
 
-			db_helpers::upsert_deployment_in_database(
-				&mut transaction,
-				info.body.deployment,
-				info.body.running_details,
-			)
-			.await?;
+			// It may have moved to another runner since it was listed.
+			if info.deployment.runner != runner_id {
+				continue;
+			}
+			deployments.insert(
+				info.deployment.id,
+				(info.deployment.data, info.running_details),
+			);
 		}
 
+		if (page + 1) * ListResourceQuery::DEFAULT_PAGE_SIZE >= total_count {
+			break;
+		}
 		page += 1;
 	}
 
-	// Collect deployment IDs we just synced; managed URLs only get persisted
-	// for deployments running on this runner. We need this before committing
-	// so the SQLite read sees them, but we can also use the in-memory set.
-	let local_deployment_ids = query!(
-		r#"
-		SELECT
-			id
-		FROM
-			deployment
-		WHERE
-			deleted IS NULL;
-		"#
-	)
-	.fetch_all(&mut *transaction)
-	.await?
-	.into_iter()
-	.map(|row| row.id)
-	.collect::<BTreeSet<Uuid>>();
-
 	// Paginate through all managed URLs in the workspace, filter to
-	// ProxyDeployment URLs targeting our deployments, resolve each domain
-	// (cached), and write into SQLite.
+	// ProxyDeployment URLs targeting our deployments, and resolve each domain
+	// (cached).
+	let mut managed_urls = BTreeMap::<Uuid, (String, String, Uuid, u16)>::new();
 	let mut managed_url_page: usize = 0;
 	let mut domain_cache: BTreeMap<Uuid, String> = BTreeMap::new();
 
@@ -711,7 +703,7 @@ where
 			else {
 				continue;
 			};
-			if !local_deployment_ids.contains(&deployment_id) {
+			if !deployments.contains_key(&deployment_id) {
 				continue;
 			}
 
@@ -748,15 +740,7 @@ where
 			} else {
 				format!("{}.{}", url.sub_domain, domain)
 			};
-			db_helpers::upsert_managed_url_in_database(
-				&mut transaction,
-				url.id,
-				&host,
-				&url.path,
-				deployment_id,
-				port,
-			)
-			.await?;
+			managed_urls.insert(url.id, (host, url.path.clone(), deployment_id, port));
 		}
 
 		if (managed_url_page + 1) * ListResourceQuery::DEFAULT_PAGE_SIZE >=
@@ -767,8 +751,9 @@ where
 		managed_url_page += 1;
 	}
 
-	// Refill when each secret last changed, so a rotation missed while
-	// disconnected still re-applies the deployments using it.
+	// When each secret last changed, so a rotation missed while disconnected
+	// still re-applies the deployments using it.
+	let mut secrets = BTreeMap::<Uuid, OffsetDateTime>::new();
 	let mut secret_page: usize = 0;
 
 	loop {
@@ -791,31 +776,207 @@ where
 		)
 		.await
 		.map_err(|err| RunnerError::UpstreamServerError(err.body.error))?;
+		let total_count = response.headers.total_count.0 as usize;
 
 		for secret in response.body.secrets {
-			db_helpers::upsert_secret_in_database(
-				&mut transaction,
-				secret.id,
-				secret.data.last_updated,
-			)
-			.await?;
+			secrets.insert(secret.id, secret.data.last_updated);
 		}
 
-		if (secret_page + 1) * ListResourceQuery::DEFAULT_PAGE_SIZE >=
-			response.headers.total_count.0 as usize
-		{
+		if (secret_page + 1) * ListResourceQuery::DEFAULT_PAGE_SIZE >= total_count {
 			break;
 		}
 		secret_page += 1;
 	}
 
+	// Only this actor writes these tables, so reading them outside the
+	// transaction below can't miss a write.
+	let local_deployment_ids = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			deployment;
+		"#
+	)
+	.fetch_all(&state.database)
+	.await?
+	.into_iter()
+	.map(|row| row.id)
+	.collect::<BTreeSet<_>>();
+
+	let mut changed_deployment_ids = BTreeSet::new();
+	for (deployment_id, (deployment, running_details)) in &deployments {
+		// The public status the API derives and the runner aren't stored locally
+		// (only `observed_status` is), so they're set to the local placeholders.
+		let mut stored = deployment.clone();
+		stored.status = DeploymentStatus::Observed(ObservedDeploymentStatus::Unknown);
+		stored.runner = Uuid::nil();
+
+		let unchanged = match get_local_deployment_info(&state.database, *deployment_id).await {
+			Ok((local, local_running_details)) => {
+				local == stored && local_running_details == *running_details
+			}
+			Err(RunnerError::UpstreamServerError(ErrorType::ResourceDoesNotExist)) => false,
+			Err(err) => return Err(err.into()),
+		};
+		if !unchanged {
+			changed_deployment_ids.insert(*deployment_id);
+		}
+	}
+
+	let local_managed_urls = query!(
+		r#"
+		SELECT
+			id,
+			host,
+			path,
+			deployment_id,
+			port
+		FROM
+			managed_url;
+		"#
+	)
+	.fetch_all(&state.database)
+	.await?
+	.into_iter()
+	.map(|row| (row.id, (row.host, row.path, row.deployment_id, row.port)))
+	.collect::<BTreeMap<_, _>>();
+
+	let local_secrets = query!(
+		r#"
+		SELECT
+			id,
+			last_updated
+		FROM
+			secret;
+		"#
+	)
+	.fetch_all(&state.database)
+	.await?
+	.into_iter()
+	.map(|row| (row.id, row.last_updated))
+	.collect::<BTreeMap<_, _>>();
+
+	let removed_deployment_ids = local_deployment_ids
+		.into_iter()
+		.filter(|deployment_id| !deployments.contains_key(deployment_id))
+		.collect::<Vec<_>>();
+
+	let mut transaction = state.database.begin().await?;
+
+	// Removed deployments go first: their managed URLs go with them, and a
+	// managed URL that moved to another deployment is written back below.
+	for deployment_id in &removed_deployment_ids {
+		db_helpers::delete_deployment_in_database(&mut transaction, *deployment_id).await?;
+	}
+
+	for (deployment_id, (deployment, running_details)) in deployments
+		.into_iter()
+		.filter(|(deployment_id, _)| changed_deployment_ids.contains(deployment_id))
+	{
+		db_helpers::upsert_deployment_in_database(
+			&mut transaction,
+			WithId::new(deployment_id, deployment),
+			running_details,
+		)
+		.await?;
+	}
+
+	for managed_url_id in local_managed_urls
+		.keys()
+		.filter(|managed_url_id| !managed_urls.contains_key(managed_url_id))
+	{
+		db_helpers::delete_managed_url_in_database(&mut transaction, *managed_url_id).await?;
+	}
+
+	for (managed_url_id, managed_url) in &managed_urls {
+		if local_managed_urls.get(managed_url_id) == Some(managed_url) {
+			continue;
+		}
+		let (host, path, deployment_id, port) = managed_url;
+		db_helpers::upsert_managed_url_in_database(
+			&mut transaction,
+			*managed_url_id,
+			host,
+			path,
+			*deployment_id,
+			*port,
+		)
+		.await?;
+	}
+
+	for secret_id in local_secrets
+		.keys()
+		.filter(|secret_id| !secrets.contains_key(secret_id))
+	{
+		query!(
+			r#"
+			DELETE FROM
+				secret
+			WHERE
+				id = $1;
+			"#,
+			secret_id
+		)
+		.execute(&mut *transaction)
+		.await?;
+	}
+
+	for (secret_id, last_updated) in &secrets {
+		if local_secrets.get(secret_id) == Some(last_updated) {
+			continue;
+		}
+		db_helpers::upsert_secret_in_database(&mut transaction, *secret_id, *last_updated).await?;
+	}
+
 	transaction.commit().await?;
 
-	info!("Full resync complete, triggering reconciliation");
+	info!(
+		removed = removed_deployment_ids.len(),
+		changed = changed_deployment_ids.len(),
+		"Full resync complete, triggering reconciliation"
+	);
 
 	let _ = state
 		.supervisor_ref
 		.send_message(ResourceSupervisorMessage::Reconcile);
+
+	// Bring the API's copy of every observed status up to date too, catching up
+	// whatever it missed. A failed send means the connection is gone, and the
+	// next one's resync sends them all again.
+	if let Some(sink) = &mut state.ws_sink {
+		let rows = query!(
+			r#"
+			SELECT
+				id,
+				observed_status AS "observed_status!"
+			FROM
+				deployment
+			WHERE
+				observed_status IS NOT NULL;
+			"#
+		)
+		.fetch_all(&state.database)
+		.await?;
+
+		for row in rows {
+			if sink
+				.send(
+					StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
+						id: row.id,
+						status: row.observed_status,
+					},
+				)
+				.await
+				.is_err()
+			{
+				// Sink errored — connection is dead. Drop it and wait for
+				// StreamEnded to trigger reconnect.
+				state.ws_sink = None;
+				break;
+			}
+		}
+	}
 
 	// Schedule the next full resync.
 	myself.send_after(full_resync_interval(), || WebSocketMessage::FullResync);

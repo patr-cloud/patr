@@ -49,6 +49,7 @@ pub(crate) async fn upsert(
 				status: _,       // TODO handle paused deployments
 				machine_type: _, // TODO
 				runner: _,
+				should_run: _,
 				current_live_digest,
 			},
 	}: WithId<Deployment>,
@@ -660,7 +661,7 @@ pub(crate) async fn delete(runner: &DockerRunner, id: Uuid) -> Result<(), Runner
 pub(crate) async fn get_status(
 	DockerRunner { docker, .. }: &DockerRunner,
 	deployment_id: Uuid,
-) -> Result<DeploymentStatus, RunnerError> {
+) -> Result<ObservedDeploymentStatus, RunnerError> {
 	let status = docker
 		.list_services(Some(ListServicesOptions {
 			filters: Some(HashMap::from([(
@@ -678,17 +679,17 @@ pub(crate) async fn get_status(
 			// deploying. If they are equal and greater than zero, consider it running.
 			if let (Some(running), Some(desired)) = (status.running_tasks, status.desired_tasks) {
 				if running == desired {
-					DeploymentStatus::Running
+					ObservedDeploymentStatus::Running
 				} else if running < desired {
-					DeploymentStatus::Deploying
+					ObservedDeploymentStatus::Deploying
 				} else {
-					DeploymentStatus::Stopped
+					ObservedDeploymentStatus::Stopped
 				}
 			} else {
-				DeploymentStatus::Stopped
+				ObservedDeploymentStatus::Stopped
 			}
 		})
-		.unwrap_or(DeploymentStatus::Stopped);
+		.unwrap_or(ObservedDeploymentStatus::Stopped);
 
 	Ok(status)
 }

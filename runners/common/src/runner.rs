@@ -89,24 +89,6 @@ where
 	/// the exit signal is received.
 	#[instrument(skip(self))]
 	pub async fn run(self) -> Result<!, RunnerError> {
-		// Spawn the exit signal handler
-		task::spawn(async move {
-			info!("Listening for exit signal");
-			exit_signal().await;
-
-			warn!("Exit signal received. Gracefully stopping runner...");
-			GLOBAL_CANCEL_TOKEN
-				.get_or_init(CancellationToken::new)
-				.cancel();
-
-			time::sleep(Duration::from_secs(5)).await;
-			info!("Runner has not quit gracefully for 5 seconds");
-			info!("Send the exit signal again to force quit (data integrity not guaranteed)");
-
-			exit_signal().await;
-			std::process::exit(1);
-		});
-
 		// Start the actor tree. The RunnerSupervisor spawns and supervises
 		// the ResourceSupervisor and WebSocketActor as children.
 		let (root_ref, root_handle) = RunnerSupervisor::<E>::spawn(
@@ -121,17 +103,43 @@ where
 		.await
 		.map_err(RunnerError::host)?;
 
-		GLOBAL_CANCEL_TOKEN
-			.get_or_init(CancellationToken::new)
-			.cancelled()
-			.await;
+		// Spawn the exit signal handler
+		task::spawn(async move {
+			info!("Listening for exit signal");
+			exit_signal().await;
 
-		// Stop the actor tree — RunnerSupervisor stops its children.
-		root_ref.stop(Some("runner shutting down".to_string()));
-		root_handle.await.map_err(RunnerError::host)?;
+			warn!("Exit signal received. Gracefully stopping runner...");
+			GLOBAL_CANCEL_TOKEN
+				.get_or_init(CancellationToken::new)
+				.cancel();
+			// Stop the actor tree — RunnerSupervisor stops its children.
+			root_ref.stop(Some("runner shutting down".to_string()));
+
+			time::sleep(Duration::from_secs(5)).await;
+			info!("Runner has not quit gracefully for 5 seconds");
+			info!("Send the exit signal again to force quit (data integrity not guaranteed)");
+
+			exit_signal().await;
+			std::process::exit(1);
+		});
+
+		// Wait for the actor tree to stop, after the exit signal or on its own
+		let stopped = root_handle.await;
 
 		// Flush OTLP logs before exiting
 		crate::utils::observability::flush_observability(self.logger_provider);
+
+		// If the actor tree stopped without the exit signal, exit non-zero so
+		// systemd restarts the runner.
+		stopped.map_err(RunnerError::host)?;
+		if !GLOBAL_CANCEL_TOKEN
+			.get_or_init(CancellationToken::new)
+			.is_cancelled()
+		{
+			return Err(RunnerError::host(
+				"the runner's actor tree stopped unexpectedly",
+			));
+		}
 
 		info!("Runner exited");
 		// The runner has stopped, so we need to exit. This is a divergent

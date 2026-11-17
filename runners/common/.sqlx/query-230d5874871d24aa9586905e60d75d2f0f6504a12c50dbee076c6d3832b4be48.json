@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE deployment SET startup_probe_port = NULL, startup_probe_path = NULL, startup_probe_port_type = NULL, liveness_probe_port = NULL, liveness_probe_path = NULL, liveness_probe_port_type = NULL WHERE id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "230d5874871d24aa9586905e60d75d2f0f6504a12c50dbee076c6d3832b4be48"
+}

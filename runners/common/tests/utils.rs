@@ -17,12 +17,12 @@ pub async fn periodic_check<F: Fn() -> bool>(check: F, timeout: Duration) {
 	assert!(check(), "periodic check timed out after {timeout:?}");
 }
 
-/// Polls the `deployment` table every 50ms until `id`'s status equals
+/// Polls the `deployment` table every 50ms until `id`'s observed status equals
 /// `expected`, or `timeout` elapses. Panics with the status it last saw.
 ///
 /// Use this rather than waiting on a `GetStatus` mock call and then reading the
 /// row: the mock records the call as the executor is entered, but the status
-/// UPDATE lands afterwards in `handle_status_reconciliation`, so the call is
+/// write lands afterwards in `handle_status_reconciliation`, so the call is
 /// always observable before the write it stands in for.
 pub async fn wait_for_deployment_status(
 	database: &sqlx::Pool<DatabaseType>,
@@ -34,14 +34,12 @@ pub async fn wait_for_deployment_status(
 	let mut last = None::<String>;
 
 	while start.elapsed() < timeout {
-		last = Some(
-			sqlx::query("SELECT status FROM deployment WHERE id = $1")
-				.bind(id)
-				.fetch_one(database)
-				.await
-				.expect("failed to read deployment status")
-				.get("status"),
-		);
+		last = sqlx::query("SELECT observed_status FROM deployment WHERE id = $1")
+			.bind(id)
+			.fetch_one(database)
+			.await
+			.expect("failed to read deployment status")
+			.get("observed_status");
 
 		if last.as_deref() == Some(expected) {
 			return;

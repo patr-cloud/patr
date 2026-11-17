@@ -20,7 +20,7 @@ use crate::prelude::*;
 /// `deployment_volume`) are cleared and re-inserted; `managed_url` and
 /// `deployment_deploy_history` are NOT touched so a `DeploymentUpdated` event
 /// from upstream doesn't cascade-wipe the runner's managed URL state.
-#[instrument(skip(connection))]
+#[instrument(skip_all, fields(deployment_id = %deployment_id))]
 pub async fn upsert_deployment_in_database(
 	connection: &mut DatabaseConnection,
 	WithId {
@@ -30,7 +30,8 @@ pub async fn upsert_deployment_in_database(
 				name,
 				registry,
 				image_tag,
-				status,
+				status: _,
+				should_run,
 				runner: _,
 				machine_type,
 				current_live_digest,
@@ -67,7 +68,7 @@ pub async fn upsert_deployment_in_database(
 				image_name,
 				repository_id,
 				image_tag,
-				status,
+				should_run,
 				machine_type,
 				min_horizontal_scale,
 				max_horizontal_scale,
@@ -109,7 +110,7 @@ pub async fn upsert_deployment_in_database(
 			image_name = excluded.image_name,
 			repository_id = excluded.repository_id,
 			image_tag = excluded.image_tag,
-			status = excluded.status,
+			should_run = excluded.should_run,
 			machine_type = excluded.machine_type,
 			min_horizontal_scale = excluded.min_horizontal_scale,
 			max_horizontal_scale = excluded.max_horizontal_scale,
@@ -129,7 +130,7 @@ pub async fn upsert_deployment_in_database(
 		registry.image_name(),
 		registry.repository_id(),
 		image_tag.to_string(),
-		status,
+		should_run,
 		machine_type,
 		min_horizontal_scale,
 		max_horizontal_scale,
@@ -356,23 +357,6 @@ pub async fn delete_managed_url_in_database(
 	Ok(())
 }
 
-/// Truncate the managed URL table — used at the start of a full resync.
-#[instrument(skip(connection))]
-pub async fn delete_all_managed_urls_in_database(
-	connection: &mut DatabaseConnection,
-) -> Result<(), RunnerError> {
-	query!(
-		r#"
-		DELETE FROM
-			managed_url;
-		"#
-	)
-	.execute(&mut *connection)
-	.await?;
-
-	Ok(())
-}
-
 /// Insert or update when a secret's value last changed.
 #[instrument(skip(connection))]
 pub async fn upsert_secret_in_database(
@@ -454,6 +438,27 @@ pub async fn delete_deployment_in_database(
 			deployment_config_mounts
 		WHERE
 			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	// Clear probes first, the same way the upsert does: they reference the
+	// `deployment_exposed_port` rows deleted next.
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			startup_probe_port = NULL,
+			startup_probe_path = NULL,
+			startup_probe_port_type = NULL,
+			liveness_probe_port = NULL,
+			liveness_probe_path = NULL,
+			liveness_probe_port_type = NULL
+		WHERE
+			id = $1;
 		"#,
 		deployment_id
 	)

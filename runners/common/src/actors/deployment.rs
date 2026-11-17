@@ -64,9 +64,9 @@ pub struct DeploymentActorState<E: RunnerExecutor> {
 	/// successful apply. A rotated secret changes nothing in `last_applied`,
 	/// so this is what tells the actor to re-apply with the new value.
 	pub last_applied_secrets: BTreeMap<Uuid, OffsetDateTime>,
-	/// Last status reported to the supervisor. Only sends
-	/// `ResourceStatusChanged` when the status actually changes.
-	pub last_reported_status: Option<DeploymentStatus>,
+	/// Last status written to `deployment.observed_status`. Only writes it, and
+	/// sends `ResourceStatusChanged`, when the status actually changes.
+	pub last_reported_status: Option<ObservedDeploymentStatus>,
 }
 
 /// Actor responsible for managing the full lifecycle of a single deployment.
@@ -157,14 +157,11 @@ where
 			DeploymentMessage::Shutdown => {
 				// Check if the deployment is actually running before trying to
 				// delete it.
-				if let Ok(
-					DeploymentStatus::Running |
-					DeploymentStatus::Deploying |
-					DeploymentStatus::Errored,
-				) = state
+				if let Ok(status) = state
 					.executor
 					.get_deployment_status(state.deployment_id)
 					.await &&
+					status != ObservedDeploymentStatus::Stopped &&
 					let Err(err) = state.executor.delete_deployment(state.deployment_id).await
 				{
 					warn!(
@@ -191,16 +188,6 @@ where
 {
 	let deployment_id = state.deployment_id;
 
-	// Drop the status-report dedupe so the next `CheckStatus` re-reports
-	// upstream. A report can be lost silently — `SendStatusUpdate` discards the
-	// update when the socket is down (`ws_sink` is `None`) — and because
-	// `report_status_if_changed` marks the status as reported before the send,
-	// nothing would ever regenerate it. The supervisor sends `ConfigUpdated` to
-	// every live actor on each reconcile, which runs on WebSocket reconnect and
-	// on the resync timer, so clearing it here bounds how long upstream can stay
-	// stale instead of leaving it wrong forever.
-	state.last_reported_status = None;
-
 	let (desired_deployment, desired_details) =
 		match get_local_deployment_info(&state.database, deployment_id).await {
 			Ok(info) => info,
@@ -215,7 +202,7 @@ where
 
 	// A stopped deployment has nothing to apply a config to — the status poll
 	// keeps it down, and starting it applies the latest config then.
-	if desired_deployment.status == DeploymentStatus::Stopped {
+	if !desired_deployment.should_run {
 		trace!("ConfigUpdated for a stopped deployment, skipping");
 		return Ok(());
 	}
@@ -225,24 +212,13 @@ where
 	// new to the `ConfigUpdated` it queued, so it's applied rather than skipped.
 	let desired_secrets = get_local_secret_versions(&state.database, deployment_id).await?;
 
-	// Compare with last applied config, ignoring the status field since
-	// status changes don't represent config changes that need an upsert.
+	// Compare with last applied config.
 	let config_changed = desired_secrets != state.last_applied_secrets ||
 		state
 			.last_applied
 			.as_ref()
 			.is_none_or(|(applied_dep, applied_details)| {
-				let mut desired_cmp = desired_deployment.clone();
-				let mut applied_cmp = applied_dep.clone();
-
-				// Make the status the same so that it doesn't affect the equality check.
-				// We are only checking if the config changed, not the status. Status is managed
-				// by the executor and can change without a config change, so we ignore it in
-				// the comparison.
-				desired_cmp.status = DeploymentStatus::Running;
-				applied_cmp.status = DeploymentStatus::Running;
-
-				desired_cmp != applied_cmp || *applied_details != desired_details
+				*applied_dep != desired_deployment || *applied_details != desired_details
 			});
 
 	if config_changed {
@@ -260,16 +236,10 @@ where
 				%err,
 				"Failed to upsert deployment"
 			);
-			// Report errored status to supervisor, then let the error
-			// propagate to kill this actor. The supervisor will respawn
-			// with exponential backoff to avoid a tight retry loop.
-			let _ = state.supervisor_ref.send_message(
-				ResourceSupervisorMessage::ResourceStatusChanged {
-					resource_id: deployment_id,
-					resource_type: models::rbac::ResourceType::Deployment,
-					status: DeploymentStatus::Errored,
-				},
-			);
+			// Report errored status, then let the error propagate to kill
+			// this actor. The supervisor will respawn with exponential backoff
+			// to avoid a tight retry loop.
+			report_status_if_changed(state, ObservedDeploymentStatus::Errored).await?;
 			return Err(err.into());
 		}
 		state.last_applied = Some((desired_deployment, desired_details));
@@ -279,22 +249,20 @@ where
 	Ok(())
 }
 
-/// Reconcile a running status against the desired status in SQLite. This
-/// implements the same state machine as the original
-/// `handle_deployment_with_error` (lines 154-261 of
-/// `resource_executor/deployment.rs`).
+/// Reconcile a running status against the desired intent (`should_run`) in
+/// SQLite, and record the running status in `deployment.observed_status`.
 async fn handle_status_reconciliation<E>(
 	myself: &ActorRef<DeploymentMessage>,
 	state: &mut DeploymentActorState<E>,
-	running_status: DeploymentStatus,
+	running_status: ObservedDeploymentStatus,
 ) -> Result<(), ActorProcessingErr>
 where
 	E: RunnerExecutor + Send + Sync + 'static,
 {
 	let deployment_id = state.deployment_id;
 
-	let desired_status = match get_local_deployment_status(&state.database, deployment_id).await {
-		Ok(status) => status,
+	let should_run = match get_local_deployment_should_run(&state.database, deployment_id).await {
+		Ok(should_run) => should_run,
 		Err(RunnerError::UpstreamServerError(ErrorType::ResourceDoesNotExist)) => {
 			// Deployment gone from DB — delete it from the executor and stop.
 			info!(
@@ -311,96 +279,24 @@ where
 	debug!(
 		%deployment_id,
 		%running_status,
-		%desired_status,
+		should_run,
 		"Reconciling deployment status"
 	);
 
 	// Always offer the current running status upstream. After a fresh actor
-	// spawn (e.g. WS restart) `last_reported_status` is `None`, so this fires
-	// once and seeds the upstream KV with reality. Subsequent reconciles are
-	// deduped by `report_status_if_changed` itself, so the existing per-arm
-	// calls below are still load-bearing for status *transitions* — they just
-	// no longer carry the burden of the first report.
-	report_status_if_changed(state, running_status);
+	// spawn `last_reported_status` is `None`, so this writes it once, and
+	// subsequent reconciles are deduped by `report_status_if_changed` itself.
+	report_status_if_changed(state, running_status).await?;
 
-	match (running_status, desired_status) {
-		// Statuses match — nothing to do.
-		(DeploymentStatus::Deploying, DeploymentStatus::Deploying) |
-		(DeploymentStatus::Errored, DeploymentStatus::Errored) |
-		(DeploymentStatus::Running, DeploymentStatus::Running) |
-		(DeploymentStatus::Stopped, DeploymentStatus::Stopped) |
-		(DeploymentStatus::Unreachable, DeploymentStatus::Unreachable) => {}
-
-		// DB says unreachable but deployment is something else — update DB
-		// to reflect reality.
-		(running_status, DeploymentStatus::Unreachable) => {
-			info!(
-				%deployment_id,
-				%running_status,
-				"DB says unreachable but deployment is {running_status}, updating"
-			);
-
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					status = $1
-				WHERE
-					id = $2;
-				"#,
-				running_status.to_string(),
-				deployment_id
-			)
-			.execute(&state.database)
-			.await
-			.map_err(|err| -> ActorProcessingErr { Box::new(err) })?;
-
-			report_status_if_changed(state, running_status);
-		}
-
-		// Running status diverges from desired — update DB to match reality.
-		(DeploymentStatus::Unreachable, _) |
-		(DeploymentStatus::Errored, DeploymentStatus::Deploying) |
-		(DeploymentStatus::Deploying, DeploymentStatus::Errored) |
-		(DeploymentStatus::Deploying | DeploymentStatus::Errored, DeploymentStatus::Running) |
-		(DeploymentStatus::Running, DeploymentStatus::Deploying | DeploymentStatus::Errored) => {
-			info!(
-				%deployment_id,
-				%running_status,
-				"Updating database status to match running state"
-			);
-
-			query!(
-				r#"
-				UPDATE
-					deployment
-				SET
-					status = $1
-				WHERE
-					id = $2;
-				"#,
-				running_status.to_string(),
-				deployment_id
-			)
-			.execute(&state.database)
-			.await?;
-
-			report_status_if_changed(state, running_status);
-		}
-
-		// DB says stopped but deployment is running/deploying/errored — stop it.
-		(
-			DeploymentStatus::Deploying | DeploymentStatus::Running | DeploymentStatus::Errored,
-			DeploymentStatus::Stopped,
-		) => {
-			info!("DB says stopped, stopping deployment");
+	match (running_status, should_run) {
+		// Deployment should be stopped but isn't — stop it.
+		(running_status, false) if running_status != ObservedDeploymentStatus::Stopped => {
+			info!("Deployment should be stopped, stopping deployment");
 			state.executor.stop_deployment(deployment_id).await?;
 		}
 
-		// Deployment is stopped but DB says it should be running — start it.
-		(DeploymentStatus::Stopped, DeploymentStatus::Deploying | DeploymentStatus::Running) |
-		(DeploymentStatus::Stopped, DeploymentStatus::Errored) => {
+		// Deployment is stopped but should be running — start it.
+		(ObservedDeploymentStatus::Stopped, true) => {
 			info!("Deployment stopped but should be running, upserting");
 
 			let (deployment, running_details) =
@@ -416,55 +312,70 @@ where
 				.await
 			{
 				error!("Failed to start deployment");
-				let _ = state.supervisor_ref.send_message(
-					ResourceSupervisorMessage::ResourceStatusChanged {
-						resource_id: deployment_id,
-						resource_type: models::rbac::ResourceType::Deployment,
-						status: DeploymentStatus::Errored,
-					},
-				);
+				report_status_if_changed(state, ObservedDeploymentStatus::Errored).await?;
 				return Err(err.into());
 			}
 			state.last_applied = Some((deployment, running_details));
 			state.last_applied_secrets = secrets;
 		}
+
+		_ => {}
 	}
 
 	Ok(())
 }
 
-/// Send a `ResourceStatusChanged` message to the supervisor, but only if the
-/// status actually changed since the last report.
-fn report_status_if_changed<E: RunnerExecutor>(
+/// Write the status to `deployment.observed_status` and send a
+/// `ResourceStatusChanged` message to the supervisor, but only if the status
+/// actually changed since the last report.
+async fn report_status_if_changed<E: RunnerExecutor>(
 	state: &mut DeploymentActorState<E>,
-	status: DeploymentStatus,
-) {
-	if state.last_reported_status.as_ref() != Some(&status) {
-		state.last_reported_status = Some(status);
-		let _ =
-			state
-				.supervisor_ref
-				.send_message(ResourceSupervisorMessage::ResourceStatusChanged {
-					resource_id: state.deployment_id,
-					resource_type: models::rbac::ResourceType::Deployment,
-					status,
-				});
+	status: ObservedDeploymentStatus,
+) -> Result<(), RunnerError> {
+	if state.last_reported_status.as_ref() == Some(&status) {
+		return Ok(());
 	}
+
+	query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			observed_status = $1
+		WHERE
+			id = $2;
+		"#,
+		status,
+		state.deployment_id
+	)
+	.execute(&state.database)
+	.await?;
+
+	state.last_reported_status = Some(status);
+	let _ = state
+		.supervisor_ref
+		.send_message(ResourceSupervisorMessage::ResourceStatusChanged {
+			resource_id: state.deployment_id,
+			resource_type: models::rbac::ResourceType::Deployment,
+			status,
+		});
+
+	Ok(())
 }
 
 // ---------------------------------------------------------------------------
 // SQLite helpers — these will move to a shared db module in Phase 5.
 // ---------------------------------------------------------------------------
 
-/// Get the current status of the deployment from the local database.
-async fn get_local_deployment_status(
+/// Get whether the deployment should be running from the local database.
+async fn get_local_deployment_should_run(
 	database: &sqlx::Pool<DatabaseType>,
 	deployment_id: Uuid,
-) -> Result<DeploymentStatus, RunnerError> {
+) -> Result<bool, RunnerError> {
 	query!(
 		r#"
 		SELECT
-			status
+			should_run
 		FROM
 			deployment
 		WHERE
@@ -475,7 +386,7 @@ async fn get_local_deployment_status(
 	)
 	.fetch_one(database)
 	.await
-	.map(|row| row.status)
+	.map(|row| row.should_run)
 	.map_err(|err| match err {
 		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist.into(),
 		err => err.into(),
@@ -515,7 +426,7 @@ async fn get_local_secret_versions(
 }
 
 /// Get the deployment and its running details from the local database.
-async fn get_local_deployment_info(
+pub(super) async fn get_local_deployment_info(
 	database: &sqlx::Pool<DatabaseType>,
 	deployment_id: Uuid,
 ) -> Result<(Deployment, DeploymentRunningDetails), RunnerError> {
@@ -616,7 +527,7 @@ async fn get_local_deployment_info(
 			image_name,
 			repository_id,
 			image_tag,
-			status,
+			should_run,
 			min_horizontal_scale,
 			max_horizontal_scale,
 			machine_type,
@@ -645,7 +556,7 @@ async fn get_local_deployment_info(
 
 	let name = row.name;
 	let image_tag = row.image_tag;
-	let status = row.status;
+	let should_run = row.should_run;
 	let registry_url = row.registry;
 	let machine_type = row.machine_type;
 	let current_live_digest = row.current_live_digest;
@@ -685,7 +596,10 @@ async fn get_local_deployment_info(
 		Deployment {
 			name,
 			image_tag,
-			status,
+			// Placeholder — the public status the API derives isn't stored in the
+			// local database, only `observed_status` is
+			status: DeploymentStatus::Observed(ObservedDeploymentStatus::Unknown),
+			should_run,
 			registry,
 			// Dummy runner ID — the runner isn't stored in the local database
 			runner: Uuid::nil(),

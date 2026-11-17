@@ -88,7 +88,7 @@ async fn shutdown_running_deployment_calls_delete() {
 		.statuses
 		.lock()
 		.unwrap()
-		.insert(id, DeploymentStatus::Running);
+		.insert(id, ObservedDeploymentStatus::Running);
 
 	setup.notify_upsert(id);
 
@@ -149,7 +149,7 @@ async fn deployment_deleted_from_db_stops_actor() {
 		.statuses
 		.lock()
 		.unwrap()
-		.insert(id, DeploymentStatus::Running);
+		.insert(id, ObservedDeploymentStatus::Running);
 
 	setup.notify_upsert(id);
 

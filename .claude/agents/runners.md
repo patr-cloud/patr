@@ -20,7 +20,7 @@ Read `runners/CLAUDE.md`, `runners/common/CLAUDE.md` and `runners/docker/CLAUDE.
 - `new()` must be cheap;
 - the running lists must be sorted;
 - `Err` is the retry signal;
-- FullResync is destructive inside a transaction;
+- FullResync fetches first and writes only the differences in one short transaction;
 - Swarm configs are named by content hash;
 - updates must carry the version index;
 - config deletion order matters.
