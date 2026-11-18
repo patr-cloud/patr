@@ -33,6 +33,7 @@ semver                         = { workspace = true, features = ["default"] }
 serde                          = { workspace = true, features = ["derive"] }
 serde_json                     = { workspace = true, features = [] }
 serde_qs                       = { workspace = true, features = [] }
+sha2                           = { workspace = true, features = [] }
 sqlx                           = { workspace = true, features = ["macros", "runtime-tokio", "sqlite", "sqlx-toml", "time", "tls-rustls", "uuid"] }
 tempfile                       = { workspace = true, features = ["default"] }
 thiserror                      = { workspace = true, features = [] }

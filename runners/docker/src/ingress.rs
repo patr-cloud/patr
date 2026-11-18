@@ -1,14 +1,10 @@
-use std::{
-	collections::{BTreeMap, HashMap},
-	io::Error as IoError,
-	iter,
-};
+use std::collections::{BTreeMap, HashMap};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use bollard::{
 	Docker,
+	errors::Error as DockerError,
 	models::{ConfigSpec, Mount, MountType},
-	query_parameters::{ListConfigsOptions, UpdateServiceOptionsBuilder},
 	service::{
 		EndpointPortConfig,
 		EndpointPortConfigProtocolEnum,
@@ -18,6 +14,8 @@ use bollard::{
 		ServiceSpec,
 		ServiceSpecMode,
 		ServiceSpecModeReplicated,
+		ServiceSpecUpdateConfig,
+		ServiceSpecUpdateConfigOrderEnum,
 		TaskSpec,
 		TaskSpecContainerSpec,
 		TaskSpecContainerSpecConfigs,
@@ -25,135 +23,202 @@ use bollard::{
 	},
 };
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	runner::{DockerObjectId, DockerSpec, IngressService, ServiceTemplate},
+};
 
-/// Ensure the ingress service is running, updating the configs with the
-/// latest deployment configs, if required.
+/// The objects the runner itself expects: the overlay network, the Caddy
+/// ingress with its configs, error pages and certificate volume, the tunnel
+/// for private runners once it has a token, and Alloy.
 ///
-/// This will first check if the ingress service exists, and create it if it
-/// does not. Then, it will update the deployment configs for all deployments
-/// and then mount all the configs into the ingress service and reload ingress
-/// to pick up the new configs.
-pub async fn update_ingress_configs(
-	docker: &Docker,
-	settings: &RunnerSettings<DockerSettings>,
-) -> Result<(), RunnerError> {
-	// Always deploy Caddy as the ingress service, regardless of exposure type
-	let ingress_service_spec = build_ingress_spec(docker, settings).await?;
+/// Caddy mounts the routes of every deployment and managed URL in the local
+/// state. Those configs belong to their own owners, so they aren't nodes here:
+/// Caddy mounts the ones that exist when it's applied.
+pub(crate) fn expected(
+	runner: &DockerRunner,
+	local: &LocalState,
+	tunnel_token_hash: Option<&str>,
+) -> ExpectedGraph<DockerObjectId, DockerSpec> {
+	let settings = &runner.settings.data;
+	let mut graph = ExpectedGraph::new(Owner::System);
 
-	let ingress = docker
-		.inspect_service(constants::INGRESS_SERVICE_NAME, None)
-		.await
-		.ok();
+	let network = graph.add(
+		DockerObjectId::Network(String::from(constants::INGRESS_NETWORK_NAME)),
+		DockerSpec::Network {
+			ipv6: settings.enable_ipv6,
+		},
+		[],
+	);
 
-	if let Some(version) = ingress
-		.and_then(|ingress| ingress.version)
-		.and_then(|version| version.index)
+	let base = include_bytes!("../../../assets/runner/Caddyfile.base").to_vec();
+	let base_config = graph.add(
+		DockerObjectId::Config(utils::config_name(constants::INGRESS_CONFIG_NAME, &base)),
+		DockerSpec::Config { data: base },
+		[],
+	);
+
+	let error_pages = [
+		(
+			"/etc/caddy/pages/503.html",
+			"patr-error-page-503",
+			include_bytes!("../../../assets/error-pages/deployment-stopped.html").as_slice(),
+		),
+		(
+			"/etc/caddy/pages/502.html",
+			"patr-error-page-502",
+			include_bytes!("../../../assets/error-pages/connection-error.html").as_slice(),
+		),
+	]
+	.into_iter()
+	.map(|(path, base, data)| {
+		let page = graph.add(
+			DockerObjectId::Config(utils::config_name(base, data)),
+			DockerSpec::Config {
+				data: data.to_vec(),
+			},
+			[],
+		);
+		(String::from(path), page)
+	})
+	.collect::<BTreeMap<_, _>>();
+
+	let data_volume = graph.add(
+		DockerObjectId::Volume(String::from(constants::INGRESS_TLS_CERTS_VOLUME_NAME)),
+		DockerSpec::Volume,
+		[],
+	);
+
+	let imports = local
+		.deployments
+		.iter()
+		.filter_map(|(deployment_id, (deployment, running_details))| {
+			deployment::routes(runner, *deployment_id, deployment, running_details)
+				.map(|(id, _)| id)
+		})
+		.chain(
+			local
+				.managed_urls
+				.iter()
+				.filter_map(|(managed_url_id, managed_url)| {
+					let (deployment, _) = local.deployments.get(&managed_url.deployment_id)?;
+					managed_url::routes(runner, *managed_url_id, managed_url, deployment.should_run)
+						.ok()
+						.map(|(id, _)| id)
+				}),
+		)
+		.collect();
+
+	let depends_on = [network.clone(), base_config.clone(), data_volume.clone()]
+		.into_iter()
+		.chain(error_pages.values().cloned())
+		.collect::<Vec<_>>();
+	graph.add(
+		DockerObjectId::Service(String::from(constants::INGRESS_SERVICE_NAME)),
+		DockerSpec::Service(Box::new(ServiceTemplate::Ingress(IngressService {
+			base_config,
+			error_pages,
+			imports,
+			data_volume,
+			published_ports: (!settings.runner_exposure_type.is_private()).then_some((
+				settings.ingress_http_listen_port,
+				settings.ingress_https_listen_port,
+			)),
+		}))),
+		depends_on,
+	);
+
+	if settings.runner_exposure_type.is_private() &&
+		let Some(token_hash) = tunnel_token_hash
 	{
-		docker
-			.update_service(
-				constants::INGRESS_SERVICE_NAME,
-				ingress_service_spec,
-				UpdateServiceOptionsBuilder::new()
-					.version(version as i32)
-					.build(),
-				None,
-			)
-			.await
-			.map_err(RunnerError::host)?;
-	} else {
-		docker
-			.create_service(ingress_service_spec, None)
-			.await
-			.map_err(RunnerError::host)?;
+		graph.add(
+			DockerObjectId::Service(String::from(constants::TUNNEL_SERVICE_NAME)),
+			DockerSpec::Service(Box::new(ServiceTemplate::Tunnel {
+				token_hash: String::from(token_hash),
+			})),
+			[network.clone()],
+		);
 	}
 
-	// For private runners, also deploy the Cloudflare tunnel as a separate service
-	if settings.data.runner_exposure_type.is_private() {
-		let tunnel_service_spec = get_cloudflare_spec(docker, settings).await?;
+	let alloy = alloy::generate_alloy_config(&runner.settings).into_bytes();
+	let alloy_config = graph.add(
+		DockerObjectId::Config(utils::config_name(constants::ALLOY_CONFIG_NAME, &alloy)),
+		DockerSpec::Config { data: alloy },
+		[],
+	);
+	graph.add(
+		DockerObjectId::Service(String::from(constants::ALLOY_SERVICE_NAME)),
+		DockerSpec::Service(Box::new(ServiceTemplate::Alloy {
+			config: alloy_config.clone(),
+		})),
+		[network, alloy_config],
+	);
 
-		let tunnel = docker
-			.inspect_service(constants::TUNNEL_SERVICE_NAME, None)
-			.await
-			.ok();
-
-		if let Some(version) = tunnel
-			.and_then(|tunnel| tunnel.version)
-			.and_then(|version| version.index)
-		{
-			docker
-				.update_service(
-					constants::TUNNEL_SERVICE_NAME,
-					tunnel_service_spec,
-					UpdateServiceOptionsBuilder::new()
-						.version(version as i32)
-						.build(),
-					None,
-				)
-				.await
-				.map_err(RunnerError::host)?;
-		} else {
-			docker
-				.create_service(tunnel_service_spec, None)
-				.await
-				.map_err(RunnerError::host)?;
-		}
-	}
-
-	Ok(())
+	graph
 }
 
-/// Generate the Caddyfile config for a deployment, given the deployment ID and
-/// the port the deployment is listening on. This will read the Caddyfile
-/// template from the assets folder and replace the placeholders with the actual
-/// values.
-pub fn generate_config_for_deployment(deployment_id: Uuid, port: u16, is_private: bool) -> String {
+/// Generate the Caddyfile route for a deployment's default URL on one port. A
+/// stopped deployment's route answers 503, which Caddy serves as the
+/// "deployment stopped" page.
+pub fn generate_config_for_deployment(
+	deployment_id: Uuid,
+	port: u16,
+	should_run: bool,
+	is_private: bool,
+) -> String {
 	format!(
 		include_str!("../../../assets/runner/Caddyfile.deployment-default-url.template"),
 		scheme = if is_private { "http://" } else { "" },
 		deployment_id = deployment_id,
-		port = port
+		port = port,
+		handler = if should_run {
+			format!("reverse_proxy {deployment_id}.onpatr.local:{port}")
+		} else {
+			String::from("error 503")
+		},
 	)
 }
 
-/// Update the cloudflare tunnel token for the ingress service, if the tunnel
-/// token config has changed. This is done by first checking if the config
-/// exists, and if it does, deleting it and creating a new one with the updated
-/// token. Then, the ingress service is updated to pick up the new config.
-pub async fn update_ingress_tunnel_token(
-	docker: &Docker,
-	new_token: String,
-) -> Result<(), RunnerError> {
-	// Tunnel token config is NOT mounted in any service (cloudflare spec reads
-	// it via inspect_config and passes as env var), so we can delete + recreate.
-	let existing_config_id = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!(
-					"patr.deploymentId={}",
-					constants::INGRESS_SERVICE_NAME
-				)],
-			)])),
-		}))
+/// Read the tunnel token from its config, if it has one.
+pub(crate) async fn tunnel_token(docker: &Docker) -> Result<Option<String>, RunnerError> {
+	// `inspect_config` returns the data base64-encoded.
+	let data = match docker
+		.inspect_config(constants::TUNNEL_TOKEN_CONFIG_NAME)
 		.await
-		.map_err(RunnerError::host)?
-		.into_iter()
-		.find(|config| {
-			config
-				.spec
-				.as_ref()
-				.and_then(|spec| spec.name.as_ref())
-				.filter(|&name| name == constants::TUNNEL_TOKEN_CONFIG_NAME)
-				.is_some()
-		})
-		.and_then(|config| config.id);
+	{
+		Ok(config) => config.spec.and_then(|spec| spec.data),
+		Err(DockerError::DockerResponseServerError {
+			status_code: 404, ..
+		}) => None,
+		Err(err) => return Err(RunnerError::host(err)),
+	};
+	data.map(|data| {
+		String::from_utf8(BASE64.decode(data).map_err(RunnerError::host)?)
+			.map_err(RunnerError::host)
+	})
+	.transpose()
+}
 
-	if let Some(config_id) = existing_config_id {
-		docker
-			.delete_config(&config_id)
-			.await
-			.map_err(RunnerError::host)?;
+/// Store the tunnel token in its config, replacing the old one. Returns
+/// whether it changed. The tunnel reads the token when it's applied rather
+/// than mounting the config, so the config can be replaced while it runs.
+pub(crate) async fn update_tunnel_token(
+	docker: &Docker,
+	token: String,
+) -> Result<bool, RunnerError> {
+	if tunnel_token(docker).await?.as_deref() == Some(token.as_str()) {
+		return Ok(false);
+	}
+
+	match docker
+		.delete_config(constants::TUNNEL_TOKEN_CONFIG_NAME)
+		.await
+	{
+		Ok(()) |
+		Err(DockerError::DockerResponseServerError {
+			status_code: 404, ..
+		}) => {}
+		Err(err) => return Err(RunnerError::host(err)),
 	}
 
 	docker
@@ -165,203 +230,93 @@ pub async fn update_ingress_tunnel_token(
 					String::from("patr.version"),
 					String::from(constants::PATR_VERSION),
 				),
-				(
-					String::from("patr.deploymentId"),
-					String::from(constants::INGRESS_SERVICE_NAME),
-				),
 			])),
-			data: Some(BASE64.encode(new_token.as_bytes())),
+			data: Some(BASE64.encode(token.as_bytes())),
 			templating: None,
 		})
 		.await
 		.map_err(RunnerError::host)?;
 
-	Ok(())
+	Ok(true)
 }
 
-/// Delete a deployment's ingress config. This rebuilds Caddy without the
-/// deployment's config (unmounting it), then deletes the Docker config.
-pub async fn delete_deployment_config(
-	docker: &Docker,
-	settings: &RunnerSettings<DockerSettings>,
-	deployment_id: Uuid,
+/// Creates or updates the Caddy ingress. Routes that don't exist yet are left
+/// out, and the service is stamped with a hash that doesn't match, so the next
+/// reconcile tries again.
+pub(crate) async fn apply_ingress(
+	runner: &DockerRunner,
+	owner: Owner,
+	name: &str,
+	service: &IngressService,
+	hash: &str,
 ) -> Result<(), RunnerError> {
-	// Find the deployment's configs by label
-	let deployment_configs = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.deploymentId={}", deployment_id)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?;
+	let docker = &runner.docker;
 
-	let config_ids_to_remove = deployment_configs
-		.iter()
-		.filter_map(|c| c.id.clone())
-		.collect::<Vec<_>>();
-
-	// Build the ingress spec and remove this deployment's configs from
-	// the mount list so that updating the service unmounts them.
-	let mut ingress_service_spec = build_ingress_spec(docker, settings).await?;
-
-	if let Some(configs) = ingress_service_spec
-		.task_template
-		.as_mut()
-		.and_then(|task| task.container_spec.as_mut())
-		.and_then(|container| container.configs.as_mut())
-	{
-		configs.retain(|c| {
-			c.config_id
-				.as_ref()
-				.is_none_or(|id| !config_ids_to_remove.contains(id))
+	let mut configs = Vec::new();
+	let mut missing = false;
+	// Routes are mounted under their config name, which is unique. They belong
+	// to other owners, so the ones that don't exist yet are skipped.
+	let mounts = [(&service.base_config, Some("/etc/caddy/Caddyfile"))]
+		.into_iter()
+		.chain(
+			service
+				.error_pages
+				.iter()
+				.map(|(path, page)| (page, Some(path.as_str()))),
+		)
+		.chain(service.imports.iter().map(|route| (route, None)));
+	for (config, path) in mounts {
+		let DockerObjectId::Config(config_name) = config else {
+			continue;
+		};
+		let config_id = match docker.inspect_config(config_name).await {
+			Ok(config) => config.id,
+			Err(DockerError::DockerResponseServerError {
+				status_code: 404, ..
+			}) if path.is_none() => {
+				missing = true;
+				continue;
+			}
+			Err(err) => return Err(RunnerError::host(err)),
+		};
+		configs.push(TaskSpecContainerSpecConfigs {
+			file: Some(TaskSpecContainerSpecFile1 {
+				name: Some(path.map_or_else(
+					|| format!("/etc/caddy/urls/{config_name}.caddy"),
+					String::from,
+				)),
+				mode: Some(0o444),
+				uid: Some(String::from("0")),
+				gid: Some(String::from("0")),
+			}),
+			config_id,
+			config_name: Some(config_name.clone()),
+			runtime: None,
 		});
 	}
 
-	// Update Caddy — this unmounts the configs
-	let ingress = docker
-		.inspect_service(constants::INGRESS_SERVICE_NAME, None)
-		.await
-		.ok();
+	let hash = if missing {
+		format!("{hash}-partial")
+	} else {
+		String::from(hash)
+	};
 
-	if let Some(version) = ingress
-		.and_then(|ingress| ingress.version)
-		.and_then(|version| version.index)
-	{
-		docker
-			.update_service(
-				constants::INGRESS_SERVICE_NAME,
-				ingress_service_spec,
-				UpdateServiceOptionsBuilder::new()
-					.version(version as i32)
-					.build(),
-				None,
-			)
-			.await
-			.map_err(RunnerError::host)?;
-	}
+	let DockerObjectId::Volume(data_volume) = &service.data_volume else {
+		return Err(RunnerError::host(
+			"the ingress's data volume isn't a volume",
+		));
+	};
 
-	// Now the configs are unmounted — safe to delete
-	for config in deployment_configs {
-		if let Some(id) = config.id {
-			docker.delete_config(&id).await.map_err(|err| {
-				error!("Error removing config {}: {}", id, err);
-				RunnerError::host(err)
-			})?;
-		}
-	}
-
-	Ok(())
-}
-
-/// Build the service spec for the ingress service, with the latest
-/// deployment configs mounted in the service.
-pub(crate) async fn build_ingress_spec(
-	docker: &Docker,
-	settings: &RunnerSettings<DockerSettings>,
-) -> Result<ServiceSpec, RunnerError> {
-	// Per-deployment Caddyfile snippets are uniquely identified by
-	// `patr.configBaseName` starting with `ingress-`; per-managed-URL by
-	// `managed-url-`. Data config-mounts use `config-{id}-{N}`, and the main
-	// Caddyfile.base uses `patr-ingress-config` (mounted separately at
-	// /etc/caddy/Caddyfile, not under /etc/caddy/urls).
-	let config_ids = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![String::from("patr.configBaseName")],
-			)])),
-		}))
-		.await
-		.map_err(|err| {
-			error!("Error listing configs: {:?}", err);
-			RunnerError::host(err)
-		})?
-		.into_iter()
-		.filter_map(|config| {
-			let labels = config.spec.as_ref()?.labels.as_ref()?;
-			let base_name = labels.get("patr.configBaseName")?;
-			let resource_id = if base_name.starts_with("ingress-") {
-				labels.get("patr.deploymentId")?.parse::<Uuid>().ok()?
-			} else if base_name.starts_with("managed-url-") {
-				labels.get("patr.managedUrlId")?.parse::<Uuid>().ok()?
-			} else {
-				return None;
-			};
-			Some((
-				resource_id,
-				config.created_at,
-				config.id.clone()?,
-				config.spec.as_ref()?.name.clone()?,
-			))
-		})
-		// Dedupe by resource_id, keeping the most-recently-created config.
-		// `update_config`'s best-effort cleanup leaves stale siblings around
-		// when they're still referenced by patr-ingress; without this dedupe
-		// the spec would mount both at the same target path and
-		// `update_service` would reject it. Once this spec replaces the old
-		// one the stale configs become unreferenced and the next
-		// `update_config` call sweeps them up.
-		//
-		// BTreeMap (not HashMap) so iteration order is deterministic across
-		// calls. A non-deterministic order makes every `update_service` see a
-		// "changed" TaskSpec.Configs[] and triggers a hot reload loop.
-		.fold(
-			BTreeMap::<Uuid, (_, String, String)>::new(),
-			|mut acc, (rid, created, id, name)| {
-				if acc.get(&rid).is_none_or(|(prev, ..)| created > *prev) {
-					acc.insert(rid, (created, id, name));
-				}
-				acc
-			},
-		)
-		.into_iter()
-		.map(|(rid, (_, id, name))| (rid, id, name))
-		.collect::<Vec<_>>();
-
-	let base_ingress_config = include_str!("../../../assets/runner/Caddyfile.base");
-
-	let (ingress_config_id, ingress_config_name) = crate::utils::update_config(
-		docker,
-		constants::INGRESS_CONFIG_NAME,
-		HashMap::from([
-			(String::from("managed-by"), String::from("patr")),
-			(
-				String::from("patr.deploymentId"),
-				String::from(constants::INGRESS_SERVICE_NAME),
-			),
-		]),
-		base_ingress_config.to_string(),
-	)
-	.await?;
-
-	let networks = Some(vec![NetworkAttachmentConfig {
-		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-		aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
-		driver_opts: None,
-	}]);
-
-	Ok(ServiceSpec {
-		name: Some(String::from(constants::INGRESS_SERVICE_NAME)),
-		labels: Some(HashMap::from([
-			(String::from("managed-by"), String::from("patr")),
-			(
-				String::from("patr.version"),
-				String::from(constants::PATR_VERSION),
-			),
-		])),
+	let spec = ServiceSpec {
+		name: Some(String::from(name)),
+		labels: Some(utils::object_labels(owner, &hash)),
 		task_template: Some(TaskSpec {
-			plugin_spec: None,
 			container_spec: Some(TaskSpecContainerSpec {
 				image: Some(String::from("caddy:2")),
-				labels: Some(HashMap::from([
-					(String::from("managed-by"), String::from("patr")),
-					(
-						String::from("patr.version"),
-						String::from(constants::PATR_VERSION),
-					),
-				])),
+				labels: Some(HashMap::from([(
+					String::from("managed-by"),
+					String::from("patr"),
+				)])),
 				env: Some(vec![format!(
 					"ACME_CA_URL={}",
 					if cfg!(debug_assertions) {
@@ -370,145 +325,94 @@ pub(crate) async fn build_ingress_spec(
 						"https://acme-v02.api.letsencrypt.org/directory"
 					}
 				)]),
-				configs: Some(
-					config_ids
-						.into_iter()
-						.map(
-							|(resource_id, config_id, config_name)| TaskSpecContainerSpecConfigs {
-								file: Some(TaskSpecContainerSpecFile1 {
-									name: Some(format!("/etc/caddy/urls/{}.caddy", resource_id)),
-									mode: Some(0o444),
-									uid: Some("0".to_string()),
-									gid: Some("0".to_string()),
-								}),
-								config_id: Some(config_id),
-								config_name: Some(config_name),
-								runtime: None,
-							},
-						)
-						.chain(iter::once(TaskSpecContainerSpecConfigs {
-							file: Some(TaskSpecContainerSpecFile1 {
-								name: Some(String::from("/etc/caddy/Caddyfile")),
-								mode: Some(0o444),
-								uid: Some("0".to_string()),
-								gid: Some("0".to_string()),
-							}),
-							config_id: Some(ingress_config_id),
-							config_name: Some(ingress_config_name),
-							runtime: None,
-						}))
-						.collect(),
-				),
-				// Mount a named volume to store the TLS certs, so they persist across service
-				// updates and restarts
+				configs: Some(configs),
+				// The certificates outlive service updates and restarts.
 				mounts: Some(vec![Mount {
 					target: Some(String::from("/data")),
-					source: Some(String::from(constants::INGRESS_TLS_CERTS_VOLUME_NAME)),
+					source: Some(data_volume.clone()),
 					typ: Some(MountType::VOLUME),
 					read_only: Some(false),
 					..Default::default()
 				}]),
 				..Default::default()
 			}),
-			networks,
+			networks: Some(vec![NetworkAttachmentConfig {
+				target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
+				aliases: Some(vec![String::from("patr-ingress"), String::from("ingress")]),
+				driver_opts: None,
+			}]),
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
 			replicated: Some(ServiceSpecModeReplicated { replicas: Some(1) }),
 			..Default::default()
 		}),
-		// Only publish ports for public runners — private runners receive
-		// traffic through the Cloudflare tunnel, not directly
-		endpoint_spec: if settings.data.runner_exposure_type.is_private() {
-			None
-		} else {
-			Some(EndpointSpec {
-				mode: None,
-				ports: Some(vec![
-					EndpointPortConfig {
-						name: None,
-						protocol: Some(EndpointPortConfigProtocolEnum::TCP),
-						target_port: Some(80),
-						published_port: Some(settings.data.ingress_http_listen_port.into()),
-						publish_mode: Some(EndpointPortConfigPublishModeEnum::INGRESS),
-					},
-					EndpointPortConfig {
-						name: None,
-						protocol: Some(EndpointPortConfigProtocolEnum::TCP),
-						target_port: Some(443),
-						published_port: Some(settings.data.ingress_https_listen_port.into()),
-						publish_mode: Some(EndpointPortConfigPublishModeEnum::INGRESS),
-					},
-				]),
-			})
-		},
+		// Start the new Caddy before stopping the old one, so a route change
+		// never drops traffic.
+		update_config: Some(ServiceSpecUpdateConfig {
+			order: Some(ServiceSpecUpdateConfigOrderEnum::START_FIRST),
+			..Default::default()
+		}),
+		// Private runners receive traffic through the tunnel, so only public
+		// runners publish ports.
+		endpoint_spec: service.published_ports.map(|(http, https)| EndpointSpec {
+			mode: None,
+			ports: Some(vec![
+				EndpointPortConfig {
+					name: None,
+					protocol: Some(EndpointPortConfigProtocolEnum::TCP),
+					target_port: Some(80),
+					published_port: Some(http.into()),
+					publish_mode: Some(EndpointPortConfigPublishModeEnum::INGRESS),
+				},
+				EndpointPortConfig {
+					name: None,
+					protocol: Some(EndpointPortConfigProtocolEnum::TCP),
+					target_port: Some(443),
+					published_port: Some(https.into()),
+					publish_mode: Some(EndpointPortConfigPublishModeEnum::INGRESS),
+				},
+			]),
+		}),
 		..Default::default()
-	})
+	};
+
+	utils::upsert_service(docker, spec, None).await
 }
 
-/// Get the service spec for the cloudflare tunnel service, with the latest
-/// ingress token
-async fn get_cloudflare_spec(
-	docker: &Docker,
-	_: &RunnerSettings<DockerSettings>,
-) -> Result<ServiceSpec, RunnerError> {
-	// `inspect_config` returns Data base64-encoded (Docker re-encodes the
-	// stored bytes for transport). We decode it back to the raw token before
-	// shoving it into the env var.
-	let tunnel_token_encoded = docker
-		.inspect_config(constants::TUNNEL_TOKEN_CONFIG_NAME)
-		.await
-		.map_err(RunnerError::host)?
-		.spec
-		.and_then(|spec| spec.data)
-		.ok_or(RunnerError::CloudflareTunnelSetupError(IoError::other(
-			"could not find cloudflare tunnel token config",
-		)))?;
-	let tunnel_token = String::from_utf8(BASE64.decode(&tunnel_token_encoded).map_err(|err| {
-		RunnerError::CloudflareTunnelSetupError(IoError::other(format!(
-			"tunnel token config data is not valid base64: {err}"
-		)))
-	})?)
-	.map_err(|err| {
-		RunnerError::CloudflareTunnelSetupError(IoError::other(format!(
-			"tunnel token config data is not valid utf-8: {err}"
-		)))
-	})?;
+/// Creates or updates the Cloudflare tunnel, with the token from its config.
+pub(crate) async fn apply_tunnel(
+	runner: &DockerRunner,
+	owner: Owner,
+	name: &str,
+	hash: &str,
+) -> Result<(), RunnerError> {
+	let token = tunnel_token(&runner.docker)
+		.await?
+		.ok_or_else(|| RunnerError::host("the runner has no tunnel token yet"))?;
 
-	let networks = Some(vec![NetworkAttachmentConfig {
-		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-		..Default::default()
-	}]);
-
-	Ok(ServiceSpec {
-		name: Some(String::from(constants::TUNNEL_SERVICE_NAME)),
-		labels: Some(HashMap::from([
-			(String::from("managed-by"), String::from("patr")),
-			(
-				String::from("patr.version"),
-				String::from(constants::PATR_VERSION),
-			),
-		])),
+	let spec = ServiceSpec {
+		name: Some(String::from(name)),
+		labels: Some(utils::object_labels(owner, hash)),
 		task_template: Some(TaskSpec {
-			plugin_spec: None,
 			container_spec: Some(TaskSpecContainerSpec {
 				image: Some(String::from("cloudflare/cloudflared:latest")),
-				labels: Some(HashMap::from([
-					(String::from("managed-by"), String::from("patr")),
-					(
-						String::from("patr.version"),
-						String::from(constants::PATR_VERSION),
-					),
-				])),
+				labels: Some(HashMap::from([(
+					String::from("managed-by"),
+					String::from("patr"),
+				)])),
 				command: Some(vec![
 					String::from("cloudflared"),
 					String::from("tunnel"),
 					String::from("run"),
 				]),
-				env: Some(vec![format!("TUNNEL_TOKEN={}", tunnel_token)]),
+				env: Some(vec![format!("TUNNEL_TOKEN={token}")]),
 				..Default::default()
 			}),
-			networks,
+			networks: Some(vec![NetworkAttachmentConfig {
+				target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
+				..Default::default()
+			}]),
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
@@ -516,5 +420,7 @@ async fn get_cloudflare_spec(
 			..Default::default()
 		}),
 		..Default::default()
-	})
+	};
+
+	utils::upsert_service(&runner.docker, spec, None).await
 }

@@ -35,11 +35,13 @@ use ractor_actors::streams::spawn_stream_pump;
 use time::OffsetDateTime;
 
 use super::{
-	db_helpers,
-	deployment::get_local_deployment_info,
-	resource_supervisor::ResourceSupervisorMessage,
+	controller::{CONTROLLER_NAME, ControllerMessage},
+	db_helpers::{self, get_local_deployment_info},
 };
 use crate::prelude::*;
+
+/// The name the WebSocket actor registers under, so other actors can find it.
+pub const WEBSOCKET_NAME: &str = "websocket";
 
 /// Type-erased WS sink. The concrete type from `stream_request` is opaque
 /// (`impl Sink`), so we box it with a normalized `String` error.
@@ -87,8 +89,8 @@ pub struct WebSocketActorArgs<E: RunnerExecutor> {
 	pub config: RunnerSettings<E::Settings>,
 	/// Database connection pool for SQLite access.
 	pub database: sqlx::Pool<DatabaseType>,
-	/// Reference to the ResourceSupervisor for sending resource notifications.
-	pub supervisor_ref: ActorRef<ResourceSupervisorMessage>,
+	/// The executor, which stores the ingress token.
+	pub executor: E,
 }
 
 /// The mutable state held by a running [`WebSocketActor`].
@@ -97,8 +99,8 @@ pub struct WebSocketActorState<E: RunnerExecutor> {
 	pub config: RunnerSettings<E::Settings>,
 	/// Database connection pool for SQLite access.
 	pub database: sqlx::Pool<DatabaseType>,
-	/// Reference to the ResourceSupervisor for sending resource notifications.
-	pub supervisor_ref: ActorRef<ResourceSupervisorMessage>,
+	/// The executor, which stores the ingress token.
+	pub executor: E,
 	/// Current reconnection backoff duration. Reset on successful connect.
 	pub reconnect_backoff: Duration,
 	/// Write half of the active WS connection. `None` when disconnected.
@@ -109,9 +111,9 @@ pub struct WebSocketActorState<E: RunnerExecutor> {
 /// Patr API. Only active in managed mode.
 ///
 /// Receives server-pushed resource changes, writes them to SQLite, and
-/// notifies the
-/// [`ResourceSupervisor`][super::resource_supervisor::ResourceSupervisor]. Also
-/// forwards status updates from resource actors back upstream.
+/// enqueues the owners they affect with the
+/// [`Controller`][super::controller::Controller]. Also publishes observed
+/// statuses back upstream.
 pub struct WebSocketActor<E: RunnerExecutor> {
 	/// Marker for the executor generic.
 	_phantom: PhantomData<E>,
@@ -145,7 +147,7 @@ where
 		Ok(WebSocketActorState {
 			config: args.config,
 			database: args.database,
-			supervisor_ref: args.supervisor_ref,
+			executor: args.executor,
 			reconnect_backoff: Duration::from_secs(1),
 			ws_sink: None,
 		})
@@ -364,6 +366,36 @@ where
 	// Store the write half, boxing it to erase the opaque type.
 	state.ws_sink = Some(Box::pin(sink.sink_map_err(|e| format!("{e:?}"))));
 
+	// The API can regenerate the runner's tunnel token, so it's fetched again
+	// on every connect.
+	if E::runner_exposure_type(&state.config).requires_tunnel() {
+		match client::make_request(
+			ApiRequest::<GetIngressTokenForRunnerRequest>::builder()
+				.path(GetIngressTokenForRunnerPath {
+					workspace_id,
+					runner_id,
+				})
+				.headers(GetIngressTokenForRunnerRequestHeaders {
+					authorization: api_token.clone(),
+					user_agent: user_agent.clone(),
+				})
+				.build(),
+		)
+		.await
+		{
+			Ok(response) => match state
+				.executor
+				.update_ingress_token(response.body.token)
+				.await
+			{
+				Ok(true) => enqueue([Owner::System]),
+				Ok(false) => {}
+				Err(err) => error!(?err, "Failed to store the ingress token"),
+			},
+			Err(err) => warn!(error = ?err.body.error, "Failed to fetch the ingress token"),
+		}
+	}
+
 	// Trigger an immediate full resync so a freshly-connected runner picks up
 	// pre-existing deployments without waiting for the periodic timer — server
 	// pushes only fire on state changes, not on connect. The handler re-arms
@@ -380,6 +412,13 @@ fn schedule_reconnect<E: RunnerExecutor>(
 	info!(?backoff, "Scheduling reconnect");
 	myself.send_after(backoff, || WebSocketMessage::Connect);
 	state.reconnect_backoff = (backoff * 2).min(Duration::from_secs(60));
+}
+
+/// Tells the controller these owners may be out of date.
+fn enqueue(owners: impl IntoIterator<Item = Owner>) {
+	if let Some(controller) = ActorRef::<ControllerMessage>::where_is(CONTROLLER_NAME) {
+		let _ = controller.send_message(ControllerMessage::Enqueue(owners.into_iter().collect()));
+	}
 }
 
 /// Handle a `ServerMessage` received from the stream pump.
@@ -424,12 +463,28 @@ where
 			)
 			.await?;
 			transaction.commit().await?;
-			let _ = state
-				.supervisor_ref
-				.send_message(ResourceSupervisorMessage::UpsertResource {
-					resource_id: deployment_id,
-					resource_type: ResourceType::Deployment,
-				});
+			// Its managed URLs route to it, so they follow its changes.
+			let managed_url_ids = query!(
+				r#"
+				SELECT
+					id
+				FROM
+					managed_url
+				WHERE
+					deployment_id = $1;
+				"#,
+				deployment_id
+			)
+			.fetch_all(&state.database)
+			.await?
+			.into_iter()
+			.map(|row| Owner::ManagedUrl(row.id))
+			.collect::<BTreeSet<_>>();
+			enqueue(
+				managed_url_ids
+					.into_iter()
+					.chain([Owner::Deployment(deployment_id)]),
+			);
 		}
 		DeploymentDeleted { id } => {
 			// The deployment's managed URLs go with it, so read them first to
@@ -454,22 +509,12 @@ where
 			let mut transaction = state.database.begin().await?;
 			db_helpers::delete_deployment_in_database(&mut transaction, id).await?;
 			transaction.commit().await?;
-			let _ = state
-				.supervisor_ref
-				.send_message(ResourceSupervisorMessage::DeleteResource {
-					resource_id: id,
-					resource_type: ResourceType::Deployment,
-				});
-
-			for managed_url_id in managed_url_ids {
-				let _ =
-					state
-						.supervisor_ref
-						.send_message(ResourceSupervisorMessage::DeleteResource {
-							resource_id: managed_url_id,
-							resource_type: ResourceType::ManagedURL,
-						});
-			}
+			enqueue(
+				managed_url_ids
+					.into_iter()
+					.map(Owner::ManagedUrl)
+					.chain([Owner::Deployment(id)]),
+			);
 		}
 		ManagedUrlUpdated { managed_url } => {
 			let ManagedUrlType::ProxyDeployment {
@@ -521,23 +566,13 @@ where
 			)
 			.await?;
 			transaction.commit().await?;
-			let _ = state
-				.supervisor_ref
-				.send_message(ResourceSupervisorMessage::UpsertResource {
-					resource_id: managed_url.id,
-					resource_type: ResourceType::ManagedURL,
-				});
+			enqueue([Owner::ManagedUrl(managed_url.id)]);
 		}
 		ManagedUrlDeleted { id } => {
 			let mut transaction = state.database.begin().await?;
 			db_helpers::delete_managed_url_in_database(&mut transaction, id).await?;
 			transaction.commit().await?;
-			let _ = state
-				.supervisor_ref
-				.send_message(ResourceSupervisorMessage::DeleteResource {
-					resource_id: id,
-					resource_type: ResourceType::ManagedURL,
-				});
+			enqueue([Owner::ManagedUrl(id)]);
 		}
 		SecretUpdated { id, last_updated } => {
 			let mut transaction = state.database.begin().await?;
@@ -559,17 +594,9 @@ where
 			.map(|row| row.deployment_id)
 			.collect::<Vec<_>>();
 			transaction.commit().await?;
-			// Each deployment compares the secret's version against the one it
-			// last applied, and re-applies itself if it's behind.
-			for deployment_id in deployment_ids {
-				let _ =
-					state
-						.supervisor_ref
-						.send_message(ResourceSupervisorMessage::UpsertResource {
-							resource_id: deployment_id,
-							resource_type: ResourceType::Deployment,
-						});
-			}
+			// The secret's version is part of each deployment's spec, so a
+			// rotation re-applies the deployments using it.
+			enqueue(deployment_ids.into_iter().map(Owner::Deployment));
 		}
 		HandshakeRequired => {
 			warn!("Server requested handshake to be sent again");
@@ -937,9 +964,10 @@ where
 		"Full resync complete, triggering reconciliation"
 	);
 
-	let _ = state
-		.supervisor_ref
-		.send_message(ResourceSupervisorMessage::Reconcile);
+	if let Some(controller) = ActorRef::<ControllerMessage>::where_is(CONTROLLER_NAME) {
+		let _ = controller.send_message(ControllerMessage::Start);
+		let _ = controller.send_message(ControllerMessage::Reconcile);
+	}
 
 	// Bring the API's copy of every observed status up to date too, catching up
 	// whatever it missed. A failed send means the connection is gone, and the

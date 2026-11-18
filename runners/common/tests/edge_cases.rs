@@ -1,203 +1,8 @@
 use crate::prelude::*;
 
-#[tokio::test]
-async fn create_with_deploy_on_create_false_stays_stopped() {
-	let setup = setup().await;
-	let id = setup.create_test_deployment_with_should_run(false).await;
-
-	setup.notify_upsert(id);
-
-	// A stopped deployment isn't applied at all — not even on the actor's
-	// first run — so wait for a status check instead. The executor reports
-	// Stopped (default mock behavior) and DB says Stopped, so that's a no-op.
-	let mock = setup.mock_state.clone();
-	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::GetStatus(i) if *i == id)),
-		Duration::from_secs(10),
-	)
-	.await;
-
-	assert!(
-		!setup
-			.mock_state
-			.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
-		"a stopped deployment must never be upserted"
-	);
-
-	let row = sqlx::query("SELECT should_run FROM deployment WHERE id = $1")
-		.bind(id)
-		.fetch_one(&setup.database)
-		.await
-		.unwrap();
-	assert!(!row.get::<bool, _>("should_run"));
-}
-
-#[tokio::test]
-async fn create_with_no_ports_still_upserts() {
-	let setup = setup().await;
-	// Default test deployment has no ports — verify it works fine.
-	let id = setup.create_test_deployment().await;
-
-	setup.notify_upsert(id);
-
-	let mock = setup.mock_state.clone();
-	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
-		Duration::from_secs(5),
-	)
-	.await;
-}
-
-#[tokio::test]
-async fn create_then_immediately_delete() {
-	let setup = setup().await;
-	let id = setup.create_test_deployment().await;
-
-	setup
-		.mock_state
-		.statuses
-		.lock()
-		.unwrap()
-		.insert(id, ObservedDeploymentStatus::Running);
-
-	// Send both in rapid succession.
-	setup.notify_upsert(id);
-	setup.notify_delete(id);
-
-	// Should eventually clean up — either upsert+delete or just delete.
-	let mock = setup.mock_state.clone();
-	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Delete(i) if *i == id)),
-		Duration::from_secs(10),
-	)
-	.await;
-}
-
-#[tokio::test]
-async fn update_twice_rapidly_applies_final_config() {
-	let setup = setup().await;
-	let id = setup.create_test_deployment().await;
-
-	setup.notify_upsert(id);
-
-	let mock = setup.mock_state.clone();
-	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
-		Duration::from_secs(5),
-	)
-	.await;
-
-	// Update config twice rapidly.
-	sqlx::query("UPDATE deployment SET image_tag = 'v2' WHERE id = $1")
-		.bind(id)
-		.execute(&setup.database)
-		.await
-		.unwrap();
-	setup.notify_upsert(id);
-
-	sqlx::query("UPDATE deployment SET image_tag = 'v3' WHERE id = $1")
-		.bind(id)
-		.execute(&setup.database)
-		.await
-		.unwrap();
-	setup.notify_upsert(id);
-
-	// Wait for processing to settle.
-	tokio::time::sleep(Duration::from_secs(1)).await;
-
-	// The final state in the DB should be v3, and the mock should have
-	// received at least one additional upsert.
-	let row = sqlx::query("SELECT image_tag FROM deployment WHERE id = $1")
-		.bind(id)
-		.fetch_one(&setup.database)
-		.await
-		.unwrap();
-	let tag: String = row.get("image_tag");
-	assert_eq!(tag, "v3");
-}
-
-#[tokio::test]
-async fn start_already_running_is_noop() {
-	let setup = setup().await;
-	let id = setup.create_test_deployment_with_should_run(true).await;
-
-	setup
-		.mock_state
-		.statuses
-		.lock()
-		.unwrap()
-		.insert(id, ObservedDeploymentStatus::Running);
-
-	setup.notify_upsert(id);
-
-	// Wait for initial upsert.
-	let mock = setup.mock_state.clone();
-	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(i) if *i == id)),
-		Duration::from_secs(5),
-	)
-	.await;
-
-	// Wait for a status check to confirm Running == Running.
-	setup.mock_state.calls.lock().unwrap().clear();
-
-	let mock = setup.mock_state.clone();
-	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::GetStatus(i) if *i == id)),
-		Duration::from_secs(10),
-	)
-	.await;
-
-	// No additional upsert or delete should have been triggered by the
-	// status reconciliation.
-	assert!(
-		!setup
-			.mock_state
-			.has_call(|c| matches!(c, ExecutorCall::Upsert(_))),
-		"expected no upsert when already running"
-	);
-	assert!(
-		!setup
-			.mock_state
-			.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
-		"expected no delete when already running"
-	);
-}
-
-#[tokio::test]
-async fn stop_already_stopped_is_noop() {
-	let setup = setup().await;
-	let id = setup.create_test_deployment_with_should_run(false).await;
-
-	// Mock default is Stopped — matches DB. A stopped deployment isn't
-	// applied on the actor's first run, so the status check is the first call.
-	setup.notify_upsert(id);
-
-	let mock = setup.mock_state.clone();
-	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::GetStatus(i) if *i == id)),
-		Duration::from_secs(10),
-	)
-	.await;
-
-	// Stopped == Stopped → no action.
-	assert!(
-		!setup
-			.mock_state
-			.has_call(|c| matches!(c, ExecutorCall::Upsert(_))),
-		"expected no upsert when already stopped"
-	);
-	assert!(
-		!setup
-			.mock_state
-			.has_call(|c| matches!(c, ExecutorCall::Delete(_))),
-		"expected no delete when already stopped"
-	);
-}
-
-/// A Patr registry deployment keeps its variant through SQLite: the executor
-/// gets a `PatrRegistry` with the same repository back, never an external
-/// registry that would be pulled without Patr's credentials.
+/// A Patr registry deployment keeps its variant through SQLite: the local state
+/// holds a `PatrRegistry` with the same repository, never an external registry
+/// that would be pulled without Patr's credentials.
 #[tokio::test]
 async fn patr_registry_deployment_round_trips() {
 	let setup = setup().await;
@@ -239,16 +44,9 @@ async fn patr_registry_deployment_round_trips() {
 	.unwrap();
 	drop(conn);
 
-	setup.notify_upsert(id);
-
-	let mock = setup.mock_state.clone();
-	periodic_check(
-		move || mock.upserted.lock().unwrap().contains_key(&id),
-		Duration::from_secs(5),
-	)
-	.await;
-
-	let upserted = setup.mock_state.upserted.lock().unwrap()[&id].clone();
+	let (upserted, _) = common::actors::db_helpers::get_local_deployment_info(&setup.database, id)
+		.await
+		.unwrap();
 	assert_eq!(
 		upserted.registry,
 		DeploymentRegistry::PatrRegistry {
@@ -259,7 +57,7 @@ async fn patr_registry_deployment_round_trips() {
 	assert_eq!(upserted.current_live_digest.as_deref(), Some("sha256:abc"));
 }
 
-/// Upserts only ever write the desired columns: the observed status the actor
+/// Upserts only ever write the desired columns: the observed status the observer
 /// recorded survives a `DeploymentUpdated`, the way it survives a resync.
 #[tokio::test]
 async fn upsert_leaves_observed_status_alone() {

@@ -7,14 +7,14 @@ mod mock_executor;
 mod setup;
 mod utils;
 
-mod actor_lifecycle;
 mod config;
+mod controller;
 mod edge_cases;
+mod expected_graph;
 mod managed_mode;
 mod managed_server;
+mod reconcile;
 mod schema;
-mod status_reconciliation;
-mod supervision;
 mod volumes;
 
 mod prelude {

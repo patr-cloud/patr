@@ -34,7 +34,15 @@ pub mod prelude {
 
 	pub use crate::{
 		error::RunnerError,
-		executor::RunnerExecutor,
+		executor::{
+			DeleteOutcome,
+			ExpectedGraph,
+			LocalManagedUrl,
+			LocalState,
+			Object,
+			Owner,
+			RunnerExecutor,
+		},
 		runner::Runner,
 		utils::{client, config::*, constants, secrets},
 	};

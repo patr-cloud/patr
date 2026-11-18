@@ -1,16 +1,54 @@
-//! Managed URL → Caddy config bridge for the Docker runner.
+//! Managed URLs → Caddy routes for the Docker runner.
 //!
-//! Each managed URL is materialized as a Docker Swarm config labeled
-//! `patr.configBaseName=managed-url-{id}`. The ingress builder picks these up
-//! alongside the per-deployment configs and mounts them into Caddy.
+//! Each managed URL owns one config holding its route. The ingress mounts the
+//! routes of every managed URL in the local state that exist.
 
-use std::collections::HashMap;
+use std::sync::LazyLock;
 
-use bollard::query_parameters::{ListConfigsOptions, UpdateServiceOptionsBuilder};
+use models::utils::constants::MANAGED_URL_PATH_REGEX;
+use regex::Regex;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	runner::{DockerObjectId, DockerSpec},
+};
 
-/// Generate the Caddyfile snippet for a managed URL.
+/// A host that's safe to write into a Caddyfile site address: lowercase DNS
+/// labels separated by dots.
+static HOST: LazyLock<Regex> = LazyLock::new(|| {
+	Regex::new(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$")
+		.expect("the host regex is valid")
+});
+
+/// A path that's safe to write into a Caddyfile site address, the same rule
+/// the API enforces when the URL is created.
+static PATH: LazyLock<Regex> =
+	LazyLock::new(|| Regex::new(MANAGED_URL_PATH_REGEX).expect("the path regex is valid"));
+
+/// The objects a managed URL expects: its route, while the deployment it
+/// points at is on this runner.
+pub(crate) fn expected(
+	runner: &DockerRunner,
+	managed_url_id: Uuid,
+	local: &LocalState,
+) -> Result<ExpectedGraph<DockerObjectId, DockerSpec>, RunnerError> {
+	let mut graph = ExpectedGraph::new(Owner::ManagedUrl(managed_url_id));
+	let Some(managed_url) = local.managed_urls.get(&managed_url_id) else {
+		return Ok(graph);
+	};
+	let Some((deployment, _)) = local.deployments.get(&managed_url.deployment_id) else {
+		return Ok(graph);
+	};
+
+	let (id, data) = routes(runner, managed_url_id, managed_url, deployment.should_run)?;
+	graph.add(id, DockerSpec::Config { data }, []);
+	Ok(graph)
+}
+
+/// The config holding a managed URL's route. Its host and path are written
+/// into a Caddyfile site address, so a host or path that could break out of
+/// it is refused rather than rendered. A stopped deployment's route answers
+/// 503.
 ///
 /// `is_private` corresponds to runners fronted by a Cloudflare Tunnel — TLS
 /// terminates at Cloudflare and `cloudflared` forwards to Caddy as HTTP. The
@@ -18,164 +56,46 @@ use crate::prelude::*;
 /// HTTPS and generate an HTTP→HTTPS redirect that would loop back through
 /// `cloudflared`. Public runners terminate TLS at Caddy itself, so we leave
 /// the scheme blank and let auto-HTTPS do its thing.
-pub(crate) fn generate_config(
-	host: &str,
-	path: &str,
-	deployment_id: Uuid,
-	port: u16,
-	is_private: bool,
-) -> String {
-	// The template appends `*` to the path to make Caddy's site-address path
-	// matcher a substring-prefix instead of the default exact match — so a
-	// managed URL at `/api` routes `/api`, `/api/foo`, `/api/v1/users`, etc.
-	// Root-path managed URLs land on `host/*` which matches everything.
-	format!(
-		include_str!("../../../assets/runner/Caddyfile.managed-url.template"),
-		scheme = if is_private { "http://" } else { "" },
-		host = host,
-		path = path,
-		deployment_id = deployment_id,
-		port = port,
-	)
-}
-
-/// Create or update the Docker config for a managed URL, then trigger an
-/// ingress refresh. Mirrors the deployment upsert flow in `ingress.rs`.
-pub(crate) async fn upsert(
+pub(crate) fn routes(
 	runner: &DockerRunner,
 	managed_url_id: Uuid,
-	host: String,
-	path: String,
-	deployment_id: Uuid,
-	port: u16,
-) -> Result<(), RunnerError> {
-	let config = generate_config(
-		&host,
-		&path,
-		deployment_id,
-		port,
-		runner.settings.data.runner_exposure_type.is_private(),
+	managed_url: &LocalManagedUrl,
+	should_run: bool,
+) -> Result<(DockerObjectId, Vec<u8>), RunnerError> {
+	if !HOST.is_match(&managed_url.host) || !PATH.is_match(&managed_url.path) {
+		return Err(RunnerError::host(format!(
+			"managed URL `{managed_url_id}` has a host or path that can't be routed safely"
+		)));
+	}
+
+	// The template appends `*` to the path to make Caddy's site-address path
+	// matcher a prefix match instead of the default exact match — so a
+	// managed URL at `/api` routes `/api`, `/api/foo`, `/api/v1/users`, etc.
+	// Root-path managed URLs land on `host/*` which matches everything.
+	let data = format!(
+		include_str!("../../../assets/runner/Caddyfile.managed-url.template"),
+		scheme = if runner.settings.data.runner_exposure_type.is_private() {
+			"http://"
+		} else {
+			""
+		},
+		host = managed_url.host,
+		path = managed_url.path,
+		handler = if should_run {
+			format!(
+				"reverse_proxy {}.onpatr.local:{}",
+				managed_url.deployment_id, managed_url.port
+			)
+		} else {
+			String::from("error 503")
+		},
 	);
 
-	let labels = HashMap::from([
-		(String::from("managed-by"), String::from("patr")),
-		(
-			String::from("patr.managedUrlId"),
-			managed_url_id.to_string(),
-		),
-	]);
-
-	crate::utils::update_config(
-		&runner.docker,
-		&format!("managed-url-{}", managed_url_id),
-		labels,
-		config,
-	)
-	.await?;
-
-	let _guard = runner.ingress_lock.lock().await;
-	ingress::update_ingress_configs(&runner.docker, &runner.settings).await
-}
-
-/// Delete the Docker config for a managed URL and rebuild the ingress
-/// service so Caddy stops serving it. Mirrors `delete_deployment_config`.
-pub(crate) async fn delete(runner: &DockerRunner, managed_url_id: Uuid) -> Result<(), RunnerError> {
-	let configs = runner
-		.docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.managedUrlId={}", managed_url_id)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?;
-
-	let config_ids_to_remove = configs
-		.iter()
-		.filter_map(|c| c.id.clone())
-		.collect::<Vec<_>>();
-
-	let _guard = runner.ingress_lock.lock().await;
-
-	// Rebuild the ingress spec without these configs first, then delete them
-	// so we never leave a "config in use" gap.
-	let mut ingress_service_spec =
-		ingress::build_ingress_spec(&runner.docker, &runner.settings).await?;
-	if let Some(spec_configs) = ingress_service_spec
-		.task_template
-		.as_mut()
-		.and_then(|task| task.container_spec.as_mut())
-		.and_then(|container| container.configs.as_mut())
-	{
-		spec_configs.retain(|c| {
-			c.config_id
-				.as_ref()
-				.is_none_or(|id| !config_ids_to_remove.contains(id))
-		});
-	}
-
-	if let Some(version) = runner
-		.docker
-		.inspect_service(constants::INGRESS_SERVICE_NAME, None)
-		.await
-		.ok()
-		.and_then(|s| s.version)
-		.and_then(|v| v.index)
-	{
-		runner
-			.docker
-			.update_service(
-				constants::INGRESS_SERVICE_NAME,
-				ingress_service_spec,
-				UpdateServiceOptionsBuilder::new()
-					.version(version as i32)
-					.build(),
-				None,
-			)
-			.await
-			.map_err(RunnerError::host)?;
-	}
-
-	for config in configs {
-		if let Some(id) = config.id {
-			runner.docker.delete_config(&id).await.map_err(|err| {
-				error!("Failed to delete managed URL config {}: {}", id, err);
-				RunnerError::host(err)
-			})?;
-		}
-	}
-
-	Ok(())
-}
-
-/// List the IDs of all managed URLs that currently have a Docker config on
-/// this runner.
-pub(crate) async fn list_running(runner: &DockerRunner) -> Result<Vec<Uuid>, RunnerError> {
-	let configs = runner
-		.docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![String::from("patr.managedUrlId")],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?;
-
-	let mut ids = configs
-		.into_iter()
-		.filter_map(|c| {
-			c.spec
-				.as_ref()?
-				.labels
-				.as_ref()?
-				.get("patr.managedUrlId")?
-				.parse::<Uuid>()
-				.ok()
-		})
-		.collect::<Vec<_>>();
-	ids.sort();
-	ids.dedup();
-	Ok(ids)
+	Ok((
+		DockerObjectId::Config(utils::config_name(
+			&format!("patr-url-{managed_url_id}"),
+			&data,
+		)),
+		data.into_bytes(),
+	))
 }

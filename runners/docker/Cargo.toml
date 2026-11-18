@@ -12,10 +12,15 @@ workspace = true
 
 [dependencies]
 base64  = { workspace = true, features = [] }
-bollard = { workspace = true, features = ["default"] }
+bollard = { workspace = true, features = ["default", "time"] }
 common  = { workspace = true }
 futures = { workspace = true, features = ["default"] }
 models  = { workspace = true, features = [] }
+regex   = { workspace = true, features = ["default"] }
 serde   = { workspace = true, features = ["default", "derive"] }
 sha2    = { workspace = true, features = [] }
+time    = { workspace = true, features = [] }
 tokio   = { workspace = true, features = ["full"] }
+
+[dev-dependencies]
+serde_json = { workspace = true, features = ["default"] }

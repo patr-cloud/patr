@@ -1,56 +1,40 @@
-/// Shared database utility functions for creating and deleting deployments in
-/// the local SQLite database. These are pure DB operations with no API calls or
-/// runner configuration dependencies. Used by the WebSocket actor to apply
-/// server messages.
+/// The Controller reconciles owners: for each one, it applies the objects the
+/// local state expects and deletes the ones it no longer does.
+///
+/// Its queue holds owners whose objects may be out of date, never commands.
+/// The WebSocketActor enqueues the owners an upstream change affects, the
+/// Observer enqueues the owners backend events touch, and a full reconcile of
+/// every owner runs on a timer, so nothing is lost if an event is missed.
+pub mod controller;
+
+/// Shared database utility functions for writing the local SQLite state and
+/// loading it back. Used by the WebSocket actor to apply server messages, and
+/// by the controller to load the state it reconciles.
 pub mod db_helpers;
 
-/// The DeploymentActor manages the full lifecycle of a single deployment.
-///
-/// Each deployment gets its own actor instance, spawned as a supervised child
-/// of the ResourceSupervisor. The actor reads desired state from SQLite,
-/// compares it against the running state reported by the executor, and
-/// reconciles any differences by calling `executor.upsert_deployment()` or
-/// `executor.delete_deployment()`.
-///
-/// Status is polled periodically via a self-sent `CheckStatus` timer (5s).
-/// This will be replaced by event-driven `StatusChanged` messages when the
-/// Docker runner adds its event watcher in a future update.
-pub mod deployment;
-
-/// The ResourceSupervisor is the registry of all resource actors.
-///
-/// It replaces the old `Mutex<BTreeMap<Uuid, ResourceExecutorTask<E>>>` and the
-/// `monitor_resources` SQLite trigger chain. It owns the mapping from resource
-/// UUID to child actor, handles spawning and stopping child actors, runs
-/// periodic reconciliation (comparing SQLite state against running actors),
-/// and forwards status changes to the WebSocket actor for upstream
-/// notification in managed mode.
-///
-/// When a child actor panics, ractor's supervision callback fires, the
-/// supervisor removes the stale entry and queues a `Reconcile` to respawn it.
-pub mod resource_supervisor;
+/// The Observer works out each deployment's observed status from the backend
+/// and the controller's last reconcile, records it, and tells the WebSocket
+/// actor to publish it.
+pub mod observer;
 
 /// The RunnerSupervisor is the top-level actor in the supervision tree.
 ///
-/// It starts and supervises the ResourceSupervisor and WebSocketActor,
-/// handling restarts when children fail. Currently a skeleton — the main
-/// wiring happens in `Runner::run()` which spawns actors directly. This will
-/// be fleshed out to own the full supervision tree in a future update.
+/// It starts the Controller, the Observer and the WebSocketActor, and restarts
+/// whichever stops. The actors find each other by their registered names.
 pub mod runner_supervisor;
 
 /// The WebSocketActor manages the bidirectional WebSocket connection to the
-/// upstream Patr API. Only active in managed mode.
+/// upstream Patr API.
 ///
-/// It receives server-pushed resource changes (deployment created, updated,
-/// deleted), writes them to the local SQLite database, and notifies the
-/// ResourceSupervisor to spawn or update the corresponding DeploymentActor.
-/// In the reverse direction, it forwards deployment status updates from
-/// resource actors back to the Patr API.
+/// It receives server-pushed resource changes, writes them to the local SQLite
+/// database, and enqueues the owners they affect with the Controller. In the
+/// reverse direction, it publishes the observed statuses the API doesn't
+/// reflect yet.
 ///
 /// The read side uses `ractor_actors::streams::spawn_stream_pump` to feed
 /// incoming WebSocket messages as `ServerMessage` events into the actor's
 /// mailbox. The write side stores a type-erased boxed sink in actor state.
 /// On connection failure, the actor schedules a reconnect with exponential
-/// backoff. Periodic full resyncs re-fetch all deployments from the API to
-/// catch any missed changes.
+/// backoff. Periodic full resyncs re-fetch everything from the API to catch any
+/// missed changes.
 pub mod websocket;

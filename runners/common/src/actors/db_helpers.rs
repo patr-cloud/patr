@@ -3,6 +3,8 @@
 //!
 //! These are pure database functions — no API calls, no runner config needed.
 
+use std::collections::BTreeMap;
+
 use models::api::workspace::deployment::*;
 use time::OffsetDateTime;
 
@@ -502,4 +504,276 @@ pub async fn delete_deployment_in_database(
 	.await?;
 
 	Ok(())
+}
+
+/// Get the deployment and its running details from the local database.
+pub async fn get_local_deployment_info(
+	database: &sqlx::Pool<DatabaseType>,
+	deployment_id: Uuid,
+) -> Result<(Deployment, DeploymentRunningDetails), RunnerError> {
+	let ports = query!(
+		r#"
+		SELECT
+			port,
+			port_type
+		FROM
+			deployment_exposed_port
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.fetch_all(database)
+	.await?
+	.into_iter()
+	.map(|row| (StringifiedU16::new(row.port), row.port_type))
+	.collect::<BTreeMap<_, _>>();
+
+	let environment_variables = query!(
+		r#"
+		SELECT
+			name,
+			value,
+			secret_id
+		FROM
+			deployment_environment_variable
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.fetch_all(database)
+	.await?
+	.into_iter()
+	.map(|env| {
+		let value = env.value.map(EnvironmentVariableValue::String);
+		let secret_id = env
+			.secret_id
+			.map(|from_secret| EnvironmentVariableValue::Secret { from_secret });
+
+		let value = match (value, secret_id) {
+			(Some(value), None) => Some(value),
+			(None, Some(secret)) => Some(secret),
+			_ => None,
+		}
+		.ok_or_else(|| {
+			ErrorType::server_error("corrupted deployment, cannot find environment variable value")
+		})?;
+
+		Ok((env.name, value))
+	})
+	.collect::<Result<BTreeMap<_, _>, ErrorType>>()?;
+
+	let config_mounts = query!(
+		r#"
+		SELECT
+			path,
+			file
+		FROM
+			deployment_config_mounts
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.fetch_all(database)
+	.await?
+	.into_iter()
+	.map(|row| (row.path, Base64String::from(row.file)))
+	.collect::<BTreeMap<_, _>>();
+
+	let volumes = query!(
+		r#"
+		SELECT
+			path
+		FROM
+			deployment_volume
+		WHERE
+			deployment_id = $1;
+		"#,
+		deployment_id
+	)
+	.fetch_all(database)
+	.await?
+	.into_iter()
+	.map(|row| (row.path, VolumeConfig {}))
+	.collect::<BTreeMap<_, _>>();
+
+	let row = query!(
+		r#"
+		SELECT
+			id,
+			name,
+			registry,
+			image_name,
+			repository_id,
+			image_tag,
+			should_run,
+			min_horizontal_scale,
+			max_horizontal_scale,
+			machine_type,
+			deploy_on_push,
+			startup_probe_port,
+			startup_probe_path,
+			startup_probe_port_type,
+			liveness_probe_port,
+			liveness_probe_path,
+			liveness_probe_port_type,
+			current_live_digest
+		FROM
+			deployment
+		WHERE
+			id = $1 AND
+			deleted IS NULL;
+		"#,
+		deployment_id
+	)
+	.fetch_one(database)
+	.await
+	.map_err(|err| match err {
+		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist,
+		err => err.into(),
+	})?;
+
+	let name = row.name;
+	let image_tag = row.image_tag;
+	let should_run = row.should_run;
+	let registry_url = row.registry;
+	let machine_type = row.machine_type;
+	let current_live_digest = row.current_live_digest;
+
+	let deploy_on_push = row.deploy_on_push;
+	let min_horizontal_scale = row.min_horizontal_scale;
+	let max_horizontal_scale = row.max_horizontal_scale;
+
+	let startup_probe = row
+		.startup_probe_port
+		.zip(row.startup_probe_path)
+		.map(|(port, path)| DeploymentProbe { port, path });
+
+	let liveness_probe = row
+		.liveness_probe_port
+		.zip(row.liveness_probe_path)
+		.map(|(port, path)| DeploymentProbe { port, path });
+
+	let registry = match (row.repository_id, row.image_name) {
+		(Some(repository_id), _) => DeploymentRegistry::PatrRegistry {
+			registry: models::api::workspace::deployment::PatrRegistry,
+			repository_id,
+		},
+		(None, Some(image_name)) => DeploymentRegistry::ExternalRegistry {
+			registry: registry_url,
+			image_name,
+		},
+		(None, None) => {
+			return Err(ErrorType::server_error(
+				"corrupted deployment: neither repository_id nor image_name is set",
+			)
+			.into());
+		}
+	};
+
+	Ok((
+		Deployment {
+			name,
+			image_tag,
+			// Placeholder — the public status the API derives isn't stored in the
+			// local database, only `observed_status` is
+			status: DeploymentStatus::Observed(ObservedDeploymentStatus::Unknown),
+			should_run,
+			registry,
+			// Dummy runner ID — the runner isn't stored in the local database
+			runner: Uuid::nil(),
+			current_live_digest,
+			machine_type,
+		},
+		DeploymentRunningDetails {
+			deploy_on_push,
+			min_horizontal_scale,
+			max_horizontal_scale,
+			ports,
+			environment_variables,
+			startup_probe,
+			liveness_probe,
+			config_mounts,
+			volumes,
+		},
+	))
+}
+
+/// Load the runner's whole local state: every deployment with its running
+/// details, every managed URL and every secret version.
+pub async fn load_local_state(
+	database: &sqlx::Pool<DatabaseType>,
+) -> Result<LocalState, RunnerError> {
+	let deployment_ids = query!(
+		r#"
+		SELECT
+			id
+		FROM
+			deployment;
+		"#
+	)
+	.fetch_all(database)
+	.await?
+	.into_iter()
+	.map(|row| row.id)
+	.collect::<Vec<_>>();
+
+	let mut deployments = BTreeMap::new();
+	for deployment_id in deployment_ids {
+		deployments.insert(
+			deployment_id,
+			get_local_deployment_info(database, deployment_id).await?,
+		);
+	}
+
+	let managed_urls = query!(
+		r#"
+		SELECT
+			id,
+			host,
+			path,
+			deployment_id,
+			port
+		FROM
+			managed_url;
+		"#
+	)
+	.fetch_all(database)
+	.await?
+	.into_iter()
+	.map(|row| {
+		(
+			row.id,
+			LocalManagedUrl {
+				host: row.host,
+				path: row.path,
+				deployment_id: row.deployment_id,
+				port: row.port,
+			},
+		)
+	})
+	.collect::<BTreeMap<_, _>>();
+
+	let secrets = query!(
+		r#"
+		SELECT
+			id,
+			last_updated
+		FROM
+			secret;
+		"#
+	)
+	.fetch_all(database)
+	.await?
+	.into_iter()
+	.map(|row| (row.id, row.last_updated))
+	.collect::<BTreeMap<_, _>>();
+
+	Ok(LocalState {
+		deployments,
+		managed_urls,
+		secrets,
+	})
 }

@@ -1,27 +1,185 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+	collections::{BTreeMap, BTreeSet, HashMap},
+	fmt::{self, Display},
+	str::FromStr,
+	sync::{Arc, Mutex},
+};
 
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use bollard::{
 	Docker,
-	models::{NetworkCreateRequest, SwarmInitRequest, SwarmSpec},
+	errors::Error as DockerError,
+	models::{
+		ConfigSpec,
+		MountType,
+		NetworkCreateRequest,
+		Platform,
+		SwarmInitRequest,
+		SwarmSpec,
+		VolumeCreateRequest,
+	},
+	query_parameters::{
+		ListConfigsOptions,
+		ListContainersOptions,
+		ListNetworksOptions,
+		ListServicesOptions,
+		ListVolumesOptions,
+		RemoveVolumeOptions,
+	},
+	service::ServiceSpecUpdateConfigOrderEnum,
 };
 use futures::Stream;
 use models::api::workspace::{deployment::*, runner::*};
-use tokio::sync::Mutex;
+use serde::Serialize;
+use time::OffsetDateTime;
 
 use crate::prelude::*;
 
-/// Shared state passed from `initialize` into every cloned [`DockerRunner`].
-///
-/// `ingress_lock` serializes writes to the single `patr-ingress` swarm service.
-/// Without it, concurrent deployment actors race on swarmkit's optimistic
-/// version index and one of them gets "update out of sequence".
-#[derive(Debug, Clone)]
-pub struct DockerRunnerState {
-	/// The [`Docker`] client (cheaply clonable; internally an `Arc`).
-	pub docker: Docker,
-	/// Mutex guarding all reads-then-writes of the shared `patr-ingress`
-	/// service.
-	pub ingress_lock: Arc<Mutex<()>>,
+/// An object the Docker runner manages, by kind and name.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(rename_all = "camelCase", tag = "kind", content = "name")]
+pub enum DockerObjectId {
+	/// A Swarm config.
+	Config(String),
+	/// An overlay network.
+	Network(String),
+	/// A Swarm service.
+	Service(String),
+	/// A named volume.
+	Volume(String),
+}
+
+impl Display for DockerObjectId {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Config(name) => write!(f, "config/{name}"),
+			Self::Network(name) => write!(f, "network/{name}"),
+			Self::Service(name) => write!(f, "service/{name}"),
+			Self::Volume(name) => write!(f, "volume/{name}"),
+		}
+	}
+}
+
+impl FromStr for DockerObjectId {
+	type Err = RunnerError;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		match s.split_once('/') {
+			Some(("config", name)) => Ok(Self::Config(name.to_string())),
+			Some(("network", name)) => Ok(Self::Network(name.to_string())),
+			Some(("service", name)) => Ok(Self::Service(name.to_string())),
+			Some(("volume", name)) => Ok(Self::Volume(name.to_string())),
+			_ => Err(RunnerError::host(format!("invalid Docker object `{s}`"))),
+		}
+	}
+}
+
+/// What a Docker object should look like. Never `Debug`-printed: configs hold
+/// file contents and the Alloy config holds the runner's API token.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DockerSpec {
+	/// A config with this content.
+	Config {
+		/// The file's content.
+		data: Vec<u8>,
+	},
+	/// An overlay network.
+	Network {
+		/// Whether the network has IPv6. An existing network can't change it,
+		/// so a mismatch is only warned about.
+		ipv6: bool,
+	},
+	/// A named volume.
+	Volume,
+	/// A service.
+	Service(Box<ServiceTemplate>),
+}
+
+/// The kinds of services the runner runs.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ServiceTemplate {
+	/// A deployment's service.
+	Deployment(DeploymentService),
+	/// The Caddy ingress.
+	Ingress(IngressService),
+	/// The Cloudflare tunnel, for private runners.
+	Tunnel {
+		/// The hash of the tunnel token, so a new token changes the spec. The
+		/// token itself is read from its config when the service is applied.
+		token_hash: String,
+	},
+	/// The Grafana Alloy log and metric collector.
+	Alloy {
+		/// The config holding Alloy's configuration.
+		config: DockerObjectId,
+	},
+}
+
+/// What a deployment's service is built from. Leaves out what doesn't affect
+/// the running service (its name, `deploy_on_push`, `max_horizontal_scale`,
+/// `machine_type`), so changing those doesn't restart it.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentService {
+	/// The deployment the service runs.
+	pub deployment_id: Uuid,
+	/// Where the image comes from.
+	pub registry: DeploymentRegistry,
+	/// The image tag.
+	pub image_tag: String,
+	/// The digest the deployment is pinned to, if any.
+	pub current_live_digest: Option<String>,
+	/// The environment variables.
+	pub env: BTreeMap<String, EnvValue>,
+	/// How many tasks run.
+	pub replicas: u16,
+	/// The probe that checks the deployment started.
+	pub startup_probe: Option<DeploymentProbe>,
+	/// The probe that checks the deployment is alive.
+	pub liveness_probe: Option<DeploymentProbe>,
+	/// The configs mounted into the container, by path.
+	pub config_mounts: BTreeMap<String, DockerObjectId>,
+	/// The volumes mounted into the container, by path.
+	pub volume_mounts: BTreeMap<String, DockerObjectId>,
+	/// The order old and new tasks are swapped in an update.
+	pub update_order: ServiceSpecUpdateConfigOrderEnum,
+}
+
+/// An environment variable's value.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum EnvValue {
+	/// A plain value.
+	Plain(String),
+	/// A secret, resolved when the service is applied. Its version is part of
+	/// the spec, so rotating it re-applies the service.
+	Secret {
+		/// The secret.
+		secret_id: Uuid,
+		/// When the secret's value last changed, if known.
+		last_updated: Option<OffsetDateTime>,
+	},
+}
+
+/// What the Caddy ingress is built from.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IngressService {
+	/// The config holding the main Caddyfile.
+	pub base_config: DockerObjectId,
+	/// The configs holding the error pages, by the path they're mounted at.
+	pub error_pages: BTreeMap<String, DockerObjectId>,
+	/// The deployments' and managed URLs' route configs. They belong to other
+	/// owners, so the ones that don't exist yet are left out when applying,
+	/// and the service is stamped with a hash that makes the next reconcile
+	/// try again.
+	pub imports: BTreeSet<DockerObjectId>,
+	/// The volume Caddy keeps its certificates in.
+	pub data_volume: DockerObjectId,
+	/// The host ports for HTTP and HTTPS, for public runners.
+	pub published_ports: Option<(u16, u16)>,
 }
 
 /// A Patr runner that uses Docker to run deployments.
@@ -31,21 +189,22 @@ pub struct DockerRunner {
 	pub docker: Docker,
 	/// The runner settings.
 	pub settings: RunnerSettings<DockerSettings>,
-	/// Shared lock to serialize ingress-service writes across all actor clones.
-	pub ingress_lock: Arc<Mutex<()>>,
+	/// The platforms each digest-pinned external image supports, so pinned
+	/// images aren't looked up again on every apply.
+	pub platforms: Arc<Mutex<HashMap<String, Vec<Platform>>>>,
 }
 
 impl RunnerExecutor for DockerRunner {
-	type InitializedState = DockerRunnerState;
+	type Id = DockerObjectId;
+	type Inputs = Option<String>;
 	type Settings = DockerSettings;
+	type Spec = DockerSpec;
 
 	fn runner_exposure_type(settings: &RunnerSettings<Self::Settings>) -> RunnerExposureType {
 		settings.data.runner_exposure_type.clone()
 	}
 
-	async fn initialize(
-		settings: &RunnerSettings<Self::Settings>,
-	) -> Result<Self::InitializedState, RunnerError> {
+	async fn initialize(settings: &RunnerSettings<Self::Settings>) -> Result<Self, RunnerError> {
 		// Honors the DOCKER_HOST env var, falling back to the platform-default
 		// local socket when unset.
 		let docker = Docker::connect_with_defaults()
@@ -72,170 +231,324 @@ impl RunnerExecutor for DockerRunner {
 				.map_err(RunnerError::host)?;
 		}
 
-		let network = docker
-			.inspect_network(constants::INGRESS_NETWORK_NAME, None)
-			.await
-			.ok();
-
-		if network.and_then(|network| network.id).is_none() {
-			docker
-				.create_network(NetworkCreateRequest {
-					name: String::from(constants::INGRESS_NETWORK_NAME),
-					driver: Some(String::from("overlay")),
-					ingress: Some(false),
-					config_only: Some(false),
-					enable_ipv4: Some(true),
-					enable_ipv6: Some(settings.data.enable_ipv6),
-					labels: Some(HashMap::from([
-						("managed-by".to_string(), "patr".to_string()),
-						(
-							"patr.version".to_string(),
-							constants::PATR_VERSION.to_string(),
-						),
-					])),
-					..Default::default()
-				})
-				.await
-				.map_err(RunnerError::host)?;
-		}
-
-		// None of this is required if the runner is not using a tunnel
-		if settings.data.runner_exposure_type.requires_tunnel() {
-			let RunnerSettings {
-				workspace_id,
-				runner_id,
-				api_token,
-				user_agent,
-				..
-			} = settings.clone();
-
-			let existing_tunnel_token = docker
-				.inspect_config(constants::TUNNEL_TOKEN_CONFIG_NAME)
-				.await
-				.ok()
-				.and_then(|config| config.spec)
-				.and_then(|spec| spec.data);
-
-			let new_tunnel_token = client::make_request(
-				ApiRequest::<GetIngressTokenForRunnerRequest>::builder()
-					.path(GetIngressTokenForRunnerPath {
-						workspace_id,
-						runner_id,
-					})
-					.headers(GetIngressTokenForRunnerRequestHeaders {
-						authorization: api_token.clone(),
-						user_agent: user_agent.clone(),
-					})
-					.build(),
-			)
-			.await
-			.map_err(|err| err.body.error)
-			.map(|response| response.body.token);
-
-			match (existing_tunnel_token, new_tunnel_token) {
-				(None, Err(err)) => {
-					error!(
-						"Cannot get tunnel token for runner: {err}. {}",
-						"Are you connected to the internet?"
-					);
-					return Err(RunnerError::UpstreamServerError(err));
-				}
-				(Some(_), Err(err)) => {
-					warn!("Cannot get tunnel token for runner: {err}");
-					warn!(concat!(
-						"Using existing tunnel token, but this may cause ",
-						"connectivity issues if the token has changed or is invalid."
-					));
-				}
-				(Some(existing), Ok(new)) if existing == new => {
-					debug!("Tunnel token has not changed, using existing token");
-				}
-				(Some(_), Ok(new)) | (None, Ok(new)) => {
-					ingress::update_ingress_tunnel_token(&docker, new).await?;
-				}
-			}
-		}
-
-		// Setup ingress, if it doesn't exist
-		ingress::update_ingress_configs(&docker, settings).await?;
-
-		// Setup Alloy log collector for managed mode
-		alloy::update_alloy_service(&docker, settings).await?;
-
-		Ok(DockerRunnerState {
+		Ok(Self {
 			docker,
-			ingress_lock: Arc::new(Mutex::new(())),
+			settings: settings.clone(),
+			platforms: Arc::new(Mutex::new(HashMap::new())),
 		})
 	}
 
-	async fn new(settings: &RunnerSettings<Self::Settings>, state: Self::InitializedState) -> Self {
-		Self {
-			docker: state.docker,
-			settings: settings.clone(),
-			ingress_lock: state.ingress_lock,
+	async fn update_ingress_token(&self, token: String) -> Result<bool, RunnerError> {
+		ingress::update_tunnel_token(&self.docker, token).await
+	}
+
+	async fn inputs(&self, owner: Owner) -> Result<Self::Inputs, RunnerError> {
+		if owner != Owner::System || !self.settings.data.runner_exposure_type.is_private() {
+			return Ok(None);
+		}
+		Ok(ingress::tunnel_token(&self.docker)
+			.await?
+			.map(utils::sha256_hex))
+	}
+
+	fn expected(
+		&self,
+		owner: Owner,
+		local: &LocalState,
+		inputs: &Self::Inputs,
+	) -> Result<ExpectedGraph<Self::Id, Self::Spec>, RunnerError> {
+		match owner {
+			Owner::Deployment(deployment_id) => {
+				Ok(deployment::expected(self, deployment_id, local))
+			}
+			Owner::ManagedUrl(managed_url_id) => managed_url::expected(self, managed_url_id, local),
+			Owner::System => Ok(ingress::expected(self, local, inputs.as_deref())),
 		}
 	}
 
-	async fn upsert_deployment(
+	async fn list(&self, owner: Option<Owner>) -> Result<Vec<Object<Self::Id>>, RunnerError> {
+		let filters = HashMap::from([(
+			String::from("label"),
+			vec![
+				String::from("managed-by=patr"),
+				match owner {
+					Some(owner) => format!("patr.owner={owner}"),
+					None => String::from("patr.owner"),
+				},
+			],
+		)]);
+		let object = |id, labels: Option<&HashMap<String, String>>, depends_on| {
+			let labels = labels?;
+			Some(Object {
+				id,
+				owner: labels.get("patr.owner")?.parse::<Owner>().ok()?,
+				hash: labels.get("patr.specHash")?.clone(),
+				depends_on,
+			})
+		};
+
+		let mut objects = Vec::new();
+
+		for config in self
+			.docker
+			.list_configs(Some(ListConfigsOptions {
+				filters: Some(filters.clone()),
+			}))
+			.await
+			.map_err(RunnerError::host)?
+		{
+			let Some(spec) = config.spec else {
+				continue;
+			};
+			let Some(name) = spec.name else {
+				continue;
+			};
+			objects.extend(object(
+				DockerObjectId::Config(name),
+				spec.labels.as_ref(),
+				BTreeSet::new(),
+			));
+		}
+
+		for network in self
+			.docker
+			.list_networks(Some(ListNetworksOptions {
+				filters: Some(filters.clone()),
+			}))
+			.await
+			.map_err(RunnerError::host)?
+		{
+			let Some(name) = network.name else {
+				continue;
+			};
+			objects.extend(object(
+				DockerObjectId::Network(name),
+				network.labels.as_ref(),
+				BTreeSet::new(),
+			));
+		}
+
+		for volume in self
+			.docker
+			.list_volumes(Some(ListVolumesOptions {
+				filters: Some(filters.clone()),
+			}))
+			.await
+			.map_err(RunnerError::host)?
+			.volumes
+			.unwrap_or_default()
+		{
+			objects.extend(object(
+				DockerObjectId::Volume(volume.name),
+				Some(&volume.labels),
+				BTreeSet::new(),
+			));
+		}
+
+		for service in self
+			.docker
+			.list_services(Some(ListServicesOptions {
+				filters: Some(filters),
+				status: None,
+			}))
+			.await
+			.map_err(RunnerError::host)?
+		{
+			let Some(spec) = service.spec else {
+				continue;
+			};
+			let Some(name) = spec.name else {
+				continue;
+			};
+			let container_spec = spec
+				.task_template
+				.and_then(|task| task.container_spec)
+				.unwrap_or_default();
+			let depends_on = container_spec
+				.configs
+				.unwrap_or_default()
+				.into_iter()
+				.filter_map(|config| config.config_name.map(DockerObjectId::Config))
+				.chain(
+					container_spec
+						.mounts
+						.unwrap_or_default()
+						.into_iter()
+						.filter(|mount| mount.typ == Some(MountType::VOLUME))
+						.filter_map(|mount| mount.source.map(DockerObjectId::Volume)),
+				)
+				.collect();
+			objects.extend(object(
+				DockerObjectId::Service(name),
+				spec.labels.as_ref(),
+				depends_on,
+			));
+		}
+
+		Ok(objects)
+	}
+
+	async fn apply(
 		&self,
-		deployment: WithId<Deployment>,
-		running_details: DeploymentRunningDetails,
+		owner: Owner,
+		id: &Self::Id,
+		spec: &Self::Spec,
+		hash: &str,
 	) -> Result<(), RunnerError> {
-		deployment::upsert(self, deployment, running_details).await?;
-
-		let _guard = self.ingress_lock.lock().await;
-		ingress::update_ingress_configs(&self.docker, &self.settings).await
+		match (id, spec) {
+			(DockerObjectId::Config(name), DockerSpec::Config { data }) => {
+				match self
+					.docker
+					.create_config(ConfigSpec {
+						name: Some(name.clone()),
+						labels: Some(utils::object_labels(owner, hash)),
+						// Docker's POST /configs/create expects `Data`
+						// base64-encoded, and bollard doesn't encode it.
+						data: Some(BASE64.encode(data)),
+						templating: None,
+					})
+					.await
+				{
+					// The name holds the content's hash, so an existing config
+					// already has this content.
+					Ok(_) |
+					Err(DockerError::DockerResponseServerError {
+						status_code: 409, ..
+					}) => Ok(()),
+					Err(err) => Err(RunnerError::host(err)),
+				}
+			}
+			(DockerObjectId::Network(name), DockerSpec::Network { ipv6 }) => {
+				match self.docker.inspect_network(name, None).await {
+					Ok(network) => {
+						if network.enable_ipv6 != Some(*ipv6) {
+							warn!(
+								network = %name,
+								ipv6,
+								"The network's IPv6 setting differs from the runner's, and an overlay network can't be changed in place"
+							);
+						}
+						Ok(())
+					}
+					Err(DockerError::DockerResponseServerError {
+						status_code: 404, ..
+					}) => {
+						self.docker
+							.create_network(NetworkCreateRequest {
+								name: name.clone(),
+								driver: Some(String::from("overlay")),
+								ingress: Some(false),
+								config_only: Some(false),
+								enable_ipv4: Some(true),
+								enable_ipv6: Some(*ipv6),
+								labels: Some(utils::object_labels(owner, hash)),
+								..Default::default()
+							})
+							.await
+							.map_err(RunnerError::host)?;
+						Ok(())
+					}
+					Err(err) => Err(RunnerError::host(err)),
+				}
+			}
+			(DockerObjectId::Volume(name), DockerSpec::Volume) => {
+				match self.docker.inspect_volume(name).await {
+					Ok(_) => Ok(()),
+					Err(DockerError::DockerResponseServerError {
+						status_code: 404, ..
+					}) => {
+						self.docker
+							.create_volume(VolumeCreateRequest {
+								name: Some(name.clone()),
+								labels: Some(utils::object_labels(owner, hash)),
+								..Default::default()
+							})
+							.await
+							.map_err(RunnerError::host)?;
+						Ok(())
+					}
+					Err(err) => Err(RunnerError::host(err)),
+				}
+			}
+			(DockerObjectId::Service(name), DockerSpec::Service(template)) => {
+				match template.as_ref() {
+					ServiceTemplate::Deployment(service) => {
+						deployment::apply(self, owner, name, service, hash).await
+					}
+					ServiceTemplate::Ingress(service) => {
+						ingress::apply_ingress(self, owner, name, service, hash).await
+					}
+					ServiceTemplate::Tunnel { .. } => {
+						ingress::apply_tunnel(self, owner, name, hash).await
+					}
+					ServiceTemplate::Alloy { config } => {
+						alloy::apply(self, owner, name, config, hash).await
+					}
+				}
+			}
+			_ => Err(RunnerError::host(format!(
+				"`{id}` doesn't match the kind of its spec"
+			))),
+		}
 	}
 
-	async fn list_running_deployments<'a>(&self) -> impl Stream<Item = Uuid> + 'a {
-		deployment::list_running(self).await
+	async fn in_use(&self, id: &Self::Id) -> Result<bool, RunnerError> {
+		match id {
+			DockerObjectId::Config(name) => Ok(self
+				.docker
+				.list_services(None::<ListServicesOptions>)
+				.await
+				.map_err(RunnerError::host)?
+				.into_iter()
+				.filter_map(|service| service.spec?.task_template?.container_spec?.configs)
+				.flatten()
+				.any(|config| config.config_name.as_ref() == Some(name))),
+			DockerObjectId::Volume(name) => Ok(!self
+				.docker
+				.list_containers(Some(ListContainersOptions {
+					all: true,
+					filters: Some(HashMap::from([(
+						String::from("volume"),
+						vec![name.clone()],
+					)])),
+					..Default::default()
+				}))
+				.await
+				.map_err(RunnerError::host)?
+				.is_empty()),
+			DockerObjectId::Network(_) | DockerObjectId::Service(_) => Ok(false),
+		}
 	}
 
-	async fn delete_deployment(&self, id: Uuid) -> Result<(), RunnerError> {
-		deployment::delete(self, id).await?;
-
-		let _guard = self.ingress_lock.lock().await;
-		ingress::delete_deployment_config(&self.docker, &self.settings, id).await
+	async fn delete(&self, id: &Self::Id) -> Result<DeleteOutcome, RunnerError> {
+		let result = match id {
+			DockerObjectId::Config(name) => self.docker.delete_config(name).await,
+			DockerObjectId::Network(name) => self.docker.remove_network(name).await,
+			DockerObjectId::Service(name) => self.docker.delete_service(name).await,
+			DockerObjectId::Volume(name) => {
+				self.docker
+					.remove_volume(name, None::<RemoveVolumeOptions>)
+					.await
+			}
+		};
+		match result {
+			Ok(()) |
+			Err(DockerError::DockerResponseServerError {
+				status_code: 404, ..
+			}) => Ok(DeleteOutcome::Deleted),
+			Err(DockerError::DockerResponseServerError {
+				status_code: 400 | 403 | 409,
+				..
+			}) => Ok(DeleteOutcome::InUse),
+			Err(err) => Err(RunnerError::host(err)),
+		}
 	}
 
-	async fn stop_deployment(&self, id: Uuid) -> Result<(), RunnerError> {
-		deployment::stop(self, id).await?;
-
-		let _guard = self.ingress_lock.lock().await;
-		ingress::delete_deployment_config(&self.docker, &self.settings, id).await
+	async fn observe(&self) -> Result<BTreeMap<Uuid, ObservedDeploymentStatus>, RunnerError> {
+		deployment::observe(self).await
 	}
 
-	async fn get_deployment_status(
-		&self,
-		deployment_id: Uuid,
-	) -> Result<ObservedDeploymentStatus, RunnerError> {
-		deployment::get_status(self, deployment_id).await
-	}
-
-	async fn next_deployment_status(
-		&self,
-		deployment_id: Uuid,
-	) -> Result<ObservedDeploymentStatus, RunnerError> {
-		tokio::time::sleep(Duration::from_secs(5)).await;
-		self.get_deployment_status(deployment_id).await
-	}
-
-	async fn upsert_managed_url(
-		&self,
-		managed_url_id: Uuid,
-		host: String,
-		path: String,
-		deployment_id: Uuid,
-		port: u16,
-	) -> Result<(), RunnerError> {
-		managed_url::upsert(self, managed_url_id, host, path, deployment_id, port).await
-	}
-
-	async fn delete_managed_url(&self, managed_url_id: Uuid) -> Result<(), RunnerError> {
-		managed_url::delete(self, managed_url_id).await
-	}
-
-	async fn list_running_managed_urls(&self) -> Result<Vec<Uuid>, RunnerError> {
-		managed_url::list_running(self).await
+	fn watch(&self) -> impl Stream<Item = Owner> + Send + 'static {
+		futures::stream::pending()
 	}
 }

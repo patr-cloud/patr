@@ -26,4 +26,12 @@
 	respond "unknown host" 404
 }
 
+(patr_errors) {
+	handle_errors {
+		root * /etc/caddy/pages
+		rewrite * /{err.status_code}.html
+		file_server
+	}
+}
+
 import /etc/caddy/urls/*.caddy

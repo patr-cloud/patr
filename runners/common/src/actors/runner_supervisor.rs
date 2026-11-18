@@ -1,10 +1,11 @@
 use std::marker::PhantomData;
 
-use ractor::{Actor, ActorProcessingErr, ActorRef, concurrency::JoinHandle};
+use ractor::{Actor, ActorCell, ActorProcessingErr, ActorRef};
 
 use super::{
-	resource_supervisor::{ResourceSupervisor, ResourceSupervisorArgs, ResourceSupervisorMessage},
-	websocket::{WebSocketActor, WebSocketActorArgs},
+	controller::{CONTROLLER_NAME, Controller, ControllerArgs},
+	observer::{OBSERVER_NAME, Observer, ObserverArgs},
+	websocket::{WEBSOCKET_NAME, WebSocketActor, WebSocketActorArgs},
 };
 use crate::prelude::*;
 
@@ -14,28 +15,16 @@ pub struct RunnerSupervisorArgs<E: RunnerExecutor> {
 	pub config: RunnerSettings<E::Settings>,
 	/// Database connection pool for SQLite access.
 	pub database: sqlx::Pool<DatabaseType>,
-	/// Executor-specific initialized state.
-	pub runner_state: E::InitializedState,
+	/// The executor that runs resources on the backend.
+	pub executor: E,
+	/// Whether the controller can reconcile before the first resync, which is
+	/// false only for a freshly created database.
+	pub started: bool,
 }
 
-/// The mutable state held by a running [`RunnerSupervisor`].
-pub struct RunnerSupervisorState<E: RunnerExecutor> {
-	/// Runner configuration.
-	pub config: RunnerSettings<E::Settings>,
-	/// Database connection pool for SQLite access.
-	pub database: sqlx::Pool<DatabaseType>,
-	/// Executor-specific initialized state.
-	pub runner_state: E::InitializedState,
-	/// Reference to the ResourceSupervisor child actor.
-	pub supervisor_ref: ActorRef<ResourceSupervisorMessage>,
-	/// Join handle for the ResourceSupervisor actor task.
-	pub supervisor_handle: JoinHandle<()>,
-	/// Reference to the WebSocketActor child actor and its join handle.
-	pub ws: (ActorRef<super::websocket::WebSocketMessage>, JoinHandle<()>),
-}
-
-/// Top-level supervisor actor. Spawns and supervises the ResourceSupervisor
-/// and WebSocketActor. Restarts children on failure.
+/// Top-level supervisor actor. Spawns the controller, the observer and the
+/// WebSocket actor, and restarts whichever of them stops. They find each
+/// other by their registered names, so a restarted actor is found again.
 pub struct RunnerSupervisor<E: RunnerExecutor> {
 	/// Marker for the executor generic.
 	_phantom: PhantomData<E>,
@@ -50,55 +39,20 @@ impl<E: RunnerExecutor> RunnerSupervisor<E> {
 	}
 }
 
-impl<E> Actor for RunnerSupervisor<E>
-where
-	E: RunnerExecutor + Send + Sync + 'static,
-{
+impl<E: RunnerExecutor> Actor for RunnerSupervisor<E> {
 	type Arguments = RunnerSupervisorArgs<E>;
 	type Msg = ();
-	type State = RunnerSupervisorState<E>;
+	type State = RunnerSupervisorArgs<E>;
 
 	async fn pre_start(
 		&self,
 		myself: ActorRef<Self::Msg>,
 		args: Self::Arguments,
 	) -> Result<Self::State, ActorProcessingErr> {
-		let (supervisor_ref, supervisor_handle) = ResourceSupervisor::<E>::spawn_linked(
-			Some("resource-supervisor".to_string()),
-			ResourceSupervisor::new(),
-			ResourceSupervisorArgs {
-				database: args.database.clone(),
-				config: args.config.clone(),
-				runner_state: args.runner_state.clone(),
-				websocket_ref: None,
-			},
-			myself.get_cell(),
-		)
-		.await?;
-
-		let (ws_ref, ws_handle) = WebSocketActor::<E>::spawn_linked(
-			Some("websocket".to_string()),
-			WebSocketActor::new(),
-			WebSocketActorArgs {
-				config: args.config.clone(),
-				database: args.database.clone(),
-				supervisor_ref: supervisor_ref.clone(),
-			},
-			myself.get_cell(),
-		)
-		.await?;
-
-		let _ =
-			supervisor_ref.send_message(ResourceSupervisorMessage::SetWebSocketRef(ws_ref.clone()));
-
-		Ok(RunnerSupervisorState {
-			config: args.config,
-			database: args.database,
-			runner_state: args.runner_state,
-			supervisor_ref,
-			supervisor_handle,
-			ws: (ws_ref, ws_handle),
-		})
+		for name in [CONTROLLER_NAME, OBSERVER_NAME, WEBSOCKET_NAME] {
+			spawn_child(name, &args, myself.get_cell()).await?;
+		}
+		Ok(args)
 	}
 
 	async fn handle_supervisor_evt(
@@ -110,64 +64,77 @@ where
 		let cell = match &message {
 			ractor::SupervisionEvent::ActorTerminated(cell, ..) => {
 				warn!(
-					actor_id = %cell.get_id(),
 					actor_name = ?cell.get_name(),
 					"Supervised child terminated cleanly, restarting"
 				);
-				cell.clone()
+				cell
 			}
 			ractor::SupervisionEvent::ActorFailed(cell, err) => {
 				error!(
-					actor_id = %cell.get_id(),
 					actor_name = ?cell.get_name(),
 					?err,
 					"Supervised child failed, restarting"
 				);
-				cell.clone()
+				cell
 			}
 			_ => return Ok(()),
 		};
 
-		let actor_id = cell.get_id();
-
-		if state.supervisor_ref.get_id() == actor_id {
-			let (new_ref, new_handle) = ResourceSupervisor::<E>::spawn_linked(
-				Some("resource-supervisor".to_string()),
-				ResourceSupervisor::new(),
-				ResourceSupervisorArgs {
-					database: state.database.clone(),
-					config: state.config.clone(),
-					runner_state: state.runner_state.clone(),
-					websocket_ref: Some(state.ws.0.clone()),
-				},
-				myself.get_cell(),
-			)
-			.await?;
-
-			state.supervisor_ref = new_ref;
-			state.supervisor_handle = new_handle;
-		} else if state.ws.0.get_id() == actor_id {
-			let (new_ws_ref, new_ws_handle) = WebSocketActor::<E>::spawn_linked(
-				Some("websocket".to_string()),
-				WebSocketActor::new(),
-				WebSocketActorArgs {
-					config: state.config.clone(),
-					database: state.database.clone(),
-					supervisor_ref: state.supervisor_ref.clone(),
-				},
-				myself.get_cell(),
-			)
-			.await?;
-
-			let _ = state
-				.supervisor_ref
-				.send_message(ResourceSupervisorMessage::SetWebSocketRef(
-					new_ws_ref.clone(),
-				));
-
-			state.ws = (new_ws_ref, new_ws_handle);
+		if let Some(name) = cell.get_name() {
+			spawn_child(&name, state, myself.get_cell()).await?;
 		}
 
 		Ok(())
 	}
+}
+
+/// Spawns the child actor registered under `name`, linked to the supervisor.
+async fn spawn_child<E: RunnerExecutor>(
+	name: &str,
+	args: &RunnerSupervisorArgs<E>,
+	supervisor: ActorCell,
+) -> Result<(), ActorProcessingErr> {
+	match name {
+		CONTROLLER_NAME => {
+			Controller::<E>::spawn_linked(
+				Some(name.to_string()),
+				Controller::new(),
+				ControllerArgs {
+					executor: args.executor.clone(),
+					config: args.config.clone(),
+					database: args.database.clone(),
+					started: args.started,
+				},
+				supervisor,
+			)
+			.await?;
+		}
+		OBSERVER_NAME => {
+			Observer::<E>::spawn_linked(
+				Some(name.to_string()),
+				Observer::new(),
+				ObserverArgs {
+					executor: args.executor.clone(),
+					database: args.database.clone(),
+				},
+				supervisor,
+			)
+			.await?;
+		}
+		WEBSOCKET_NAME => {
+			WebSocketActor::<E>::spawn_linked(
+				Some(name.to_string()),
+				WebSocketActor::new(),
+				WebSocketActorArgs {
+					config: args.config.clone(),
+					database: args.database.clone(),
+					executor: args.executor.clone(),
+				},
+				supervisor,
+			)
+			.await?;
+		}
+		_ => {}
+	}
+	Ok(())
 }

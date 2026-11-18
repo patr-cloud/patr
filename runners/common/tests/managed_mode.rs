@@ -70,7 +70,10 @@ async fn setup_managed() -> (
 		RunnerSupervisorArgs {
 			config,
 			database: database.clone(),
-			runner_state: mock_state.clone(),
+			executor: MockExecutor {
+				state: mock_state.clone(),
+			},
+			started: false,
 		},
 	)
 	.await
@@ -149,7 +152,7 @@ async fn deployment_created_via_ws_triggers_upsert() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -170,7 +173,7 @@ async fn deployment_deleted_via_ws_triggers_delete() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -188,7 +191,7 @@ async fn deployment_deleted_via_ws_triggers_delete() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Delete(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Delete(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -210,7 +213,7 @@ async fn deployment_updated_via_ws_triggers_upsert() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -230,7 +233,7 @@ async fn deployment_updated_via_ws_triggers_upsert() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -291,7 +294,7 @@ async fn full_resync_adds_missing_deployment() {
 	// Wait for the full resync to pick it up and the actor to upsert.
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(45),
 	)
 	.await;
@@ -346,8 +349,10 @@ async fn secret_updated_via_ws_reapplies_deployment() {
 	let mock = mock_state.clone();
 	periodic_check(
 		move || {
-			mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)) &&
-				mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == other_id))
+			mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))) &&
+				mock.has_call(
+					|c| matches!(c, ExecutorCall::Apply(id) if *id == service(other_id)),
+				)
 		},
 		Duration::from_secs(10),
 	)
@@ -369,14 +374,14 @@ async fn secret_updated_via_ws_reapplies_deployment() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
 
 	// Only the deployment that reads the secret is re-applied.
 	assert!(
-		!mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == other_id)),
+		!mock_state.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(other_id))),
 		"a deployment that doesn't use the secret must not be re-applied"
 	);
 }
@@ -397,7 +402,7 @@ async fn full_resync_reapplies_deployment_after_missed_rotation() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -426,7 +431,7 @@ async fn full_resync_reapplies_deployment_after_missed_rotation() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(45),
 	)
 	.await;
@@ -471,7 +476,7 @@ async fn stopped_deployment_is_not_started_by_rotation() {
 	tokio::time::sleep(Duration::from_secs(7)).await;
 
 	assert!(
-		!mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		!mock_state.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		"a stopped deployment must not be started, not even briefly"
 	);
 }
@@ -494,21 +499,12 @@ async fn rejected_token_keeps_retrying_without_touching_deployments() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
 
-	// Report it as running so the status poll doesn't re-apply it.
-	mock_state
-		.statuses
-		.lock()
-		.unwrap()
-		.insert(dep_id, ObservedDeploymentStatus::Running);
 	mock_state.calls.lock().unwrap().clear();
-	let actor_id = ractor::registry::where_is(format!("deployment-{dep_id}"))
-		.expect("deployment actor should be running")
-		.get_id();
 	let handshakes = || {
 		server_state
 			.get_client_msgs(runner_id)
@@ -536,16 +532,11 @@ async fn rejected_token_keeps_retrying_without_touching_deployments() {
 			.await
 			.unwrap();
 		assert!(row.is_some(), "the deployment should still be in SQLite");
-		assert_eq!(
-			ractor::registry::where_is(format!("deployment-{dep_id}")).map(|cell| cell.get_id()),
-			Some(actor_id),
-			"the deployment actor should not have been restarted"
-		);
 		assert!(
 			!mock_state.has_call(|c| matches!(
 				c,
-				ExecutorCall::Upsert(id) | ExecutorCall::Delete(id) | ExecutorCall::Stop(id)
-					if *id == dep_id
+				ExecutorCall::Apply(id) | ExecutorCall::Delete(id)
+					if id.contains(&dep_id.to_string())
 			)),
 			"the deployment should not have been touched"
 		);
@@ -629,7 +620,7 @@ async fn deployment_updated_for_another_runner_is_ignored() {
 	// applied, the other runner's has been handled too.
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -642,7 +633,9 @@ async fn deployment_updated_for_another_runner_is_ignored() {
 		)
 		.await
 	);
-	assert!(!mock_state.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == other_id)));
+	assert!(
+		!mock_state.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(other_id)))
+	);
 }
 
 #[tokio::test]
@@ -681,7 +674,7 @@ async fn deployment_deleted_via_ws_removes_rows_and_managed_urls() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -705,16 +698,11 @@ async fn deployment_deleted_via_ws_removes_rows_and_managed_urls() {
 		&StreamRunnerDataForWorkspaceServerMsg::DeploymentDeleted { id: dep_id },
 	);
 
-	// The deployment is torn down, and so is its managed URL, which went with
-	// the deployment's rows.
+	// The deployment is torn down, and its managed URL's row goes with the
+	// deployment's rows.
 	let mock = mock_state.clone();
 	periodic_check(
-		move || {
-			mock.has_call(|c| matches!(c, ExecutorCall::Delete(id) if *id == dep_id)) &&
-				mock.has_call(
-					|c| matches!(c, ExecutorCall::DeleteManagedUrl(id) if *id == managed_url_id),
-				)
-		},
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Delete(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -838,7 +826,7 @@ async fn stop_then_start_on_same_connection_sends_both() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.has_call(|c| matches!(c, ExecutorCall::Stop(id) if *id == dep_id)),
+		move || mock.has_call(|c| matches!(c, ExecutorCall::Delete(id) if *id == service(dep_id))),
 		Duration::from_secs(10),
 	)
 	.await;
@@ -869,7 +857,9 @@ async fn stop_then_start_on_same_connection_sends_both() {
 
 	let mock = mock_state.clone();
 	periodic_check(
-		move || mock.call_count(|c| matches!(c, ExecutorCall::Upsert(id) if *id == dep_id)) >= 2,
+		move || {
+			mock.call_count(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))) >= 2
+		},
 		Duration::from_secs(10),
 	)
 	.await;

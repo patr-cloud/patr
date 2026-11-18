@@ -32,8 +32,11 @@ where
 	database: sqlx::Pool<DatabaseType>,
 	/// Runner configuration (settings, credentials, database, etc.).
 	config: RunnerSettings<E::Settings>,
-	/// Executor-specific initialized state (e.g. Docker client).
-	runner_state: E::InitializedState,
+	/// The executor that runs resources on the backend.
+	executor: E,
+	/// Whether the database was created fresh, in which case nothing is
+	/// reconciled until the first resync fills it.
+	fresh_database: bool,
 	/// OTLP logger provider for managed-mode log export
 	logger_provider: SdkLoggerProvider,
 }
@@ -73,14 +76,15 @@ where
 
 		// Run schema migrations BEFORE E::initialize so the executor sees an
 		// up-to-date schema if it ever needs to read from the database.
-		db::initialize(&database, &config.clone().into_base()).await?;
+		let fresh_database = db::initialize(&database, &config.clone().into_base()).await?;
 
-		let runner_state = E::initialize(&config).await?;
+		let executor = E::initialize(&config).await?;
 
 		Ok(Self {
 			database,
 			config,
-			runner_state,
+			executor,
+			fresh_database,
 			logger_provider,
 		})
 	}
@@ -90,14 +94,15 @@ where
 	#[instrument(skip(self))]
 	pub async fn run(self) -> Result<!, RunnerError> {
 		// Start the actor tree. The RunnerSupervisor spawns and supervises
-		// the ResourceSupervisor and WebSocketActor as children.
+		// the Controller, the Observer and the WebSocketActor as children.
 		let (root_ref, root_handle) = RunnerSupervisor::<E>::spawn(
 			Some("runner-supervisor".to_string()),
 			RunnerSupervisor::new(),
 			RunnerSupervisorArgs {
 				config: self.config.clone(),
 				database: self.database.clone(),
-				runner_state: self.runner_state.clone(),
+				executor: self.executor.clone(),
+				started: !self.fresh_database,
 			},
 		)
 		.await

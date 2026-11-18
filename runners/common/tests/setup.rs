@@ -2,40 +2,28 @@ use std::{collections::BTreeMap, sync::Arc};
 
 use common::{
 	actors::{
+		controller::{self, Outcome},
 		db_helpers,
-		resource_supervisor::{
-			ResourceSupervisor,
-			ResourceSupervisorArgs,
-			ResourceSupervisorMessage,
-		},
 	},
 	db,
 	prelude::*,
 };
 use models::api::workspace::deployment::*;
-use ractor::{Actor, ActorRef, concurrency::JoinHandle};
 
 use crate::mock_executor::*;
 
-/// Isolated test environment with a fresh SQLite DB, mock executor and a
-/// running ResourceSupervisor (no upstream WebSocket). Each call to `setup()`
-/// creates a completely independent instance — tests can run in parallel
-/// safely.
+/// A runner's local database and a mock executor, without any actors. Tests
+/// drive reconciles directly with [`TestSetup::reconcile`].
 pub struct TestSetup {
 	pub database: sqlx::Pool<DatabaseType>,
-	#[allow(dead_code)]
 	pub config: RunnerSettings<()>,
+	pub executor: MockExecutor,
 	pub mock_state: Arc<MockExecutorState>,
-	pub supervisor_ref: ActorRef<ResourceSupervisorMessage>,
-	_root_handle: JoinHandle<()>,
 	_temp_dir: tempfile::TempDir,
 }
 
-/// Creates a fresh test environment:
-/// 1. Temp directory with a new SQLite file
-/// 2. Schema initialized from scratch (all tables, machine types seeded)
-/// 3. ResourceSupervisor spawned with MockExecutor
-/// 4. Returns TestSetup with refs to everything
+/// Create a fresh database in a temp dir and a mock executor over an empty
+/// backend.
 pub async fn setup() -> TestSetup {
 	let temp_dir = tempfile::TempDir::new().expect("failed to create temp dir");
 	let db_path = temp_dir.path().join("test.db");
@@ -62,57 +50,59 @@ pub async fn setup() -> TestSetup {
 		.await
 		.expect("failed to initialize test database");
 
-	let supervisor_name = format!("test-supervisor-{}", Uuid::new_v4());
-	let (root_ref, root_handle) = ResourceSupervisor::<MockExecutor>::spawn(
-		Some(supervisor_name),
-		ResourceSupervisor::new(),
-		ResourceSupervisorArgs {
-			config: config.clone(),
-			database: database.clone(),
-			runner_state: mock_state.clone(),
-			websocket_ref: None,
-		},
-	)
-	.await
-	.expect("failed to spawn ResourceSupervisor");
-
-	// Give the actor tree a moment to start and run initial Reconcile.
-	tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
 	TestSetup {
 		database,
 		config,
+		executor: MockExecutor {
+			state: mock_state.clone(),
+		},
 		mock_state,
-		supervisor_ref: root_ref,
-		_root_handle: root_handle,
 		_temp_dir: temp_dir,
 	}
 }
 
 impl TestSetup {
-	/// Send an UpsertResource message to the supervisor for the given
-	/// deployment.
-	pub fn notify_upsert(&self, deployment_id: Uuid) {
-		let _ = self
-			.supervisor_ref
-			.send_message(ResourceSupervisorMessage::UpsertResource {
-				resource_id: deployment_id,
-				resource_type: models::rbac::ResourceType::Deployment,
-			});
+	/// Reconcile one owner against the mock backend.
+	pub async fn reconcile(&self, owner: Owner) -> Outcome {
+		controller::reconcile(&self.executor, &self.config, &self.database, owner)
+			.await
+			.expect("failed to reconcile")
 	}
 
-	/// Send a DeleteResource message to the supervisor for the given
-	/// deployment.
-	pub fn notify_delete(&self, deployment_id: Uuid) {
-		let _ = self
-			.supervisor_ref
-			.send_message(ResourceSupervisorMessage::DeleteResource {
-				resource_id: deployment_id,
-				resource_type: models::rbac::ResourceType::Deployment,
-			});
+	/// Write a deployment to the local database, replacing it if it exists.
+	pub async fn upsert_deployment(
+		&self,
+		id: Uuid,
+		deployment: Deployment,
+		running_details: DeploymentRunningDetails,
+	) {
+		let mut conn = self
+			.database
+			.acquire()
+			.await
+			.expect("failed to acquire connection");
+		db_helpers::upsert_deployment_in_database(
+			&mut conn,
+			WithId::new(id, deployment),
+			running_details,
+		)
+		.await
+		.expect("failed to upsert test deployment");
 	}
 
-	/// Insert a minimal test deployment into SQLite. Returns the deployment ID.
+	/// Delete a deployment from the local database.
+	pub async fn delete_deployment(&self, id: Uuid) {
+		let mut conn = self
+			.database
+			.acquire()
+			.await
+			.expect("failed to acquire connection");
+		db_helpers::delete_deployment_in_database(&mut conn, id)
+			.await
+			.expect("failed to delete test deployment");
+	}
+
+	/// Insert a test deployment that should be running.
 	pub async fn create_test_deployment(&self) -> Uuid {
 		self.create_test_deployment_with_should_run(true).await
 	}
