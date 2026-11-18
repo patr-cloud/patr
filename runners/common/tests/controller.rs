@@ -59,6 +59,41 @@ async fn enqueued_owners_are_reconciled() {
 	periodic_check(move || mock.exists(&service(id)), Duration::from_secs(5)).await;
 }
 
+/// A finalizer left marked running by a crash is reset when the controller
+/// starts, so it runs again.
+#[tokio::test]
+async fn an_interrupted_finalizer_is_reset_on_start() {
+	let setup = setup().await;
+	sqlx::query(
+		"INSERT INTO object_finalizer(object_id, deployment_id, finalizer, state, attempts, last_updated) VALUES ('volume/x', $1, 'volume', 'running', 1, $2)",
+	)
+	.bind(Uuid::new_v4())
+	.bind(time::OffsetDateTime::now_utc())
+	.execute(&setup.database)
+	.await
+	.unwrap();
+
+	let (_controller, _handle) = Controller::<MockExecutor>::spawn(
+		None,
+		Controller::new(),
+		ControllerArgs {
+			executor: setup.executor.clone(),
+			config: setup.config.clone(),
+			database: setup.database.clone(),
+			started: false,
+		},
+	)
+	.await
+	.unwrap();
+
+	let state = sqlx::query("SELECT state FROM object_finalizer WHERE object_id = 'volume/x'")
+		.fetch_one(&setup.database)
+		.await
+		.unwrap()
+		.get::<String, _>("state");
+	assert_eq!(state, "pending");
+}
+
 /// The observer records what the backend reports, a deployment the backend
 /// doesn't run as stopped, and a deployment whose objects failed to apply as
 /// errored whatever is still running.

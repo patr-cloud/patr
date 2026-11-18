@@ -179,6 +179,27 @@ async fn an_object_in_use_is_left_for_later() {
 	assert!(!setup.mock_state.exists(&service(id)));
 }
 
+/// A volume whose path was removed from a deployment keeps its data.
+#[tokio::test]
+async fn removing_a_volume_path_keeps_its_volume() {
+	let setup = setup().await;
+	let id = Uuid::new_v4();
+	let (both, details) = deployment(true, &["/a", "/b"], &[]);
+	setup.upsert_deployment(id, both, details).await;
+	setup.reconcile(Owner::Deployment(id)).await;
+
+	let (one, details) = deployment(true, &["/a"], &[]);
+	setup.upsert_deployment(id, one, details).await;
+	setup.reconcile(Owner::Deployment(id)).await;
+
+	assert!(setup.mock_state.exists(&volume(id, "/b")));
+	assert!(
+		!setup
+			.mock_state
+			.has_call(|c| *c == ExecutorCall::Delete(volume(id, "/b")))
+	);
+}
+
 /// A managed URL follows its deployment: its route answers as stopped when the
 /// deployment is stopped, and goes away when the deployment does.
 #[tokio::test]

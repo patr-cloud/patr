@@ -281,6 +281,14 @@ impl RunnerExecutor for MockExecutor {
 		Ok(())
 	}
 
+	fn finalizers(&self, id: &Self::Id) -> Vec<FinalizerKind> {
+		if id.starts_with("volume/") {
+			vec![FinalizerKind::Volume]
+		} else {
+			Vec::new()
+		}
+	}
+
 	async fn in_use(&self, id: &Self::Id) -> Result<bool, RunnerError> {
 		Ok(self.state.in_use.lock().unwrap().contains(id))
 	}

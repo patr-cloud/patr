@@ -159,6 +159,25 @@ pub enum DeleteOutcome {
 	InUse,
 }
 
+/// A finalizer: a step that has to finish before an object can be deleted.
+/// Each kind is a separate migration on `object_finalizer`, with any columns of
+/// its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum FinalizerKind {
+	/// Confirms with the API that the deployment a volume belonged to is
+	/// deleted or on another runner, so deleting the volume never destroys the
+	/// data of a deployment this runner still runs.
+	Volume,
+}
+
+impl Display for FinalizerKind {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Volume => write!(f, "volume"),
+		}
+	}
+}
+
 /// A managed URL as the runner stores it locally, with its host resolved.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalManagedUrl {
@@ -269,6 +288,9 @@ pub trait RunnerExecutor: Clone + Send + Sync + 'static {
 		spec: &Self::Spec,
 		hash: &str,
 	) -> impl Future<Output = Result<(), RunnerError>> + Send;
+
+	/// The finalizers that must finish before the object can be deleted.
+	fn finalizers(&self, id: &Self::Id) -> Vec<FinalizerKind>;
 
 	/// Whether something still uses the object, in which case it's left for a
 	/// later reconcile.

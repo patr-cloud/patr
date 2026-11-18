@@ -492,6 +492,13 @@ impl RunnerExecutor for DockerRunner {
 		}
 	}
 
+	fn finalizers(&self, id: &Self::Id) -> Vec<FinalizerKind> {
+		match id {
+			DockerObjectId::Volume(_) => vec![FinalizerKind::Volume],
+			_ => Vec::new(),
+		}
+	}
+
 	async fn in_use(&self, id: &Self::Id) -> Result<bool, RunnerError> {
 		match id {
 			DockerObjectId::Config(name) => Ok(self

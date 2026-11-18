@@ -1,7 +1,7 @@
 //! Splits a deployment's intent from its observed status, mirroring the API:
 //! `deployment.status` is replaced by `should_run`, written from the API, and
-//! `observed_status`, written by the runner. Also removes the `meta_data` keys
-//! the self-hosted mode stored.
+//! `observed_status`, written by the runner. Also adds `object_finalizer`, and
+//! removes the `meta_data` keys the self-hosted mode stored.
 //!
 //! The migration runner wraps this in a transaction, where `PRAGMA foreign_keys
 //! = OFF` is a no-op, and `deployment` is referenced by every child table. So
@@ -12,8 +12,8 @@
 
 use crate::prelude::*;
 
-/// Replace `deployment.status` with `should_run` and `observed_status`, and
-/// delete the self-hosted `meta_data` keys.
+/// Replace `deployment.status` with `should_run` and `observed_status`, add the
+/// `object_finalizer` table, and delete the self-hosted `meta_data` keys.
 #[macros::migration]
 async fn migrate(
 	connection: &mut DatabaseConnection,
@@ -201,6 +201,46 @@ async fn migrate(
 	sqlx::query("DROP TABLE deployment_old;")
 		.execute(&mut *connection)
 		.await?;
+
+	sqlx::query(
+		r#"
+		CREATE TABLE object_finalizer(
+			object_id TEXT NOT NULL,
+			deployment_id TEXT NOT NULL,
+			finalizer TEXT NOT NULL,
+			state TEXT NOT NULL,
+			attempts INTEGER NOT NULL,
+			last_error TEXT,
+			last_updated DATETIME NOT NULL,
+
+			PRIMARY KEY(object_id, finalizer),
+
+			CONSTRAINT object_finalizer_chk_finalizer_enum CHECK(
+				finalizer IN (
+					'volume'
+				)
+			),
+
+			CONSTRAINT object_finalizer_chk_state_enum CHECK(
+				state IN (
+					'pending',
+					'running',
+					'done',
+					'failed'
+				)
+			),
+
+			CONSTRAINT object_finalizer_chk_last_error_enum CHECK(
+				last_error IN (
+					'api_unreachable',
+					'still_on_this_runner'
+				)
+			)
+		);
+		"#,
+	)
+	.execute(&mut *connection)
+	.await?;
 
 	sqlx::query(
 		r#"

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO object_finalizer(object_id, deployment_id, finalizer, state, attempts, last_error, last_updated) VALUES ($1, $2, $3, 'running', 1, NULL, $4) ON CONFLICT(object_id, finalizer) DO UPDATE SET state = 'running', attempts = attempts + 1, last_updated = $4;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "a91a97aa593985912c5df1f365ce980416efd3a81ff495f70baf0b1e2e079e7e"
+}

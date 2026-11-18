@@ -43,3 +43,6 @@ database-url-var = "RUNNER_DATABASE_URL"
 
 [macros.table-overrides.'secret']
 'id' = "models::prelude::Uuid"
+
+[macros.table-overrides.'object_finalizer']
+'deployment_id' = "models::prelude::Uuid"

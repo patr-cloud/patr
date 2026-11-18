@@ -1156,3 +1156,90 @@ async fn full_resync_keeps_local_state_when_a_list_is_rate_limited() {
 async fn full_resync_keeps_local_state_when_a_later_list_fails() {
 	assert_failed_list_keeps_local_state("secret", StatusCode::SERVICE_UNAVAILABLE).await;
 }
+
+/// Reconcile a deployment with a volume, then delete it from the local state,
+/// with the API knowing it on the runner `api_runner` picks given this
+/// runner's ID, or not at all. Returns the reconcile's outcome after the
+/// delete.
+async fn reconcile_deleted_deployment_with_volume(
+	api_runner: impl FnOnce(Uuid) -> Option<Uuid>,
+) -> (
+	crate::setup::TestSetup,
+	Uuid,
+	common::actors::controller::Outcome,
+) {
+	let server_state = managed_server::get_managed_server().await;
+	let setup = crate::setup::setup().await;
+	let (id, deployment, mut details) = test_deployment(setup.config.runner_id);
+	details.volumes.insert("/data".to_string(), VolumeConfig {});
+	setup
+		.upsert_deployment(id, deployment.clone(), details.clone())
+		.await;
+	setup.reconcile(Owner::Deployment(id)).await;
+	assert!(setup.mock_state.exists(&volume(id, "/data")));
+
+	if let Some(runner) = api_runner(setup.config.runner_id) {
+		server_state.add_deployment(
+			WithId::new(
+				id,
+				Deployment {
+					runner,
+					..deployment
+				},
+			),
+			details,
+		);
+	}
+	setup.delete_deployment(id).await;
+	let outcome = setup.reconcile(Owner::Deployment(id)).await;
+	(setup, id, outcome)
+}
+
+/// A deleted deployment's volume is deleted once the API confirms the
+/// deployment is gone, and its finalizer's record goes with it.
+#[tokio::test]
+async fn a_deleted_deployments_volume_is_reaped() {
+	let (setup, id, outcome) = reconcile_deleted_deployment_with_volume(|_| None).await;
+
+	assert!(!outcome.waiting);
+	assert!(!setup.mock_state.exists(&volume(id, "/data")));
+	assert!(
+		!row_exists(
+			&setup.database,
+			"SELECT 1 FROM object_finalizer WHERE deployment_id = $1",
+			id
+		)
+		.await
+	);
+}
+
+/// A deployment that moved to another runner has its volume deleted here.
+#[tokio::test]
+async fn a_moved_deployments_volume_is_reaped() {
+	let (setup, id, outcome) =
+		reconcile_deleted_deployment_with_volume(|_| Some(Uuid::new_v4())).await;
+
+	assert!(!outcome.waiting);
+	assert!(!setup.mock_state.exists(&volume(id, "/data")));
+}
+
+/// While the API still says the deployment is on this runner, its volume is
+/// kept, whatever the local state says, and the finalizer records why.
+#[tokio::test]
+async fn a_volume_is_kept_while_the_api_says_its_deployment_is_here() {
+	let (setup, id, outcome) = reconcile_deleted_deployment_with_volume(Some).await;
+
+	assert!(outcome.waiting);
+	assert!(setup.mock_state.exists(&volume(id, "/data")));
+	let row =
+		sqlx::query("SELECT state, last_error FROM object_finalizer WHERE deployment_id = $1")
+			.bind(id)
+			.fetch_one(&setup.database)
+			.await
+			.unwrap();
+	assert_eq!(row.get::<String, _>("state"), "failed");
+	assert_eq!(
+		row.get::<Option<String>, _>("last_error").as_deref(),
+		Some("still_on_this_runner")
+	);
+}

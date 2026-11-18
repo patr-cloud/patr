@@ -37,6 +37,7 @@ pub mod prelude {
 		executor::{
 			DeleteOutcome,
 			ExpectedGraph,
+			FinalizerKind,
 			LocalManagedUrl,
 			LocalState,
 			Object,

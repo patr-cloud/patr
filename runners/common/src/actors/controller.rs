@@ -1,11 +1,14 @@
 use std::{
 	collections::{BTreeMap, BTreeSet},
+	fmt::Display,
 	marker::PhantomData,
 	time::Duration,
 };
 
+use models::api::workspace::deployment::*;
 use ractor::{Actor, ActorProcessingErr, ActorRef};
 use sha2::{Digest as _, Sha256};
+use time::OffsetDateTime;
 use tokio::task::JoinSet;
 
 use super::{
@@ -46,8 +49,8 @@ pub struct Outcome {
 	/// An object failed to apply, or was blocked by a dependency that did. The
 	/// owner is retried with backoff.
 	pub failed: bool,
-	/// An object couldn't be deleted yet: it's still in use, or deleting it
-	/// failed. A later reconcile tries again.
+	/// An object couldn't be deleted yet: it's still in use, a finalizer
+	/// hasn't finished, or deleting it failed. A later reconcile tries again.
 	pub waiting: bool,
 	/// An object was applied or deleted.
 	pub changed: bool,
@@ -136,6 +139,21 @@ impl<E: RunnerExecutor> Actor for Controller<E> {
 		myself: ActorRef<Self::Msg>,
 		args: Self::Arguments,
 	) -> Result<Self::State, ActorProcessingErr> {
+		// A finalizer still marked running was interrupted, since the
+		// reconciles that run them stop with the controller.
+		query!(
+			r#"
+			UPDATE
+				object_finalizer
+			SET
+				state = 'pending'
+			WHERE
+				state = 'running';
+			"#
+		)
+		.execute(&args.database)
+		.await?;
+
 		let _ = myself.send_message(ControllerMessage::Reconcile);
 
 		Ok(ControllerState {
@@ -299,10 +317,10 @@ async fn enqueue_all<E: RunnerExecutor>(state: &mut ControllerState<E>) {
 /// Reconciles one owner. Applies every expected object that's missing or out
 /// of date, dependencies first, skipping objects whose dependencies failed.
 /// Then deletes every object that's no longer expected, dependents first,
-/// leaving objects that are still in use.
+/// leaving objects that are still in use or whose finalizers haven't finished.
 pub async fn reconcile<E: RunnerExecutor>(
 	executor: &E,
-	_config: &RunnerSettings<E::Settings>,
+	config: &RunnerSettings<E::Settings>,
 	database: &sqlx::Pool<DatabaseType>,
 	owner: Owner,
 ) -> Result<Outcome, RunnerError> {
@@ -393,8 +411,46 @@ pub async fn reconcile<E: RunnerExecutor>(
 			}
 		}
 
+		let finalizers = executor.finalizers(&id);
+		if !finalizers.is_empty() {
+			// An object with finalizers lives as long as its owner: a volume
+			// a deployment no longer mounts keeps its data until the
+			// deployment itself is gone.
+			if !expected.nodes.is_empty() {
+				continue;
+			}
+
+			let mut finalized = true;
+			for finalizer in finalizers {
+				match finalize(config, database, owner, &id, finalizer).await {
+					Ok(done) => finalized &= done,
+					Err(err) => {
+						warn!(%owner, %id, %finalizer, ?err, "Failed to run finalizer");
+						finalized = false;
+					}
+				}
+			}
+			if !finalized {
+				outcome.waiting = true;
+				continue;
+			}
+		}
+
 		match executor.delete(&id).await {
-			Ok(DeleteOutcome::Deleted) => outcome.changed = true,
+			Ok(DeleteOutcome::Deleted) => {
+				outcome.changed = true;
+				query!(
+					r#"
+					DELETE FROM
+						object_finalizer
+					WHERE
+						object_id = $1;
+					"#,
+					id.to_string()
+				)
+				.execute(database)
+				.await?;
+			}
 			Ok(DeleteOutcome::InUse) => outcome.waiting = true,
 			Err(err) => {
 				warn!(%owner, %id, ?err, "Failed to delete object");
@@ -404,4 +460,141 @@ pub async fn reconcile<E: RunnerExecutor>(
 	}
 
 	Ok(outcome)
+}
+
+/// Runs one finalizer of an object, recording its progress in
+/// `object_finalizer`. Returns whether it's done. A finalizer that's already
+/// done isn't run again.
+async fn finalize<S>(
+	config: &RunnerSettings<S>,
+	database: &sqlx::Pool<DatabaseType>,
+	owner: Owner,
+	object_id: &impl Display,
+	finalizer: FinalizerKind,
+) -> Result<bool, RunnerError> {
+	let object_id = object_id.to_string();
+
+	let state = query!(
+		r#"
+		SELECT
+			state
+		FROM
+			object_finalizer
+		WHERE
+			object_id = $1 AND
+			finalizer = $2;
+		"#,
+		object_id,
+		finalizer.to_string()
+	)
+	.fetch_optional(database)
+	.await?
+	.map(|row| row.state);
+	if state.as_deref() == Some("done") {
+		return Ok(true);
+	}
+
+	let Owner::Deployment(deployment_id) = owner else {
+		return Err(RunnerError::host(format!(
+			"`{object_id}` has a {finalizer} finalizer, but `{owner}` isn't a deployment"
+		)));
+	};
+
+	query!(
+		r#"
+		INSERT INTO
+			object_finalizer(
+				object_id,
+				deployment_id,
+				finalizer,
+				state,
+				attempts,
+				last_error,
+				last_updated
+			)
+		VALUES
+			($1, $2, $3, 'running', 1, NULL, $4)
+		ON CONFLICT(object_id, finalizer) DO UPDATE SET
+			state = 'running',
+			attempts = attempts + 1,
+			last_updated = $4;
+		"#,
+		object_id,
+		deployment_id,
+		finalizer.to_string(),
+		OffsetDateTime::now_utc()
+	)
+	.execute(database)
+	.await?;
+
+	let last_error = match finalizer {
+		FinalizerKind::Volume => {
+			let RunnerSettings {
+				workspace_id,
+				runner_id,
+				api_token,
+				user_agent,
+				..
+			} = config;
+
+			// The API answers the same 401 for a deleted deployment as for
+			// one the runner can't see, and both mean the volume's data
+			// isn't needed here any more.
+			match client::make_request(
+				ApiRequest::<GetDeploymentInfoRequest>::builder()
+					.path(GetDeploymentInfoPath {
+						workspace_id: *workspace_id,
+						deployment_id,
+					})
+					.query(())
+					.headers(GetDeploymentInfoRequestHeaders {
+						authorization: api_token.clone(),
+						user_agent: user_agent.clone(),
+					})
+					.body(GetDeploymentInfoRequest)
+					.build(),
+			)
+			.await
+			{
+				Ok(response) if response.body.deployment.runner != *runner_id => None,
+				Ok(_) => Some("still_on_this_runner"),
+				Err(err)
+					if matches!(
+						err.body.error,
+						ErrorType::Unauthorized | ErrorType::ResourceDoesNotExist
+					) =>
+				{
+					None
+				}
+				Err(_) => Some("api_unreachable"),
+			}
+		}
+	};
+
+	query!(
+		r#"
+		UPDATE
+			object_finalizer
+		SET
+			state = $1,
+			last_error = $2,
+			last_updated = $3
+		WHERE
+			object_id = $4 AND
+			finalizer = $5;
+		"#,
+		if last_error.is_none() {
+			"done"
+		} else {
+			"failed"
+		},
+		last_error,
+		OffsetDateTime::now_utc(),
+		object_id,
+		finalizer.to_string()
+	)
+	.execute(database)
+	.await?;
+
+	Ok(last_error.is_none())
 }

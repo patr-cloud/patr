@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE object_finalizer SET state = $1, last_error = $2, last_updated = $3 WHERE object_id = $4 AND finalizer = $5;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "6def953581e2ae82778c4e2418ff45c558ba2c54af204c7d9857f847b6678188"
+}

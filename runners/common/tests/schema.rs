@@ -54,6 +54,7 @@ async fn fresh_db_has_all_tables() {
 		"deployment_volume",
 		"managed_url",
 		"secret",
+		"object_finalizer",
 	];
 
 	for table in expected {
@@ -89,6 +90,63 @@ async fn named_constraint_violation_includes_constraint_name() {
 		err.contains("deployment_chk_observed_status_enum"),
 		"expected error to mention constraint name, got: {err}"
 	);
+}
+
+/// Each `object_finalizer` column with a fixed set of values rejects anything
+/// else by name, and a row needs no `deployment` row: finalizers run after the
+/// deployment is gone.
+#[tokio::test]
+async fn object_finalizer_constraints_are_named() {
+	let (database, _temp_dir) = fresh_database().await;
+
+	let insert = async |finalizer: &str, state: &str, last_error: Option<&str>| {
+		sqlx::query(
+			r#"
+			INSERT INTO object_finalizer(
+				object_id, deployment_id, finalizer, state, attempts, last_error,
+				last_updated
+			) VALUES (
+				$1, $2, $3, $4, 0, $5, '2026-10-01T00:00:00Z'
+			)
+			"#,
+		)
+		.bind(Uuid::new_v4().to_string())
+		.bind(Uuid::new_v4())
+		.bind(finalizer)
+		.bind(state)
+		.bind(last_error)
+		.execute(&database)
+		.await
+	};
+
+	insert("volume", "failed", Some("still_on_this_runner"))
+		.await
+		.expect("a valid finalizer row for a deleted deployment must insert");
+
+	for (finalizer, state, last_error, constraint) in [
+		(
+			"network",
+			"pending",
+			None,
+			"object_finalizer_chk_finalizer_enum",
+		),
+		("volume", "waiting", None, "object_finalizer_chk_state_enum"),
+		(
+			"volume",
+			"failed",
+			Some("connection refused"),
+			"object_finalizer_chk_last_error_enum",
+		),
+	] {
+		let err = insert(finalizer, state, last_error)
+			.await
+			.unwrap_err()
+			.to_string();
+		assert!(
+			err.contains(constraint),
+			"expected error to mention {constraint}, got: {err}"
+		);
+	}
 }
 
 /// The `deployment` table as it was before `m007_local_state_rework`.
@@ -225,6 +283,7 @@ async fn m007_migrates_a_populated_database() {
 	let (database, temp_dir) = fresh_database().await;
 
 	for statement in [
+		"DROP TABLE object_finalizer",
 		"DROP TABLE deployment",
 		PRE_M007_DEPLOYMENT,
 		"DELETE FROM migrations WHERE name = 'm007_local_state_rework'",
@@ -417,6 +476,7 @@ async fn m007_migrates_a_populated_database() {
 		("deployment_deploy_history", 1),
 		("managed_url", 1),
 		("secret", 1),
+		("object_finalizer", 0),
 	] {
 		let count = sqlx::query(sqlx::AssertSqlSafe(format!(
 			"SELECT COUNT(*) AS count FROM {table}"
@@ -433,6 +493,26 @@ async fn m007_migrates_a_populated_database() {
 		.await
 		.unwrap();
 	assert!(violations.is_empty(), "foreign keys must still hold");
+
+	let columns = sqlx::query("SELECT name FROM pragma_table_info('object_finalizer')")
+		.fetch_all(&database)
+		.await
+		.unwrap()
+		.into_iter()
+		.map(|row| row.get::<String, _>("name"))
+		.collect::<Vec<_>>();
+	assert_eq!(
+		columns,
+		[
+			"object_id",
+			"deployment_id",
+			"finalizer",
+			"state",
+			"attempts",
+			"last_error",
+			"last_updated"
+		]
+	);
 
 	// The self-hosted keys are gone.
 	let keys = sqlx::query("SELECT id FROM meta_data")
@@ -452,7 +532,7 @@ async fn m007_migrates_a_populated_database() {
 
 	// And the migrated schema is exactly the fresh one.
 	let (fresh, _fresh_dir) = fresh_database().await;
-	let tables = ["deployment"];
+	let tables = ["deployment", "object_finalizer"];
 	assert_eq!(
 		table_sql(&database, &tables).await,
 		table_sql(&fresh, &tables).await
