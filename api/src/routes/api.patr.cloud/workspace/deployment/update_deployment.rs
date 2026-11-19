@@ -16,7 +16,7 @@ use models::{
 	api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg},
 	utils::{Base64String, StringifiedU16},
 };
-use rustis::commands::PubSubCommands;
+use rustis::commands::{GenericCommands as _, PubSubCommands};
 use time::OffsetDateTime;
 
 use crate::{models::permissions, prelude::*};
@@ -222,6 +222,12 @@ pub async fn update_deployment(
 	)
 	.execute(&mut **database)
 	.await?;
+
+	// Invalidate the cached runner-for-deployment lookup, or the loki and mimir
+	// push proxies keep rejecting the new runner's pushes after a move
+	redis
+		.del(redis::keys::runner_id_for_deployment(&deployment_id))
+		.await?;
 
 	// If the image tag actually changed, re-resolve current_live_digest so the
 	// deployment redeploys the new image. The runner's docker executor pins to
