@@ -1,5 +1,7 @@
+use std::collections::BTreeSet;
+
 use axum::http::StatusCode;
-use models::api::workspace::rbac::role::*;
+use models::{api::workspace::rbac::role::*, rbac::WorkspacePermission};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -32,7 +34,7 @@ pub async fn create_new_role(
 		database,
 		redis: _,
 		client_ip: _,
-		actor_data: _,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, CreateNewRoleRequest>,
 ) -> Result<AppResponse<CreateNewRoleRequest>, ErrorType> {
@@ -40,6 +42,23 @@ pub async fn create_new_role(
 
 	if permissions.is_empty() {
 		return Err(ErrorType::WrongParameters);
+	}
+
+	if !actor_data
+		.permissions
+		.get(&workspace_id)
+		.is_some_and(|held| {
+			held.is_superset_of(
+				&WorkspacePermission::Member {
+					permissions: permissions
+						.iter()
+						.map(|permission_id| (*permission_id, BTreeSet::from([workspace_id])))
+						.collect(),
+				},
+				workspace_id,
+			)
+		}) {
+		return Err(ErrorType::GrantExceedsPermissions);
 	}
 
 	let description = if description.is_empty() {

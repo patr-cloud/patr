@@ -27,11 +27,14 @@ pub mod validity;
 
 /// Probe a ModifyRoles-gated action (create a role) using a raw API token.
 /// Returns the raw response so callers can assert the authz outcome.
+///
+/// The role holds `permission` alone, which has to be one the token holds
+/// across the workspace: a role can't carry what its author lacks.
 pub(super) async fn probe_modify_roles(
 	setup: &TestSetup,
 	token: &str,
 	workspace_id: Uuid,
-	view_perm: Uuid,
+	permission: Uuid,
 ) -> axum_test::TestResponse {
 	setup
 		.make_api_call(
@@ -47,7 +50,7 @@ pub(super) async fn probe_modify_roles(
 						description: "cascade probe".to_string(),
 						is_immutable: false,
 					},
-					permissions: BTreeSet::from([view_perm]),
+					permissions: BTreeSet::from([permission]),
 				})
 				.build(),
 		)

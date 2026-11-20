@@ -139,6 +139,10 @@ pub enum ErrorType {
 	InviteAlreadyExists,
 	/// The owner (super admin) of a workspace cannot leave it.
 	CannotLeaveWorkspaceAsOwner,
+	/// The request would grant a permission the caller does not hold at that
+	/// scope themselves. Roles can only be handed out, and permissions added to
+	/// a role, by someone who already has everything being given.
+	GrantExceedsPermissions,
 }
 
 impl ErrorType {
@@ -196,6 +200,7 @@ impl ErrorType {
 			Self::UserAlreadyMember => StatusCode::CONFLICT,
 			Self::InviteAlreadyExists => StatusCode::CONFLICT,
 			Self::CannotLeaveWorkspaceAsOwner => StatusCode::FORBIDDEN,
+			Self::GrantExceedsPermissions => StatusCode::FORBIDDEN,
 		}
 	}
 
@@ -298,6 +303,9 @@ impl ErrorType {
 			}
 			Self::CannotLeaveWorkspaceAsOwner => {
 				"The owner of a workspace cannot leave it. Transfer or delete the workspace instead"
+			}
+			Self::GrantExceedsPermissions => {
+				"You cannot grant permissions that you do not have yourself"
 			}
 		}
 	}

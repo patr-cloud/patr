@@ -1,5 +1,7 @@
+use std::collections::BTreeSet;
+
 use axum::http::StatusCode;
-use models::api::workspace::rbac::role::*;
+use models::{api::workspace::rbac::role::*, rbac::WorkspacePermission};
 
 use crate::{models::permissions, prelude::*};
 
@@ -32,7 +34,7 @@ pub async fn update_role(
 		database,
 		redis,
 		client_ip: _,
-		actor_data: _,
+		actor_data,
 		state: _,
 	}: AuthenticatedAppRequest<'_, UpdateRoleRequest>,
 ) -> Result<AppResponse<UpdateRoleRequest>, ErrorType> {
@@ -95,32 +97,42 @@ pub async fn update_role(
 
 	trace!("Role updated");
 
+	let permissions = permissions.into_iter().collect::<Vec<_>>();
+
+	// Diff against what is requested rather than wipe and reinsert.
 	query!(
 		r#"
 		DELETE FROM
 			role_permission
 		WHERE
-			role_id = $1;
+			role_id = $1 AND
+			permission_id <> ALL($2::UUID[]);
 		"#,
 		role_id,
+		&permissions as _,
 	)
 	.execute(&mut **database)
 	.await?;
 
 	// Bindings are untouched: a role edit changes what the role grants, not
 	// where anyone holds it.
-	query!(
+	let added = query!(
 		r#"
 		INSERT INTO
 			role_permission(role_id, permission_id)
 		SELECT
 			$1,
-			UNNEST($2::UUID[]);
+			UNNEST($2::UUID[])
+		ON CONFLICT
+			(role_id, permission_id)
+		DO NOTHING
+		RETURNING
+			permission_id;
 		"#,
 		role_id,
-		&permissions.into_iter().collect::<Vec<_>>() as _,
+		&permissions as _,
 	)
-	.execute(&mut **database)
+	.fetch_all(&mut **database)
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
@@ -129,6 +141,23 @@ pub async fn update_role(
 		}
 		other => ErrorType::server_error(other),
 	})?;
+
+	if !actor_data
+		.permissions
+		.get(&workspace_id)
+		.is_some_and(|held| {
+			held.is_superset_of(
+				&WorkspacePermission::Member {
+					permissions: added
+						.into_iter()
+						.map(|row| (row.permission_id, BTreeSet::from([workspace_id])))
+						.collect(),
+				},
+				workspace_id,
+			)
+		}) {
+		return Err(ErrorType::GrantExceedsPermissions);
+	}
 
 	trace!("Role permissions replaced");
 

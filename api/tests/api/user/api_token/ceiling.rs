@@ -215,7 +215,6 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 	let owner = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&owner.access_token).await;
 	let modify = setup.get_permission_id(Permission::ModifyRoles);
-	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let role = setup
 		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify])
@@ -236,7 +235,7 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 		.await;
 
 	assert!(
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.is_success(),
@@ -264,7 +263,7 @@ async fn api_token_perm_trimmed_on_user_role_change() {
 
 	assert_eq!(
 		401,
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.as_u16(),
@@ -280,7 +279,6 @@ async fn api_token_perm_trimmed_on_role_delete() {
 	let owner = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&owner.access_token).await;
 	let modify = setup.get_permission_id(Permission::ModifyRoles);
-	let view = setup.get_permission_id(Permission::ViewRoles);
 
 	let role = setup
 		.create_role_with_permissions(&owner.access_token, workspace.id, vec![modify])
@@ -301,7 +299,7 @@ async fn api_token_perm_trimmed_on_role_delete() {
 		.await;
 
 	assert!(
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.is_success()
@@ -328,7 +326,7 @@ async fn api_token_perm_trimmed_on_role_delete() {
 
 	assert_eq!(
 		401,
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.as_u16(),
@@ -395,7 +393,7 @@ async fn api_token_does_not_widen_on_promotion() {
 
 	assert_eq!(
 		401,
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.as_u16(),
@@ -425,7 +423,7 @@ async fn api_token_patch_revokes_access() {
 		.await;
 
 	assert!(
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.is_success()
@@ -464,7 +462,7 @@ async fn api_token_patch_revokes_access() {
 
 	assert_eq!(
 		401,
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.as_u16(),
@@ -515,7 +513,7 @@ async fn token_loses_workspace_when_owner_is_removed() {
 		.await;
 
 	assert!(
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.is_success(),
@@ -543,7 +541,7 @@ async fn token_loses_workspace_when_owner_is_removed() {
 
 	assert_eq!(
 		401,
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.as_u16(),
@@ -551,7 +549,7 @@ async fn token_loses_workspace_when_owner_is_removed() {
 	);
 
 	assert!(
-		probe_modify_roles(&setup, &token.token, own_workspace.id, view)
+		probe_modify_roles(&setup, &token.token, own_workspace.id, modify)
 			.await
 			.status_code()
 			.is_success(),
@@ -589,7 +587,7 @@ async fn token_loses_workspace_when_owner_leaves() {
 		.await;
 
 	assert!(
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.is_success()
@@ -613,7 +611,7 @@ async fn token_loses_workspace_when_owner_leaves() {
 
 	assert_eq!(
 		401,
-		probe_modify_roles(&setup, &token.token, workspace.id, view)
+		probe_modify_roles(&setup, &token.token, workspace.id, modify)
 			.await
 			.status_code()
 			.as_u16(),

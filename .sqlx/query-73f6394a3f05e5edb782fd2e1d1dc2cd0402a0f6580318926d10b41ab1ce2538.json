@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH inserted AS (INSERT INTO workspace_user_invite_role(invite_id, workspace_id, role_id, scope_id) SELECT $1, $2, UNNEST($3::UUID[]), UNNEST($4::UUID[]) ON CONFLICT (invite_id, role_id, scope_id) DO NOTHING RETURNING role_id, scope_id) SELECT role_permission.permission_id AS \"permission_id!\", inserted.scope_id AS \"scope_id!\" FROM inserted INNER JOIN role_permission ON role_permission.role_id = inserted.role_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "permission_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "role_permission",
+            "name": "permission_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "scope_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "workspace_user_invite_role",
+            "name": "scope_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "73f6394a3f05e5edb782fd2e1d1dc2cd0402a0f6580318926d10b41ab1ce2538"
+}

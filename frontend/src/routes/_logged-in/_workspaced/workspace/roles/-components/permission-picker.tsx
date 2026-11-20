@@ -1,5 +1,6 @@
 import { createEffect, createMemo, createSignal, For, JSX, on, Show, Suspense, untrack } from "solid-js";
-import { Checkbox } from "~/components";
+import { Checkbox, Tooltip } from "~/components";
+import { useGrantCeiling } from "~/hooks";
 import { usePermissionsQuery } from "~/hooks/fetch";
 import { parseCamelCase, parsePermissionName, workspaceLevelResourceTypes } from "~/utils/func";
 
@@ -23,6 +24,11 @@ interface PermissionPickerProps {
 	onChange: (next: Set<string>) => void;
 	/** Render read-only: checkboxes disabled, nothing toggleable. */
 	disabled?: boolean;
+	/**
+	 * The permissions the saved role grants. These stay toggleable whether or not
+	 * the user holds them, since only a permission new to the role is checked.
+	 */
+	saved?: ReadonlySet<string>;
 	/**
 	 * Changes when the permissions come from the server — on load, and on the
 	 * refetch after a save. Granted-first ordering is recomputed only then, so the
@@ -78,6 +84,36 @@ const Pill = (props: {
 	</button>
 );
 
+/**
+ * A permission's checkbox card. A locked one is a permission the user can't add
+ * to a role, shown disabled with the reason on hover rather than hidden.
+ */
+const PermissionCheckbox = (props: {
+	label: string;
+	checked: () => boolean;
+	disabled?: boolean;
+	locked: boolean;
+	onChange: () => void;
+}) => (
+	<Show
+		when={props.locked}
+		fallback={
+			<Checkbox
+				size="sm"
+				class={CHECKBOX_CARD_CLASS}
+				label={props.label}
+				checked={props.checked}
+				disabled={props.disabled}
+				onChange={() => props.onChange()}
+			/>
+		}
+	>
+		<Tooltip class="w-full" content="You don't hold this permission across the whole workspace">
+			<Checkbox size="sm" class={CHECKBOX_CARD_CLASS} label={props.label} checked={props.checked} disabled />
+		</Tooltip>
+	</Show>
+);
+
 /** Placeholder shown in a column that has nothing to offer for the current selection. */
 const ColumnHint = (props: { children: JSX.Element }) => (
 	<span class="text-grey text-xs italic px-1">{props.children}</span>
@@ -100,6 +136,7 @@ const PermissionPicker = (props: PermissionPickerProps) => {
 	const [selectedResourceType, setSelectedResourceType] = createSignal<string>("");
 
 	const permissionsQuery = usePermissionsQuery(() => props.workspaceId);
+	const ceiling = useGrantCeiling();
 	const permissions = () => permissionsQuery.data?.permissions ?? [];
 
 	const resourceTypes = createMemo(() =>
@@ -220,8 +257,16 @@ const PermissionPicker = (props: PermissionPickerProps) => {
 		return granted > 0 ? String(granted) : undefined;
 	};
 
+	/** A permission the user can't add: not in the role, and not held across the whole workspace. */
+	const isLocked = (permissionId: string | undefined) =>
+		!!permissionId &&
+		!props.disabled &&
+		!props.selected.has(permissionId) &&
+		!props.saved?.has(permissionId) &&
+		!ceiling.holdsEverywhere(permissionId);
+
 	const togglePermission = (permissionId: string | undefined) => {
-		if (!permissionId || props.disabled) return;
+		if (!permissionId || props.disabled || isLocked(permissionId)) return;
 
 		const next = new Set(props.selected);
 		if (next.has(permissionId)) next.delete(permissionId);
@@ -233,6 +278,11 @@ const PermissionPicker = (props: PermissionPickerProps) => {
 
 	return (
 		<Suspense fallback={<div class="text-gray-400 text-sm">Loading permissions...</div>}>
+			<Show when={ceiling.isLimited() && !props.disabled}>
+				<p class="text-grey text-xs">
+					You can only add permissions you hold across the whole workspace. The rest are greyed out.
+				</p>
+			</Show>
 			<div class={`flex flex-col md:flex-row gap-4 ${props.class || ""}`}>
 				<Column heading="Resource Type">
 					<For each={resourceTypeCards()}>
@@ -250,12 +300,11 @@ const PermissionPicker = (props: PermissionPickerProps) => {
 									  for the real click and once for the synthetic click the label
 									  dispatches on its input.
 									*/
-									<Checkbox
-										size="sm"
-										class={CHECKBOX_CARD_CLASS}
+									<PermissionCheckbox
 										label={parseCamelCase(card.resourceType)}
 										checked={() => isWorkspaceLevelGranted(card.resourceType)}
 										disabled={props.disabled}
+										locked={isLocked(workspaceLevelPermissionId(card.resourceType))}
 										onChange={() => {
 											setSelectedResourceType(card.resourceType);
 											togglePermission(workspaceLevelPermissionId(card.resourceType));
@@ -282,12 +331,11 @@ const PermissionPicker = (props: PermissionPickerProps) => {
 						>
 							<For each={actions()}>
 								{(action) => (
-									<Checkbox
-										size="sm"
-										class={CHECKBOX_CARD_CLASS}
+									<PermissionCheckbox
 										label={parseCamelCase(action)}
 										checked={() => isActionGranted(selectedResourceType(), action)}
 										disabled={props.disabled}
+										locked={isLocked(permissionIdFor(selectedResourceType(), action))}
 										onChange={() =>
 											togglePermission(permissionIdFor(selectedResourceType(), action))
 										}

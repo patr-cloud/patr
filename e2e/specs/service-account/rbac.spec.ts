@@ -207,7 +207,7 @@ test.describe('service account > RBAC [UI]', () => {
 	test('a creator who cannot view it is sent to the list', async ({ browser, api }) => {
 		await using owner = await createUserWithWorkspace(api);
 		const permissions = await Promise.all(
-			['serviceAccount::create', 'viewRoles'].map((name) =>
+			['serviceAccount::create', 'viewRoles', 'runner::view'].map((name) =>
 				getPermissionId(api, owner.accessToken, owner.workspaceId, owner.clientIp, name),
 			),
 		);

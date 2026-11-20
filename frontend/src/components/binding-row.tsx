@@ -3,6 +3,9 @@ import { FiX } from "solid-icons/fi";
 import InputDropdown, { InputDropdownOption } from "./input-dropdown";
 import ScopePicker from "./scope-picker";
 import type { Binding } from "./binding-rows";
+import { useGrantCeiling } from "~/hooks";
+import { useRoleInfoQuery } from "~/hooks/fetch";
+import { scopeResources } from "~/utils/scope";
 
 /** Columns shared by the add row and every table row, so they line up. */
 export const BINDING_GRID =
@@ -106,6 +109,21 @@ const RowEditor = (props: BindingRowProps) => {
 		return current.scopeType === "resources" && current.resources.length === 0;
 	};
 
+	// Only what the edit adds is checked: resources the row already had stay as they were.
+	const ceiling = useGrantCeiling();
+	const roleInfoQuery = useRoleInfoQuery(
+		() => props.scopeRoleId(subjectId()),
+		() => props.workspaceId
+	);
+	const canGrant = () => {
+		if (!roleInfoQuery.isSuccess || roleInfoQuery.data.id !== props.scopeRoleId(subjectId())) return true;
+		const kept = subjectId() === initial.subjectId ? scopeResources(initial.scope, props.workspaceId) : [];
+		return ceiling.canGrant(
+			roleInfoQuery.data.permissions,
+			scopeResources(scope(), props.workspaceId).filter((resourceId) => !kept.includes(resourceId))
+		);
+	};
+
 	const done = () => {
 		const next = { subjectId: subjectId(), scope: scope() };
 		if (JSON.stringify(next) === JSON.stringify(initial)) props.onCancel();
@@ -138,7 +156,7 @@ const RowEditor = (props: BindingRowProps) => {
 				<button
 					type="button"
 					onClick={done}
-					disabled={isEmptyResourceScope()}
+					disabled={isEmptyResourceScope() || !canGrant()}
 					class="text-primary text-sm transition-colors cursor-pointer disabled:text-disabled disabled:cursor-not-allowed"
 				>
 					Done
@@ -152,6 +170,12 @@ const RowEditor = (props: BindingRowProps) => {
 					<FiX size={14} />
 				</button>
 			</div>
+			<Show when={!canGrant()}>
+				<p class="col-span-full text-warning text-xs">
+					You can't grant this role here because it includes permissions you don't hold yourself. Pick
+					specific resources you have them on, or another role.
+				</p>
+			</Show>
 		</>
 	);
 };

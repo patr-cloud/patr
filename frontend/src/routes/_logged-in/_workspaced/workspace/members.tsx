@@ -20,6 +20,7 @@ import {
 	createAuthenticatedAction,
 	createPaginationState,
 	useIsAllowed,
+	GRANT_CEILING_MESSAGE,
 	recoverFromOutOfBounds,
 	paginationSearch,
 } from "~/hooks";
@@ -216,7 +217,12 @@ const ManageWorkspace = () => {
 				{ method: "POST", body: JSON.stringify(body) }
 			);
 			if (!response.ok) {
-				toast(response.data.error || "Failed to update roles", "error");
+				toast(
+					response.data.error === "grantExceedsPermissions"
+						? GRANT_CEILING_MESSAGE
+						: response.data.error || "Failed to update roles",
+					"error"
+				);
 				return;
 			}
 			toast("Roles updated successfully", "success");
@@ -228,7 +234,12 @@ const ManageWorkspace = () => {
 				{ method: "PATCH", body: JSON.stringify(body) }
 			);
 			if (!response.ok) {
-				toast(response.data.error || "Failed to update invite", "error");
+				toast(
+					response.data.error === "grantExceedsPermissions"
+						? GRANT_CEILING_MESSAGE
+						: response.data.error || "Failed to update invite",
+					"error"
+				);
 				return;
 			}
 			toast("Invite updated", "success");
@@ -282,7 +293,12 @@ const ManageWorkspace = () => {
 		);
 
 		if (!response.ok) {
-			toast("Failed to resend invite", "error");
+			toast(
+				response.data.error === "grantExceedsPermissions"
+					? "You can only resend an invite if you hold every permission its roles give. Ask someone with that access to resend it."
+					: "Failed to resend invite",
+				"error"
+			);
 			return;
 		}
 

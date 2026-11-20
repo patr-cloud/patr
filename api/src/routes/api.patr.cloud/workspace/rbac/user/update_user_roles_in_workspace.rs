@@ -1,7 +1,7 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use axum::http::StatusCode;
-use models::api::workspace::rbac::user::*;
+use models::{api::workspace::rbac::user::*, rbac::WorkspacePermission};
 
 use crate::{models::permissions, prelude::*};
 
@@ -99,31 +99,46 @@ pub async fn update_user_roles_in_workspace(
 	.execute(&mut **database)
 	.await?;
 
-	query!(
+	// Joined to the permissions these bindings grant, to check the caller holds them.
+	let granted = query!(
 		r#"
-		INSERT INTO
-			role_binding(
-				id,
-				workspace_id,
-				actor_id,
+		WITH inserted AS (
+			INSERT INTO
+				role_binding(
+					id,
+					workspace_id,
+					actor_id,
+					role_id,
+					scope_id,
+					created,
+					created_by
+				)
+			SELECT
+				gen_random_uuid(),
+				$1,
+				$2,
+				requested.role_id,
+				requested.scope_id,
+				NOW(),
+				$5
+			FROM
+				UNNEST($3::UUID[], $4::UUID[]) AS requested(role_id, scope_id)
+			ON CONFLICT
+				(actor_id, role_id, scope_id)
+			DO NOTHING
+			RETURNING
 				role_id,
-				scope_id,
-				created,
-				created_by
-			)
+				scope_id
+		)
 		SELECT
-			gen_random_uuid(),
-			$1,
-			$2,
-			requested.role_id,
-			requested.scope_id,
-			NOW(),
-			$5
+			role_permission.permission_id AS "permission_id!",
+			inserted.scope_id AS "scope_id!"
 		FROM
-			UNNEST($3::UUID[], $4::UUID[]) AS requested(role_id, scope_id)
-		ON CONFLICT
-			(actor_id, role_id, scope_id)
-		DO NOTHING;
+			inserted
+		INNER JOIN
+			role_permission
+		ON
+			role_permission.role_id = inserted.role_id;
 		"#,
 		workspace_id,
 		&actor_id,
@@ -131,7 +146,7 @@ pub async fn update_user_roles_in_workspace(
 		&scope_ids as _,
 		&actor_data.id,
 	)
-	.execute(&mut **database)
+	.fetch_all(&mut **database)
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
@@ -143,6 +158,28 @@ pub async fn update_user_roles_in_workspace(
 		}
 		other => ErrorType::server_error(other),
 	})?;
+
+	if !actor_data
+		.permissions
+		.get(&workspace_id)
+		.is_some_and(|held| {
+			held.is_superset_of(
+				&WorkspacePermission::Member {
+					permissions: granted
+						.iter()
+						.fold(BTreeMap::new(), |mut permissions, row| {
+							permissions
+								.entry(row.permission_id)
+								.or_insert_with(BTreeSet::new)
+								.insert(row.scope_id);
+							permissions
+						}),
+				},
+				workspace_id,
+			)
+		}) {
+		return Err(ErrorType::GrantExceedsPermissions);
+	}
 
 	info!("User's roles updated. Marking cached permissions stale");
 

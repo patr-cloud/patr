@@ -5,6 +5,7 @@ use crate::prelude::*;
 pub mod container_registry;
 pub mod deployment;
 pub mod domain;
+pub mod grant;
 pub mod managed_url;
 pub mod membership;
 pub mod rbac;

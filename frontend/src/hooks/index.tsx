@@ -3,6 +3,7 @@ import { useAuthState, useLastWorkspaceId, useUserInfo } from "./state-hooks";
 import useIsAllowed from "./is-allowed";
 import useIsMounted from "./is-mounted";
 import { useGetPermissions } from "./is-allowed";
+import useGrantCeiling, { GRANT_CEILING_MESSAGE, ROLE_CEILING_MESSAGE } from "./grant-ceiling";
 
 export {
 	useClickOutside,
@@ -12,6 +13,9 @@ export {
 	useIsAllowed,
 	useIsMounted,
 	useGetPermissions,
+	useGrantCeiling,
+	GRANT_CEILING_MESSAGE,
+	ROLE_CEILING_MESSAGE,
 };
 export { createAsyncAction, createAuthenticatedAction, createFormAction, createLoggedInAction } from "./actions";
 export type { AuthenticatedActionContext, LoggedInActionContext } from "./actions";
