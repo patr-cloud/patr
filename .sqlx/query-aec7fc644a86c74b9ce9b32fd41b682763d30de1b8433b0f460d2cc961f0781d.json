@@ -1,0 +1,160 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url.id, managed_url.sub_domain, managed_url.domain_id, managed_url.path, managed_url.url_type AS \"url_type: ManagedUrlTypeDiscriminant\", managed_url.deployment_id, managed_url.port, managed_url.url, managed_url_custom_hostname.is_active, managed_url.permanent_redirect, managed_url.http_only FROM managed_url INNER JOIN managed_url_custom_hostname ON managed_url.sub_domain = managed_url_custom_hostname.sub_domain AND managed_url.domain_id = managed_url_custom_hostname.domain_id WHERE managed_url.id = $1 AND managed_url.workspace_id = $2 AND managed_url.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "sub_domain",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "sub_domain"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "domain_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "domain_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "path",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "url_type: ManagedUrlTypeDiscriminant",
+        "type_info": {
+          "Custom": {
+            "name": "managed_url_type",
+            "kind": {
+              "Enum": [
+                "proxy_to_deployment",
+                "proxy_url",
+                "redirect"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "url_type"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "deployment_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "deployment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "port",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "port"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "url",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "is_active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url_custom_hostname",
+            "name": "is_active"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "permanent_redirect",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "permanent_redirect"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "http_only",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "http_only"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "aec7fc644a86c74b9ce9b32fd41b682763d30de1b8433b0f460d2cc961f0781d"
+}
