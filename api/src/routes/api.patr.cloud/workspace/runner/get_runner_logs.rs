@@ -77,7 +77,13 @@ pub async fn get_runner_logs(
 					"{{runner_id=\"{}\", source=\"runner\"}}{}",
 					runner_id,
 					search
-						.map(|search| format!(" |= `{}`", search))
+						.map(|search| format!(
+							" |= \"{}\"",
+							search
+								.replace('\\', "\\\\")
+								.replace('"', "\\\"")
+								.replace('\n', "\\n")
+						))
 						.unwrap_or_default()
 				),
 			),

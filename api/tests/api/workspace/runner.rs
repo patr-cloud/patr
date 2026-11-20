@@ -2049,3 +2049,117 @@ async fn closing_an_old_runner_connection_keeps_a_newer_one_connected() {
 		"the old connection shouldn't touch the newer one's lock"
 	);
 }
+
+/// The search text is matched literally, whatever it contains: a backtick, a
+/// double quote or a backslash can't end the LogQL string and add stages to
+/// the query.
+#[tokio::test]
+async fn get_runner_logs_search_is_literal() {
+	use api::routes::loki_patr_cloud::models::{EntryAdapter, PushRequest, StreamAdapter};
+	use prost::Message as _;
+
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+
+	let now = time::OffsetDateTime::now_utc().unix_timestamp();
+	let push_request = PushRequest {
+		streams: vec![StreamAdapter {
+			labels: format!(
+				r#"{{runner_id="{}", source="runner", workspace_id="{}"}}"#,
+				runner.id, workspace.id,
+			),
+			entries: vec![
+				EntryAdapter {
+					timestamp: Some(prost_types::Timestamp {
+						seconds: now,
+						nanos: 0,
+					}),
+					line: "normal log message".to_string(),
+				},
+				EntryAdapter {
+					timestamp: Some(prost_types::Timestamp {
+						seconds: now + 1,
+						nanos: 0,
+					}),
+					line: r#"tick ` quote " slash \ end"#.to_string(),
+				},
+			],
+			hash: 0,
+		}],
+	};
+	let encoded = push_request.encode_to_vec();
+	let compressed = snap::raw::Encoder::new()
+		.compress_vec(&encoded)
+		.expect("snappy compress failed");
+
+	let loki_url = format!("{}/loki/api/v1/push", setup.upstream_loki_url());
+	let push_resp = reqwest::Client::new()
+		.post(&loki_url)
+		.header("Content-Type", "application/x-protobuf")
+		.header("X-Scope-OrgID", workspace.id.to_string())
+		.body(compressed)
+		.send()
+		.await
+		.expect("failed to push to Loki");
+
+	assert!(
+		push_resp.status().is_success(),
+		"Loki push failed: {}",
+		push_resp.text().await.unwrap_or_default()
+	);
+
+	tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+	for (search, expected) in [
+		(r#"` quote " slash \ end"#, 1),
+		("normal log", 1),
+		("tick` |= `quote", 0),
+		(r#"tick" |= "quote"#, 0),
+		(r#"tick\"#, 0),
+		("tick\nquote", 0),
+	] {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<GetRunnerLogsRequest>::builder()
+					.path(GetRunnerLogsPath {
+						workspace_id: workspace.id,
+						runner_id: runner.id,
+					})
+					.query(GetRunnerLogsQuery {
+						end_time: None,
+						limit: None,
+						search: Some(search.to_string()),
+					})
+					.headers(GetRunnerLogsRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+
+		assert_eq!(
+			response.status_code(),
+			StatusCode::OK,
+			"expected 200 when searching for {search:?}"
+		);
+
+		let logs = response
+			.json::<ApiSuccessResponseBody<GetRunnerLogsResponse>>()
+			.response
+			.logs;
+		assert_eq!(
+			expected,
+			logs.len(),
+			"searching for {search:?} returned {logs:?}"
+		);
+		assert!(
+			logs.iter().all(|l| l.log.contains(search)),
+			"searching for {search:?} returned {logs:?}"
+		);
+	}
+}

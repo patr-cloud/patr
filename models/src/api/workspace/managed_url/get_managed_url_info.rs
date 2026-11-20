@@ -1,0 +1,32 @@
+use super::ManagedUrl;
+use crate::prelude::*;
+
+macros::declare_api_endpoint!(
+	/// Route to get the information of a managed URL in a workspace
+	GetManagedURLInfo,
+	GET "/workspace/{workspace_id}/managed-url/{managed_url_id}" {
+		/// The workspace ID of the user
+		pub workspace_id: Uuid,
+		/// The ID of the managed URL to get the information of
+		pub managed_url_id: Uuid,
+	},
+	request_headers = {
+		/// Token used to authorize user
+		pub authorization: BearerToken,
+		/// The user-agent used to access this API
+		pub user_agent: UserAgent,
+	},
+	authentication = {
+		AppAuthentication::<Self>::ResourcePermissionAuthenticator {
+			extract_resource_id: |req| req.path.managed_url_id,
+			extract_workspace_id: |req| req.path.workspace_id,
+			permission: Permission::ManagedURL(ManagedURLPermission::View),
+		}
+	},
+	response = {
+		/// The information of the managed URL
+		pub managed_url: WithId<ManagedUrl>,
+	},
+	client_type = [ApiToken, ServiceAccount, WebLogin],
+	audit_log = NoAuditLogger,
+);

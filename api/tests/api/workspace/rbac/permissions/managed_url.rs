@@ -229,6 +229,122 @@ async fn managed_url_delete_include_grants_only_listed_resource() {
 }
 
 #[tokio::test]
+async fn managed_url_view_include_grants_info_only_for_listed_resource() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	setup.mark_test_domain_verified(domain.id).await;
+	let url1 = setup
+		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
+		.await;
+	let url2 = setup
+		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
+		.await;
+
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::View))],
+		)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_grants(
+			&admin.access_token,
+			workspace.id,
+			grants(role.id, &[url1]),
+		)
+		.await;
+
+	// url2 — should fail
+	let r2 = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetManagedURLInfoRequest>::builder()
+				.path(GetManagedURLInfoPath {
+					workspace_id: workspace.id,
+					managed_url_id: url2,
+				})
+				.headers(GetManagedURLInfoRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		r2.status_code().is_client_error(),
+		"url2 should NOT be viewable"
+	);
+
+	// url1 — should succeed
+	let r1 = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetManagedURLInfoRequest>::builder()
+				.path(GetManagedURLInfoPath {
+					workspace_id: workspace.id,
+					managed_url_id: url1,
+				})
+				.headers(GetManagedURLInfoRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetManagedURLInfoResponse>>();
+	assert_eq!(url1, r1.response.managed_url.id);
+}
+
+/// Another managedURL permission does not imply View: a delete-only member
+/// cannot read a managed URL's info.
+#[tokio::test]
+async fn managed_url_delete_does_not_grant_info() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = setup
+		.create_test_domain(&admin.access_token, workspace.id)
+		.await;
+	setup.mark_test_domain_verified(domain.id).await;
+	let url_id = setup
+		.create_test_managed_url(&admin.access_token, workspace.id, domain.id)
+		.await;
+
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ManagedURL(ManagedURLPermission::Delete))],
+		)
+		.await;
+	let user_b = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetManagedURLInfoRequest>::builder()
+				.path(GetManagedURLInfoPath {
+					workspace_id: workspace.id,
+					managed_url_id: url_id,
+				})
+				.headers(GetManagedURLInfoRequestHeaders {
+					authorization: user_b.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+	assert!(
+		response.status_code().is_client_error(),
+		"delete-only member should not be able to get info (requires managedURL::view)"
+	);
+}
+
+#[tokio::test]
 async fn managed_url_delete_grant_omitting_a_resource_denies_it() {
 	let setup = setup().await.expect("failed to setup test server");
 	let admin = setup.create_test_user().await;

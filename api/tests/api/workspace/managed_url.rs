@@ -1593,3 +1593,191 @@ async fn managed_url_unauthorized() {
 
 	assert!(response.status_code().is_client_error());
 }
+
+#[tokio::test]
+async fn get_managed_url_info_works() {
+	let setup = setup().await.expect("failed to setup test server");
+	let fixture = mu_fixture(&setup).await;
+
+	let sub_domain = rand_subdomain();
+	let url_id = send_create_mu(
+		&setup,
+		&fixture.user.access_token,
+		fixture.ws,
+		proxy_body(
+			fixture.domain,
+			fixture.deployment,
+			80,
+			sub_domain.clone(),
+			"/some/path",
+		),
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>()
+	.response
+	.id
+	.id;
+
+	let url = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetManagedURLInfoRequest>::builder()
+				.path(GetManagedURLInfoPath {
+					workspace_id: fixture.ws,
+					managed_url_id: url_id,
+				})
+				.headers(GetManagedURLInfoRequestHeaders {
+					authorization: fixture.user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetManagedURLInfoResponse>>()
+		.response
+		.managed_url;
+
+	assert_eq!(url.id, url_id);
+	assert_eq!(url.sub_domain, sub_domain);
+	assert_eq!(url.domain_id, fixture.domain);
+	assert_eq!(url.path, "/some/path");
+	assert_eq!(
+		url.url_type,
+		ManagedUrlType::ProxyDeployment {
+			deployment_id: fixture.deployment,
+			port: 80,
+		}
+	);
+
+	let listed = list_mus(&setup, &fixture.user.access_token, fixture.ws).await;
+	assert_eq!(vec![url], listed);
+}
+
+#[tokio::test]
+async fn get_managed_url_info_nonexistent() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetManagedURLInfoRequest>::builder()
+				.path(GetManagedURLInfoPath {
+					workspace_id: workspace.id,
+					managed_url_id: Uuid::nil(),
+				})
+				.headers(GetManagedURLInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"a managed URL that doesn't exist should not be found, got {}",
+		response.status_code()
+	);
+}
+
+/// The authenticator only proves the id is some resource in the workspace, so
+/// the handler has to check that it's a managed URL.
+#[tokio::test]
+async fn get_managed_url_info_refuses_an_id_of_another_type() {
+	let setup = setup().await.expect("failed to setup test server");
+	let fixture = mu_fixture(&setup).await;
+
+	for id in [fixture.deployment, fixture.domain, fixture.ws] {
+		setup
+			.make_web_dashboard_call(
+				ApiRequest::<GetManagedURLInfoRequest>::builder()
+					.path(GetManagedURLInfoPath {
+						workspace_id: fixture.ws,
+						managed_url_id: id,
+					})
+					.headers(GetManagedURLInfoRequestHeaders {
+						authorization: fixture.user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await
+			.assert_status(StatusCode::NOT_FOUND);
+	}
+}
+
+#[tokio::test]
+async fn get_managed_url_info_cross_workspace() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace_a = setup.create_test_workspace(&user.access_token).await;
+	let workspace_b = setup.create_test_workspace(&user.access_token).await;
+	let domain = verified_domain(&setup, &user.access_token, workspace_a.id).await;
+	let url_id = setup
+		.create_test_managed_url(&user.access_token, workspace_a.id, domain)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetManagedURLInfoRequest>::builder()
+				.path(GetManagedURLInfoPath {
+					workspace_id: workspace_b.id,
+					managed_url_id: url_id,
+				})
+				.headers(GetManagedURLInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"managed URL in workspace A should not be reachable via workspace B's path"
+	);
+}
+
+#[tokio::test]
+async fn get_managed_url_info_denied_without_view_permission() {
+	let setup = setup().await.expect("failed to setup test server");
+	let admin = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&admin.access_token).await;
+	let domain = verified_domain(&setup, &admin.access_token, workspace.id).await;
+	let url_id = setup
+		.create_test_managed_url(&admin.access_token, workspace.id, domain)
+		.await;
+
+	// A member with only ViewRoles — no ManagedURL::View.
+	let role = setup
+		.create_role_with_permissions(
+			&admin.access_token,
+			workspace.id,
+			vec![setup.get_permission_id(Permission::ViewRoles)],
+		)
+		.await;
+	let member = setup
+		.add_user_to_workspace_with_role(&admin.access_token, workspace.id, role.id)
+		.await;
+
+	let response = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetManagedURLInfoRequest>::builder()
+				.path(GetManagedURLInfoPath {
+					workspace_id: workspace.id,
+					managed_url_id: url_id,
+				})
+				.headers(GetManagedURLInfoRequestHeaders {
+					authorization: member.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await;
+
+	assert!(
+		response.status_code().is_client_error(),
+		"a member without ManagedURL::View should not be able to get a managed URL, got {}",
+		response.status_code()
+	);
+}
