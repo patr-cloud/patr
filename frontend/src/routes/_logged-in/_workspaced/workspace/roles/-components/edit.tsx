@@ -5,7 +5,7 @@ import { createEffect, createMemo, createSignal, Show, Suspense } from "solid-js
 import { useParams } from "@tanstack/solid-router";
 import { httpRequest } from "~/utils/http-request";
 import { UpdateRoleRequest } from "~/bindings/UpdateRoleRequest";
-import { createLoggedInAction } from "~/hooks";
+import { createLoggedInAction, ROLE_CEILING_MESSAGE } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { useRoleInfoQuery } from "~/hooks/fetch";
 import { roleKeys } from "~/hooks/query-keys";
@@ -64,7 +64,12 @@ const EditPermissions = () => {
 
 		if (!response.ok) {
 			console.error("Failed to update role:", response.data.error);
-			toast(response.data.error || "Failed to update role", "error");
+			toast(
+				response.data.error === "grantExceedsPermissions"
+					? ROLE_CEILING_MESSAGE
+					: response.data.error || "Failed to update role",
+				"error"
+			);
 			return;
 		}
 
@@ -167,6 +172,7 @@ const EditPermissions = () => {
 						selected={permissions()}
 						onChange={(next) => setPermissions(next)}
 						disabled={isImmutable()}
+						saved={new Set(roleInfoQuery.data?.permissions ?? [])}
 						// Ticks on load and on the refetch after a save, which is when the
 						// picker re-ranks its columns. Local edits leave it untouched, so
 						// the cards don't move while you work.

@@ -1,8 +1,11 @@
-use std::{collections::BTreeSet, ops::Add};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	ops::Add,
+};
 
 use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
-use models::api::workspace::rbac::user::*;
+use models::{api::workspace::rbac::user::*, rbac::WorkspacePermission};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -145,27 +148,42 @@ pub async fn invite_user_to_workspace(
 		.map(|grant| grant.resource_id)
 		.collect::<Vec<_>>();
 
-	query!(
+	// Joined to the permissions these bindings grant, to check the caller holds them.
+	let granted = query!(
 		r#"
-		INSERT INTO
-			workspace_user_invite_role(
-				invite_id,
-				workspace_id,
+		WITH inserted AS (
+			INSERT INTO
+				workspace_user_invite_role(
+					invite_id,
+					workspace_id,
+					role_id,
+					scope_id
+				)
+			SELECT
+				$1,
+				$2,
+				UNNEST($3::UUID[]),
+				UNNEST($4::UUID[])
+			RETURNING
 				role_id,
 				scope_id
-			)
+		)
 		SELECT
-			$1,
-			$2,
-			UNNEST($3::UUID[]),
-			UNNEST($4::UUID[]);
+			role_permission.permission_id AS "permission_id!",
+			inserted.scope_id AS "scope_id!"
+		FROM
+			inserted
+		INNER JOIN
+			role_permission
+		ON
+			role_permission.role_id = inserted.role_id;
 		"#,
 		invite_id,
 		workspace_id,
 		&role_ids as _,
 		&scope_ids as _,
 	)
-	.execute(&mut **database)
+	.fetch_all(&mut **database)
 	.await
 	.map_err(|err| match err {
 		sqlx::Error::Database(db_err) if db_err.is_foreign_key_violation() => {
@@ -178,6 +196,28 @@ pub async fn invite_user_to_workspace(
 		}
 		other => ErrorType::server_error(other),
 	})?;
+
+	if !actor_data
+		.permissions
+		.get(&workspace_id)
+		.is_some_and(|held| {
+			held.is_superset_of(
+				&WorkspacePermission::Member {
+					permissions: granted
+						.iter()
+						.fold(BTreeMap::new(), |mut permissions, row| {
+							permissions
+								.entry(row.permission_id)
+								.or_insert_with(BTreeSet::new)
+								.insert(row.scope_id);
+							permissions
+						}),
+				},
+				workspace_id,
+			)
+		}) {
+		return Err(ErrorType::GrantExceedsPermissions);
+	}
 
 	let workspace_name = query!(
 		r#"

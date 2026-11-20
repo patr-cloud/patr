@@ -4,9 +4,10 @@ import Input from "./input";
 import InputDropdown, { InputDropdownOption } from "./input-dropdown";
 import ScopePicker from "./scope-picker";
 import BindingRow, { BINDING_GRID } from "./binding-row";
-import { useResourcesInfoQuery } from "~/hooks/fetch";
+import { useGrantCeiling } from "~/hooks";
+import { useResourcesInfoQuery, useRoleInfoQuery } from "~/hooks/fetch";
 import { ButtonVariant } from "~/utils/color";
-import { Scope } from "~/utils/scope";
+import { Scope, scopeResources } from "~/utils/scope";
 
 /** One binding: who or what is granted, and where it applies. */
 export interface Binding {
@@ -146,6 +147,19 @@ const BindingRows = (props: BindingRowsProps) => {
 		return !!newSubjectId() && (scope.scopeType === "workspace" || scope.resources.length > 0);
 	};
 
+	// The same query the scope picker reads, so this costs no extra request.
+	const ceiling = useGrantCeiling();
+	const newRoleId = () => {
+		const subjectId = newSubjectId();
+		return subjectId ? props.scopeRoleId(subjectId) : "";
+	};
+	const newRoleInfoQuery = useRoleInfoQuery(newRoleId, () => props.workspaceId);
+	const canGrantNew = () => {
+		// Checked through status first so a cold lookup doesn't suspend the table.
+		if (!newRoleInfoQuery.isSuccess || newRoleInfoQuery.data.id !== newRoleId()) return true;
+		return ceiling.canGrant(newRoleInfoQuery.data.permissions, scopeResources(newScope(), props.workspaceId));
+	};
+
 	const add = () => {
 		const subjectId = newSubjectId();
 		if (!subjectId) return;
@@ -198,10 +212,21 @@ const BindingRows = (props: BindingRowsProps) => {
 								)}
 							</Show>
 						</div>
-						<Button type="button" variant={ButtonVariant.Contained} disabled={!canAdd()} onClick={add}>
+						<Button
+							type="button"
+							variant={ButtonVariant.Contained}
+							disabled={!canAdd() || !canGrantNew()}
+							onClick={add}
+						>
 							{props.addLabel ?? "Add"}
 						</Button>
 					</div>
+					<Show when={!canGrantNew()}>
+						<p class="text-warning text-xs">
+							You can't grant this role here because it includes permissions you don't hold yourself. Pick
+							specific resources you have them on, or another role.
+						</p>
+					</Show>
 				</Show>
 
 				<Show

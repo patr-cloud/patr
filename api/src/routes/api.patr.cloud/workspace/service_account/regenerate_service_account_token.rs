@@ -1,5 +1,7 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use axum::http::StatusCode;
-use models::api::workspace::service_account::*;
+use models::{api::workspace::service_account::*, rbac::WorkspacePermission};
 use sha2::{Digest as _, Sha256};
 
 use crate::{models::permissions, prelude::*};
@@ -28,6 +30,48 @@ pub async fn regenerate_service_account_token(
 		mut state,
 	}: AuthenticatedAppRequest<'_, RegenerateServiceAccountTokenRequest>,
 ) -> Result<AppResponse<RegenerateServiceAccountTokenRequest>, ErrorType> {
+	// Joined to the permissions these bindings grant, to check the caller holds them.
+	let granted = query!(
+		r#"
+		SELECT
+			role_permission.permission_id,
+			role_binding.scope_id
+		FROM
+			role_binding
+		INNER JOIN
+			role_permission
+		ON
+			role_permission.role_id = role_binding.role_id
+		WHERE
+			role_binding.actor_id = $1;
+		"#,
+		service_account_id,
+	)
+	.fetch_all(&mut **database)
+	.await?;
+
+	if !actor_data
+		.permissions
+		.get(&workspace_id)
+		.is_some_and(|held| {
+			held.is_superset_of(
+				&WorkspacePermission::Member {
+					permissions: granted
+						.iter()
+						.fold(BTreeMap::new(), |mut permissions, row| {
+							permissions
+								.entry(row.permission_id)
+								.or_insert_with(BTreeSet::new)
+								.insert(row.scope_id);
+							permissions
+						}),
+				},
+				workspace_id,
+			)
+		}) {
+		return Err(ErrorType::GrantExceedsPermissions);
+	}
+
 	let token = permissions::generate_service_account_token();
 	let token_hash = hex::encode(Sha256::digest(&token));
 

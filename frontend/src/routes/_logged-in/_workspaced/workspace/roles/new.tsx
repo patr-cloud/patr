@@ -3,7 +3,7 @@ import { Title } from "@solidjs/meta";
 import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@tanstack/solid-router";
 import { Alert, Button, ButtonVariant, Input, PageContainer, PageContainerBody, useToast } from "~/components";
-import { createAuthenticatedAction } from "~/hooks";
+import { createAuthenticatedAction, ROLE_CEILING_MESSAGE } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { CreateNewRoleRequest } from "~/bindings/CreateNewRoleRequest";
 import { CreateNewRoleResponse } from "~/bindings/CreateNewRoleResponse";
@@ -55,7 +55,12 @@ const CreateRoles = () => {
 
 		if (!response.ok) {
 			console.error("Failed to create role:", response.data.error);
-			toast(response.data.error || "Failed to create role", "error");
+			toast(
+				response.data.error === "grantExceedsPermissions"
+					? ROLE_CEILING_MESSAGE
+					: response.data.error || "Failed to create role",
+				"error"
+			);
 			return;
 		}
 

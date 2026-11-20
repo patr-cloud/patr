@@ -20,7 +20,7 @@ import {
 	useToast,
 } from "~/components";
 import type { Binding } from "~/components/binding-rows";
-import { createFormAction, useGetPermissions, useIsAllowed } from "~/hooks";
+import { createFormAction, useGetPermissions, useIsAllowed, GRANT_CEILING_MESSAGE } from "~/hooks";
 import { useRolePicker } from "~/hooks/fetch";
 import { roleKeys, serviceAccountKeys } from "~/hooks/query-keys";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -114,6 +114,8 @@ const CreateServiceAccount = () => {
 				setAccessError(
 					"One of the resources these roles are scoped to was deleted. Remove it from the scope and try again."
 				);
+			} else if (err === "grantExceedsPermissions") {
+				setAccessError(GRANT_CEILING_MESSAGE);
 			} else {
 				toast("Failed to create the service account. Please try again.", "error");
 			}

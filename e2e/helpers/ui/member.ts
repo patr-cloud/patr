@@ -61,8 +61,13 @@ async function pickFromDropdown(page: Page, trigger: ReturnType<Page['locator']>
  * Scope is left at the default, the entire workspace.
  */
 export async function selectBindingRole(page: Page, roleName: string): Promise<void> {
-	await pickFromDropdown(page, page.getByPlaceholder('Select a role').first(), roleName);
+	await pickBindingRole(page, roleName);
 	await page.getByRole('button', { name: /^Add role$/ }).click();
+}
+
+/** Picks a role in the add row without adding it, for asserting on the row's state. */
+export async function pickBindingRole(page: Page, roleName: string): Promise<void> {
+	await pickFromDropdown(page, page.getByPlaceholder('Select a role').first(), roleName);
 }
 
 /** A person's row in the list, located by email — invites and members alike. */

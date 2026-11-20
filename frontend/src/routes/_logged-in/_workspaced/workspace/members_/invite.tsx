@@ -15,7 +15,7 @@ import {
 	useToast,
 } from "~/components";
 import type { Binding } from "~/components/binding-rows";
-import { createFormAction, useIsAllowed } from "~/hooks";
+import { createFormAction, useIsAllowed, GRANT_CEILING_MESSAGE } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { scopeResources } from "~/utils/scope";
 import { useRolePicker, useWorkspaceInfoQuery } from "~/hooks/fetch";
@@ -85,7 +85,9 @@ const InviteMember = () => {
 						? "That email already belongs to a member of this workspace"
 						: err === "inviteAlreadyExists"
 							? "That email has already been invited — edit or revoke it on the members page"
-							: "Failed to send invite",
+							: err === "grantExceedsPermissions"
+								? GRANT_CEILING_MESSAGE
+								: "Failed to send invite",
 					"error"
 				);
 				return;

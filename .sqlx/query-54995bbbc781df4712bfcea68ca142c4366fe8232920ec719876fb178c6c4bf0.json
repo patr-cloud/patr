@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO role_permission(role_id, permission_id) SELECT $1, UNNEST($2::UUID[]) ON CONFLICT (role_id, permission_id) DO NOTHING RETURNING permission_id;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "permission_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "role_permission",
+            "name": "permission_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "54995bbbc781df4712bfcea68ca142c4366fe8232920ec719876fb178c6c4bf0"
+}

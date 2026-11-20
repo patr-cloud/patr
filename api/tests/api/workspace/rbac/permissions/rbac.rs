@@ -37,9 +37,9 @@ async fn rbac_modify_roles_grants_access() {
 	let (_admin, ws_id, user_b) =
 		setup_permission_test(&setup, vec![(Permission::ModifyRoles, all())]).await;
 
-	// Role creation rejects empty permissions with `WrongParameters`, so seed
-	// one harmless permission.
-	let permissions = vec![setup.get_permission_id(Permission::ViewRoles)];
+	// Role creation rejects empty permissions with `WrongParameters`, and a
+	// permission its author doesn't hold, so seed the one they do.
+	let permissions = vec![setup.get_permission_id(Permission::ModifyRoles)];
 
 	let response = setup
 		.make_web_dashboard_call(

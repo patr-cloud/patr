@@ -32,7 +32,14 @@ import {
 	useToast,
 } from "~/components";
 import type { Binding } from "~/components/binding-rows";
-import { createAuthenticatedAction, createFormAction, useGetPermissions, useIsAllowed, useIsMounted } from "~/hooks";
+import {
+	createAuthenticatedAction,
+	createFormAction,
+	useGetPermissions,
+	useIsAllowed,
+	useIsMounted,
+	GRANT_CEILING_MESSAGE,
+} from "~/hooks";
 import { useAllRolesQuery, useServiceAccountQuery } from "~/hooks/fetch";
 import { roleKeys, serviceAccountKeys } from "~/hooks/query-keys";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
@@ -197,6 +204,8 @@ const ServiceAccountForm = (props: { serviceAccountId: string }) => {
 				setAccessError(
 					"One of the resources these roles are scoped to was deleted. Remove it from the scope and try again."
 				);
+			} else if (err === "grantExceedsPermissions") {
+				setAccessError(GRANT_CEILING_MESSAGE);
 			} else {
 				toast("Failed to update the service account. Please try again.", "error");
 			}
@@ -428,7 +437,12 @@ const ServiceAccountDetail = () => {
 			);
 
 			if (!response.ok) {
-				toast("Failed to regenerate the service account's token", "error");
+				toast(
+					response.data.error === "grantExceedsPermissions"
+						? "You can only regenerate this token if you hold every permission the service account has. Ask someone with that access to regenerate it."
+						: "Failed to regenerate the service account's token",
+					"error"
+				);
 				return;
 			}
 

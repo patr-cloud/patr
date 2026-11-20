@@ -1,8 +1,11 @@
-use std::ops::Add;
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	ops::Add,
+};
 
 use argon2::{Algorithm, PasswordHasher, Version, password_hash::generate_salt};
 use axum::http::StatusCode;
-use models::api::workspace::rbac::user::*;
+use models::{api::workspace::rbac::user::*, rbac::WorkspacePermission};
 use time::OffsetDateTime;
 
 use crate::prelude::*;
@@ -55,6 +58,48 @@ pub async fn resend_workspace_invite(
 	else {
 		return Err(ErrorType::InviteNotFound);
 	};
+
+	// Joined to the permissions these bindings grant, to check the caller holds them.
+	let granted = query!(
+		r#"
+		SELECT
+			role_permission.permission_id,
+			workspace_user_invite_role.scope_id
+		FROM
+			workspace_user_invite_role
+		INNER JOIN
+			role_permission
+		ON
+			role_permission.role_id = workspace_user_invite_role.role_id
+		WHERE
+			workspace_user_invite_role.invite_id = $1;
+		"#,
+		invite_id,
+	)
+	.fetch_all(&mut **database)
+	.await?;
+
+	if !actor_data
+		.permissions
+		.get(&workspace_id)
+		.is_some_and(|held| {
+			held.is_superset_of(
+				&WorkspacePermission::Member {
+					permissions: granted
+						.iter()
+						.fold(BTreeMap::new(), |mut permissions, row| {
+							permissions
+								.entry(row.permission_id)
+								.or_insert_with(BTreeSet::new)
+								.insert(row.scope_id);
+							permissions
+						}),
+				},
+				workspace_id,
+			)
+		}) {
+		return Err(ErrorType::GrantExceedsPermissions);
+	}
 
 	let now = OffsetDateTime::now_utc();
 

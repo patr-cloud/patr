@@ -6,7 +6,7 @@ import { createBindingsDraft, type Binding } from "~/components/binding-rows";
 import { RoleBindingGrant } from "~/bindings/RoleBindingGrant";
 import { UpdateUserRolesInWorkspaceRequest } from "~/bindings/UpdateUserRolesInWorkspaceRequest";
 import { useMembersQuery, useRoleBindingsQuery } from "~/hooks/fetch";
-import { useGetPermissions, useIsAllowed } from "~/hooks";
+import { useGetPermissions, useIsAllowed, GRANT_CEILING_MESSAGE } from "~/hooks";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
 import { groupScopes, Scope, scopeResources } from "~/utils/scope";
 import { memberKeys, roleKeys } from "~/hooks/query-keys";
@@ -112,7 +112,7 @@ const UsersAssignedToRole = () => {
 			`${import.meta.env.VITE_BASE_URL}/api/workspace/${wsId}/rbac/user/${userId}`,
 			{ method: "POST", body: JSON.stringify(body) }
 		);
-		return response.ok;
+		return response;
 	};
 
 	const save = async () => {
@@ -155,10 +155,15 @@ const UsersAssignedToRole = () => {
 		const results = await Promise.all(writes.map((w) => writeMemberGrants(wsId, w.userId, w.grants)));
 		setIsSaving(false);
 
-		const failed = results.filter((ok) => !ok).length;
-		if (failed > 0) {
+		const failed = results.filter((response) => !response.ok);
+		if (failed.length > 0) {
 			// Left dirty, so the failed writes can be retried.
-			toast(`Failed to update ${failed} of ${writes.length} members`, "error");
+			toast(
+				failed.some((response) => response.data.error === "grantExceedsPermissions")
+					? GRANT_CEILING_MESSAGE
+					: `Failed to update ${failed.length} of ${writes.length} members`,
+				"error"
+			);
 		} else {
 			toast(writes.length === 1 ? "Member updated" : `${writes.length} members updated`, "success");
 			users.markSaved();
