@@ -91,7 +91,13 @@ pub async fn get_deployment_logs(
 					"{{deployment_id=\"{}\"}}{}",
 					deployment_id,
 					search
-						.map(|search| format!(" |= `{}`", search))
+						.map(|search| format!(
+							" |= \"{}\"",
+							search
+								.replace('\\', "\\\\")
+								.replace('"', "\\\"")
+								.replace('\n', "\\n")
+						))
 						.unwrap_or_default()
 				),
 			),

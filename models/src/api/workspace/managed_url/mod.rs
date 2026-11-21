@@ -8,6 +8,8 @@ use crate::prelude::*;
 mod create_managed_url;
 /// The endpoint to delete a managed URL
 mod delete_managed_url;
+/// The endpoint to get the information of a managed URL
+mod get_managed_url_info;
 /// The endpoint to list all the managed URLs in a workspace
 mod list_managed_url;
 /// The endpoint to update a managed URL
@@ -18,6 +20,7 @@ mod verify_configuration;
 pub use self::{
 	create_managed_url::*,
 	delete_managed_url::*,
+	get_managed_url_info::*,
 	list_managed_url::*,
 	update_managed_url::*,
 	verify_configuration::*,
