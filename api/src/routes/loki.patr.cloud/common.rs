@@ -44,15 +44,16 @@ pub(super) fn serialize_labels(labels: &[(String, String)]) -> String {
 	format!("{{{}}}", inner.join(", "))
 }
 
-/// Validate and rewrite labels for a single stream. Returns an error message
-/// if validation fails.
+/// Validate and rewrite labels for a single stream. Returns `None` if the
+/// stream names a deployment the runner can't push for, so the caller drops
+/// it, and an error only if the deployment couldn't be looked up.
 pub(super) async fn validate_and_rewrite_labels(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
 	labels: &str,
 	runner_id: &Uuid,
 	workspace_id: &Uuid,
-) -> Result<String, String> {
+) -> Result<Option<String>, ErrorType> {
 	let mut pairs = parse_labels(labels);
 
 	// Find and validate deployment_id
@@ -62,20 +63,19 @@ pub(super) async fn validate_and_rewrite_labels(
 		.map(|(_, v)| v.clone());
 
 	if let Some(ref dep_id_str) = deployment_id_value {
-		let deployment_id: Uuid = dep_id_str
-			.parse()
-			.map_err(|_| format!("Invalid deployment_id: {dep_id_str}"))?;
+		let Ok(deployment_id) = dep_id_str.parse::<Uuid>() else {
+			warn!("Dropping a stream from runner `{runner_id}` with a malformed deployment_id");
+			return Ok(None);
+		};
 
 		let owning_runner =
-			super::cache::get_runner_for_deployment(database, redis, &deployment_id)
-				.await
-				.map_err(|e| format!("DB error looking up deployment: {e}"))?
-				.ok_or_else(|| format!("Deployment {deployment_id} not found"))?;
+			super::cache::get_runner_for_deployment(database, redis, &deployment_id).await?;
 
-		if owning_runner != *runner_id {
-			return Err(format!(
-				"Deployment {deployment_id} does not belong to runner {runner_id}"
-			));
+		if owning_runner != Some(*runner_id) {
+			warn!(
+				"Dropping a stream from runner `{runner_id}` for deployment `{deployment_id}`, which isn't on it"
+			);
+			return Ok(None);
 		}
 	}
 
@@ -103,7 +103,7 @@ pub(super) async fn validate_and_rewrite_labels(
 		pairs.push(("source".to_string(), source_value.to_string()));
 	}
 
-	Ok(serialize_labels(&pairs))
+	Ok(Some(serialize_labels(&pairs)))
 }
 
 /// Forward an encoded payload to the upstream Loki instance.

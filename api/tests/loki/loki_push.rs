@@ -1,6 +1,18 @@
 use std::collections::BTreeMap;
 
-use models::rbac::WorkspacePermission;
+use models::{
+	api::workspace::deployment::{
+		GetDeploymentInfoPath,
+		GetDeploymentInfoRequest,
+		GetDeploymentInfoRequestHeaders,
+		GetDeploymentInfoResponse,
+		UpdateDeploymentPath,
+		UpdateDeploymentRequest,
+		UpdateDeploymentRequestHeaders,
+	},
+	rbac::WorkspacePermission,
+	utils::Uuid,
+};
 
 use super::helpers::*;
 use crate::prelude::*;
@@ -323,13 +335,40 @@ async fn loki_push_label_rewriting() {
 	);
 }
 
+/// Push one Loki stream for a deployment as a runner, returning the status.
+async fn push_line(
+	setup: &TestSetup,
+	runner_id: Uuid,
+	token: &str,
+	deployment_id: Uuid,
+	line: &str,
+) -> StatusCode {
+	setup
+		.make_loki_call(
+			http::Method::POST,
+			"/loki/api/v1/push",
+			vec![
+				(http::header::CONTENT_TYPE, "application/x-protobuf"),
+				(http::header::AUTHORIZATION, &basic_auth(&runner_id, token)),
+			],
+			make_loki_push_body(
+				&format!(r#"{{job="test", deployment_id="{deployment_id}"}}"#),
+				&[line],
+			),
+		)
+		.await
+		.status_code()
+}
+
+/// A batch whose only stream names another runner's deployment is dropped
+/// whole: nothing reaches Loki, and the runner gets Loki's success status so it
+/// doesn't retry.
 #[tokio::test]
-async fn loki_push_wrong_deployment_returns_403() {
+async fn loki_push_wrong_deployment_is_dropped() {
 	let setup = setup().await.expect("failed to setup test server");
 	let user = setup.create_test_user().await;
 	let workspace = setup.create_test_workspace(&user.access_token).await;
 
-	// Create two runners, each with a deployment
 	let runner_a = setup
 		.create_test_runner(&user.access_token, workspace.id)
 		.await;
@@ -340,12 +379,77 @@ async fn loki_push_wrong_deployment_returns_403() {
 		.create_test_deployment(&user.access_token, workspace.id, runner_b.id)
 		.await;
 
-	// Runner A tries to push logs with runner B's deployment_id
-	let labels = format!(
-		r#"{{job="test", runner_id="{}", workspace_id="{}", deployment_id="{}"}}"#,
-		runner_a.id, workspace.id, deployment_b.id,
+	let dropped = format!("dropped-{}", random_name(8));
+	assert_eq!(
+		push_line(
+			&setup,
+			runner_a.id,
+			&runner_a.token,
+			deployment_b.id,
+			&dropped
+		)
+		.await,
+		StatusCode::NO_CONTENT,
+		"a push with nothing left to forward should still succeed"
 	);
-	let body = make_loki_push_body(&labels, &["should be rejected"]);
+
+	// The deployment's own runner pushes after, so once its line is in Loki the
+	// dropped one would be too if it had been forwarded.
+	let fence = format!("fence-{}", random_name(8));
+	assert_eq!(
+		push_line(
+			&setup,
+			runner_b.id,
+			&runner_b.token,
+			deployment_b.id,
+			&fence
+		)
+		.await,
+		StatusCode::NO_CONTENT
+	);
+	let logs = wait_for_loki_line(&setup, workspace.id, &fence).await;
+	assert!(logs.contains(&fence), "the allowed push should reach Loki");
+	assert!(
+		!logs.contains(&dropped),
+		"another runner's stream must not reach Loki"
+	);
+}
+
+/// In a mixed batch, only the streams the runner may push reach Loki.
+#[tokio::test]
+async fn loki_push_forwards_only_allowed_streams() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let other_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let other_deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, other_runner.id)
+		.await;
+
+	let own = format!("own-{}", random_name(8));
+	let runner_level = format!("runner-{}", random_name(8));
+	let foreign = format!("foreign-{}", random_name(8));
+	let malformed = format!("malformed-{}", random_name(8));
+	let body = make_loki_push_body_streams(&[
+		(
+			&format!(r#"{{job="test", deployment_id="{}"}}"#, deployment.id),
+			&own,
+		),
+		(r#"{job="test"}"#, &runner_level),
+		(
+			&format!(r#"{{job="test", deployment_id="{}"}}"#, other_deployment.id),
+			&foreign,
+		),
+		(r#"{job="test", deployment_id="not-a-uuid"}"#, &malformed),
+	]);
 
 	let response = setup
 		.make_loki_call(
@@ -355,17 +459,141 @@ async fn loki_push_wrong_deployment_returns_403() {
 				(http::header::CONTENT_TYPE, "application/x-protobuf"),
 				(
 					http::header::AUTHORIZATION,
-					&basic_auth(&runner_a.id, &runner_a.token),
+					&basic_auth(&runner.id, &runner.token),
 				),
 			],
 			body,
 		)
 		.await;
-
 	assert_eq!(
 		response.status_code(),
-		StatusCode::FORBIDDEN,
-		"expected 403 when deployment doesn't belong to runner"
+		StatusCode::NO_CONTENT,
+		"the allowed streams should be forwarded"
+	);
+
+	let logs = wait_for_loki_line(&setup, workspace.id, &own).await;
+	assert!(
+		logs.contains(&own),
+		"the runner's own deployment's stream should reach Loki"
+	);
+	assert!(
+		logs.contains(&runner_level),
+		"the runner's own stream should reach Loki"
+	);
+	assert!(
+		!logs.contains(&foreign),
+		"another runner's deployment's stream must not reach Loki"
+	);
+	assert!(
+		!logs.contains(&malformed),
+		"a stream with a malformed deployment_id must not reach Loki"
+	);
+}
+
+/// After a move, a late push from the old runner is dropped, and the new
+/// runner's goes through.
+#[tokio::test]
+async fn loki_push_after_move_follows_the_deployment() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let old_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let new_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, old_runner.id)
+		.await;
+
+	// Warm the proxies' cache of which runner the deployment is on.
+	let before = format!("before-{}", random_name(8));
+	assert_eq!(
+		push_line(
+			&setup,
+			old_runner.id,
+			&old_runner.token,
+			deployment.id,
+			&before
+		)
+		.await,
+		StatusCode::NO_CONTENT
+	);
+
+	let info = setup
+		.make_web_dashboard_call(
+			ApiRequest::<GetDeploymentInfoRequest>::builder()
+				.path(GetDeploymentInfoPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+				})
+				.headers(GetDeploymentInfoRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>()
+		.response;
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateDeploymentRequest>::builder()
+				.path(UpdateDeploymentPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+				})
+				.headers(UpdateDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateDeploymentRequest {
+					name: info.deployment.name.clone(),
+					image_tag: info.deployment.image_tag.clone(),
+					runner: new_runner.id,
+					machine_type: info.deployment.machine_type,
+					running_details: info.running_details.clone(),
+				})
+				.build(),
+		)
+		.await
+		.assert_status_success();
+
+	let late = format!("late-{}", random_name(8));
+	assert_eq!(
+		push_line(
+			&setup,
+			old_runner.id,
+			&old_runner.token,
+			deployment.id,
+			&late
+		)
+		.await,
+		StatusCode::NO_CONTENT,
+		"the old runner's late push should be dropped, not refused"
+	);
+	let after = format!("after-{}", random_name(8));
+	assert_eq!(
+		push_line(
+			&setup,
+			new_runner.id,
+			&new_runner.token,
+			deployment.id,
+			&after
+		)
+		.await,
+		StatusCode::NO_CONTENT
+	);
+
+	let logs = wait_for_loki_line(&setup, workspace.id, &after).await;
+	assert!(
+		logs.contains(&after),
+		"the new runner's push should reach Loki"
+	);
+	assert!(
+		!logs.contains(&late),
+		"the old runner's push after the move must not reach Loki"
 	);
 }
 

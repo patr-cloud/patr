@@ -98,13 +98,17 @@ pub(super) async fn handle_otlp_push(
 	};
 	let mut redis_conn = state.redis.clone();
 
-	// Validate and rewrite resource attributes for each resource_logs entry
-	for rl in &mut request.resource_logs {
+	// Validate and rewrite resource attributes for each resource_logs entry,
+	// dropping the ones that name a deployment the runner can't push for
+	let resource_count = request.resource_logs.len();
+	let mut resource_logs = Vec::with_capacity(resource_count);
+	for mut rl in std::mem::take(&mut request.resource_logs) {
 		let Some(ref mut resource) = rl.resource else {
+			resource_logs.push(rl);
 			continue;
 		};
 
-		if let Err(msg) = validate_and_rewrite_attributes(
+		match validate_and_rewrite_attributes(
 			&mut database,
 			&mut redis_conn,
 			&mut resource.attributes,
@@ -113,13 +117,27 @@ pub(super) async fn handle_otlp_push(
 		)
 		.await
 		{
-			warn!("OTLP attribute validation failed: {}", msg);
-			return Response::builder()
-				.status(StatusCode::FORBIDDEN)
-				.body(Body::from(format!("Attribute validation failed: {msg}")))
-				.unwrap();
+			Ok(true) => resource_logs.push(rl),
+			Ok(false) => (),
+			Err(err) => {
+				error!("Failed to validate OTLP resource attributes: {:?}", err);
+				return Response::builder()
+					.status(StatusCode::INTERNAL_SERVER_ERROR)
+					.body(Body::from("Internal Server Error"))
+					.unwrap();
+			}
 		}
 	}
+
+	// Every resource was dropped, so there's nothing to forward. Answer the way
+	// Loki answers an accepted push, so the runner doesn't retry them.
+	if resource_logs.is_empty() && resource_count > 0 {
+		return Response::builder()
+			.status(StatusCode::NO_CONTENT)
+			.body(Body::empty())
+			.unwrap();
+	}
+	request.resource_logs = resource_logs;
 
 	// Re-encode using the same format as the incoming request
 	let new_body = if is_json {
@@ -140,33 +158,37 @@ pub(super) async fn handle_otlp_push(
 }
 
 /// Validate and rewrite OTLP resource attributes using typed `KeyValue`.
+/// Returns `false` if the resource names a deployment the runner can't push
+/// for, so the caller drops it, and an error only if the deployment couldn't
+/// be looked up.
 async fn validate_and_rewrite_attributes(
 	database: &mut DatabaseConnection,
 	redis: &mut RedisClient,
 	attrs: &mut Vec<KeyValue>,
 	runner_id: &Uuid,
 	workspace_id: &Uuid,
-) -> Result<(), String> {
+) -> Result<bool, ErrorType> {
 	// Validate deployment_id
 	for attr in attrs.iter() {
 		if let Some(Value::StringValue(dep_id_str)) =
 			attr.value.as_ref().and_then(|v| v.value.as_ref()) &&
 			attr.key == "deployment_id"
 		{
-			let deployment_id = dep_id_str
-				.parse::<Uuid>()
-				.map_err(|_| format!("Invalid deployment_id: {dep_id_str}"))?;
+			let Ok(deployment_id) = dep_id_str.parse::<Uuid>() else {
+				warn!(
+					"Dropping OTLP logs from runner `{runner_id}` with a malformed deployment_id"
+				);
+				return Ok(false);
+			};
 
 			let owning_runner =
-				super::cache::get_runner_for_deployment(database, redis, &deployment_id)
-					.await
-					.map_err(|e| format!("DB error: {e}"))?
-					.ok_or_else(|| format!("Deployment {deployment_id} not found"))?;
+				super::cache::get_runner_for_deployment(database, redis, &deployment_id).await?;
 
-			if owning_runner != *runner_id {
-				return Err(format!(
-					"Deployment {deployment_id} does not belong to runner {runner_id}"
-				));
+			if owning_runner != Some(*runner_id) {
+				warn!(
+					"Dropping OTLP logs from runner `{runner_id}` for deployment `{deployment_id}`, which isn't on it"
+				);
+				return Ok(false);
 			}
 		}
 	}
@@ -245,5 +267,5 @@ async fn validate_and_rewrite_attributes(
 		}
 	}
 
-	Ok(())
+	Ok(true)
 }

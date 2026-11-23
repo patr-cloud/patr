@@ -1,9 +1,11 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use api::routes::loki_patr_cloud::models::{EntryAdapter, PushRequest, StreamAdapter};
 use base64::prelude::*;
 use models::utils::Uuid;
 use prost::Message;
+
+use crate::prelude::*;
 
 /// Returns the current Unix timestamp in seconds.
 fn now_secs() -> i64 {
@@ -48,6 +50,96 @@ pub fn make_loki_push_body(labels: &str, lines: &[&str]) -> Vec<u8> {
 	snap::raw::Encoder::new()
 		.compress_vec(&encoded)
 		.expect("snappy compress failed")
+}
+
+/// Build a snappy-compressed protobuf Loki push payload with one stream per
+/// `(labels, line)` pair.
+pub fn make_loki_push_body_streams(streams: &[(&str, &str)]) -> Vec<u8> {
+	let push_request = PushRequest {
+		streams: streams
+			.iter()
+			.map(|(labels, line)| StreamAdapter {
+				labels: labels.to_string(),
+				entries: vec![EntryAdapter {
+					timestamp: Some(prost_types::Timestamp {
+						seconds: now_secs(),
+						nanos: 0,
+					}),
+					line: line.to_string(),
+				}],
+				hash: 0,
+			})
+			.collect(),
+	};
+
+	snap::raw::Encoder::new()
+		.compress_vec(&push_request.encode_to_vec())
+		.expect("snappy compress failed")
+}
+
+/// Build an OTLP JSON payload with one resource per `(attributes, line)` pair.
+pub fn make_otlp_json_body_resources(resources: &[(&[(&str, &str)], &str)]) -> Vec<u8> {
+	let resource_logs = resources
+		.iter()
+		.map(|(attrs, line)| {
+			serde_json::json!({
+				"resource": {
+					"attributes": attrs
+						.iter()
+						.map(|(k, v)| serde_json::json!({
+							"key": k,
+							"value": { "stringValue": v }
+						}))
+						.collect::<Vec<_>>()
+				},
+				"scopeLogs": [{
+					"scope": {},
+					"logRecords": [{
+						"timeUnixNano": format!("{}000000000", now_secs()),
+						"body": {
+							"stringValue": line
+						},
+						"severityNumber": 9,
+						"severityText": "INFO"
+					}]
+				}]
+			})
+		})
+		.collect::<Vec<_>>();
+
+	serde_json::to_vec(&serde_json::json!({ "resourceLogs": resource_logs }))
+		.expect("json serialize failed")
+}
+
+/// Query the upstream Loki for a workspace's log lines until `line` shows up,
+/// or ten seconds pass, and return the last response. Lines pushed in the same
+/// request show up together, so once `line` is there, anything else from that
+/// request that was forwarded is there too.
+pub async fn wait_for_loki_line(setup: &TestSetup, workspace_id: Uuid, line: &str) -> String {
+	let mut body = String::new();
+	for _ in 0..20 {
+		body = reqwest::Client::new()
+			.get(format!(
+				"{}/loki/api/v1/query_range",
+				setup.upstream_loki_url()
+			))
+			.query(&[
+				("query", format!(r#"{{workspace_id="{workspace_id}"}}"#)),
+				("limit", "100".to_string()),
+			])
+			.header("X-Scope-OrgID", workspace_id.to_string())
+			.send()
+			.await
+			.expect("failed to query Loki")
+			.text()
+			.await
+			.expect("failed to read Loki's response");
+		if body.contains(line) {
+			break;
+		}
+		tokio::time::sleep(Duration::from_millis(500)).await;
+	}
+	body
 }
 
 /// Build an OTLP JSON payload with the given resource attributes.
