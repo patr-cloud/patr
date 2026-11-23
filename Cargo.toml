@@ -40,7 +40,6 @@ base32                         = { default-features = false, version = "0.5" }
 base62                         = { default-features = false, version = "2" }
 base64                         = { default-features = false, version = "0.23" }
 bollard                        = { default-features = false, version = "0.21" }
-build-print                    = { default-features = false, version = "1" }
 cfg-if                         = { default-features = false, version = "1" }
 clap                           = { default-features = false, version = "4" }
 cloudflare                     = { default-features = false, git = "https://github.com/rakshith-ravi/cloudflare-rs", branch = "patr-must-haves" }
@@ -59,7 +58,6 @@ dirs                           = { default-features = false, version = "7" }
 docker                         = { default-features = false, path = "runners/docker" }
 either                         = { default-features = false, version = "1" }
 flate2                         = { default-features = false, version = "1" }
-fslock                         = { default-features = false, version = "0.2" }
 futures                        = { default-features = false, version = "0.3" }
 getrandom                      = { default-features = false, version = "0.4" }
 headers                        = { default-features = false, version = "0.4" }
@@ -125,7 +123,6 @@ tempfile                       = { default-features = false, version = "3" }
 thiserror                      = { default-features = false, version = "2" }
 time                           = { default-features = false, version = "0.3" }
 tokio                          = { default-features = false, version = "1" }
-tokio-stream                   = { default-features = false, version = "0.1" }
 tokio-tungstenite              = { default-features = false, version = "0.30" }
 tokio-util                     = { default-features = false, version = "0.7" }
 totp-rs                        = { default-features = false, version = "6" }

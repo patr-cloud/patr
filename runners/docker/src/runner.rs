@@ -101,22 +101,13 @@ impl RunnerExecutor for DockerRunner {
 
 		// None of this is required if the runner is not using a tunnel
 		if settings.data.runner_exposure_type.requires_tunnel() {
-			let RunnerMode::Managed {
+			let RunnerSettings {
 				workspace_id,
 				runner_id,
 				api_token,
 				user_agent,
-			} = settings.mode.clone()
-			else {
-				// If the runner is running in self-hosted mode, throw an error if the runner is
-				// set to use a tunnel, since tunnels are only supported in managed mode
-				debug!(concat!(
-					"Runner is running in self-hosted mode. ",
-					"Please expose the runner to the internet manually, ",
-					"as tunnels are not supported in self-hosted mode."
-				));
-				return Err(RunnerError::Unsupported);
-			};
+				..
+			} = settings.clone();
 
 			let existing_tunnel_token = docker
 				.inspect_config(constants::TUNNEL_TOKEN_CONFIG_NAME)
@@ -169,9 +160,7 @@ impl RunnerExecutor for DockerRunner {
 		ingress::update_ingress_configs(&docker, settings).await?;
 
 		// Setup Alloy log collector for managed mode
-		if settings.mode.is_managed() {
-			alloy::update_alloy_service(&docker, settings).await?;
-		}
+		alloy::update_alloy_service(&docker, settings).await?;
 
 		Ok(DockerRunnerState {
 			docker,

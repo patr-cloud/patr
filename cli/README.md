@@ -42,7 +42,7 @@ Tracks the channel you installed on. Switch channels with `patr upgrade --channe
 patr uninstall
 ```
 
-Removes the CLI config, any installed systemd runner services, and the binary itself. Pass `--purge` to also tear down resources managed by Patr runners on this host (`docker swarm leave --force`).
+Removes the CLI config, the runner config and database, any installed systemd runner services, and the binary itself. Pass `--purge` to also tear down resources managed by Patr runners on this host (`docker swarm leave --force`).
 
 ## Getting started
 

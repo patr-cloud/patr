@@ -250,16 +250,13 @@ async fn handle_connect<E>(myself: ActorRef<WebSocketMessage>, state: &mut WebSo
 where
 	E: RunnerExecutor + Send + Sync + 'static,
 {
-	let RunnerMode::Managed {
+	let RunnerSettings {
 		workspace_id,
 		runner_id,
 		api_token,
 		user_agent,
-	} = state.config.mode.clone()
-	else {
-		debug!("Runner is in self-hosted mode, WebSocketActor not needed");
-		return;
-	};
+		..
+	} = state.config.clone();
 
 	// Drop any existing sink from a previous connection.
 	state.ws_sink = None;
@@ -391,16 +388,12 @@ where
 	use StreamRunnerDataForWorkspaceServerMsg::*;
 
 	// We need workspace_id + auth for domain resolution on managed URL events.
-	let RunnerMode::Managed {
+	let RunnerSettings {
 		workspace_id,
 		api_token,
 		user_agent,
 		..
-	} = state.config.mode.clone()
-	else {
-		// Self-hosted runners shouldn't receive these events.
-		return Ok(());
-	};
+	} = state.config.clone();
 
 	match msg {
 		DeploymentCreated {
@@ -555,15 +548,13 @@ async fn handle_full_resync<E>(
 where
 	E: RunnerExecutor + Send + Sync + 'static,
 {
-	let RunnerMode::Managed {
+	let RunnerSettings {
 		workspace_id,
 		runner_id,
 		api_token,
 		user_agent,
-	} = state.config.mode.clone()
-	else {
-		return Ok(());
-	};
+		..
+	} = state.config.clone();
 
 	info!("Starting full resync with upstream API");
 

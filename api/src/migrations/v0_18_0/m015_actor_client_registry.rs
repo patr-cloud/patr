@@ -16,7 +16,10 @@
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	sqlx::query(
 		r#"
 		CREATE TYPE ACTOR_CLIENT_TYPE AS ENUM(

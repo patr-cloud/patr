@@ -1,7 +1,7 @@
 /// Shared database utility functions for creating and deleting deployments in
 /// the local SQLite database. These are pure DB operations with no API calls or
-/// runner configuration dependencies. Used by both the WebSocket actor
-/// (managed mode server messages) and HTTP route handlers (self-hosted mode).
+/// runner configuration dependencies. Used by the WebSocket actor to apply
+/// server messages.
 pub mod db_helpers;
 
 /// The DeploymentActor manages the full lifecycle of a single deployment.

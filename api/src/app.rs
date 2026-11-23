@@ -10,7 +10,7 @@ use preprocess::Preprocessable;
 use rustis::client::Client as RedisClient;
 use tokio::net::TcpListener;
 
-use crate::{prelude::*, utils::config::AppConfig, worker::WorkerTaskType};
+use crate::{prelude::*, worker::WorkerTaskType};
 
 /// Sets up the router and starts the server.
 #[instrument(skip(state))]

@@ -19,7 +19,10 @@
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	// Belt and braces: m012 already deleted these, but the cast below would
 	// fail on any row that somehow still held the value, and failing here with
 	// a clear cause beats failing inside ALTER TABLE.

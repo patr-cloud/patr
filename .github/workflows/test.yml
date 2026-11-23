@@ -85,9 +85,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Setup frontend public folder
-        run: mkdir -p frontend/.output/public
-
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
         with:
@@ -106,11 +103,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
 
       - uses: Swatinem/rust-cache@v2
-
-      # `common` embeds this folder via #[derive(RustEmbed)]; the build fails if
-      # it doesn't exist.
-      - name: Setup frontend public folder
-        run: mkdir -p frontend/.output/public
 
       - name: Build api binary
         run: cargo build --package api
@@ -161,9 +153,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Setup frontend public folder
-        run: mkdir -p frontend/.output/public
-
       - name: Install just and cargo-nextest
         uses: taiki-e/install-action@v2
         with:
@@ -183,9 +172,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
 
       - uses: Swatinem/rust-cache@v2
-
-      - name: Setup frontend public folder
-        run: mkdir -p frontend/.output/public
 
       - name: Install just
         uses: taiki-e/install-action@v2
@@ -381,10 +367,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      # `cli` pulls in `common`, which embeds this folder via #[derive(RustEmbed)].
-      - name: Setup frontend public folder
-        run: mkdir -p frontend/.output/public
-
       - name: Install just
         uses: taiki-e/install-action@v2
         with:
@@ -403,9 +385,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
 
       - uses: Swatinem/rust-cache@v2
-
-      - name: Setup frontend public folder
-        run: mkdir -p frontend/.output/public
 
       - name: Check ingress
         run: cargo check --package ingress

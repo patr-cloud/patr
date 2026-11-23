@@ -18,7 +18,10 @@
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	delete_static_site_managed_urls(&mut *connection).await?;
 	drop_static_site_column(&mut *connection).await?;
 	drop_resource_tables(&mut *connection).await?;

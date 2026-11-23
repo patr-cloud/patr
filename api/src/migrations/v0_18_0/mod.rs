@@ -37,3 +37,5 @@ mod m034_seed_runner_regenerate_token_permission;
 mod m035_invalidate_web_logins_for_sub_claim;
 mod m036_hash_web_login_refresh_tokens;
 mod m037_index_deployment_env_var_secret_id;
+mod m038_runner_workspace_fk;
+mod m039_managed_url_path_check;

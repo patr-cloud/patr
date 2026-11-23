@@ -12,13 +12,6 @@ import { onExit, waitFor } from '@/helpers/process';
 const REPO_ROOT = resolve(import.meta.dirname, '..', '..');
 const RUNNER_BINARY = join(REPO_ROOT, 'target', 'debug', 'docker');
 
-// Pool of bind ports per worker. The runner's own HTTP listener; each parallel
-// runner needs its own. We pick from an ephemeral-ish range above 24000.
-let nextBindPort = 24000;
-function allocateBindPort(): number {
-	return nextBindPort++;
-}
-
 export type RunnerOpts = {
 	api: ApiClient;
 	// The workspace owner (or any member who can create a runner + mint an API
@@ -41,7 +34,6 @@ export class RunnerHandle implements AsyncDisposable {
 		public readonly runnerId: string,
 		public readonly workspaceId: string,
 		public readonly apiToken: string,
-		public readonly bindPort: number,
 	) {}
 
 	// The DinD daemon backing this runner — exposes dockerHost (for push/build)
@@ -56,11 +48,10 @@ export class RunnerHandle implements AsyncDisposable {
 		try {
 			const { runnerId, runnerToken, apiToken } = await provisionRunner(opts);
 
-			const bindPort = allocateBindPort();
 			const workDir = mkdtempSync(join(tmpdir(), 'patr-e2e-runner-'));
 			const dbPath = join(workDir, 'runner.db');
 
-			const proc = await spawnRunner(opts, dind, runnerId, runnerToken, bindPort, dbPath);
+			const proc = await spawnRunner(opts, dind, runnerId, runnerToken, dbPath);
 
 			// Stand up the faux edge (TLS terminator) in front of the ingress so tests
 			// reach deployments over the production topology, not Caddy directly.
@@ -81,7 +72,6 @@ export class RunnerHandle implements AsyncDisposable {
 				runnerId,
 				opts.workspaceId,
 				apiToken,
-				bindPort,
 			);
 		} catch (err) {
 			await dind[Symbol.asyncDispose]();
@@ -94,14 +84,7 @@ export class RunnerHandle implements AsyncDisposable {
 	async restart({ token }: { token: string }): Promise<void> {
 		this.proc.kill('SIGTERM');
 		await onExit(this.proc);
-		this.proc = await spawnRunner(
-			this.opts,
-			this.dind,
-			this.runnerId,
-			token,
-			this.bindPort,
-			this.dbPath,
-		);
+		this.proc = await spawnRunner(this.opts, this.dind, this.runnerId, token, this.dbPath);
 	}
 
 	async [Symbol.asyncDispose](): Promise<void> {
@@ -118,7 +101,6 @@ async function spawnRunner(
 	dind: DindHandle,
 	runnerId: string,
 	token: string,
-	bindPort: number,
 	dbPath: string,
 ): Promise<ChildProcess> {
 	const proc = spawn(RUNNER_BINARY, [], {
@@ -129,13 +111,11 @@ async function spawnRunner(
 			// Config keys use the `PATR__` prefix with `__` as the nesting
 			// separator; segment names are converted to camelCase to match the
 			// serde field names (see runners/common/src/utils/config.rs).
-			PATR__MODE: 'managed',
 			PATR__WORKSPACE_ID: opts.workspaceId,
 			PATR__RUNNER_ID: runnerId,
 			// The runner authenticates with its own runner token, exactly as
 			// a real `patr runner setup new` leaves it configured.
 			PATR__API_TOKEN: token,
-			PATR__BIND_ADDRESS: `127.0.0.1:${bindPort}`,
 			PATR__DATABASE__FILE: dbPath,
 			PATR__DATABASE__CONNECTION_LIMIT: '5',
 			// The runner pulls from the hardcoded registry.patr.cloud, which the

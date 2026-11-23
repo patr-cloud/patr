@@ -407,8 +407,12 @@ async fn handle_websocket(
 									);
 								})
 						else {
-							error!("Failed to update deployment status for deployment ID: {id}");
-							continue;
+							// Drop the connection: the runner reconnects, and its resync
+							// sends every status again.
+							error!(
+								"Failed to update deployment status for deployment ID: {id}, disconnecting the runner"
+							);
+							break;
 						};
 					}
 					Handshake {

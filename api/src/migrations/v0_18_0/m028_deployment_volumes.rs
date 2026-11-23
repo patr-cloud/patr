@@ -21,7 +21,10 @@
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	replace_volume_tables(&mut *connection).await?;
 	purge_volume_resources(&mut *connection).await?;
 	purge_volume_permissions(&mut *connection).await?;

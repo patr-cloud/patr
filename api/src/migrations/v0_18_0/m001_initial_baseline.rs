@@ -8,6 +8,9 @@
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(_connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	_connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	Ok(())
 }

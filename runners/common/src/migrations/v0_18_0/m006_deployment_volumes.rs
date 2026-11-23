@@ -13,7 +13,10 @@
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &RunnerSettings<()>,
+) -> Result<(), sqlx::Error> {
 	sqlx::query(
 		r#"
 		DROP TABLE deployment_volume_mount;

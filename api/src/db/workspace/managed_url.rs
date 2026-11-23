@@ -87,6 +87,9 @@ pub async fn initialize_managed_url_constraints(
 				sub_domain ~ '^(([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])\.)*([a-z0-9_]|[a-z0-9_][a-z0-9_\-]*[a-z0-9_])$' OR
 				sub_domain = '@'
 			),
+			ADD CONSTRAINT managed_url_chk_path_valid CHECK(
+				path ~ '^/([a-z0-9._~-]+(/[a-z0-9._~-]+)*/?)?$'
+			),
 			ADD CONSTRAINT managed_url_chk_port_u16 CHECK(
 				port > 0 AND port <= 65535
 			),

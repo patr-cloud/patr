@@ -229,6 +229,16 @@ pub mod constants {
 	pub const DEPLOYMENT_IMAGE_TAG_REGEX: &str =
 		macros::verify_regex!(r"^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$");
 
+	/// The Regex to validate a managed URL's path, as sent, before the leading
+	/// `/` is added. The runner writes the path into a Caddyfile site address,
+	/// so it only allows lowercase letters, digits and RFC 3986's other
+	/// unreserved characters (`.`, `_`, `~`, `-`), in `/`-separated segments
+	/// with no empty ones. Nothing Caddy reads as syntax, such as whitespace,
+	/// braces, quotes, `#`, `,`, `*` or a backslash, gets through. The leading
+	/// and trailing `/` are both optional, and an empty path is the root.
+	pub const MANAGED_URL_PATH_REGEX: &str =
+		macros::verify_regex!(r"^/?([a-z0-9._~-]+(/[a-z0-9._~-]+)*/?)?$");
+
 	/// The Regex to validate a person's first or last name.
 	///
 	/// Matches 1–100 characters of anything that is not an HTML-relevant

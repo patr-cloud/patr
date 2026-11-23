@@ -21,52 +21,47 @@ use crate::prelude::*;
 /// `.with_filter()` on the returned layer before adding it to the registry.
 pub fn setup_tracing<E>(
 	config: &RunnerSettings<E::Settings>,
-) -> Result<Option<SdkLoggerProvider>, RunnerError>
+) -> Result<SdkLoggerProvider, RunnerError>
 where
 	E: RunnerExecutor + Send + Sync + 'static,
 {
-	let logger_provider = if let RunnerMode::Managed {
+	let RunnerSettings {
 		runner_id,
 		workspace_id,
 		api_token,
 		..
-	} = &config.mode
-	{
-		let loki_url = match config.environment {
-			RunningEnvironment::Production => "https://loki.patr.cloud",
-			RunningEnvironment::Development => "http://localhost:3003",
-		};
+	} = config;
 
-		// Build Basic Auth header: base64(runner_id:api_token)
-		let credentials = BASE64_STANDARD.encode(format!("{}:{}", runner_id, api_token.0.token()));
-		let auth_header = format!("Basic {}", credentials);
-
-		let logger_exporter = LogExporter::builder()
-			.with_http()
-			.with_headers(HashMap::from([("Authorization".to_string(), auth_header)]))
-			.with_endpoint(format!("{}/otlp/v1/logs", loki_url))
-			.with_protocol(Protocol::HttpJson)
-			.build()
-			.expect("Failed to build OpenTelemetry logging pipeline");
-
-		let logger_provider = SdkLoggerProvider::builder()
-			.with_batch_exporter(logger_exporter)
-			.with_resource(
-				Resource::builder()
-					.with_service_name(format!("runner.{}", runner_id))
-					.with_attributes([
-						KeyValue::new("runner_id", runner_id.to_string()),
-						KeyValue::new("workspace_id", workspace_id.to_string()),
-						KeyValue::new("source", "runner"),
-					])
-					.build(),
-			)
-			.build();
-
-		Some(logger_provider)
-	} else {
-		None
+	let loki_url = match config.environment {
+		RunningEnvironment::Production => "https://loki.patr.cloud",
+		RunningEnvironment::Development => "http://localhost:3003",
 	};
+
+	// Build Basic Auth header: base64(runner_id:api_token)
+	let credentials = BASE64_STANDARD.encode(format!("{}:{}", runner_id, api_token.0.token()));
+	let auth_header = format!("Basic {}", credentials);
+
+	let logger_exporter = LogExporter::builder()
+		.with_http()
+		.with_headers(HashMap::from([("Authorization".to_string(), auth_header)]))
+		.with_endpoint(format!("{}/otlp/v1/logs", loki_url))
+		.with_protocol(Protocol::HttpJson)
+		.build()
+		.expect("Failed to build OpenTelemetry logging pipeline");
+
+	let logger_provider = SdkLoggerProvider::builder()
+		.with_batch_exporter(logger_exporter)
+		.with_resource(
+			Resource::builder()
+				.with_service_name(format!("runner.{}", runner_id))
+				.with_attributes([
+					KeyValue::new("runner_id", runner_id.to_string()),
+					KeyValue::new("workspace_id", workspace_id.to_string()),
+					KeyValue::new("source", "runner"),
+				])
+				.build(),
+		)
+		.build();
 
 	tracing::dispatcher::set_global_default(Dispatch::new(
 		tracing_subscriber::registry()
@@ -127,8 +122,8 @@ where
 							}),
 					),
 			)
-			.with(logger_provider.as_ref().map(|provider| {
-				OpenTelemetryTracingBridge::new(provider)
+			.with(
+				OpenTelemetryTracingBridge::new(&logger_provider)
 					.with_filter(
 						tracing_subscriber::filter::Targets::new()
 							.with_target(E::runner_internal_name(), LevelFilter::TRACE)
@@ -146,8 +141,8 @@ where
 						} else {
 							Level::DEBUG
 						},
-					))
-			})),
+					)),
+			),
 	))?;
 
 	Ok(logger_provider)

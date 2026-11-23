@@ -1,12 +1,12 @@
 use std::{
 	collections::BTreeSet,
 	iter,
-	net::{IpAddr, SocketAddr},
+	net::IpAddr,
 	path::{Path, PathBuf},
 };
 
 use clap::{Args as ClapArgs, Subcommand};
-use common::prelude::{DatabaseConfig, RunnerMode, RunnerSettings};
+use common::prelude::{DatabaseConfig, RunnerSettings};
 use docker::prelude::DockerSettings;
 use inquire::{CustomType, MultiSelect, Select, Text};
 use models::api::workspace::runner::*;
@@ -103,9 +103,9 @@ async fn another_runners_config(config_path: &Path, user_token: Option<&BearerTo
 	let existing = std::fs::read_to_string(config_path)
 		.ok()
 		.and_then(|config| serde_json::from_str::<RunnerSettings<DockerSettings>>(&config).ok());
-	let runner = match (existing.map(|config| config.mode), user_token) {
+	let runner = match (existing, user_token) {
 		(
-			Some(RunnerMode::Managed {
+			Some(RunnerSettings {
 				workspace_id,
 				runner_id,
 				..
@@ -130,8 +130,8 @@ async fn another_runners_config(config_path: &Path, user_token: Option<&BearerTo
 				|response| response.body.runner.data.name,
 			),
 		),
-		(Some(RunnerMode::Managed { runner_id, .. }), None) => Some(runner_id.to_string()),
-		_ => None,
+		(Some(RunnerSettings { runner_id, .. }), None) => Some(runner_id.to_string()),
+		(None, _) => None,
 	};
 
 	AppError::RunnerError(match runner {
@@ -151,18 +151,7 @@ async fn another_runners_config(config_path: &Path, user_token: Option<&BearerTo
 }
 
 /// Asks the Docker questions for a fresh runner config.
-fn prompt_settings(
-	config_path: &Path,
-) -> Result<(DatabaseConfig, SocketAddr, DockerSettings), AppError> {
-	let bind_address_str = Text::new("Bind address:")
-		.with_default("127.0.0.1:4000")
-		.with_help_message("The address the runner's API server will listen on")
-		.prompt()
-		.expect_tty("Failed to read bind address");
-	let bind_address: SocketAddr = bind_address_str
-		.parse()
-		.map_err(|e| AppError::ParseError(format!("Invalid bind address: {e}")))?;
-
+fn prompt_settings(config_path: &Path) -> Result<(DatabaseConfig, DockerSettings), AppError> {
 	let docker_swarm_listen_addr = Text::new("Docker Swarm listen address:")
 		.with_default("127.0.0.1:2377")
 		.with_help_message("The address Docker Swarm will listen on for cluster management")
@@ -267,7 +256,6 @@ fn prompt_settings(
 				.to_string(),
 			connection_limit: 10,
 		},
-		bind_address,
 		DockerSettings {
 			docker_swarm_listen_addr,
 			ingress_http_listen_port,

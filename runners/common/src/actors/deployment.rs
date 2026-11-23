@@ -37,7 +37,7 @@ pub struct DeploymentActorArgs<E: RunnerExecutor> {
 	pub deployment_id: Uuid,
 	/// Database connection pool for reading desired state from SQLite.
 	pub database: sqlx::Pool<DatabaseType>,
-	/// Runner configuration (settings, mode, bind address, etc.).
+	/// Runner configuration.
 	pub config: RunnerSettings<E::Settings>,
 	/// Executor-specific initialized state (e.g. Docker client).
 	pub runner_state: E::InitializedState,
@@ -687,7 +687,7 @@ async fn get_local_deployment_info(
 			image_tag,
 			status,
 			registry,
-			// Dummy runner ID — no runner-id concept in self-hosted PATR
+			// Dummy runner ID — the runner isn't stored in the local database
 			runner: Uuid::nil(),
 			current_live_digest,
 			machine_type,

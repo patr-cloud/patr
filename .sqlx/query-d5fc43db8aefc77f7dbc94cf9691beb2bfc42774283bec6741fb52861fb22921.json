@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "ALTER TABLE runner ADD CONSTRAINT runner_pk PRIMARY KEY(id), ADD CONSTRAINT runner_uq_id_workspace_id UNIQUE(id, workspace_id);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "d5fc43db8aefc77f7dbc94cf9691beb2bfc42774283bec6741fb52861fb22921"
+}

@@ -73,7 +73,7 @@ pub mod prelude {
 		app::{AppRequest, AppState, AuthenticatedAppRequest, UnprocessedAppRequest},
 		models::ip_lookup as ip,
 		redis,
-		utils::{self, EitherExt, RouterExt, TimeoutExt, WorkerExt, constants},
+		utils::{self, EitherExt, RouterExt, TimeoutExt, WorkerExt, config::AppConfig, constants},
 		worker::mailer::*,
 	};
 
@@ -104,7 +104,7 @@ use std::sync::OnceLock;
 
 use tokio_util::sync::CancellationToken;
 
-use crate::{prelude::*, utils::config::AppConfig};
+use crate::prelude::*;
 
 /// The global cancellation token that will be used to cancel the connections
 /// when the runner is stopped. This token will be used to cancel all the

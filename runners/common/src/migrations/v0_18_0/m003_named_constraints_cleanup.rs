@@ -8,7 +8,10 @@ use crate::prelude::*;
 /// Name all CHECK constraints and remove the defunct trigger/update_log
 /// infrastructure.
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), sqlx::Error> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &RunnerSettings<()>,
+) -> Result<(), sqlx::Error> {
 	// Disable foreign keys so we can freely drop/recreate tables regardless
 	// of reference order.
 	sqlx::query("PRAGMA foreign_keys = OFF;")

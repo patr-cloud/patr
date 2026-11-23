@@ -69,7 +69,10 @@ const DEFAULT_ROLES: &[FrozenRole] = &[
 ];
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	// --- WORKSPACE_ACTOR_TYPE gains 'service_account' -----------------------
 
 	sqlx::query(

@@ -10,7 +10,7 @@ use cloudflare::{
 };
 use models::api::workspace::managed_url::ManagedUrlTypeDiscriminant;
 
-use crate::{prelude::*, utils::config::AppConfig};
+use crate::prelude::*;
 
 /// Sync the Cloudflare Worker KV for an FQDN. Queries all managed URLs that
 /// match the FQDN and writes their routing data to the ingress KV namespace.

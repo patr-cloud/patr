@@ -1248,6 +1248,161 @@ async fn update_managed_url_path_persists() {
 	);
 }
 
+/// Paths that could break out of the Caddyfile site address the runner writes
+/// the path into, or that aren't a plain run of path segments.
+const UNSAFE_PATHS: [&str; 11] = [
+	"/api\nfoo",
+	"/api\tfoo",
+	"/a b",
+	"/api{",
+	"/api}",
+	"/api#x",
+	"/\"api",
+	"/api\\x",
+	"/api,x",
+	"/api*",
+	"/a//b",
+];
+
+#[tokio::test]
+async fn create_managed_url_rejects_unsafe_paths() {
+	let setup = setup().await.expect("failed to setup test server");
+	let f = mu_fixture(&setup).await;
+
+	for path in UNSAFE_PATHS {
+		let resp = send_create_mu(
+			&setup,
+			&f.user.access_token,
+			f.ws,
+			proxy_body(f.domain, f.deployment, 80, rand_subdomain(), path),
+		)
+		.await;
+		assert_eq!(
+			resp.status_code(),
+			StatusCode::BAD_REQUEST,
+			"path {path:?} should be refused"
+		);
+	}
+	assert!(
+		list_mus(&setup, &f.user.access_token, f.ws)
+			.await
+			.is_empty(),
+		"no managed URL should have been created"
+	);
+}
+
+#[tokio::test]
+async fn create_managed_url_accepts_normal_paths() {
+	let setup = setup().await.expect("failed to setup test server");
+	let f = mu_fixture(&setup).await;
+
+	for (path, stored) in [
+		("/", "/"),
+		("", "/"),
+		("api", "/api"),
+		("/api/v1", "/api/v1"),
+		("/api/v1/", "/api/v1/"),
+		("/a-b_c.d~e", "/a-b_c.d~e"),
+	] {
+		let created = send_create_mu(
+			&setup,
+			&f.user.access_token,
+			f.ws,
+			proxy_body(f.domain, f.deployment, 80, rand_subdomain(), path),
+		)
+		.await
+		.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>()
+		.response;
+
+		let urls = list_mus(&setup, &f.user.access_token, f.ws).await;
+		assert_eq!(
+			urls.iter().find(|u| u.id == created.id.id).unwrap().path,
+			stored,
+			"path {path:?}"
+		);
+	}
+}
+
+#[tokio::test]
+async fn update_managed_url_rejects_unsafe_paths() {
+	let setup = setup().await.expect("failed to setup test server");
+	let f = mu_fixture(&setup).await;
+	let created = send_create_mu(
+		&setup,
+		&f.user.access_token,
+		f.ws,
+		proxy_body(f.domain, f.deployment, 80, rand_subdomain(), "/"),
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>()
+	.response;
+
+	for path in UNSAFE_PATHS {
+		let resp = setup
+			.make_web_dashboard_call(
+				ApiRequest::<UpdateManagedURLRequest>::builder()
+					.path(UpdateManagedURLPath {
+						workspace_id: f.ws,
+						managed_url_id: created.id.id,
+					})
+					.headers(UpdateManagedURLRequestHeaders {
+						authorization: f.user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.body(UpdateManagedURLRequest {
+						path: path.to_string(),
+						url_type: ManagedUrlType::ProxyDeployment {
+							deployment_id: f.deployment,
+							port: 80,
+						},
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!(
+			resp.status_code(),
+			StatusCode::BAD_REQUEST,
+			"path {path:?} should be refused"
+		);
+	}
+
+	let urls = list_mus(&setup, &f.user.access_token, f.ws).await;
+	assert_eq!(
+		urls.iter().find(|u| u.id == created.id.id).unwrap().path,
+		"/",
+		"a refused update must leave the path alone"
+	);
+}
+
+/// The database holds the line too, for anything that doesn't go through the
+/// API's validation.
+#[tokio::test]
+async fn managed_url_path_check_refuses_unsafe_paths() {
+	let setup = setup().await.expect("failed to setup test server");
+	let f = mu_fixture(&setup).await;
+	let created = send_create_mu(
+		&setup,
+		&f.user.access_token,
+		f.ws,
+		proxy_body(f.domain, f.deployment, 80, rand_subdomain(), "/"),
+	)
+	.await
+	.json::<ApiSuccessResponseBody<CreateManagedURLResponse>>()
+	.response;
+
+	for path in UNSAFE_PATHS {
+		assert!(
+			sqlx::query("UPDATE managed_url SET path = $1 WHERE id = $2")
+				.bind(format!("/{}", path.trim_start_matches('/')))
+				.bind(created.id.id)
+				.execute(setup.database())
+				.await
+				.is_err(),
+			"path {path:?} should be refused by the database"
+		);
+	}
+}
+
 #[tokio::test]
 async fn update_managed_url_same_values_noop() {
 	let setup = setup().await.expect("failed to setup test server");

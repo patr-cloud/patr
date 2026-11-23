@@ -5,9 +5,13 @@ use sqlx::Pool;
 
 use crate::prelude::*;
 
-/// Initializes the database, and performs migrations if necessary
-#[instrument(skip(database))]
-pub async fn initialize(database: &Pool<DatabaseType>) -> Result<(), sqlx::Error> {
+/// Initializes the database, and performs migrations if necessary. The
+/// migrations get the runner's config.
+#[instrument(skip_all)]
+pub async fn initialize(
+	database: &Pool<DatabaseType>,
+	config: &RunnerSettings<()>,
+) -> Result<(), sqlx::Error> {
 	info!("Initializing database");
 
 	let tables = query!(
@@ -87,7 +91,7 @@ pub async fn initialize(database: &Pool<DatabaseType>) -> Result<(), sqlx::Error
 					version.major, version.minor, version.patch
 				);
 
-				crate::migrations::run_migrations(&mut connection, &version).await?;
+				crate::migrations::run_migrations(&mut connection, &version, config).await?;
 			}
 		}
 	}

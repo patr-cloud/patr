@@ -1,5 +1,5 @@
 use super::ManagedUrlType;
-use crate::prelude::*;
+use crate::{prelude::*, utils::constants::MANAGED_URL_PATH_REGEX};
 
 macros::declare_api_endpoint!(
 	/// Route to update a managed URL configurations
@@ -25,7 +25,7 @@ macros::declare_api_endpoint!(
 	},
 	request = {
 		/// The path of the URL
-		#[preprocess(trim, lowercase)]
+		#[preprocess(trim, lowercase, regex = MANAGED_URL_PATH_REGEX)]
 		pub path: String,
 		/// The URL type (Deployment, Static Site, Proxy or Redirect)
 		#[serde(flatten)]

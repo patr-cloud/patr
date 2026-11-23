@@ -16,13 +16,25 @@ async fn main() {
 		process::exit(1);
 	};
 
-	let database = db::connect(&DatabaseConfig {
-		file,
-		connection_limit: 1,
-	})
-	.await
-	.expect("failed to open the runner database");
-	db::initialize(&database)
+	// Migrations take the runner's config, but there's no runner here, so it's a
+	// placeholder around the database file.
+	let config = RunnerSettings {
+		workspace_id: Uuid::nil(),
+		runner_id: Uuid::nil(),
+		api_token: "placeholder".parse().expect("a valid placeholder token"),
+		user_agent: "init-db".parse().expect("a valid placeholder user agent"),
+		environment: RunningEnvironment::Development,
+		database: DatabaseConfig {
+			file,
+			connection_limit: 1,
+		},
+		data: (),
+	};
+
+	let database = db::connect(&config.database)
+		.await
+		.expect("failed to open the runner database");
+	db::initialize(&database, &config)
 		.await
 		.expect("failed to initialize the runner database");
 }

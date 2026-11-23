@@ -8,7 +8,7 @@ use cloudflare::{
 };
 use serde::Serialize;
 
-use crate::{prelude::*, utils::config::AppConfig};
+use crate::prelude::*;
 
 /// Cloudflare tunnel configuration request body
 #[derive(Serialize)]

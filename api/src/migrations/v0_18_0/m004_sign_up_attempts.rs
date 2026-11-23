@@ -8,7 +8,10 @@
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	// Add the column with a temporary default so the existing rows get a
 	// concrete value, then drop the default so future INSERTs must set it
 	// explicitly. New sign-ups go through `create_account` which now sets it

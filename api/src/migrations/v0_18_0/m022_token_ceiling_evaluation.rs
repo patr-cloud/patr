@@ -16,7 +16,10 @@
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	// Dropped, not replaced: the function is created by m014 and rewritten by
 	// m021, so it must already exist. If it doesn't, something upstream is
 	// broken and the migration should fail here rather than quietly conjure

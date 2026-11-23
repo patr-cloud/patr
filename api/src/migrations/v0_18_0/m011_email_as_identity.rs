@@ -25,7 +25,10 @@
 use crate::prelude::*;
 
 #[macros::migration]
-async fn migrate(connection: &mut DatabaseConnection) -> Result<(), ErrorType> {
+async fn migrate(
+	connection: &mut DatabaseConnection,
+	_config: &AppConfig,
+) -> Result<(), ErrorType> {
 	// These all reference columns that are about to be renamed or dropped, and
 	// the FK into `user_email` has to go before that table can.
 	sqlx::query(

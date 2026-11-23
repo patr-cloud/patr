@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use clap::Args as ClapArgs;
 use comfy_table::Table;
-use common::prelude::{RunnerMode, RunnerSettings};
+use common::prelude::RunnerSettings;
 use docker::prelude::DockerSettings;
 use inquire::Select;
 use models::api::{
@@ -114,20 +114,7 @@ pub(super) async fn execute(
 		let config: RunnerSettings<DockerSettings> = serde_json::from_str(&config_str)
 			.map_err(|e| AppError::RunnerError(format!("Failed to parse config: {e}")))?;
 
-		match config.mode {
-			RunnerMode::SelfHosted { .. } => {
-				return Err(AppError::RunnerError(
-					"This runner is configured in self-hosted mode; there is no managed runner id to filter deployments by. Pass `--runner <name|id>` to query a managed runner."
-						.to_string(),
-				));
-			}
-			RunnerMode::Managed {
-				workspace_id,
-				runner_id,
-				api_token,
-				..
-			} => (workspace_id, runner_id, api_token),
-		}
+		(config.workspace_id, config.runner_id, config.api_token)
 	};
 
 	let deployments = make_request(

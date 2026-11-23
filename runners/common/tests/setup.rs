@@ -1,27 +1,24 @@
-use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
 
-use axum_test::{TestResponse, TestServer};
 use common::{
 	actors::{
 		db_helpers,
-		runner_supervisor::{RunnerSupervisor, RunnerSupervisorArgs, RunnerSupervisorMessage},
+		resource_supervisor::{
+			ResourceSupervisor,
+			ResourceSupervisorArgs,
+			ResourceSupervisorMessage,
+		},
 	},
 	db,
 	prelude::*,
-	routes,
 };
-use models::{
-	ApiRequest,
-	api::{ApiEndpoint, workspace::deployment::*},
-	utils::Headers,
-};
+use models::api::workspace::deployment::*;
 use ractor::{Actor, ActorRef, concurrency::JoinHandle};
-use serde::Serialize;
 
 use crate::mock_executor::*;
 
-/// Isolated test environment with a fresh SQLite DB, mock executor,
-/// running actor tree, and an HTTP TestServer. Each call to `setup()`
+/// Isolated test environment with a fresh SQLite DB, mock executor and a
+/// running ResourceSupervisor (no upstream WebSocket). Each call to `setup()`
 /// creates a completely independent instance — tests can run in parallel
 /// safely.
 pub struct TestSetup {
@@ -29,8 +26,7 @@ pub struct TestSetup {
 	#[allow(dead_code)]
 	pub config: RunnerSettings<()>,
 	pub mock_state: Arc<MockExecutorState>,
-	pub supervisor_ref: ActorRef<RunnerSupervisorMessage>,
-	pub http: TestServer,
+	pub supervisor_ref: ActorRef<ResourceSupervisorMessage>,
 	_root_handle: JoinHandle<()>,
 	_temp_dir: tempfile::TempDir,
 }
@@ -38,7 +34,7 @@ pub struct TestSetup {
 /// Creates a fresh test environment:
 /// 1. Temp directory with a new SQLite file
 /// 2. Schema initialized from scratch (all tables, machine types seeded)
-/// 3. RunnerSupervisor actor tree spawned with MockExecutor
+/// 3. ResourceSupervisor spawned with MockExecutor
 /// 4. Returns TestSetup with refs to everything
 pub async fn setup() -> TestSetup {
 	let temp_dir = tempfile::TempDir::new().expect("failed to create temp dir");
@@ -47,94 +43,59 @@ pub async fn setup() -> TestSetup {
 	let mock_state = MockExecutorState::new();
 
 	let config = RunnerSettings {
-		mode: RunnerMode::SelfHosted {
-			password_pepper: "test-pepper-at-least-32-chars-long!!".to_string(),
-			// Must match the hardcoded secret in authenticator.rs:133.
-			jwt_secret: "keyboard cat".to_string(),
-		},
+		workspace_id: Uuid::new_v4(),
+		runner_id: Uuid::new_v4(),
+		api_token: "test-token".parse().unwrap(),
+		user_agent: "integration-tests/0.1.0".parse().unwrap(),
 		environment: RunningEnvironment::Development,
 		database: DatabaseConfig {
 			file: db_path.to_string_lossy().to_string(),
 			connection_limit: 5,
 		},
-		bind_address: SocketAddr::from(([127, 0, 0, 1], 0)),
 		data: (),
 	};
 
 	let database = db::connect(&config.database)
 		.await
 		.expect("failed to connect to test database");
-	db::initialize(&database)
+	db::initialize(&database, &config)
 		.await
 		.expect("failed to initialize test database");
 
 	let supervisor_name = format!("test-supervisor-{}", Uuid::new_v4());
-	let (root_ref, root_handle) = RunnerSupervisor::<MockExecutor>::spawn(
+	let (root_ref, root_handle) = ResourceSupervisor::<MockExecutor>::spawn(
 		Some(supervisor_name),
-		RunnerSupervisor::new(),
-		RunnerSupervisorArgs {
+		ResourceSupervisor::new(),
+		ResourceSupervisorArgs {
 			config: config.clone(),
 			database: database.clone(),
 			runner_state: mock_state.clone(),
+			websocket_ref: None,
 		},
 	)
 	.await
-	.expect("failed to spawn RunnerSupervisor");
+	.expect("failed to spawn ResourceSupervisor");
 
 	// Give the actor tree a moment to start and run initial Reconcile.
 	tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
-	let state = AppState::<MockExecutor> {
-		database: database.clone(),
-		config: config.clone(),
-		runner_state: mock_state.clone(),
-		supervisor_ref: root_ref.clone(),
-	};
-	let http = TestServer::new(routes::setup_routes(&state).await);
 
 	TestSetup {
 		database,
 		config,
 		mock_state,
 		supervisor_ref: root_ref,
-		http,
 		_root_handle: root_handle,
 		_temp_dir: temp_dir,
 	}
 }
 
 impl TestSetup {
-	/// Make a typed API call using `ApiRequest<E>`. Mirrors
-	/// `api/tests/setup.rs::TestSetup::make_api_call`.
-	pub async fn make_api_call<E>(&self, request: ApiRequest<E>) -> TestResponse
-	where
-		E: ApiEndpoint,
-		E::RequestBody: Serialize,
-		E::RequestHeaders: Headers,
-		E::RequestPath: std::fmt::Display,
-		E::RequestQuery: Serialize,
-	{
-		let path = request.path.to_string();
-		let query = serde_qs::to_string(&request.query).unwrap_or_default();
-		let full_path = if query.is_empty() {
-			path
-		} else {
-			format!("{path}?{query}")
-		};
-
-		let mut req = self.http.method(E::METHOD, &full_path);
-		for (name, value) in request.headers.to_header_map().iter() {
-			req = req.add_header(name.clone(), value.to_str().unwrap());
-		}
-		req.json(&request.body).await
-	}
-
 	/// Send an UpsertResource message to the supervisor for the given
 	/// deployment.
 	pub fn notify_upsert(&self, deployment_id: Uuid) {
 		let _ = self
 			.supervisor_ref
-			.send_message(RunnerSupervisorMessage::UpsertResource {
+			.send_message(ResourceSupervisorMessage::UpsertResource {
 				resource_id: deployment_id,
 				resource_type: models::rbac::ResourceType::Deployment,
 			});
@@ -145,7 +106,7 @@ impl TestSetup {
 	pub fn notify_delete(&self, deployment_id: Uuid) {
 		let _ = self
 			.supervisor_ref
-			.send_message(RunnerSupervisorMessage::DeleteResource {
+			.send_message(ResourceSupervisorMessage::DeleteResource {
 				resource_id: deployment_id,
 				resource_type: models::rbac::ResourceType::Deployment,
 			});

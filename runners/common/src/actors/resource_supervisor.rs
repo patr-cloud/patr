@@ -82,7 +82,7 @@ pub struct ResourceSupervisorArgs<E: RunnerExecutor> {
 	pub config: RunnerSettings<E::Settings>,
 	/// Executor-specific initialized state.
 	pub runner_state: E::InitializedState,
-	/// `None` in self-hosted mode (no upstream WebSocket).
+	/// `None` until the WebSocket actor is spawned.
 	pub websocket_ref: Option<ActorRef<WebSocketMessage>>,
 }
 
@@ -95,7 +95,7 @@ pub struct ResourceSupervisorState<E: RunnerExecutor> {
 	/// Executor-specific initialized state.
 	pub runner_state: E::InitializedState,
 	/// Reference to the WebSocket actor for forwarding status updates.
-	/// `None` in self-hosted mode.
+	/// `None` until the WebSocket actor is spawned.
 	pub websocket_ref: Option<ActorRef<WebSocketMessage>>,
 	/// Maps resource UUID → (typed ActorRef, JoinHandle for cleanup).
 	/// We maintain our own map because we need to look up children by

@@ -5,6 +5,8 @@ use std::{
 };
 
 use clap::Args as ClapArgs;
+use common::prelude::RunnerSettings;
+use docker::prelude::DockerSettings;
 
 use super::{run_systemctl, sudo_spawn_error};
 use crate::prelude::*;
@@ -44,6 +46,26 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 			config_path.display()
 		))
 	})?;
+
+	let config = serde_json::from_str::<RunnerSettings<DockerSettings>>(
+		&std::fs::read_to_string(&config_path).map_err(|e| {
+			AppError::RunnerError(format!(
+				"Failed to read config file at {}: {e}",
+				config_path.display()
+			))
+		})?,
+	)
+	.map_err(|e| AppError::RunnerError(format!("Failed to parse config: {e}")))?;
+
+	let database_dir = Path::new(&config.database.file)
+		.parent()
+		.and_then(|dir| dir.canonicalize().ok())
+		.ok_or_else(|| {
+			AppError::RunnerError(format!(
+				"Failed to resolve the directory of the runner database {}",
+				config.database.file
+			))
+		})?;
 
 	let patr_binary = std::env::current_exe()
 		.and_then(|p| p.canonicalize())
@@ -91,6 +113,7 @@ pub async fn execute(args: Args) -> Result<CommandOutput, AppError> {
 		groupname = groupname,
 		patr_binary = patr_binary.display(),
 		config_path = config_path.display(),
+		database_dir = database_dir.display(),
 	);
 
 	let enable_and_start = inquire::Confirm::new("Enable and start the service now?")
