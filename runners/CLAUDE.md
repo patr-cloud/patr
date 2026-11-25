@@ -8,7 +8,7 @@ Runners reconcile Patr resources (deployments + managed URLs) onto a backend. Se
 - State lives in a local **SQLite** DB (desired state, plus the runner-written `deployment.observed_status`); the executor reports actual state; the runner reconciles.
 - The runner is headless: it always connects to the Patr API over WebSocket, and serves no HTTP API or UI of its own — see below.
 - The runner is **its own identity**: config `apiToken` is its `patr_rn_…` runner token (Bearer to the API and WebSocket, Basic password to loki/mimir/openbao). Its permissions are fixed in the API (`api/src/models/permissions/runner.rs`): read across its workspace, `runner::{view,edit}` on itself. A new API call from the runner therefore needs `Runner` in the endpoint's `client_type` and a permission that map holds; widening the map is an access-control change. A rejected token or `RunnerAlreadyConnected` is logged with the `patr runner setup reconnect` fix and retried, never fatal.
-- Architecture is a **level-triggered controller** on a small ractor tree: `RunnerSupervisor → Controller + Observer + WebSocketActor`. The controller's queue holds owners whose objects may be out of date, and reconciling an owner applies what's missing and deletes what's left over. There are no per-deployment actors.
+- Architecture is a **level-triggered controller**: `Runner::run` joins three loops, the controller, the observer and the WebSocket connection. The controller's queue holds owners whose objects may be out of date, and reconciling an owner applies what's missing and deletes what's left over. There are no per-deployment tasks.
 
 ## Adding a runner
 
@@ -18,7 +18,7 @@ Adding a new *resource type* (database, static site) means a new `Owner` variant
 
 ## `runners/kubernetes` — reference only, not built
 
-Crate name is `controller`. It predates the common-library/actor design, does **not** depend on `common`, doesn't implement `RunnerExecutor`, and its `main` is effectively dead. It's `exclude`d from the workspace, so nothing builds it and its `workspace = true` dependency inheritance no longer resolves — it's kept purely as a reference for a future Kubernetes runner. **Don't extend it or wire it back up without rewriting it against `RunnerExecutor`.**
+Crate name is `controller`. It predates the common library, does **not** depend on `common`, doesn't implement `RunnerExecutor`, and its `main` is effectively dead. It's `exclude`d from the workspace, so nothing builds it and its `workspace = true` dependency inheritance no longer resolves — it's kept purely as a reference for a future Kubernetes runner. **Don't extend it or wire it back up without rewriting it against `RunnerExecutor`.**
 
 ## Self-hosted operation
 

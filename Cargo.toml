@@ -6,7 +6,7 @@ exclude              = ["runners/kubernetes"]
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"
-package.rust-version = "1.94"
+package.rust-version = "1.100"
 package.version      = "0.18.0"
 resolver             = "3"
 
@@ -94,8 +94,6 @@ prost                          = { default-features = false, version = "0.14" }
 prost-types                    = { default-features = false, version = "0.14" }
 psl                            = { default-features = false, version = "2" }
 quote                          = { default-features = false, version = "1" }
-ractor                         = { default-features = false, version = "0.16" }
-ractor_actors                  = { default-features = false, version = "0.7" }
 rand                           = { default-features = false, version = "0.10" }
 regex                          = { default-features = false, version = "1" }
 reqwest                        = { default-features = false, version = "0.13" }

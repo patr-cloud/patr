@@ -25,8 +25,6 @@ opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
 opentelemetry-otlp             = { workspace = true, features = ["default", "http-json", "reqwest-rustls", "tls-webpki-roots"] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
 preprocess                     = { workspace = true, features = [] }
-ractor                         = { workspace = true, features = ["tokio_runtime"] }
-ractor_actors                  = { workspace = true, features = ["streams"] }
 reqwest                        = { workspace = true, features = ["json", "rustls", "stream"] }
 rustls                         = { workspace = true, features = ["ring"] }
 semver                         = { workspace = true, features = ["default"] }

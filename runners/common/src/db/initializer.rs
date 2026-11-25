@@ -30,8 +30,7 @@ pub async fn initialize(
 
 	let mut connection = database.acquire().await?;
 
-	let fresh = tables.is_empty();
-	if fresh {
+	let fresh_database = if tables.is_empty() {
 		warn!("No tables exist. Creating fresh");
 
 		// Create all tables
@@ -47,6 +46,8 @@ pub async fn initialize(
 		crate::migrations::mark_all_applied(&mut connection).await?;
 
 		info!("Database created fresh");
+
+		true
 	} else {
 		let rows = query!(
 			r#"
@@ -96,7 +97,9 @@ pub async fn initialize(
 				crate::migrations::run_migrations(&mut connection, &version, config).await?;
 			}
 		}
-	}
+
+		false
+	};
 
 	// Set the database schema version
 	query!(
@@ -115,5 +118,5 @@ pub async fn initialize(
 	.execute(&mut *connection)
 	.await?;
 
-	Ok(fresh)
+	Ok(fresh_database)
 }

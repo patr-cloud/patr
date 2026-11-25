@@ -211,7 +211,7 @@ async fn a_managed_url_follows_its_deployment() {
 	setup.upsert_deployment(id, running, details).await;
 
 	let mut conn = setup.database.acquire().await.unwrap();
-	common::actors::db_helpers::upsert_managed_url_in_database(
+	common::runner::db_helpers::upsert_managed_url_in_database(
 		&mut conn,
 		managed_url_id,
 		"app.example.com",

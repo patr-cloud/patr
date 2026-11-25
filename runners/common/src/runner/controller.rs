@@ -1,24 +1,24 @@
 use std::{
 	collections::{BTreeMap, BTreeSet},
 	fmt::Display,
-	marker::PhantomData,
-	time::Duration,
+	panic::AssertUnwindSafe,
 };
 
+use ::time::OffsetDateTime;
+use futures::{
+	FutureExt,
+	future::{self, Either},
+};
 use models::api::workspace::deployment::*;
-use ractor::{Actor, ActorProcessingErr, ActorRef};
 use sha2::{Digest as _, Sha256};
-use time::OffsetDateTime;
-use tokio::task::JoinSet;
-
-use super::{
-	db_helpers,
-	observer::{OBSERVER_NAME, ObserverMessage},
+use tokio::{
+	sync::mpsc,
+	task::JoinSet,
+	time::{self, Duration},
 };
-use crate::prelude::*;
 
-/// The name the controller registers under, so other actors can find it.
-pub const CONTROLLER_NAME: &str = "controller";
+use super::{db_helpers, observer::ObserverMessage};
+use crate::prelude::*;
 
 /// Bumped whenever how objects are applied changes, so every object's hash
 /// changes and every object is applied again.
@@ -56,16 +56,13 @@ pub struct Outcome {
 	pub changed: bool,
 }
 
-/// Messages for the [`Controller`].
+/// Messages for the controller.
 pub enum ControllerMessage {
 	/// These owners' objects may be out of date. Clears their backoff, since
 	/// what they expect may have changed.
 	Enqueue(BTreeSet<Owner>),
-	/// A resync finished, so the local state is complete. Starts reconciling
-	/// if it hadn't started.
-	Start,
-	/// Reconcile every owner, and schedule the next full reconcile.
-	Reconcile,
+	/// Reconcile every owner now, instead of at the next full reconcile.
+	ReconcileAll,
 	/// An owner's retry backoff elapsed.
 	Retry(Owner),
 	/// An owner's reconcile finished.
@@ -77,30 +74,14 @@ pub enum ControllerMessage {
 	},
 }
 
-/// Arguments passed to [`Controller::pre_start`].
-pub struct ControllerArgs<E: RunnerExecutor> {
-	/// The executor that applies and deletes objects.
-	pub executor: E,
-	/// Runner configuration.
-	pub config: RunnerSettings<E::Settings>,
-	/// Database connection pool for SQLite access.
-	pub database: sqlx::Pool<DatabaseType>,
-	/// Whether to reconcile before the first resync. Only a freshly created
-	/// database waits, because until then it expects nothing and every object
-	/// would be reaped.
-	pub started: bool,
-}
-
-/// The mutable state held by a running [`Controller`].
-pub struct ControllerState<E: RunnerExecutor> {
+/// The controller's state, owned by [`run`].
+struct ControllerState<E: RunnerExecutor> {
 	/// The executor that applies and deletes objects.
 	executor: E,
 	/// Runner configuration.
 	config: RunnerSettings<E::Settings>,
 	/// Database connection pool for SQLite access.
 	database: sqlx::Pool<DatabaseType>,
-	/// Whether reconciling has started.
-	started: bool,
 	/// Owners waiting to be reconciled.
 	pending: BTreeSet<Owner>,
 	/// Owners being reconciled.
@@ -109,175 +90,172 @@ pub struct ControllerState<E: RunnerExecutor> {
 	dirty: BTreeSet<Owner>,
 	/// The current retry delay of each owner whose objects failed to apply.
 	backoff: BTreeMap<Owner, Duration>,
-	/// The running reconciles, aborted if the controller stops.
+	/// The running reconciles and retry timers, aborted when the runner exits.
 	tasks: JoinSet<()>,
 }
 
-/// Reconciles owners: makes the objects on the backend match what the local
-/// state expects, one owner at a time per owner and a few owners at once.
-pub struct Controller<E: RunnerExecutor> {
-	/// Marker for the executor generic.
-	_phantom: PhantomData<E>,
-}
-
-impl<E: RunnerExecutor> Controller<E> {
-	/// Creates a new [`Controller`] instance.
-	pub fn new() -> Self {
-		Self {
-			_phantom: PhantomData,
-		}
+/// Reconciles owners until the runner exits: makes the objects on the backend
+/// match what the local state expects, one owner at a time per owner and a few
+/// owners at once.
+///
+/// It reaps every object the local state doesn't expect, so it must never start
+/// on a freshly created database before a resync has filled it.
+pub async fn run<E: RunnerExecutor>(
+	mut receiver: mpsc::UnboundedReceiver<ControllerMessage>,
+	observer_tx: mpsc::UnboundedSender<ObserverMessage>,
+	executor: E,
+	config: RunnerSettings<E::Settings>,
+	database: sqlx::Pool<DatabaseType>,
+) -> Result<!, RunnerError> {
+	// A finalizer still marked running was interrupted, since the reconciles
+	// that run them stop with the runner.
+	if let Err(err) = query!(
+		r#"
+		UPDATE
+			object_finalizer
+		SET
+			state = 'pending'
+		WHERE
+			state = 'running';
+		"#
+	)
+	.execute(&database)
+	.await
+	{
+		error!(?err, "Failed to reset interrupted finalizers");
 	}
-}
 
-impl<E: RunnerExecutor> Actor for Controller<E> {
-	type Arguments = ControllerArgs<E>;
-	type Msg = ControllerMessage;
-	type State = ControllerState<E>;
+	let mut state = ControllerState {
+		executor,
+		config,
+		database,
+		pending: BTreeSet::new(),
+		in_flight: BTreeSet::new(),
+		dirty: BTreeSet::new(),
+		backoff: BTreeMap::new(),
+		tasks: JoinSet::new(),
+	};
+	// The reconciles and retry timers report back on this.
+	let (task_sender, mut task_receiver) = mpsc::unbounded_channel();
 
-	async fn pre_start(
-		&self,
-		myself: ActorRef<Self::Msg>,
-		args: Self::Arguments,
-	) -> Result<Self::State, ActorProcessingErr> {
-		// A finalizer still marked running was interrupted, since the
-		// reconciles that run them stop with the controller.
-		query!(
-			r#"
-			UPDATE
-				object_finalizer
-			SET
-				state = 'pending'
-			WHERE
-				state = 'running';
-			"#
+	// This is set to zero intentionally so that the first full reconcile
+	// happens immediately, and then every full sync interval after that.
+	let mut sleep_future = Box::pin(time::sleep(Duration::from_secs(0)));
+
+	loop {
+		let controller_future = future::select(
+			sleep_future,
+			future::select(Box::pin(receiver.recv()), Box::pin(task_receiver.recv())),
 		)
-		.execute(&args.database)
+		.with_cancel_check()
 		.await?;
-
-		let _ = myself.send_message(ControllerMessage::Reconcile);
-
-		Ok(ControllerState {
-			executor: args.executor,
-			config: args.config,
-			database: args.database,
-			started: args.started,
-			pending: BTreeSet::new(),
-			in_flight: BTreeSet::new(),
-			dirty: BTreeSet::new(),
-			backoff: BTreeMap::new(),
-			tasks: JoinSet::new(),
-		})
-	}
-
-	async fn post_stop(
-		&self,
-		_: ActorRef<Self::Msg>,
-		state: &mut Self::State,
-	) -> Result<(), ActorProcessingErr> {
-		state.tasks.abort_all();
-		Ok(())
-	}
-
-	async fn handle(
-		&self,
-		myself: ActorRef<Self::Msg>,
-		message: Self::Msg,
-		state: &mut Self::State,
-	) -> Result<(), ActorProcessingErr> {
-		match message {
-			ControllerMessage::Enqueue(owners) => {
-				for owner in owners {
-					state.backoff.remove(&owner);
-					enqueue(state, owner);
-				}
+		match controller_future {
+			Either::Left(((), _)) => {
+				// Regularly (every 10 minutes in prod and 10 seconds in dev),
+				// reconcile every owner, so nothing is lost if an event is missed.
+				sleep_future = Box::pin(time::sleep(full_sync_interval()));
+				enqueue_all(&mut state).await;
 			}
-			ControllerMessage::Start => {
-				if !state.started {
-					info!("Local state is complete, starting to reconcile");
-					state.started = true;
-					enqueue_all(state).await;
-				}
-			}
-			ControllerMessage::Reconcile => {
-				myself.send_after(full_sync_interval(), || ControllerMessage::Reconcile);
-				if state.started {
-					enqueue_all(state).await;
-				}
-			}
-			ControllerMessage::Retry(owner) => {
-				if state.backoff.contains_key(&owner) {
-					enqueue(state, owner);
-				}
-			}
-			ControllerMessage::Done { owner, outcome } => {
-				state.in_flight.remove(&owner);
-				while state.tasks.try_join_next().is_some() {}
+			Either::Right((
+				Either::Left((message, _)) | Either::Right((message, _)),
+				pending_sleep,
+			)) => {
+				sleep_future = pending_sleep;
+				let Some(message) = message else {
+					// The controller message channel has been closed. This should not happen
+					error!("Controller message channel has been closed");
+					continue;
+				};
 
-				let failed = match &outcome {
-					Ok(outcome) => outcome.failed,
-					Err(err) => {
-						error!(%owner, ?err, "Failed to reconcile");
-						true
+				match message {
+					ControllerMessage::Enqueue(owners) => {
+						for owner in owners {
+							state.backoff.remove(&owner);
+							enqueue(&mut state, owner);
+						}
 					}
-				};
+					ControllerMessage::ReconcileAll => {
+						sleep_future = Box::pin(time::sleep(Duration::from_secs(0)));
+					}
+					ControllerMessage::Retry(owner) => {
+						if state.backoff.contains_key(&owner) {
+							enqueue(&mut state, owner);
+						}
+					}
+					ControllerMessage::Done { owner, outcome } => {
+						state.in_flight.remove(&owner);
+						while state.tasks.try_join_next().is_some() {}
 
-				if let Owner::Deployment(deployment_id) = owner &&
-					let Some(observer) = ActorRef::<ObserverMessage>::where_is(OBSERVER_NAME)
-				{
-					let _ = observer.send_message(ObserverMessage::ApplyOutcome {
-						deployment_id,
-						failed,
-					});
-				}
+						let failed = match &outcome {
+							Ok(outcome) => outcome.failed,
+							Err(err) => {
+								error!(%owner, ?err, "Failed to reconcile");
+								true
+							}
+						};
 
-				if failed {
-					let delay = state
-						.backoff
-						.get(&owner)
-						.map_or(INITIAL_RETRY_BACKOFF, |delay| {
-							(*delay * 2).min(MAX_RETRY_BACKOFF)
-						});
-					state.backoff.insert(owner, delay);
-					myself.send_after(delay, move || ControllerMessage::Retry(owner));
-				} else {
-					state.backoff.remove(&owner);
-				}
+						if let Owner::Deployment(deployment_id) = owner {
+							let _ = observer_tx.send(ObserverMessage::ApplyOutcome {
+								deployment_id,
+								failed,
+							});
+						}
 
-				// The ingress mounts other owners' routes, so it follows their
-				// changes.
-				if owner != Owner::System && outcome.is_ok_and(|outcome| outcome.changed) {
-					enqueue(state, Owner::System);
-				}
+						if failed {
+							let delay = state
+								.backoff
+								.get(&owner)
+								.map_or(INITIAL_RETRY_BACKOFF, |delay| {
+									(*delay * 2).min(MAX_RETRY_BACKOFF)
+								});
+							state.backoff.insert(owner, delay);
+							let task_sender = task_sender.clone();
+							state.tasks.spawn(async move {
+								time::sleep(delay).await;
+								let _ = task_sender.send(ControllerMessage::Retry(owner));
+							});
+						} else {
+							state.backoff.remove(&owner);
+						}
 
-				if state.dirty.remove(&owner) {
-					state.pending.insert(owner);
+						// The ingress mounts other owners' routes, so it follows
+						// their changes.
+						if owner != Owner::System && outcome.is_ok_and(|outcome| outcome.changed) {
+							enqueue(&mut state, Owner::System);
+						}
+
+						if state.dirty.remove(&owner) {
+							state.pending.insert(owner);
+						}
+					}
 				}
 			}
 		}
 
-		if state.started {
-			while state.in_flight.len() < CONCURRENCY {
-				let Some(owner) = state
-					.pending
-					.take(&Owner::System)
-					.or_else(|| state.pending.pop_first())
-				else {
-					break;
-				};
-				state.in_flight.insert(owner);
+		while state.in_flight.len() < CONCURRENCY {
+			let Some(owner) = state
+				.pending
+				.take(&Owner::System)
+				.or_else(|| state.pending.pop_first())
+			else {
+				break;
+			};
+			state.in_flight.insert(owner);
 
-				let executor = state.executor.clone();
-				let config = state.config.clone();
-				let database = state.database.clone();
-				let myself = myself.clone();
-				state.tasks.spawn(async move {
-					let outcome = reconcile(&executor, &config, &database, owner).await;
-					let _ = myself.send_message(ControllerMessage::Done { owner, outcome });
-				});
-			}
+			let executor = state.executor.clone();
+			let config = state.config.clone();
+			let database = state.database.clone();
+			let task_sender = task_sender.clone();
+			state.tasks.spawn(async move {
+				// A reconcile that panics counts as a failed one, so its owner
+				// isn't left in flight.
+				let outcome = AssertUnwindSafe(reconcile(&executor, &config, &database, owner))
+					.catch_unwind()
+					.await
+					.unwrap_or_else(|_| Err(RunnerError::host("the reconcile panicked")));
+				let _ = task_sender.send(ControllerMessage::Done { owner, outcome });
+			});
 		}
-
-		Ok(())
 	}
 }
 

@@ -1,18 +1,18 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use common::{
-	actors::{
+	db,
+	prelude::*,
+	runner::{
 		controller::{self, Outcome},
 		db_helpers,
 	},
-	db,
-	prelude::*,
 };
 use models::api::workspace::deployment::*;
 
 use crate::mock_executor::*;
 
-/// A runner's local database and a mock executor, without any actors. Tests
+/// A runner's local database and a mock executor, without any loops running. Tests
 /// drive reconciles directly with [`TestSetup::reconcile`].
 pub struct TestSetup {
 	pub database: sqlx::Pool<DatabaseType>,

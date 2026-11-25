@@ -1,58 +1,35 @@
-use common::actors::{
-	controller::{Controller, ControllerArgs, ControllerMessage},
-	observer::{Observer, ObserverArgs, ObserverMessage},
+use common::runner::{
+	controller::{self, ControllerMessage},
+	observer::{self, ObserverMessage},
 };
-use ractor::Actor;
+use tokio::sync::mpsc;
 
 use crate::prelude::*;
 
-/// A controller on a freshly created database reconciles nothing until the
-/// first resync says the local state is complete.
-#[tokio::test]
-async fn a_fresh_database_waits_for_the_first_resync() {
-	let setup = setup().await;
-	let (controller, _handle) = Controller::<MockExecutor>::spawn(
-		None,
-		Controller::new(),
-		ControllerArgs {
-			executor: setup.executor.clone(),
-			config: setup.config.clone(),
-			database: setup.database.clone(),
-			started: false,
-		},
-	)
-	.await
-	.unwrap();
-
-	tokio::time::sleep(Duration::from_millis(300)).await;
-	assert!(setup.mock_state.calls.lock().unwrap().is_empty());
-
-	controller.send_message(ControllerMessage::Start).unwrap();
-
-	let mock = setup.mock_state.clone();
-	periodic_check(move || mock.exists(INGRESS), Duration::from_secs(5)).await;
+/// Runs a controller on the setup's database, returning the sender for its
+/// messages.
+fn spawn_controller(setup: &TestSetup) -> mpsc::UnboundedSender<ControllerMessage> {
+	let (controller_tx, controller_rx) = mpsc::unbounded_channel();
+	let (observer_tx, _) = mpsc::unbounded_channel();
+	tokio::spawn(controller::run(
+		controller_rx,
+		observer_tx,
+		setup.executor.clone(),
+		setup.config.clone(),
+		setup.database.clone(),
+	));
+	controller_tx
 }
 
-/// Enqueued owners are reconciled once the controller has started.
+/// Enqueued owners are reconciled.
 #[tokio::test]
 async fn enqueued_owners_are_reconciled() {
 	let setup = setup().await;
 	let id = setup.create_test_deployment().await;
-	let (controller, _handle) = Controller::<MockExecutor>::spawn(
-		None,
-		Controller::new(),
-		ControllerArgs {
-			executor: setup.executor.clone(),
-			config: setup.config.clone(),
-			database: setup.database.clone(),
-			started: true,
-		},
-	)
-	.await
-	.unwrap();
+	let controller = spawn_controller(&setup);
 
 	controller
-		.send_message(ControllerMessage::Enqueue([Owner::Deployment(id)].into()))
+		.send(ControllerMessage::Enqueue([Owner::Deployment(id)].into()))
 		.unwrap();
 
 	let mock = setup.mock_state.clone();
@@ -73,25 +50,20 @@ async fn an_interrupted_finalizer_is_reset_on_start() {
 	.await
 	.unwrap();
 
-	let (_controller, _handle) = Controller::<MockExecutor>::spawn(
-		None,
-		Controller::new(),
-		ControllerArgs {
-			executor: setup.executor.clone(),
-			config: setup.config.clone(),
-			database: setup.database.clone(),
-			started: false,
-		},
-	)
-	.await
-	.unwrap();
+	let _controller = spawn_controller(&setup);
 
-	let state = sqlx::query("SELECT state FROM object_finalizer WHERE object_id = 'volume/x'")
-		.fetch_one(&setup.database)
-		.await
-		.unwrap()
-		.get::<String, _>("state");
-	assert_eq!(state, "pending");
+	wait_until(
+		async || {
+			sqlx::query("SELECT state FROM object_finalizer WHERE object_id = 'volume/x'")
+				.fetch_one(&setup.database)
+				.await
+				.unwrap()
+				.get::<String, _>("state") ==
+				"pending"
+		},
+		Duration::from_secs(5),
+	)
+	.await;
 }
 
 /// The observer records what the backend reports, a deployment the backend
@@ -109,22 +81,22 @@ async fn the_observer_records_observed_statuses() {
 		.unwrap()
 		.insert(running, ObservedDeploymentStatus::Running);
 
-	let (observer, _handle) = Observer::<MockExecutor>::spawn(
-		None,
-		Observer::new(),
-		ObserverArgs {
-			executor: setup.executor.clone(),
-			database: setup.database.clone(),
-		},
-	)
-	.await
-	.unwrap();
+	let (observer_tx, observer_rx) = mpsc::unbounded_channel();
+	let (controller_tx, _) = mpsc::unbounded_channel();
+	let (websocket_tx, _) = mpsc::unbounded_channel();
+	tokio::spawn(observer::run(
+		observer_rx,
+		controller_tx,
+		websocket_tx,
+		setup.executor.clone(),
+		setup.database.clone(),
+	));
 
 	wait_for_deployment_status(&setup.database, running, "running", Duration::from_secs(5)).await;
 	wait_for_deployment_status(&setup.database, missing, "stopped", Duration::from_secs(5)).await;
 
-	observer
-		.send_message(ObserverMessage::ApplyOutcome {
+	observer_tx
+		.send(ObserverMessage::ApplyOutcome {
 			deployment_id: running,
 			failed: true,
 		})

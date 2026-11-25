@@ -10,7 +10,7 @@ async fn patr_registry_deployment_round_trips() {
 	let repository_id = Uuid::new_v4();
 
 	let mut conn = setup.database.acquire().await.unwrap();
-	common::actors::db_helpers::upsert_deployment_in_database(
+	common::runner::db_helpers::upsert_deployment_in_database(
 		&mut conn,
 		WithId::new(
 			id,
@@ -44,7 +44,7 @@ async fn patr_registry_deployment_round_trips() {
 	.unwrap();
 	drop(conn);
 
-	let (upserted, _) = common::actors::db_helpers::get_local_deployment_info(&setup.database, id)
+	let (upserted, _) = common::runner::db_helpers::get_local_deployment_info(&setup.database, id)
 		.await
 		.unwrap();
 	assert_eq!(
@@ -71,7 +71,7 @@ async fn upsert_leaves_observed_status_alone() {
 		.unwrap();
 
 	let mut conn = setup.database.acquire().await.unwrap();
-	common::actors::db_helpers::upsert_deployment_in_database(
+	common::runner::db_helpers::upsert_deployment_in_database(
 		&mut conn,
 		WithId::new(
 			id,

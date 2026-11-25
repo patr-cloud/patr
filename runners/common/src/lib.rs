@@ -2,10 +2,6 @@
 //! will need to make a runner. All it needs are the implementations of how the
 //! runner handles the resources (such as deployments, databases, etc).
 
-/// Actor definitions for the ractor-based actor framework. Contains all actor
-/// types (DeploymentActor, ResourceSupervisor, WebSocketActor,
-/// RunnerSupervisor) and their message enums.
-pub mod actors;
 /// The database module contains all the database related functions. Such as
 /// initializing the database, getting the connection, etc.
 pub mod db;
@@ -19,7 +15,8 @@ pub mod executor;
 /// Database migrations organized by version. Uses `inventory` for automatic
 /// registration and tracks individual migrations in a `migrations` table.
 pub mod migrations;
-/// All the runner related structs and functions.
+/// All the runner related structs and functions: the runner itself, and the
+/// controller, observer and WebSocket loops it runs.
 pub mod runner;
 /// This module contains all the utilities used by the runner. This includes
 /// things like the config parser, the upstream API client, etc.
@@ -45,7 +42,7 @@ pub mod prelude {
 			RunnerExecutor,
 		},
 		runner::Runner,
-		utils::{client, config::*, constants, secrets},
+		utils::{client, config::*, constants, ext_traits::*, secrets},
 	};
 
 	/// The type of the database connection. A mutable reference to this should

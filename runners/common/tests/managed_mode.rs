@@ -1,17 +1,15 @@
 use std::{
 	collections::{BTreeMap, BTreeSet},
 	sync::Arc,
-	time::{Duration, Instant},
+	time::Duration,
 };
 
 use common::{
-	actors::{
-		db_helpers,
-		runner_supervisor::{RunnerSupervisor, RunnerSupervisorArgs},
-	},
 	db,
 	prelude::*,
+	runner::{controller, db_helpers, observer, websocket},
 };
+use futures::future;
 use http::StatusCode;
 use models::api::workspace::{
 	deployment::*,
@@ -19,12 +17,12 @@ use models::api::workspace::{
 	runner::*,
 	secret::Secret,
 };
-use ractor::Actor;
+use tokio::sync::mpsc;
 
 use crate::{
 	managed_server::{self, ManagedServerState},
 	mock_executor::*,
-	utils::periodic_check,
+	utils::{periodic_check, wait_until},
 };
 
 /// Set up a managed-mode runner connected to the test server on port 3000.
@@ -64,22 +62,51 @@ async fn setup_managed() -> (
 	let database = db::connect(&config.database).await.unwrap();
 	db::initialize(&database, &config).await.unwrap();
 
-	let (_root_ref, _root_handle) = RunnerSupervisor::<MockExecutor>::spawn(
-		Some("runner-supervisor".to_string()),
-		RunnerSupervisor::new(),
-		RunnerSupervisorArgs {
+	// Wired like `Runner::run`, which builds its own executor and exits the
+	// process when it's done. The database is fresh, so the first resync fills
+	// it before anything starts.
+	let executor = MockExecutor {
+		state: mock_state.clone(),
+	};
+	let mut connection = websocket::connect::<MockExecutor>(&config).await;
+	let stream = connection
+		.as_mut()
+		.expect("failed to connect to the test server");
+	websocket::handle_full_resync(&config, &database)
+		.await
+		.expect("failed to resync with the test server");
+	websocket::send_observed_statuses(&database, stream)
+		.await
+		.expect("failed to send the observed statuses");
+	let (controller_tx, controller_rx) = mpsc::unbounded_channel();
+	let (observer_tx, observer_rx) = mpsc::unbounded_channel();
+	let (websocket_tx, websocket_rx) = mpsc::unbounded_channel();
+	tokio::spawn(future::join3(
+		controller::run(
+			controller_rx,
+			observer_tx,
+			executor.clone(),
+			config.clone(),
+			database.clone(),
+		),
+		observer::run(
+			observer_rx,
+			controller_tx.clone(),
+			websocket_tx,
+			executor.clone(),
+			database.clone(),
+		),
+		websocket::run(
+			connection,
+			websocket_rx,
+			controller_tx,
+			executor,
 			config,
-			database: database.clone(),
-			executor: MockExecutor {
-				state: mock_state.clone(),
-			},
-			started: false,
-		},
-	)
-	.await
-	.unwrap();
+			database.clone(),
+		),
+	));
 
-	// Give the actor tree time to connect.
+	// Give the loops time to connect.
 	tokio::time::sleep(Duration::from_millis(500)).await;
 
 	(
@@ -244,8 +271,8 @@ async fn status_change_flows_upstream_via_ws() {
 	let (server_state, mock_state, _db, _ws_id, runner_id, _tmp) = setup_managed().await;
 	let (dep_id, deployment, details) = test_deployment(runner_id);
 
-	// Create a deployment — mock reports Running so the actor will report
-	// status change after the first CheckStatus.
+	// Create a deployment — mock reports Running so the observer will report
+	// a status change after its first snapshot.
 	mock_state
 		.statuses
 		.lock()
@@ -291,7 +318,7 @@ async fn full_resync_adds_missing_deployment() {
 	// write it to SQLite.
 	server_state.add_deployment(WithId::new(dep_id, deployment), details);
 
-	// Wait for the full resync to pick it up and the actor to upsert.
+	// Wait for the full resync to pick it up and the controller to apply it.
 	let mock = mock_state.clone();
 	periodic_check(
 		move || mock.has_call(|c| matches!(c, ExecutorCall::Apply(id) if *id == service(dep_id))),
@@ -551,18 +578,6 @@ async fn rejected_token_keeps_retrying_without_touching_deployments() {
 	// Give the resync that follows the reconnect time to land.
 	tokio::time::sleep(Duration::from_secs(2)).await;
 	assert_untouched().await;
-}
-
-/// Polls `check` every 50ms until it returns true, or panics after `timeout`.
-async fn wait_until(check: impl AsyncFn() -> bool, timeout: Duration) {
-	let start = Instant::now();
-	while start.elapsed() < timeout {
-		if check().await {
-			return;
-		}
-		tokio::time::sleep(Duration::from_millis(50)).await;
-	}
-	assert!(check().await, "condition not met after {timeout:?}");
 }
 
 /// Whether `sql`, bound to `id`, returns a row.
@@ -1166,7 +1181,7 @@ async fn reconcile_deleted_deployment_with_volume(
 ) -> (
 	crate::setup::TestSetup,
 	Uuid,
-	common::actors::controller::Outcome,
+	common::runner::controller::Outcome,
 ) {
 	let server_state = managed_server::get_managed_server().await;
 	let setup = crate::setup::setup().await;

@@ -1,6 +1,6 @@
 //! Tests for the common runner components, including the executor.
 //!
-//! These tests make sure that the runner supervisor and executor can be started
+//! These tests make sure that the runner's loops and executor can be started
 //! and can run a simple workflow.
 
 mod mock_executor;

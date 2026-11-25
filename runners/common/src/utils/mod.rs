@@ -2,6 +2,8 @@
 pub mod client;
 /// The configuration for the runner.
 pub mod config;
+/// Extensions traits for the `Either` type.
+pub mod ext_traits;
 /// OTLP observability setup for managed-mode runners.
 pub mod observability;
 /// Reading secret values from the Patr-hosted OpenBao proxy.

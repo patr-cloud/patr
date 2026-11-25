@@ -1,11 +1,16 @@
 use std::{
 	collections::{BTreeMap, BTreeSet},
-	marker::PhantomData,
-	pin::Pin,
-	time::Duration,
+	fmt::Debug,
 };
 
-use futures::{Sink, SinkExt, StreamExt};
+use ::time::OffsetDateTime;
+use futures::{
+	Sink,
+	SinkExt,
+	Stream,
+	StreamExt,
+	future::{self, Either},
+};
 use http::StatusCode;
 use models::{
 	api::workspace::{
@@ -30,31 +35,21 @@ use models::{
 	},
 	utils::ResourceSearcher,
 };
-use ractor::{Actor, ActorProcessingErr, ActorRef, SupervisionEvent};
-use ractor_actors::streams::spawn_stream_pump;
-use time::OffsetDateTime;
+use tokio::{
+	sync::mpsc,
+	time::{self, Duration},
+};
 
 use super::{
-	controller::{CONTROLLER_NAME, ControllerMessage},
+	controller::ControllerMessage,
 	db_helpers::{self, get_local_deployment_info},
 };
 use crate::prelude::*;
 
-/// The name the WebSocket actor registers under, so other actors can find it.
-pub const WEBSOCKET_NAME: &str = "websocket";
-
-/// Type-erased WS sink. The concrete type from `stream_request` is opaque
-/// (`impl Sink`), so we box it with a normalized `String` error.
-type BoxedWsSink = Pin<Box<dyn Sink<StreamRunnerDataForWorkspaceClientMsg, Error = String> + Send>>;
-
-/// Messages for the [`WebSocketActor`].
-///
-/// The WebSocketActor manages the bidirectional WebSocket connection to the
-/// upstream Patr API (managed mode only). It writes server-pushed changes to
-/// SQLite and forwards status updates from resource actors back upstream.
+/// Messages for the WebSocket connection.
 #[derive(Debug)]
 pub enum WebSocketMessage {
-	/// A resource actor reports a status change to send upstream. Dropped while
+	/// The observer reports a status change to send upstream. Dropped while
 	/// disconnected, since every resync sends them all.
 	SendStatusUpdate {
 		/// The UUID of the resource whose status changed.
@@ -62,271 +57,94 @@ pub enum WebSocketMessage {
 		/// The new status to report upstream.
 		status: ObservedDeploymentStatus,
 	},
-	/// Attempt to (re)connect to the upstream WebSocket.
-	Connect,
-	/// A message received from the upstream server.
-	ServerMessage(Box<StreamRunnerDataForWorkspaceServerMsg>),
-	/// The WS read stream ended or errored — trigger reconnection.
-	StreamEnded,
-	/// Periodic full resync with the upstream API.
-	FullResync,
 }
 
-/// Returns the interval between periodic full resyncs with the upstream API.
-/// 30 seconds in debug, 15 mins in release.
-fn full_resync_interval() -> Duration {
-	if cfg!(debug_assertions) {
-		Duration::from_secs(30)
-	} else {
-		Duration::from_secs(60 * 15)
-	}
-}
+/// How often the local database is resynced with the upstream APIs. 30 seconds
+/// in debug mode.
+const FULL_RESYNC_INTERVAL: Duration = if cfg!(debug_assertions) {
+	Duration::from_secs(30)
+} else {
+	Duration::from_mins(15)
+};
 
-/// Arguments passed to [`WebSocketActor::pre_start`] to construct the initial
-/// state.
-pub struct WebSocketActorArgs<E: RunnerExecutor> {
-	/// Runner configuration.
-	pub config: RunnerSettings<E::Settings>,
-	/// Database connection pool for SQLite access.
-	pub database: sqlx::Pool<DatabaseType>,
-	/// The executor, which stores the ingress token.
-	pub executor: E,
-}
+/// How long connecting to the server can take before it counts as failed.
+const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 
-/// The mutable state held by a running [`WebSocketActor`].
-pub struct WebSocketActorState<E: RunnerExecutor> {
-	/// Runner configuration.
-	pub config: RunnerSettings<E::Settings>,
-	/// Database connection pool for SQLite access.
-	pub database: sqlx::Pool<DatabaseType>,
-	/// The executor, which stores the ingress token.
-	pub executor: E,
-	/// Current reconnection backoff duration. Reset on successful connect.
-	pub reconnect_backoff: Duration,
-	/// Write half of the active WS connection. `None` when disconnected.
-	pub ws_sink: Option<BoxedWsSink>,
-}
-
-/// Actor responsible for managing the WebSocket connection to the upstream
-/// Patr API. Only active in managed mode.
-///
-/// Receives server-pushed resource changes, writes them to SQLite, and
-/// enqueues the owners they affect with the
-/// [`Controller`][super::controller::Controller]. Also publishes observed
-/// statuses back upstream.
-pub struct WebSocketActor<E: RunnerExecutor> {
-	/// Marker for the executor generic.
-	_phantom: PhantomData<E>,
-}
-
-impl<E: RunnerExecutor> WebSocketActor<E> {
-	/// Creates a new [`WebSocketActor`] instance.
-	pub fn new() -> Self {
-		Self {
-			_phantom: PhantomData,
-		}
-	}
-}
-
-impl<E> Actor for WebSocketActor<E>
-where
-	E: RunnerExecutor + Send + Sync + 'static,
-{
-	type Arguments = WebSocketActorArgs<E>;
-	type Msg = WebSocketMessage;
-	type State = WebSocketActorState<E>;
-
-	async fn pre_start(
-		&self,
-		myself: ActorRef<Self::Msg>,
-		args: Self::Arguments,
-	) -> Result<Self::State, ActorProcessingErr> {
-		// Trigger initial connection.
-		let _ = myself.send_message(WebSocketMessage::Connect);
-
-		Ok(WebSocketActorState {
-			config: args.config,
-			database: args.database,
-			executor: args.executor,
-			reconnect_backoff: Duration::from_secs(1),
-			ws_sink: None,
-		})
-	}
-
-	async fn handle(
-		&self,
-		myself: ActorRef<Self::Msg>,
-		message: Self::Msg,
-		state: &mut Self::State,
-	) -> Result<(), ActorProcessingErr> {
-		match message {
-			WebSocketMessage::Connect => {
-				handle_connect(myself, state).await;
-			}
-			WebSocketMessage::ServerMessage(msg) => {
-				if let Err(err) = handle_server_message(state, *msg).await {
-					// Without this log the supervisor only sees the bare WARN
-					// "Supervised child stopped" — the underlying cause (which
-					// stream-message arm failed and why) would be invisible.
-					error!(?err, "Failed to handle server message; actor will restart");
-					return Err(err);
-				}
-			}
-			WebSocketMessage::StreamEnded => {
-				state.ws_sink = None;
-				warn!("WebSocket stream ended, scheduling reconnect");
-				schedule_reconnect(&myself, state);
-			}
-			WebSocketMessage::SendStatusUpdate {
-				resource_id,
-				status,
-			} => {
-				if let Some(sink) = &mut state.ws_sink {
-					let msg = StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
-						id: resource_id,
-						status,
-					};
-					if sink.send(msg).await.is_err() {
-						// Sink errored — connection is dead. Drop it and wait for
-						// StreamEnded to trigger reconnect, whose resync sends
-						// this status again.
-						state.ws_sink = None;
-					}
-				}
-			}
-			WebSocketMessage::FullResync => {
-				// A resync failure (rate-limit, transient upstream error, network
-				// blip) must NOT tear down the live WebSocket.
-				//
-				// The local DB is untouched on failure: handle_full_resync does all
-				// its writes in a transaction that rolls back if it returns early.
-				if let Err(err) = handle_full_resync(myself.clone(), state).await {
-					error!(
-						?err,
-						"Full resync failed; keeping connection alive, will retry on timer"
-					);
-					// handle_full_resync only re-arms the periodic timer on success,
-					// so re-arm it here to guarantee the next attempt is scheduled.
-					myself.send_after(full_resync_interval(), || WebSocketMessage::FullResync);
-				}
-			}
-		}
-		Ok(())
-	}
-
-	/// Surface the stream pump's failure cause before stopping. ractor's
-	/// default `handle_supervisor_evt` calls `myself.stop(None)` and discards
-	/// the inner `ActorProcessingErr`, so the parent supervisor only sees a
-	/// clean termination and the actual error (which lives on the child's
-	/// `ActorFailed` event) is lost. Log it here so the next-level supervisor
-	/// log has something to correlate against.
-	async fn handle_supervisor_evt(
-		&self,
-		myself: ActorRef<Self::Msg>,
-		message: SupervisionEvent,
-		_state: &mut Self::State,
-	) -> Result<(), ActorProcessingErr> {
-		match &message {
-			SupervisionEvent::ActorFailed(cell, err) => {
-				error!(
-					child_id = %cell.get_id(),
-					child_name = ?cell.get_name(),
-					?err,
-					"WS actor child failed — propagating stop"
-				);
-				myself.stop(None);
-			}
-			SupervisionEvent::ActorTerminated(cell, _, reason) => {
-				debug!(
-					child_id = %cell.get_id(),
-					child_name = ?cell.get_name(),
-					?reason,
-					"WS actor child terminated cleanly"
-				);
-				myself.stop(None);
-			}
-			_ => {}
-		}
-		Ok(())
-	}
-}
-
-/// Attempt to establish the WebSocket connection. On success, set up a stream
-/// pump for reading and an mpsc-bridged task for writing.
-async fn handle_connect<E>(myself: ActorRef<WebSocketMessage>, state: &mut WebSocketActorState<E>)
-where
-	E: RunnerExecutor + Send + Sync + 'static,
-{
+/// Connects to the server and sends the handshake. The server streams nothing,
+/// and shows the runner as disconnected, until it has the handshake, so it's
+/// sent before the connection is used for anything else.
+pub async fn connect<E: RunnerExecutor>(
+	config: &RunnerSettings<E::Settings>,
+) -> Result<
+	impl Stream<Item = Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>
+	+ Sink<StreamRunnerDataForWorkspaceClientMsg, Error: Debug>
+	+ Unpin
+	+ use<E>,
+	RunnerError,
+> {
 	let RunnerSettings {
 		workspace_id,
 		runner_id,
 		api_token,
 		user_agent,
 		..
-	} = state.config.clone();
+	} = config.clone();
 
-	// Drop any existing sink from a previous connection.
-	state.ws_sink = None;
-
-	info!("Connecting to upstream WebSocket");
-
-	let stream = match client::stream_request(
-		ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
-			.path(StreamRunnerDataForWorkspacePath {
-				workspace_id,
-				runner_id,
-			})
-			.headers(StreamRunnerDataForWorkspaceRequestHeaders {
-				authorization: api_token.clone(),
-				user_agent: user_agent.clone(),
-			})
-			.build(),
+	info!("Connecting to the server");
+	let response = time::timeout(
+		CONNECT_TIMEOUT,
+		client::stream_request(
+			ApiRequest::<StreamRunnerDataForWorkspaceRequest>::builder()
+				.path(StreamRunnerDataForWorkspacePath {
+					workspace_id,
+					runner_id,
+				})
+				.headers(StreamRunnerDataForWorkspaceRequestHeaders {
+					authorization: api_token,
+					user_agent,
+				})
+				.build(),
+		),
 	)
-	.await
-	{
-		Ok(stream) => stream,
-		Err(err) => {
+	.await;
+
+	let mut stream = match response {
+		Ok(Ok(stream)) => stream,
+		Ok(Err(err)) => {
 			// Keep retrying even when the fix is out of our hands: exiting would
 			// only have systemd restart us into the same rejection.
 			match (err.status_code, &err.body.error) {
 				(StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN, _) |
 				(_, ErrorType::MalformedApiToken) => {
 					error!(
-						"Upstream rejected the API token of runner {runner_id} in workspace \
-						 {workspace_id} ({}: {}). It was probably regenerated, or the runner was \
-						 deleted. Run `patr -w {workspace_id} runner setup reconnect --runner-id \
-						 {runner_id}` on this host to write a new token to `apiToken` in the \
-						 runner's config (it regenerates the token if the CLI is logged in; \
-						 otherwise use Regenerate token on the runner's page in the dashboard and \
-						 paste it), then restart the runner service.",
+						"API token rejected ({}: {}). Run `patr -w {workspace_id} runner setup \
+						 reconnect --runner-id {runner_id}` on this host, then restart the runner \
+						 service.",
 						err.status_code, err.body.message
 					);
 				}
 				(_, ErrorType::RunnerAlreadyConnected) => {
 					error!(
-						"Upstream says runner {runner_id} is already connected. This clears \
-						 within two minutes if the runner restarted abruptly. If it persists, \
-						 another machine is running this runner: stop it there, or move the \
-						 runner here with `patr -w {workspace_id} runner setup reconnect \
-						 --runner-id {runner_id}`, which regenerates its token and disconnects \
-						 the other machine, then restart the runner service."
+						"Runner already connected: the API still holds an earlier connection. If \
+						 the runner stopped without closing it, that expires within two minutes and \
+						 the runner gets back in on its own. If it lasts longer, another machine is \
+						 running this runner: stop it there, or run `patr -w {workspace_id} runner \
+						 setup reconnect --runner-id {runner_id}` here and restart the runner \
+						 service."
 					);
 				}
-				_ => error!("Failed to connect to upstream WebSocket: {:?}", err),
+				_ => error!("Failed to connect to the server: {:?}", err),
 			}
-			schedule_reconnect(&myself, state);
-			return;
+			return Err(RunnerError::UpstreamServerError(err.body.error));
+		}
+		Err(_) => {
+			error!("Failed to connect to the server: timed out after {CONNECT_TIMEOUT:?}");
+			return Err(RunnerError::host("timed out connecting to the server"));
 		}
 	};
+	info!("Connected to the server");
 
-	info!("Connected to upstream WebSocket");
-	state.reconnect_backoff = Duration::from_secs(1);
-
-	// Split into read (Stream) and write (Sink) halves.
-	let (mut sink, read_stream) = stream.split();
-
-	// Send the handshake before pumping.
-	if sink
+	if let Err(err) = stream
 		.send(StreamRunnerDataForWorkspaceClientMsg::Handshake {
 			// CI bakes the channel's full version (e.g. `0.18.0-alpha.1`) into
 			// PATR_BUILD_VERSION; Cargo.toml only ever holds the bare release.
@@ -334,41 +152,115 @@ where
 				.unwrap_or(env!("CARGO_PKG_VERSION"))
 				.parse()
 				.expect("PATR_BUILD_VERSION must be a valid semver"),
-			exposure_type: E::runner_exposure_type(&state.config),
+			exposure_type: E::runner_exposure_type(config),
 		})
 		.await
-		.is_err()
 	{
-		error!("Failed to send handshake, reconnecting");
-		schedule_reconnect(&myself, state);
-		return;
+		error!("Failed to send the handshake: {:?}", err);
+		return Err(RunnerError::host(format!(
+			"failed to send the handshake: {err:?}"
+		)));
 	}
 
-	// Set up the read side: spawn_stream_pump forwards each stream item
-	// as a ServerMessage to this actor. On stream end (None), send
-	// StreamEnded to trigger reconnection.
-	if let Err(err) = spawn_stream_pump(
-		read_stream,
-		myself.clone(),
-		|item| match item {
-			Some(Ok(msg)) => WebSocketMessage::ServerMessage(Box::new(msg)),
-			Some(Err(_)) | None => WebSocketMessage::StreamEnded,
-		},
-		None,
-	)
-	.await
-	{
-		error!("Failed to spawn stream pump: {:?}", err);
-		schedule_reconnect(&myself, state);
-		return;
+	Ok(stream)
+}
+
+/// Sync the local database with the upstream APIs. This function will listen
+/// for messages from the server on the given connection, reconnecting whenever
+/// it drops. It will notify the controller to reconcile the resources that are
+/// changed on the server, and send their observed statuses back. This function
+/// will exit if the exit signal is received.
+pub async fn run<E: RunnerExecutor>(
+	connection: Result<
+		impl Stream<Item = Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>
+		+ Sink<StreamRunnerDataForWorkspaceClientMsg, Error: Debug>
+		+ Unpin,
+		RunnerError,
+	>,
+	mut receiver: mpsc::UnboundedReceiver<WebSocketMessage>,
+	controller_tx: mpsc::UnboundedSender<ControllerMessage>,
+	executor: E,
+	config: RunnerSettings<E::Settings>,
+	database: sqlx::Pool<DatabaseType>,
+) -> Result<!, RunnerError> {
+	// How long to wait before connecting again after a failed connect, doubling
+	// up to a minute. Reset once connected.
+	let mut reconnect_backoff = Duration::from_secs(1);
+
+	info!("Syncing local database with upstream APIs");
+
+	// The given connection was resynced by whoever opened it, so its first
+	// resync waits for the timer
+	if let Ok(stream) = connection {
+		serve(
+			stream,
+			FULL_RESYNC_INTERVAL,
+			&mut receiver,
+			&controller_tx,
+			&executor,
+			&config,
+			&database,
+		)
+		.await?;
 	}
 
-	// Store the write half, boxing it to erase the opaque type.
-	state.ws_sink = Some(Box::pin(sink.sink_map_err(|e| format!("{e:?}"))));
+	// Connect to the server infinitely until the exit signal is received
+	loop {
+		let Ok(stream) = connect::<E>(&config).with_cancel_check().await? else {
+			// Retry after the backoff, but break if the exit signal is received
+			error!("Retrying in {reconnect_backoff:?}");
+			time::sleep(reconnect_backoff).with_cancel_check().await?;
+			reconnect_backoff = (reconnect_backoff * 2).min(Duration::from_secs(60));
+			continue;
+		};
+		reconnect_backoff = Duration::from_secs(1);
+
+		// Every connection opened here resyncs right away
+		serve(
+			stream,
+			Duration::from_secs(0),
+			&mut receiver,
+			&controller_tx,
+			&executor,
+			&config,
+			&database,
+		)
+		.await?;
+	}
+}
+
+/// Serve one connection until it's lost: handle the server's messages, send
+/// the observed statuses, and resync after `first_resync` and then on a timer.
+/// Returns once it's time to reconnect, and only errors on the exit signal.
+async fn serve<E: RunnerExecutor>(
+	mut stream: impl Stream<Item = Result<StreamRunnerDataForWorkspaceServerMsg, ErrorType>>
+	+ Sink<StreamRunnerDataForWorkspaceClientMsg, Error: Debug>
+	+ Unpin,
+	first_resync: Duration,
+	receiver: &mut mpsc::UnboundedReceiver<WebSocketMessage>,
+	controller_tx: &mpsc::UnboundedSender<ControllerMessage>,
+	executor: &E,
+	config: &RunnerSettings<E::Settings>,
+	database: &sqlx::Pool<DatabaseType>,
+) -> Result<(), RunnerError> {
+	let RunnerSettings {
+		workspace_id,
+		runner_id,
+		api_token,
+		user_agent,
+		..
+	} = config.clone();
+
+	// Clear any queued messages in the receiver to avoid processing stale updates
+	// Every status is sent again after the full resync with the server
+	let queued_messages = receiver.len();
+	receiver.recv_many(&mut vec![], queued_messages).await;
+
+	let mut pinned_sleeper = Box::pin(time::sleep(first_resync));
 
 	// The API can regenerate the runner's tunnel token, so it's fetched again
 	// on every connect.
-	if E::runner_exposure_type(&state.config).requires_tunnel() {
+	if E::runner_exposure_type(config).requires_tunnel() {
 		match client::make_request(
 			ApiRequest::<GetIngressTokenForRunnerRequest>::builder()
 				.path(GetIngressTokenForRunnerPath {
@@ -381,14 +273,14 @@ where
 				})
 				.build(),
 		)
-		.await
+		.with_cancel_check()
+		.await?
 		{
-			Ok(response) => match state
-				.executor
-				.update_ingress_token(response.body.token)
-				.await
-			{
-				Ok(true) => enqueue([Owner::System]),
+			Ok(response) => match executor.update_ingress_token(response.body.token).await {
+				Ok(true) => {
+					let _ = controller_tx
+						.send(ControllerMessage::Enqueue(BTreeSet::from([Owner::System])));
+				}
 				Ok(false) => {}
 				Err(err) => error!(?err, "Failed to store the ingress token"),
 			},
@@ -396,39 +288,133 @@ where
 		}
 	}
 
-	// Trigger an immediate full resync so a freshly-connected runner picks up
-	// pre-existing deployments without waiting for the periodic timer — server
-	// pushes only fire on state changes, not on connect. The handler re-arms
-	// the periodic timer when it finishes.
-	let _ = myself.send_message(WebSocketMessage::FullResync);
-}
+	trace!("Syncing all resources before starting streaming");
+	'message: loop {
+		let Some(stream_message) = future::select(
+			&mut pinned_sleeper,
+			future::select(stream.next(), Box::pin(receiver.recv())),
+		)
+		.with_cancel_check()
+		.await?
+		.into_right() else {
+			// Every 15 minutes, resync all resources to make sure everything is fine
+			info!("Resyncing all resources with upstream to make sure everything is fine");
+			pinned_sleeper = Box::pin(time::sleep(FULL_RESYNC_INTERVAL));
 
-/// Schedule a `Connect` message with exponential backoff.
-fn schedule_reconnect<E: RunnerExecutor>(
-	myself: &ActorRef<WebSocketMessage>,
-	state: &mut WebSocketActorState<E>,
-) {
-	let backoff = state.reconnect_backoff;
-	info!(?backoff, "Scheduling reconnect");
-	myself.send_after(backoff, || WebSocketMessage::Connect);
-	state.reconnect_backoff = (backoff * 2).min(Duration::from_secs(60));
-}
+			// A failure (rate-limit, transient upstream error, network blip)
+			// leaves the local database untouched and the connection up. The
+			// next resync tries again.
+			if let Err(err) = handle_full_resync(config, database)
+				.with_cancel_check()
+				.await?
+			{
+				error!("Failed to sync all resources: {:?}", err);
+				continue 'message;
+			}
+			info!("All resources synced successfully");
 
-/// Tells the controller these owners may be out of date.
-fn enqueue(owners: impl IntoIterator<Item = Owner>) {
-	if let Some(controller) = ActorRef::<ControllerMessage>::where_is(CONTROLLER_NAME) {
-		let _ = controller.send_message(ControllerMessage::Enqueue(owners.into_iter().collect()));
+			let _ = controller_tx.send(ControllerMessage::ReconcileAll);
+
+			let Ok(()) = send_observed_statuses(database, &mut stream)
+				.await
+				.inspect_err(|err| {
+					error!("Failed to send client message: {:?}", err);
+					error!("Retrying connection to server");
+				})
+			else {
+				// Retry after 5 seconds, but break if the exit signal is received
+				time::sleep(Duration::from_secs(5))
+					.with_cancel_check()
+					.await?;
+				return Ok(());
+			};
+
+			continue 'message;
+		};
+
+		let reconcile_message = match stream_message {
+			Either::Left((reconcile_message, _)) => reconcile_message,
+			Either::Right((executor_message, _)) => {
+				let Some(executor_message) = executor_message else {
+					// The executor message channel has been closed. This should not happen
+					error!("Executor message channel has been closed");
+					continue 'message;
+				};
+				let client_msg = match executor_message {
+					WebSocketMessage::SendStatusUpdate {
+						resource_id,
+						status,
+					} => StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
+						id: resource_id,
+						status,
+					},
+				};
+				let Ok(()) = stream.send(client_msg).await.inspect_err(|err| {
+					error!("Failed to send client message: {:?}", err);
+					error!("Retrying connection to server");
+				}) else {
+					// Retry after 5 seconds, but break if the exit signal is received
+					time::sleep(Duration::from_secs(5))
+						.with_cancel_check()
+						.await?;
+					return Ok(());
+				};
+
+				continue 'message;
+			}
+		};
+
+		match reconcile_message {
+			Some(Ok(response)) => {
+				if let Err(err) = handle_server_message(config, database, controller_tx, response)
+					.with_cancel_check()
+					.await?
+				{
+					// Failed to handle the message. The resync after reconnecting
+					// catches it up
+					error!("Failed to handle the message: {err}");
+					error!("Restarting connection to server");
+					// Retry after 1 second, but break if the exit signal is received
+					time::sleep(Duration::from_secs(1))
+						.with_cancel_check()
+						.await?;
+					return Ok(());
+				}
+			}
+			Some(Err(err)) => {
+				// Data from the websocket failed
+				error!("Failed to connect to the server: {:?}", err);
+				error!("Retrying in 1 second");
+
+				// Retry after 1 second, but break if the exit signal is received
+				time::sleep(Duration::from_secs(1))
+					.with_cancel_check()
+					.await?;
+
+				return Ok(());
+			}
+			None => {
+				// Websocket disconnected. Reconnect
+				error!("Connection to server closed");
+				error!("Retrying in 2 seconds");
+				// Retry after 2 seconds, but break if the exit signal is received
+				time::sleep(Duration::from_secs(2))
+					.with_cancel_check()
+					.await?;
+
+				return Ok(());
+			}
+		}
 	}
 }
 
-/// Handle a `ServerMessage` received from the stream pump.
-async fn handle_server_message<E>(
-	state: &mut WebSocketActorState<E>,
+/// Handle a message received from the upstream server.
+async fn handle_server_message<S: Clone>(
+	config: &RunnerSettings<S>,
+	database: &sqlx::Pool<DatabaseType>,
+	controller_tx: &mpsc::UnboundedSender<ControllerMessage>,
 	msg: StreamRunnerDataForWorkspaceServerMsg,
-) -> Result<(), ActorProcessingErr>
-where
-	E: RunnerExecutor + Send + Sync + 'static,
-{
+) -> Result<(), RunnerError> {
 	use StreamRunnerDataForWorkspaceServerMsg::*;
 
 	// We need workspace_id + auth for domain resolution on managed URL events.
@@ -438,7 +424,7 @@ where
 		api_token,
 		user_agent,
 		..
-	} = state.config.clone();
+	} = config.clone();
 
 	match msg {
 		DeploymentUpdated {
@@ -455,7 +441,7 @@ where
 				return Ok(());
 			}
 			let deployment_id = deployment.id;
-			let mut transaction = state.database.begin().await?;
+			let mut transaction = database.begin().await?;
 			db_helpers::upsert_deployment_in_database(
 				&mut transaction,
 				deployment,
@@ -475,16 +461,17 @@ where
 				"#,
 				deployment_id
 			)
-			.fetch_all(&state.database)
+			.fetch_all(database)
 			.await?
 			.into_iter()
 			.map(|row| Owner::ManagedUrl(row.id))
 			.collect::<BTreeSet<_>>();
-			enqueue(
+			let _ = controller_tx.send(ControllerMessage::Enqueue(
 				managed_url_ids
 					.into_iter()
-					.chain([Owner::Deployment(deployment_id)]),
-			);
+					.chain([Owner::Deployment(deployment_id)])
+					.collect(),
+			));
 		}
 		DeploymentDeleted { id } => {
 			// The deployment's managed URLs go with it, so read them first to
@@ -500,21 +487,22 @@ where
 				"#,
 				id
 			)
-			.fetch_all(&state.database)
+			.fetch_all(database)
 			.await?
 			.into_iter()
 			.map(|row| row.id)
 			.collect::<Vec<_>>();
 
-			let mut transaction = state.database.begin().await?;
+			let mut transaction = database.begin().await?;
 			db_helpers::delete_deployment_in_database(&mut transaction, id).await?;
 			transaction.commit().await?;
-			enqueue(
+			let _ = controller_tx.send(ControllerMessage::Enqueue(
 				managed_url_ids
 					.into_iter()
 					.map(Owner::ManagedUrl)
-					.chain([Owner::Deployment(id)]),
-			);
+					.chain([Owner::Deployment(id)])
+					.collect(),
+			));
 		}
 		ManagedUrlUpdated { managed_url } => {
 			let ManagedUrlType::ProxyDeployment {
@@ -555,7 +543,7 @@ where
 			} else {
 				format!("{}.{}", managed_url.sub_domain, domain)
 			};
-			let mut transaction = state.database.begin().await?;
+			let mut transaction = database.begin().await?;
 			db_helpers::upsert_managed_url_in_database(
 				&mut transaction,
 				managed_url.id,
@@ -566,16 +554,20 @@ where
 			)
 			.await?;
 			transaction.commit().await?;
-			enqueue([Owner::ManagedUrl(managed_url.id)]);
+			let _ = controller_tx.send(ControllerMessage::Enqueue(BTreeSet::from([
+				Owner::ManagedUrl(managed_url.id),
+			])));
 		}
 		ManagedUrlDeleted { id } => {
-			let mut transaction = state.database.begin().await?;
+			let mut transaction = database.begin().await?;
 			db_helpers::delete_managed_url_in_database(&mut transaction, id).await?;
 			transaction.commit().await?;
-			enqueue([Owner::ManagedUrl(id)]);
+			let _ = controller_tx.send(ControllerMessage::Enqueue(BTreeSet::from([
+				Owner::ManagedUrl(id),
+			])));
 		}
 		SecretUpdated { id, last_updated } => {
-			let mut transaction = state.database.begin().await?;
+			let mut transaction = database.begin().await?;
 			db_helpers::upsert_secret_in_database(&mut transaction, id, last_updated).await?;
 			let deployment_ids = query!(
 				r#"
@@ -596,7 +588,9 @@ where
 			transaction.commit().await?;
 			// The secret's version is part of each deployment's spec, so a
 			// rotation re-applies the deployments using it.
-			enqueue(deployment_ids.into_iter().map(Owner::Deployment));
+			let _ = controller_tx.send(ControllerMessage::Enqueue(
+				deployment_ids.into_iter().map(Owner::Deployment).collect(),
+			));
 		}
 		HandshakeRequired => {
 			warn!("Server requested handshake to be sent again");
@@ -606,23 +600,58 @@ where
 	Ok(())
 }
 
-/// Handle the periodic `FullResync`: re-fetch this runner's deployments, their
+/// Sends every observed status upstream, bringing the API's copy up to date
+/// with whatever it missed. Only a failed send is returned, since it means the
+/// connection is gone.
+pub async fn send_observed_statuses<S>(
+	database: &sqlx::Pool<DatabaseType>,
+	sink: &mut S,
+) -> Result<(), S::Error>
+where
+	S: Sink<StreamRunnerDataForWorkspaceClientMsg> + Unpin,
+{
+	let Ok(rows) = query!(
+		r#"
+		SELECT
+			id,
+			observed_status AS "observed_status!"
+		FROM
+			deployment
+		WHERE
+			observed_status IS NOT NULL;
+		"#
+	)
+	.fetch_all(database)
+	.await
+	.inspect_err(|err| error!("Failed to load the observed statuses: {:?}", err)) else {
+		return Ok(());
+	};
+	for row in rows {
+		sink.send(
+			StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
+				id: row.id,
+				status: row.observed_status,
+			},
+		)
+		.await?;
+	}
+	Ok(())
+}
+
+/// Handle the periodic full resync: re-fetch this runner's deployments, their
 /// managed URLs and the workspace's secrets from the upstream API, then write
 /// only what differs from SQLite.
-async fn handle_full_resync<E>(
-	myself: ActorRef<WebSocketMessage>,
-	state: &mut WebSocketActorState<E>,
-) -> Result<(), ActorProcessingErr>
-where
-	E: RunnerExecutor + Send + Sync + 'static,
-{
+pub async fn handle_full_resync<S: Clone>(
+	config: &RunnerSettings<S>,
+	database: &sqlx::Pool<DatabaseType>,
+) -> Result<(), RunnerError> {
 	let RunnerSettings {
 		workspace_id,
 		runner_id,
 		api_token,
 		user_agent,
 		..
-	} = state.config.clone();
+	} = config.clone();
 
 	info!("Starting full resync with upstream API");
 
@@ -815,7 +844,7 @@ where
 		secret_page += 1;
 	}
 
-	// Only this actor writes these tables, so reading them outside the
+	// Only this loop writes these tables, so reading them outside the
 	// transaction below can't miss a write.
 	let local_deployment_ids = query!(
 		r#"
@@ -825,7 +854,7 @@ where
 			deployment;
 		"#
 	)
-	.fetch_all(&state.database)
+	.fetch_all(database)
 	.await?
 	.into_iter()
 	.map(|row| row.id)
@@ -839,12 +868,12 @@ where
 		stored.status = DeploymentStatus::Observed(ObservedDeploymentStatus::Unknown);
 		stored.runner = Uuid::nil();
 
-		let unchanged = match get_local_deployment_info(&state.database, *deployment_id).await {
+		let unchanged = match get_local_deployment_info(database, *deployment_id).await {
 			Ok((local, local_running_details)) => {
 				local == stored && local_running_details == *running_details
 			}
 			Err(RunnerError::UpstreamServerError(ErrorType::ResourceDoesNotExist)) => false,
-			Err(err) => return Err(err.into()),
+			Err(err) => return Err(err),
 		};
 		if !unchanged {
 			changed_deployment_ids.insert(*deployment_id);
@@ -863,7 +892,7 @@ where
 			managed_url;
 		"#
 	)
-	.fetch_all(&state.database)
+	.fetch_all(database)
 	.await?
 	.into_iter()
 	.map(|row| (row.id, (row.host, row.path, row.deployment_id, row.port)))
@@ -878,7 +907,7 @@ where
 			secret;
 		"#
 	)
-	.fetch_all(&state.database)
+	.fetch_all(database)
 	.await?
 	.into_iter()
 	.map(|row| (row.id, row.last_updated))
@@ -889,7 +918,7 @@ where
 		.filter(|deployment_id| !deployments.contains_key(deployment_id))
 		.collect::<Vec<_>>();
 
-	let mut transaction = state.database.begin().await?;
+	let mut transaction = database.begin().await?;
 
 	// Removed deployments go first: their managed URLs go with them, and a
 	// managed URL that moved to another deployment is written back below.
@@ -963,51 +992,6 @@ where
 		changed = changed_deployment_ids.len(),
 		"Full resync complete, triggering reconciliation"
 	);
-
-	if let Some(controller) = ActorRef::<ControllerMessage>::where_is(CONTROLLER_NAME) {
-		let _ = controller.send_message(ControllerMessage::Start);
-		let _ = controller.send_message(ControllerMessage::Reconcile);
-	}
-
-	// Bring the API's copy of every observed status up to date too, catching up
-	// whatever it missed. A failed send means the connection is gone, and the
-	// next one's resync sends them all again.
-	if let Some(sink) = &mut state.ws_sink {
-		let rows = query!(
-			r#"
-			SELECT
-				id,
-				observed_status AS "observed_status!"
-			FROM
-				deployment
-			WHERE
-				observed_status IS NOT NULL;
-			"#
-		)
-		.fetch_all(&state.database)
-		.await?;
-
-		for row in rows {
-			if sink
-				.send(
-					StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
-						id: row.id,
-						status: row.observed_status,
-					},
-				)
-				.await
-				.is_err()
-			{
-				// Sink errored — connection is dead. Drop it and wait for
-				// StreamEnded to trigger reconnect.
-				state.ws_sink = None;
-				break;
-			}
-		}
-	}
-
-	// Schedule the next full resync.
-	myself.send_after(full_resync_interval(), || WebSocketMessage::FullResync);
 
 	Ok(())
 }

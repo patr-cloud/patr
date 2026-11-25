@@ -1,5 +1,5 @@
 //! Shared database utility functions for creating/deleting deployments in
-//! SQLite. Used by both the WebSocketActor and HTTP route handlers.
+//! SQLite. Used by the WebSocket connection and the controller.
 //!
 //! These are pure database functions — no API calls, no runner config needed.
 
@@ -14,8 +14,8 @@ use crate::prelude::*;
 /// database.
 ///
 /// Stores the raw `DeploymentRegistry` data (including `repository_id` for
-/// PatrRegistry) without resolving image names. Resolution happens at upsert
-/// time in the DeploymentActor / executor.
+/// PatrRegistry) without resolving image names. The executor resolves them
+/// when it applies the deployment.
 ///
 /// Owned child tables (`deployment_exposed_port`,
 /// `deployment_environment_variable`, `deployment_config_mounts`,
