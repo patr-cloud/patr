@@ -33,7 +33,6 @@ serde_json                     = { workspace = true, features = [] }
 serde_qs                       = { workspace = true, features = [] }
 sha2                           = { workspace = true, features = [] }
 sqlx                           = { workspace = true, features = ["macros", "runtime-tokio", "sqlite", "sqlx-toml", "time", "tls-rustls", "uuid"] }
-tempfile                       = { workspace = true, features = ["default"] }
 thiserror                      = { workspace = true, features = [] }
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio                          = { workspace = true, features = ["full"] }
@@ -45,6 +44,7 @@ tracing-subscriber             = { workspace = true, features = ["default"] }
 [dev-dependencies]
 axum       = { workspace = true, features = ["default", "ws"] }
 axum-extra = { workspace = true, features = ["default", "typed-header", "typed-routing"] }
+tempfile   = { workspace = true, features = ["default"] }
 wiremock   = { workspace = true, features = [] }
 
 [[test]]
