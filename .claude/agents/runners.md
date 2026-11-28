@@ -9,7 +9,7 @@ A feature can add a field to a deployment, and the API will happily store it whi
 
 ## What you own
 
-- `runners/common/`: `RunnerExecutor`, the controller, observer and upstream websocket, local SQLite state, reconciliation and FullResync.
+- `runners/common/`: `RunnerExecutor`, the controller and upstream websocket, local SQLite state, reconciliation and FullResync.
 - `runners/docker/`: the live executor, built on Docker Swarm.
 - `config/runner.docker.sample.json`.
 - The runner side of the runner protocol. The API side belongs to the api agent, and compatibility between the two is both agents' concern.

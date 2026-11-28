@@ -49,7 +49,7 @@ use crate::prelude::*;
 /// Messages for the WebSocket connection.
 #[derive(Debug)]
 pub enum WebSocketMessage {
-	/// The observer reports a status change to send upstream. Dropped while
+	/// The controller reports a status change to send upstream. Dropped while
 	/// disconnected, since every resync sends them all.
 	SendStatusUpdate {
 		/// The UUID of the resource whose status changed.

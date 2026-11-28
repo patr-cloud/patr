@@ -57,8 +57,9 @@ async fn patr_registry_deployment_round_trips() {
 	assert_eq!(upserted.current_live_digest.as_deref(), Some("sha256:abc"));
 }
 
-/// Upserts only ever write the desired columns: the observed status the observer
-/// recorded survives a `DeploymentUpdated`, the way it survives a resync.
+/// Upserts only ever write the desired columns: the observed status the
+/// controller recorded survives a `DeploymentUpdated`, the way it survives a
+/// resync.
 #[tokio::test]
 async fn upsert_leaves_observed_status_alone() {
 	let setup = setup().await;

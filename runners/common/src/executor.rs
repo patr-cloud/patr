@@ -302,13 +302,16 @@ pub trait RunnerExecutor: Clone + Send + Sync + 'static {
 		id: &Self::Id,
 	) -> impl Future<Output = Result<DeleteOutcome, RunnerError>> + Send;
 
-	/// The observed status of every deployment the backend runs. A deployment
-	/// that's missing isn't running.
+	/// The observed status of a deployment, from what the backend runs of it.
+	/// `Stopped` if it runs nothing of it.
 	fn observe(
 		&self,
-	) -> impl Future<Output = Result<BTreeMap<Uuid, ObservedDeploymentStatus>, RunnerError>> + Send;
+		deployment_id: Uuid,
+	) -> impl Future<Output = Result<ObservedDeploymentStatus, RunnerError>> + Send;
 
-	/// A stream of owners whose objects changed on the backend, used as hints
-	/// to reconcile them and refresh their status sooner.
-	fn watch(&self) -> impl Stream<Item = Owner> + Send + 'static;
+	/// A stream of owners whose objects changed on the backend, each queued to
+	/// be reconciled and, for a deployment, observed. It should reconnect on its
+	/// own: the stream ending means events may have been missed, so every owner
+	/// is reconciled and the backend is watched again.
+	fn watch(&self) -> impl Stream<Item = Owner> + Send + use<Self>;
 }

@@ -4,14 +4,16 @@ use std::{
 };
 
 use common::prelude::*;
-use futures::Stream;
+use futures::{Stream, stream};
 use models::api::workspace::{deployment::*, runner::RunnerExposureType};
+use tokio::sync::mpsc;
 
 /// Record of a single executor call, used for assertions in tests.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExecutorCall {
 	Apply(String),
 	Delete(String),
+	Observe(Uuid),
 }
 
 /// An object the mock backend holds.
@@ -30,12 +32,14 @@ pub struct MockObject {
 /// - `apply_errors`: IDs whose apply fails.
 /// - `in_use`: IDs reported as still in use, so they aren't deleted.
 /// - `statuses`: what `observe()` reports per deployment.
+/// - `watchers`: the senders behind each `watch()` stream. Clearing them ends the streams.
 pub struct MockExecutorState {
 	pub calls: Mutex<Vec<ExecutorCall>>,
 	pub objects: Mutex<BTreeMap<String, MockObject>>,
 	pub apply_errors: Mutex<BTreeSet<String>>,
 	pub in_use: Mutex<BTreeSet<String>>,
 	pub statuses: Mutex<BTreeMap<Uuid, ObservedDeploymentStatus>>,
+	pub watchers: Mutex<Vec<mpsc::UnboundedSender<Owner>>>,
 }
 
 impl MockExecutorState {
@@ -46,7 +50,24 @@ impl MockExecutorState {
 			apply_errors: Mutex::new(BTreeSet::new()),
 			in_use: Mutex::new(BTreeSet::new()),
 			statuses: Mutex::new(BTreeMap::new()),
+			watchers: Mutex::new(Vec::new()),
 		})
+	}
+
+	/// Reports an event for `owner` on every `watch()` stream, as a backend
+	/// does when one of its objects changes.
+	pub fn emit(&self, owner: Owner) {
+		self.watchers
+			.lock()
+			.unwrap()
+			.retain(|watcher| watcher.send(owner).is_ok());
+	}
+
+	/// Changes what `observe()` reports for a deployment, and reports the
+	/// change as an event.
+	pub fn set_status(&self, deployment_id: Uuid, status: ObservedDeploymentStatus) {
+		self.statuses.lock().unwrap().insert(deployment_id, status);
+		self.emit(Owner::Deployment(deployment_id));
 	}
 
 	pub fn call_count(&self, predicate: impl Fn(&ExecutorCall) -> bool) -> usize {
@@ -303,11 +324,27 @@ impl RunnerExecutor for MockExecutor {
 		Ok(DeleteOutcome::Deleted)
 	}
 
-	async fn observe(&self) -> Result<BTreeMap<Uuid, ObservedDeploymentStatus>, RunnerError> {
-		Ok(self.state.statuses.lock().unwrap().clone())
+	async fn observe(&self, deployment_id: Uuid) -> Result<ObservedDeploymentStatus, RunnerError> {
+		self.state
+			.calls
+			.lock()
+			.unwrap()
+			.push(ExecutorCall::Observe(deployment_id));
+		Ok(self
+			.state
+			.statuses
+			.lock()
+			.unwrap()
+			.get(&deployment_id)
+			.copied()
+			.unwrap_or(ObservedDeploymentStatus::Stopped))
 	}
 
-	fn watch(&self) -> impl Stream<Item = Owner> + Send + 'static {
-		futures::stream::pending()
+	fn watch(&self) -> impl Stream<Item = Owner> + Send + use<> {
+		let (sender, receiver) = mpsc::unbounded_channel();
+		self.state.watchers.lock().unwrap().push(sender);
+		stream::unfold(receiver, async |mut receiver| {
+			receiver.recv().await.map(|owner| (owner, receiver))
+		})
 	}
 }

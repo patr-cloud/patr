@@ -16,7 +16,7 @@ pub mod executor;
 /// registration and tracks individual migrations in a `migrations` table.
 pub mod migrations;
 /// All the runner related structs and functions: the runner itself, and the
-/// controller, observer and WebSocket loops it runs.
+/// controller and WebSocket loops it runs.
 pub mod runner;
 /// This module contains all the utilities used by the runner. This includes
 /// things like the config parser, the upstream API client, etc.

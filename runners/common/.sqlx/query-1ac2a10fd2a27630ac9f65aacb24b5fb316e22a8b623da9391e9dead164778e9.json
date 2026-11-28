@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE deployment SET observed_status = $1 WHERE id = $2 AND observed_status IS NOT $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "1ac2a10fd2a27630ac9f65aacb24b5fb316e22a8b623da9391e9dead164778e9"
+}

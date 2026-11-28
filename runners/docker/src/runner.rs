@@ -551,11 +551,11 @@ impl RunnerExecutor for DockerRunner {
 		}
 	}
 
-	async fn observe(&self) -> Result<BTreeMap<Uuid, ObservedDeploymentStatus>, RunnerError> {
-		deployment::observe(self).await
+	async fn observe(&self, deployment_id: Uuid) -> Result<ObservedDeploymentStatus, RunnerError> {
+		deployment::observe(self, deployment_id).await
 	}
 
-	fn watch(&self) -> impl Stream<Item = Owner> + Send + 'static {
+	fn watch(&self) -> impl Stream<Item = Owner> + Send + use<> {
 		futures::stream::pending()
 	}
 }

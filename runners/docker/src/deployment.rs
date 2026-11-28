@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, HashMap};
 
 use bollard::{
 	auth::DockerCredentials,
@@ -399,7 +399,7 @@ pub(crate) async fn apply(
 				image: Some(image),
 				hostname: Some(format!("{deployment_id}.onpatr.cloud")),
 				env: Some(env),
-				// Containers only carry what Alloy, cAdvisor and the observer
+				// Containers only carry what Alloy, cAdvisor and `observe`
 				// read: anything else here would restart every task when it
 				// changes.
 				labels: Some(HashMap::from([
@@ -440,125 +440,114 @@ pub(crate) async fn apply(
 	utils::upsert_service(docker, spec, registry_auth).await
 }
 
-/// The observed status of every deployment that has a service. The first rule
-/// that matches wins: an image that can't run on any node, an image that
-/// couldn't be pulled, an unhealthy container, a crash loop, an update in
-/// progress, and otherwise running.
+/// A deployment's observed status, from its service, or `Stopped` if it has
+/// none. The first rule that matches wins: an image that can't run on any
+/// node, an image that couldn't be pulled, an unhealthy container, a crash
+/// loop, an update in progress, and otherwise running.
 pub(crate) async fn observe(
 	DockerRunner { docker, .. }: &DockerRunner,
-) -> Result<BTreeMap<Uuid, ObservedDeploymentStatus>, RunnerError> {
-	let services = docker
+	deployment_id: Uuid,
+) -> Result<ObservedDeploymentStatus, RunnerError> {
+	let Some(service) = docker
 		.list_services(Some(ListServicesOptions {
 			filters: Some(HashMap::from([(
 				String::from("label"),
 				vec![
 					String::from("managed-by=patr"),
-					String::from("patr.deploymentId"),
+					format!("patr.deploymentId={deployment_id}"),
 				],
 			)])),
 			status: Some(true),
 		}))
 		.await
-		.map_err(RunnerError::host)?;
+		.map_err(RunnerError::host)?
+		.into_iter()
+		.next()
+	else {
+		return Ok(ObservedDeploymentStatus::Stopped);
+	};
 
 	let tasks = docker
-		.list_tasks(None::<ListTasksOptions>)
+		.list_tasks(Some(ListTasksOptions {
+			filters: Some(HashMap::from([(
+				String::from("service"),
+				vec![format!("patr-{deployment_id}")],
+			)])),
+		}))
 		.await
 		.map_err(RunnerError::host)?;
 
-	let unhealthy = docker
+	let unhealthy = !docker
 		.list_containers(Some(ListContainersOptions {
 			filters: Some(HashMap::from([
 				(String::from("health"), vec![String::from("unhealthy")]),
 				(
 					String::from("label"),
-					vec![String::from("patr.deploymentId")],
+					vec![format!("patr.deploymentId={deployment_id}")],
 				),
 			])),
 			..Default::default()
 		}))
 		.await
 		.map_err(RunnerError::host)?
-		.into_iter()
-		.filter_map(|container| {
-			container
-				.labels?
-				.get("patr.deploymentId")?
-				.parse::<Uuid>()
-				.ok()
+		.is_empty();
+
+	// Tasks created since the service was last updated run its current
+	// spec. Older ones are history from earlier versions.
+	let current_tasks = tasks
+		.iter()
+		.filter(|task| task.service_id.is_some() && task.service_id == service.id)
+		.filter(|task| {
+			task.created_at
+				.zip(service.updated_at)
+				.is_none_or(|(created, updated)| created >= updated)
 		})
-		.collect::<BTreeSet<_>>();
+		.filter_map(|task| task.status.as_ref())
+		.collect::<Vec<_>>();
+	let has_task = |state: TaskState, text: &str| {
+		current_tasks.iter().any(|status| {
+			status.state == Some(state) &&
+				[&status.err, &status.message]
+					.into_iter()
+					.flatten()
+					.any(|message| message.contains(text))
+		})
+	};
 
-	let mut statuses = BTreeMap::new();
-	for service in services {
-		let Some(deployment_id) = service
-			.spec
-			.as_ref()
-			.and_then(|spec| spec.labels.as_ref())
-			.and_then(|labels| labels.get("patr.deploymentId"))
-			.and_then(|id| id.parse::<Uuid>().ok())
-		else {
-			continue;
-		};
+	let running = service
+		.service_status
+		.as_ref()
+		.and_then(|status| status.running_tasks)
+		.unwrap_or(0);
+	let desired = service
+		.service_status
+		.as_ref()
+		.and_then(|status| status.desired_tasks)
+		.unwrap_or(0);
+	let updating = service
+		.update_status
+		.as_ref()
+		.and_then(|status| status.state)
+		.is_some_and(|state| state == ServiceUpdateStatusStateEnum::UPDATING);
 
-		// Tasks created since the service was last updated run its current
-		// spec. Older ones are history from earlier versions.
-		let current_tasks = tasks
-			.iter()
-			.filter(|task| task.service_id.is_some() && task.service_id == service.id)
-			.filter(|task| {
-				task.created_at
-					.zip(service.updated_at)
-					.is_none_or(|(created, updated)| created >= updated)
-			})
-			.filter_map(|task| task.status.as_ref())
-			.collect::<Vec<_>>();
-		let has_task = |state: TaskState, text: &str| {
-			current_tasks.iter().any(|status| {
-				status.state == Some(state) &&
-					[&status.err, &status.message]
-						.into_iter()
-						.flatten()
-						.any(|message| message.contains(text))
-			})
-		};
+	let status = if has_task(TaskState::PENDING, "unsupported platform") {
+		ObservedDeploymentStatus::InvalidArchitecture
+	} else if has_task(TaskState::REJECTED, "No such image") {
+		ObservedDeploymentStatus::ImagePullFailed
+	} else if unhealthy || has_task(TaskState::FAILED, "unhealthy") {
+		ObservedDeploymentStatus::HealthCheckFailing
+	} else if current_tasks
+		.iter()
+		.filter(|status| matches!(status.state, Some(TaskState::FAILED | TaskState::REJECTED)))
+		.count() >=
+		2
+	{
+		ObservedDeploymentStatus::Crashing
+	} else if running < desired || updating {
+		ObservedDeploymentStatus::Deploying
+	} else {
+		ObservedDeploymentStatus::Running
+	};
 
-		let running = service
-			.service_status
-			.as_ref()
-			.and_then(|status| status.running_tasks)
-			.unwrap_or(0);
-		let desired = service
-			.service_status
-			.as_ref()
-			.and_then(|status| status.desired_tasks)
-			.unwrap_or(0);
-		let updating = service
-			.update_status
-			.as_ref()
-			.and_then(|status| status.state)
-			.is_some_and(|state| state == ServiceUpdateStatusStateEnum::UPDATING);
-
-		let status = if has_task(TaskState::PENDING, "unsupported platform") {
-			ObservedDeploymentStatus::InvalidArchitecture
-		} else if has_task(TaskState::REJECTED, "No such image") {
-			ObservedDeploymentStatus::ImagePullFailed
-		} else if unhealthy.contains(&deployment_id) || has_task(TaskState::FAILED, "unhealthy") {
-			ObservedDeploymentStatus::HealthCheckFailing
-		} else if current_tasks
-			.iter()
-			.filter(|status| matches!(status.state, Some(TaskState::FAILED | TaskState::REJECTED)))
-			.count() >=
-			2
-		{
-			ObservedDeploymentStatus::Crashing
-		} else if running < desired || updating {
-			ObservedDeploymentStatus::Deploying
-		} else {
-			ObservedDeploymentStatus::Running
-		};
-		statuses.insert(deployment_id, status);
-	}
-
-	Ok(statuses)
+	Ok(status)
 }

@@ -16,19 +16,16 @@ use crate::{db, prelude::*};
 ///
 /// Its queue holds owners whose objects may be out of date, never commands.
 /// The WebSocket connection enqueues the owners an upstream change affects,
-/// the observer enqueues the owners backend events touch, and a full reconcile
-/// of every owner runs on a timer, so nothing is lost if an event is missed.
+/// the backend's events enqueue the owners they touch, and a full reconcile of
+/// every owner runs on a timer, so nothing is lost if an event is missed. After
+/// each deployment's reconcile, it records the deployment's observed status and
+/// has the WebSocket connection publish it.
 pub mod controller;
 
 /// Shared database utility functions for writing the local SQLite state and
 /// loading it back. Used by the WebSocket connection to apply server messages,
 /// and by the controller to load the state it reconciles.
 pub mod db_helpers;
-
-/// The observer works out each deployment's observed status from the backend
-/// and the controller's last reconcile, records it, and has the WebSocket
-/// connection publish it.
-pub mod observer;
 
 /// The WebSocket connection to the upstream Patr API.
 ///
@@ -114,9 +111,8 @@ where
 		})
 	}
 
-	/// Run the runner. This function will start the controller, the observer
-	/// and the WebSocket connection, and block until the exit signal is
-	/// received.
+	/// Run the runner. This function will start the controller and the
+	/// WebSocket connection, and block until the exit signal is received.
 	#[instrument(skip(self))]
 	pub async fn run(self) -> Result<!, RunnerError> {
 		let Self {
@@ -191,31 +187,20 @@ where
 		}
 
 		let (controller_tx, controller_rx) = mpsc::unbounded_channel();
-		let (observer_tx, observer_rx) = mpsc::unbounded_channel();
 		let (websocket_tx, websocket_rx) = mpsc::unbounded_channel();
 
 		// Each of these handles its own failures, and only returns once the exit
 		// signal is received.
-		let (controller, observer, websocket) = future::join3(
+		let (controller, websocket) = future::join(
 			controller::run(
 				controller_rx,
-				observer_tx,
+				websocket_tx,
 				executor.clone(),
 				config.clone(),
 				database.clone(),
 			)
 			.inspect(|_| {
 				debug!("Controller has stopped");
-			}),
-			observer::run(
-				observer_rx,
-				controller_tx.clone(),
-				websocket_tx,
-				executor.clone(),
-				database.clone(),
-			)
-			.inspect(|_| {
-				debug!("Observer has stopped");
 			}),
 			websocket::run(
 				connection,
@@ -232,7 +217,7 @@ where
 		.await;
 
 		info!("Runner exited");
-		let result = controller.or(observer).or(websocket);
+		let result = controller.or(websocket);
 		// `exit` skips destructors, so the logs are flushed first
 		drop(flush_logs);
 		// A graceful exit isn't a failure, so it quits with code 0

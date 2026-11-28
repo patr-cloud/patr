@@ -7,7 +7,7 @@ use std::{
 use common::{
 	db,
 	prelude::*,
-	runner::{controller, db_helpers, observer, websocket},
+	runner::{controller, db_helpers, websocket},
 };
 use futures::future;
 use http::StatusCode;
@@ -79,21 +79,13 @@ async fn setup_managed() -> (
 		.await
 		.expect("failed to send the observed statuses");
 	let (controller_tx, controller_rx) = mpsc::unbounded_channel();
-	let (observer_tx, observer_rx) = mpsc::unbounded_channel();
 	let (websocket_tx, websocket_rx) = mpsc::unbounded_channel();
-	tokio::spawn(future::join3(
+	tokio::spawn(future::join(
 		controller::run(
 			controller_rx,
-			observer_tx,
-			executor.clone(),
-			config.clone(),
-			database.clone(),
-		),
-		observer::run(
-			observer_rx,
-			controller_tx.clone(),
 			websocket_tx,
 			executor.clone(),
+			config.clone(),
 			database.clone(),
 		),
 		websocket::run(
@@ -271,8 +263,8 @@ async fn status_change_flows_upstream_via_ws() {
 	let (server_state, mock_state, _db, _ws_id, runner_id, _tmp) = setup_managed().await;
 	let (dep_id, deployment, details) = test_deployment(runner_id);
 
-	// Create a deployment — mock reports Running so the observer will report
-	// a status change after its first snapshot.
+	// Create a deployment — mock reports Running so its first reconcile
+	// reports a status change.
 	mock_state
 		.statuses
 		.lock()
@@ -385,7 +377,7 @@ async fn secret_updated_via_ws_reapplies_deployment() {
 	)
 	.await;
 
-	// Report both as running so the status poll doesn't re-apply them.
+	// Report both as running, as the backend would.
 	mock_state.statuses.lock().unwrap().extend([
 		(dep_id, ObservedDeploymentStatus::Running),
 		(other_id, ObservedDeploymentStatus::Running),
@@ -434,7 +426,7 @@ async fn full_resync_reapplies_deployment_after_missed_rotation() {
 	)
 	.await;
 
-	// Report it as running so the status poll doesn't re-apply it.
+	// Report it as running, as the backend would.
 	mock_state
 		.statuses
 		.lock()
@@ -499,7 +491,7 @@ async fn stopped_deployment_is_not_started_by_rotation() {
 		},
 	);
 
-	// Long enough for the rotation to be handled and a status poll to run.
+	// Long enough for the rotation to be handled and the deployment reconciled.
 	tokio::time::sleep(Duration::from_secs(7)).await;
 
 	assert!(
@@ -779,7 +771,16 @@ async fn status_is_resent_after_reconnect() {
 	.await;
 
 	// Another status check passes without a change, so nothing is resent.
-	tokio::time::sleep(Duration::from_secs(6)).await;
+	let observed = mock_state.call_count(|c| *c == ExecutorCall::Observe(dep_id));
+	mock_state.emit(Owner::Deployment(dep_id));
+	let mock = mock_state.clone();
+	periodic_check(
+		move || mock.call_count(|c| *c == ExecutorCall::Observe(dep_id)) > observed,
+		Duration::from_secs(5),
+	)
+	.await;
+	// Long enough for a resend to reach the server.
+	tokio::time::sleep(Duration::from_millis(500)).await;
 	assert_eq!(
 		status_reports(
 			&server_state,
@@ -845,11 +846,7 @@ async fn stop_then_start_on_same_connection_sends_both() {
 		Duration::from_secs(10),
 	)
 	.await;
-	mock_state
-		.statuses
-		.lock()
-		.unwrap()
-		.insert(dep_id, ObservedDeploymentStatus::Stopped);
+	mock_state.set_status(dep_id, ObservedDeploymentStatus::Stopped);
 
 	let state = server_state.clone();
 	periodic_check(
@@ -878,11 +875,7 @@ async fn stop_then_start_on_same_connection_sends_both() {
 		Duration::from_secs(10),
 	)
 	.await;
-	mock_state
-		.statuses
-		.lock()
-		.unwrap()
-		.insert(dep_id, ObservedDeploymentStatus::Running);
+	mock_state.set_status(dep_id, ObservedDeploymentStatus::Running);
 
 	let state = server_state.clone();
 	periodic_check(

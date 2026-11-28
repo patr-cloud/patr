@@ -2,22 +2,27 @@ use std::{
 	collections::{BTreeMap, BTreeSet},
 	fmt::Display,
 	panic::AssertUnwindSafe,
+	pin::Pin,
+	task::{Context, Poll, ready},
 };
 
 use ::time::OffsetDateTime;
 use futures::{
 	FutureExt,
+	Stream,
+	StreamExt,
 	future::{self, Either},
+	stream,
 };
 use models::api::workspace::deployment::*;
 use sha2::{Digest as _, Sha256};
 use tokio::{
 	sync::mpsc,
 	task::JoinSet,
-	time::{self, Duration},
+	time::{self, Duration, Instant, Sleep},
 };
 
-use super::{db_helpers, observer::ObserverMessage};
+use super::{db_helpers, websocket::WebSocketMessage};
 use crate::prelude::*;
 
 /// Bumped whenever how objects are applied changes, so every object's hash
@@ -32,6 +37,14 @@ const INITIAL_RETRY_BACKOFF: Duration = Duration::from_secs(1);
 
 /// Maximum delay between retries of an owner whose objects fail to apply.
 const MAX_RETRY_BACKOFF: Duration = Duration::from_secs(5 * 60);
+
+/// How soon a deployment whose status is still settling is observed again:
+/// while it deploys, since the backend may report nothing when it fails to,
+/// or after observing it failed.
+const OBSERVE_RECHECK: Duration = Duration::from_secs(5);
+
+/// How soon an owner with objects waiting to be deleted is reconciled again.
+const WAITING_RECHECK: Duration = Duration::from_secs(30);
 
 /// Returns the interval between full reconciles of every owner. 10 seconds in
 /// debug, 10 minutes in release.
@@ -54,6 +67,9 @@ pub struct Outcome {
 	pub waiting: bool,
 	/// An object was applied or deleted.
 	pub changed: bool,
+	/// When to reconcile the owner again, though nothing changed: while an
+	/// object waits to be deleted, or while its deployment's status settles.
+	pub requeue_after: Option<Duration>,
 }
 
 /// Messages for the controller.
@@ -63,8 +79,6 @@ pub enum ControllerMessage {
 	Enqueue(BTreeSet<Owner>),
 	/// Reconcile every owner now, instead of at the next full reconcile.
 	ReconcileAll,
-	/// An owner's retry backoff elapsed.
-	Retry(Owner),
 	/// An owner's reconcile finished.
 	Done {
 		/// The owner that was reconciled.
@@ -90,19 +104,70 @@ struct ControllerState<E: RunnerExecutor> {
 	dirty: BTreeSet<Owner>,
 	/// The current retry delay of each owner whose objects failed to apply.
 	backoff: BTreeMap<Owner, Duration>,
-	/// The running reconciles and retry timers, aborted when the runner exits.
+	/// Owners to reconcile later: retries, and owners whose objects or status
+	/// are still settling.
+	wakeups: Wakeups,
+	/// The running reconciles, aborted when the runner exits.
 	tasks: JoinSet<()>,
+}
+
+/// Owners to reconcile later, and when. One sleep covers them all, set to the
+/// earliest deadline.
+struct Wakeups {
+	/// When each owner is due.
+	deadlines: BTreeMap<Owner, Instant>,
+	/// Sleeps until the earliest deadline.
+	sleep: Pin<Box<Sleep>>,
+}
+
+impl Wakeups {
+	/// Wakes `owner` after `delay`, unless it's already due sooner.
+	fn schedule(&mut self, owner: Owner, delay: Duration) {
+		let deadline = Instant::now() + delay;
+		self.deadlines
+			.entry(owner)
+			.and_modify(|due| *due = (*due).min(deadline))
+			.or_insert(deadline);
+	}
+}
+
+impl Stream for Wakeups {
+	type Item = BTreeSet<Owner>;
+
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+		loop {
+			// Nothing to wake. Only the controller's loop schedules wakeups, and
+			// it polls this again right after, so this never ends
+			let Some(next) = self.deadlines.values().min().copied() else {
+				return Poll::Pending;
+			};
+			let now = Instant::now();
+			if next <= now {
+				return Poll::Ready(Some(
+					self.deadlines
+						.extract_if(.., |_, deadline| *deadline <= now)
+						.map(|(owner, _)| owner)
+						.collect(),
+				));
+			}
+			if self.sleep.deadline() != next {
+				self.sleep.as_mut().reset(next);
+			}
+			ready!(self.sleep.as_mut().poll(cx));
+		}
+	}
 }
 
 /// Reconciles owners until the runner exits: makes the objects on the backend
 /// match what the local state expects, one owner at a time per owner and a few
-/// owners at once.
+/// owners at once, and records each deployment's observed status after its
+/// reconcile. The backend's events queue the owners they touch.
 ///
 /// It reaps every object the local state doesn't expect, so it must never start
 /// on a freshly created database before a resync has filled it.
 pub async fn run<E: RunnerExecutor>(
 	mut receiver: mpsc::UnboundedReceiver<ControllerMessage>,
-	observer_tx: mpsc::UnboundedSender<ObserverMessage>,
+	websocket_tx: mpsc::UnboundedSender<WebSocketMessage>,
 	executor: E,
 	config: RunnerSettings<E::Settings>,
 	database: sqlx::Pool<DatabaseType>,
@@ -133,10 +198,25 @@ pub async fn run<E: RunnerExecutor>(
 		in_flight: BTreeSet::new(),
 		dirty: BTreeSet::new(),
 		backoff: BTreeMap::new(),
+		wakeups: Wakeups {
+			deadlines: BTreeMap::new(),
+			sleep: Box::pin(time::sleep(Duration::from_secs(0))),
+		},
 		tasks: JoinSet::new(),
 	};
-	// The reconciles and retry timers report back on this.
+	// The reconciles report back on this.
 	let (task_sender, mut task_receiver) = mpsc::unbounded_channel();
+
+	// Watches the backend's events after `delay`. Built in one place, so a
+	// rewatch has the same type as the first watch.
+	let watch_after = {
+		let executor = state.executor.clone();
+		move |delay| {
+			let executor = executor.clone();
+			Box::pin(stream::once(time::sleep(delay)).flat_map(move |()| executor.watch()))
+		}
+	};
+	let mut watch = watch_after(Duration::from_secs(0));
 
 	// This is set to zero intentionally so that the first full reconcile
 	// happens immediately, and then every full sync interval after that.
@@ -145,7 +225,10 @@ pub async fn run<E: RunnerExecutor>(
 	loop {
 		let controller_future = future::select(
 			sleep_future,
-			future::select(Box::pin(receiver.recv()), Box::pin(task_receiver.recv())),
+			future::select(
+				future::select(Box::pin(receiver.recv()), Box::pin(task_receiver.recv())),
+				future::select(watch.next(), state.wakeups.next()),
+			),
 		)
 		.with_cancel_check()
 		.await?;
@@ -156,8 +239,32 @@ pub async fn run<E: RunnerExecutor>(
 				sleep_future = Box::pin(time::sleep(full_sync_interval()));
 				enqueue_all(&mut state).await;
 			}
+			Either::Right((Either::Right((Either::Left((owner, _)), _)), pending_sleep)) => {
+				sleep_future = pending_sleep;
+				let Some(owner) = owner else {
+					// The backend's event stream ended, so its events may have been
+					// missed. Reconcile everything, and watch it again
+					warn!("The backend's event stream ended, watching it again in 1 second");
+					watch = watch_after(Duration::from_secs(1));
+					sleep_future = Box::pin(time::sleep(Duration::from_secs(0)));
+					continue;
+				};
+
+				// An owner in backoff reads `Errored` until its retry, whatever the
+				// backend says
+				if !state.backoff.contains_key(&owner) {
+					state.wakeups.deadlines.remove(&owner);
+					enqueue(&mut state, owner);
+				}
+			}
+			Either::Right((Either::Right((Either::Right((owners, _)), _)), pending_sleep)) => {
+				sleep_future = pending_sleep;
+				for owner in owners.into_iter().flatten() {
+					enqueue(&mut state, owner);
+				}
+			}
 			Either::Right((
-				Either::Left((message, _)) | Either::Right((message, _)),
+				Either::Left((Either::Left((message, _)) | Either::Right((message, _)), _)),
 				pending_sleep,
 			)) => {
 				sleep_future = pending_sleep;
@@ -171,16 +278,12 @@ pub async fn run<E: RunnerExecutor>(
 					ControllerMessage::Enqueue(owners) => {
 						for owner in owners {
 							state.backoff.remove(&owner);
+							state.wakeups.deadlines.remove(&owner);
 							enqueue(&mut state, owner);
 						}
 					}
 					ControllerMessage::ReconcileAll => {
 						sleep_future = Box::pin(time::sleep(Duration::from_secs(0)));
-					}
-					ControllerMessage::Retry(owner) => {
-						if state.backoff.contains_key(&owner) {
-							enqueue(&mut state, owner);
-						}
 					}
 					ControllerMessage::Done { owner, outcome } => {
 						state.in_flight.remove(&owner);
@@ -194,13 +297,6 @@ pub async fn run<E: RunnerExecutor>(
 							}
 						};
 
-						if let Owner::Deployment(deployment_id) = owner {
-							let _ = observer_tx.send(ObserverMessage::ApplyOutcome {
-								deployment_id,
-								failed,
-							});
-						}
-
 						if failed {
 							let delay = state
 								.backoff
@@ -209,13 +305,18 @@ pub async fn run<E: RunnerExecutor>(
 									(*delay * 2).min(MAX_RETRY_BACKOFF)
 								});
 							state.backoff.insert(owner, delay);
-							let task_sender = task_sender.clone();
-							state.tasks.spawn(async move {
-								time::sleep(delay).await;
-								let _ = task_sender.send(ControllerMessage::Retry(owner));
-							});
+							// The retry replaces any earlier wakeup
+							state.wakeups.deadlines.remove(&owner);
+							state.wakeups.schedule(owner, delay);
 						} else {
 							state.backoff.remove(&owner);
+							if let Ok(Outcome {
+								requeue_after: Some(delay),
+								..
+							}) = outcome
+							{
+								state.wakeups.schedule(owner, delay);
+							}
 						}
 
 						// The ingress mounts other owners' routes, so it follows
@@ -245,14 +346,33 @@ pub async fn run<E: RunnerExecutor>(
 			let executor = state.executor.clone();
 			let config = state.config.clone();
 			let database = state.database.clone();
+			let websocket_tx = websocket_tx.clone();
 			let task_sender = task_sender.clone();
 			state.tasks.spawn(async move {
 				// A reconcile that panics counts as a failed one, so its owner
 				// isn't left in flight.
-				let outcome = AssertUnwindSafe(reconcile(&executor, &config, &database, owner))
-					.catch_unwind()
-					.await
-					.unwrap_or_else(|_| Err(RunnerError::host("the reconcile panicked")));
+				let outcome = AssertUnwindSafe(async {
+					let mut outcome = reconcile(&executor, &config, &database, owner).await;
+					if let Owner::Deployment(deployment_id) = owner {
+						let failed = outcome.as_ref().map_or(true, |outcome| outcome.failed);
+						let recheck =
+							observe(&executor, &database, &websocket_tx, deployment_id, failed)
+								.await;
+						if let Some(recheck) = recheck &&
+							let Ok(outcome) = &mut outcome
+						{
+							outcome.requeue_after = Some(
+								outcome
+									.requeue_after
+									.map_or(recheck, |after| after.min(recheck)),
+							);
+						}
+					}
+					outcome
+				})
+				.catch_unwind()
+				.await
+				.unwrap_or_else(|_| Err(RunnerError::host("the reconcile panicked")));
 				let _ = task_sender.send(ControllerMessage::Done { owner, outcome });
 			});
 		}
@@ -437,7 +557,64 @@ pub async fn reconcile<E: RunnerExecutor>(
 		}
 	}
 
+	if outcome.waiting {
+		outcome.requeue_after = Some(WAITING_RECHECK);
+	}
+
 	Ok(outcome)
+}
+
+/// Records a deployment's observed status after its reconcile, and sends it
+/// upstream if it changed: `Errored` if the reconcile failed, otherwise what
+/// the backend reports. Returns how soon to observe it again, if its status is
+/// still settling.
+async fn observe<E: RunnerExecutor>(
+	executor: &E,
+	database: &sqlx::Pool<DatabaseType>,
+	websocket_tx: &mpsc::UnboundedSender<WebSocketMessage>,
+	deployment_id: Uuid,
+	failed: bool,
+) -> Option<Duration> {
+	let status = if failed {
+		ObservedDeploymentStatus::Errored
+	} else {
+		match executor.observe(deployment_id).await {
+			Ok(status) => status,
+			Err(err) => {
+				warn!(%deployment_id, ?err, "Failed to observe deployment");
+				return Some(OBSERVE_RECHECK);
+			}
+		}
+	};
+
+	match query!(
+		r#"
+		UPDATE
+			deployment
+		SET
+			observed_status = $1
+		WHERE
+			id = $2 AND
+			observed_status IS NOT $1;
+		"#,
+		status,
+		deployment_id
+	)
+	.execute(database)
+	.await
+	{
+		// Unchanged, or the deployment is gone
+		Ok(result) if result.rows_affected() == 0 => {}
+		Ok(_) => {
+			let _ = websocket_tx.send(WebSocketMessage::SendStatusUpdate {
+				resource_id: deployment_id,
+				status,
+			});
+		}
+		Err(err) => error!(%deployment_id, ?err, "Failed to record the observed status"),
+	}
+
+	(status == ObservedDeploymentStatus::Deploying).then_some(OBSERVE_RECHECK)
 }
 
 /// Runs one finalizer of an object, recording its progress in
