@@ -123,6 +123,37 @@ fn only_config(graph: &ExpectedGraph<DockerObjectId, DockerSpec>) -> String {
 	config
 }
 
+/// Every service an owner expects traces back to that owner from its name,
+/// since that's all Docker's events carry, and no other service does.
+#[test]
+fn services_trace_back_to_their_owner() {
+	let runner = runner(RunnerExposureType::Private);
+	let (local, deployment_id, _) = local(true, "app.example.com", "/");
+
+	for (owner, inputs) in [
+		(Owner::Deployment(deployment_id), None),
+		(Owner::System, Some(String::from("tunnel-token-hash"))),
+	] {
+		let services = runner
+			.expected(owner, &local, &inputs)
+			.unwrap()
+			.nodes
+			.into_keys()
+			.filter_map(|id| match id {
+				DockerObjectId::Service(name) => Some(name),
+				_ => None,
+			})
+			.collect::<Vec<_>>();
+		assert!(!services.is_empty(), "{owner} expects no service");
+		for name in services {
+			assert_eq!(DockerRunner::service_owner(&name), Some(owner), "{name}");
+		}
+	}
+
+	assert_eq!(DockerRunner::service_owner("patr-not-a-deployment"), None);
+	assert_eq!(DockerRunner::service_owner("someone-elses-service"), None);
+}
+
 /// A managed URL's route points at its deployment, matches every path under
 /// its own, and serves Patr's error pages.
 #[test]

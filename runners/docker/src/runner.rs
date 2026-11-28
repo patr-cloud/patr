@@ -3,6 +3,7 @@ use std::{
 	fmt::{self, Display},
 	str::FromStr,
 	sync::{Arc, Mutex},
+	time::Duration,
 };
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
@@ -11,6 +12,7 @@ use bollard::{
 	errors::Error as DockerError,
 	models::{
 		ConfigSpec,
+		EventMessageTypeEnum,
 		MountType,
 		NetworkCreateRequest,
 		Platform,
@@ -19,6 +21,7 @@ use bollard::{
 		VolumeCreateRequest,
 	},
 	query_parameters::{
+		EventsOptions,
 		ListConfigsOptions,
 		ListContainersOptions,
 		ListNetworksOptions,
@@ -28,7 +31,7 @@ use bollard::{
 	},
 	service::ServiceSpecUpdateConfigOrderEnum,
 };
-use futures::Stream;
+use futures::{Stream, StreamExt, stream};
 use models::api::workspace::{deployment::*, runner::*};
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -192,6 +195,25 @@ pub struct DockerRunner {
 	/// The platforms each digest-pinned external image supports, so pinned
 	/// images aren't looked up again on every apply.
 	pub platforms: Arc<Mutex<HashMap<String, Vec<Platform>>>>,
+}
+
+impl DockerRunner {
+	/// The owner of a service, from its name, or `None` if it isn't Patr's.
+	/// Docker's events carry the service's name, not its labels.
+	pub fn service_owner(name: &str) -> Option<Owner> {
+		if let Some(deployment_id) = name.strip_prefix("patr-") &&
+			let Ok(deployment_id) = deployment_id.parse::<Uuid>()
+		{
+			return Some(Owner::Deployment(deployment_id));
+		}
+		[
+			constants::INGRESS_SERVICE_NAME,
+			constants::TUNNEL_SERVICE_NAME,
+			constants::ALLOY_SERVICE_NAME,
+		]
+		.contains(&name)
+		.then_some(Owner::System)
+	}
 }
 
 impl RunnerExecutor for DockerRunner {
@@ -556,6 +578,77 @@ impl RunnerExecutor for DockerRunner {
 	}
 
 	fn watch(&self) -> impl Stream<Item = Owner> + Send + use<> {
-		futures::stream::pending()
+		// The events that change what `observe` reports, or a service. Health
+		// checks run as execs, so with `exec_*` events every health check would
+		// reconcile its deployment.
+		let options = |since: i64| EventsOptions {
+			since: Some(since.to_string()),
+			until: None,
+			filters: Some(HashMap::from([
+				(
+					String::from("type"),
+					vec![String::from("container"), String::from("service")],
+				),
+				(
+					String::from("event"),
+					[
+						"start",
+						"die",
+						"oom",
+						"health_status",
+						"create",
+						"update",
+						"remove",
+					]
+					.map(String::from)
+					.to_vec(),
+				),
+			])),
+		};
+		let since = OffsetDateTime::now_utc().unix_timestamp();
+
+		stream::unfold(
+			(
+				self.docker.clone(),
+				Box::pin(self.docker.events(Some(options(since)))),
+				since,
+				Duration::from_secs(1),
+			),
+			move |(docker, mut events, mut since, mut backoff)| async move {
+				loop {
+					let event = match events.next().await {
+						Some(Ok(event)) => event,
+						// `None` if Docker ended the stream
+						error => {
+							warn!(
+								?error,
+								"Docker's event stream stopped, reconnecting in {backoff:?}"
+							);
+							tokio::time::sleep(backoff).await;
+							backoff = (backoff * 2).min(Duration::from_secs(60));
+							// Docker replays the events since the last one seen
+							events = Box::pin(docker.events(Some(options(since))));
+							continue;
+						}
+					};
+					backoff = Duration::from_secs(1);
+					since = event.time.unwrap_or(since);
+
+					let Some(attributes) = event.actor.and_then(|actor| actor.attributes) else {
+						continue;
+					};
+					let service = match event.typ {
+						Some(EventMessageTypeEnum::CONTAINER) => {
+							attributes.get("com.docker.swarm.service.name")
+						}
+						Some(EventMessageTypeEnum::SERVICE) => attributes.get("name"),
+						_ => None,
+					};
+					if let Some(owner) = service.and_then(|name| Self::service_owner(name)) {
+						return Some((owner, (docker, events, since, backoff)));
+					}
+				}
+			},
+		)
 	}
 }
