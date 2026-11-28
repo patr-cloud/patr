@@ -1,5 +1,6 @@
-use std::{collections::BTreeMap, str::FromStr as _};
+use std::{collections::BTreeMap, str::FromStr as _, time::Duration};
 
+use futures::StreamExt as _;
 use headers::UserAgent;
 use models::{
 	ApiRequest,
@@ -23,6 +24,7 @@ use models::{
 	utils::{BearerToken, Uuid},
 };
 use rand::RngExt as _;
+use rustis::client::PubSubStream;
 
 use crate::prelude::*;
 
@@ -103,6 +105,28 @@ pub struct TestApiToken {
 	pub id: Uuid,
 	pub token: String,
 	pub name: String,
+}
+
+/// Collect the events published to a runner until `done` holds for what's been
+/// collected, or `timeout` runs out. The bridge can publish an event more than
+/// once, so tests assert that an event arrived, never how many times.
+pub async fn collect_runner_events(
+	events: &mut PubSubStream,
+	timeout: Duration,
+	done: impl Fn(&[StreamRunnerDataForWorkspaceServerMsg]) -> bool,
+) -> Vec<StreamRunnerDataForWorkspaceServerMsg> {
+	let deadline = tokio::time::Instant::now() + timeout;
+	let mut collected = Vec::new();
+	while !done(&collected) {
+		let Ok(Some(message)) = tokio::time::timeout_at(deadline, events.next()).await else {
+			break;
+		};
+		collected.push(
+			serde_json::from_slice(message.expect("failed to read a runner event").payload())
+				.expect("runner event should parse"),
+		);
+	}
+	collected
 }
 
 /// Generate a random lowercase alphanumeric string suitable for use as an
@@ -404,6 +428,28 @@ impl TestSetup {
 		.execute(self.database())
 		.await
 		.expect("failed to mark test domain as verified");
+	}
+
+	/// Force-mark a runner as online by flipping `is_connected` and `last_seen`
+	/// directly in the DB, skipping a real runner connection. Used by tests that
+	/// read a deployment's status but don't exercise the runner's connection
+	/// itself.
+	pub async fn mark_test_runner_online(&self, runner_id: Uuid) {
+		query!(
+			r#"
+			UPDATE
+				runner
+			SET
+				is_connected = TRUE,
+				last_seen = NOW()
+			WHERE
+				id = $1;
+			"#,
+			runner_id,
+		)
+		.execute(self.database())
+		.await
+		.expect("failed to mark test runner as online");
 	}
 
 	/// Add a domain to a workspace, returning its ID and domain name.

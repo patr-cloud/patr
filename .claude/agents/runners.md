@@ -9,7 +9,7 @@ A feature can add a field to a deployment, and the API will happily store it whi
 
 ## What you own
 
-- `runners/common/`: `RunnerExecutor`, the actor tree, the upstream websocket, local SQLite state, reconciliation and FullResync.
+- `runners/common/`: `RunnerExecutor`, the controller and upstream websocket, local SQLite state, reconciliation and FullResync.
 - `runners/docker/`: the live executor, built on Docker Swarm.
 - `config/runner.docker.sample.json`.
 - The runner side of the runner protocol. The API side belongs to the api agent, and compatibility between the two is both agents' concern.
@@ -17,13 +17,13 @@ A feature can add a field to a deployment, and the API will happily store it whi
 `runners/kubernetes` is a reference only. It isn't built; don't extend it. The CLI compiles the Docker runner in, but the `patr runner …` commands belong to the cli agent.
 
 Read `runners/CLAUDE.md`, `runners/common/CLAUDE.md` and `runners/docker/CLAUDE.md` before anything else. Pay particular attention to these rules:
-- `new()` must be cheap;
-- the running lists must be sorted;
-- `Err` is the retry signal;
-- FullResync is destructive inside a transaction;
+- the controller reconciles owners from an expected graph; `expected` is pure, and late-bound values are resolved in `apply`;
+- the framework owns the spec hash, so a spec change re-applies dependents, and `SPEC_VERSION` is bumped when apply logic changes;
+- ownership lives on object labels, and unlabelled objects are never reaped;
+- a fresh database reconciles nothing until the first resync;
+- FullResync fetches first and writes only the differences in one short transaction;
 - Swarm configs are named by content hash;
-- updates must carry the version index;
-- config deletion order matters.
+- updates must carry the version index.
 
 ## Finding gaps
 

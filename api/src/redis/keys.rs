@@ -64,6 +64,12 @@ pub fn runner_connection_lock_prefix() -> String {
 	String::from("runnerConnectionLock:")
 }
 
+/// The pub/sub channel the bridge publishes a runner's events to. The runner's
+/// stream subscribes to it and forwards each event to the runner.
+pub fn runner_events(workspace_id: &Uuid, runner_id: &Uuid) -> String {
+	format!("/workspace/{}/runner/{}/events", workspace_id, runner_id)
+}
+
 /// The prefix used for the current upload part and last byte of the multi-part
 /// upload in the registry blob upload process
 pub fn registry_blob_upload_part_prefix(session_id: &Uuid) -> String {

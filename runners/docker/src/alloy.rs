@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 
 use bollard::{
-	Docker,
 	models::{Mount, MountType},
-	query_parameters::UpdateServiceOptionsBuilder,
 	service::{
 		NetworkAttachmentConfig,
 		ServiceSpec,
@@ -15,44 +13,29 @@ use bollard::{
 	},
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, runner::DockerObjectId};
 
-/// Ensure the Grafana Alloy log collector service is running with the latest
-/// config. Creates or updates the Alloy Docker config and global Swarm service.
-pub async fn update_alloy_service(
-	docker: &Docker,
-	settings: &RunnerSettings<DockerSettings>,
+/// Creates or updates the Grafana Alloy log and metric collector, a global
+/// service with its config mounted.
+pub(crate) async fn apply(
+	runner: &DockerRunner,
+	owner: Owner,
+	name: &str,
+	config: &DockerObjectId,
+	hash: &str,
 ) -> Result<(), RunnerError> {
-	let RunnerSettings {
-		workspace_id,
-		runner_id,
-		api_token,
-		..
-	} = settings;
-
-	let loki_url = match settings.environment {
-		RunningEnvironment::Production => "https://loki.patr.cloud",
-		RunningEnvironment::Development => "http://host.docker.internal:3003",
+	let DockerObjectId::Config(config_name) = config else {
+		return Err(RunnerError::host("Alloy's config isn't a config"));
 	};
+	let config_id = runner
+		.docker
+		.inspect_config(config_name)
+		.await
+		.map_err(RunnerError::host)?
+		.id;
 
-	let mimir_url = match settings.environment {
-		RunningEnvironment::Production => "https://mimir.patr.cloud",
-		RunningEnvironment::Development => "http://host.docker.internal:3005",
-	};
-
-	let alloy_config_text =
-		generate_alloy_config(workspace_id, runner_id, api_token, loki_url, mimir_url);
-
-	// Create or reuse the Docker config for Alloy (content-hash naming)
-	let (alloy_config_id, alloy_config_name) = crate::utils::update_config(
-		docker,
-		constants::ALLOY_CONFIG_NAME,
-		HashMap::from([(String::from("managed-by"), String::from("patr"))]),
-		alloy_config_text,
-	)
-	.await?;
-
-	let host_ip = docker
+	let host_ip = runner
+		.docker
 		.inspect_network("bridge", None)
 		.await
 		.ok()
@@ -62,32 +45,16 @@ pub async fn update_alloy_service(
 		.and_then(|config| config.gateway)
 		.unwrap_or_else(|| String::from("172.17.0.1"));
 
-	// Build the global Alloy service spec
-	let networks = Some(vec![NetworkAttachmentConfig {
-		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-		aliases: Some(vec![String::from("patr-alloy")]),
-		driver_opts: None,
-	}]);
-
 	let service_spec = ServiceSpec {
-		name: Some(String::from(constants::ALLOY_SERVICE_NAME)),
-		labels: Some(HashMap::from([
-			(String::from("managed-by"), String::from("patr")),
-			(
-				String::from("patr.version"),
-				String::from(constants::PATR_VERSION),
-			),
-		])),
+		name: Some(String::from(name)),
+		labels: Some(utils::object_labels(owner, hash)),
 		task_template: Some(TaskSpec {
 			container_spec: Some(TaskSpecContainerSpec {
 				image: Some(String::from(constants::ALLOY_IMAGE)),
-				labels: Some(HashMap::from([
-					(String::from("managed-by"), String::from("patr")),
-					(
-						String::from("patr.version"),
-						String::from(constants::PATR_VERSION),
-					),
-				])),
+				labels: Some(HashMap::from([(
+					String::from("managed-by"),
+					String::from("patr"),
+				)])),
 				command: Some(vec![
 					String::from("alloy"),
 					String::from("run"),
@@ -101,8 +68,8 @@ pub async fn update_alloy_service(
 						uid: Some(String::from("0")),
 						gid: Some(String::from("0")),
 					}),
-					config_id: Some(alloy_config_id),
-					config_name: Some(alloy_config_name),
+					config_id,
+					config_name: Some(config_name.clone()),
 					runtime: None,
 				}]),
 				mounts: Some(vec![
@@ -162,7 +129,11 @@ pub async fn update_alloy_service(
 				]),
 				..Default::default()
 			}),
-			networks,
+			networks: Some(vec![NetworkAttachmentConfig {
+				target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
+				aliases: Some(vec![String::from("patr-alloy")]),
+				driver_opts: None,
+			}]),
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
@@ -172,45 +143,29 @@ pub async fn update_alloy_service(
 		..Default::default()
 	};
 
-	// Create or update the Alloy service
-	let alloy_service = docker
-		.inspect_service(constants::ALLOY_SERVICE_NAME, None)
-		.await
-		.ok();
-
-	if let Some(version) = alloy_service
-		.and_then(|service| service.version)
-		.and_then(|version| version.index)
-	{
-		docker
-			.update_service(
-				constants::ALLOY_SERVICE_NAME,
-				service_spec,
-				UpdateServiceOptionsBuilder::new()
-					.version(version as i32)
-					.build(),
-				None,
-			)
-			.await
-			.map_err(RunnerError::host)?;
-	} else {
-		docker
-			.create_service(service_spec, None)
-			.await
-			.map_err(RunnerError::host)?;
-	}
-
-	Ok(())
+	utils::upsert_service(&runner.docker, service_spec, None).await
 }
 
-/// Generate the Alloy configuration string with interpolated values.
-fn generate_alloy_config(
-	workspace_id: &Uuid,
-	runner_id: &Uuid,
-	api_token: &BearerToken,
-	loki_url: &str,
-	mimir_url: &str,
-) -> String {
+/// Generate the Alloy configuration string with interpolated values. It holds
+/// the runner's API token, so it's never logged.
+pub(crate) fn generate_alloy_config(settings: &RunnerSettings<DockerSettings>) -> String {
+	let RunnerSettings {
+		workspace_id,
+		runner_id,
+		api_token,
+		..
+	} = settings;
+
+	let loki_url = match settings.environment {
+		RunningEnvironment::Production => "https://loki.patr.cloud",
+		RunningEnvironment::Development => "http://host.docker.internal:3003",
+	};
+
+	let mimir_url = match settings.environment {
+		RunningEnvironment::Production => "https://mimir.patr.cloud",
+		RunningEnvironment::Development => "http://host.docker.internal:3005",
+	};
+
 	format!(
 		r#"
 discovery.docker "patr" {{

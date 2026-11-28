@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url.id, managed_url.sub_domain, CONCAT(workspace_domain.name, '.', workspace_domain.tld) AS \"domain!\" FROM managed_url INNER JOIN workspace_domain ON managed_url.domain_id = workspace_domain.id WHERE managed_url.deployment_id = $1 AND managed_url.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "sub_domain",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "sub_domain"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "domain!",
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "d2f08abb6854c0c6e75ad0f8d7b6ec9808f2985dce0b11db9fede7b29a5c2f2e"
+}

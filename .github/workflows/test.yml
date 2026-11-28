@@ -238,6 +238,12 @@ jobs:
         with:
           tool: just
 
+      # Playwright's browser deps come from Ubuntu's archive, but the apt-get
+      # update it runs also fetches the image's Microsoft repo, and an outage
+      # there (a 403) fails the job.
+      - name: Drop the runner image's Microsoft apt repo
+        run: grep -rlZ packages.microsoft.com /etc/apt/sources.list.d | xargs -0r sudo rm -f || true
+
       - name: Install e2e + frontend deps and browsers
         run: just install
         working-directory: e2e
@@ -327,6 +333,12 @@ jobs:
         uses: taiki-e/install-action@v2
         with:
           tool: just
+
+      # Playwright's browser deps come from Ubuntu's archive, but the apt-get
+      # update it runs also fetches the image's Microsoft repo, and an outage
+      # there (a 403) fails the job.
+      - name: Drop the runner image's Microsoft apt repo
+        run: grep -rlZ packages.microsoft.com /etc/apt/sources.list.d | xargs -0r sudo rm -f || true
 
       - name: Install e2e + frontend deps and browsers
         run: just install

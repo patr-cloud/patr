@@ -1,6 +1,9 @@
 use clap::Args as ClapArgs;
 use inquire::Select;
-use models::api::{user::*, workspace::deployment::*};
+use models::api::{
+	user::*,
+	workspace::{deployment::*, runner::*},
+};
 
 use crate::prelude::*;
 
@@ -98,14 +101,13 @@ pub async fn execute(
 		}
 	}
 
-	let deployment_id = args
+	let deployment = args
 		.name
 		.and_then(|name| {
 			let id = Uuid::parse_str(&name).ok();
 			deployments
 				.iter()
 				.find(|r| r.name == name || id.filter(|id| r.id == *id).is_some())
-				.map(|deployment| deployment.id)
 		})
 		.unwrap_or_else(|| {
 			let name = Select::new(
@@ -122,14 +124,33 @@ pub async fn execute(
 				.iter()
 				.find(|&deployment| &deployment.name == name)
 				.unwrap_or_else(|| panic!("No deployment found with name: `{}`", name))
-				.id
 		});
+
+	let runner = match make_request(
+		ApiRequest::<GetRunnerInfoRequest>::builder()
+			.path(GetRunnerInfoPath {
+				workspace_id,
+				runner_id: deployment.runner,
+			})
+			.headers(GetRunnerInfoRequestHeaders {
+				authorization: token.clone(),
+				user_agent: constants::USER_AGENT,
+			})
+			.build(),
+	)
+	.await
+	.map_err(AppError::from)
+	{
+		Ok(response) => Some(response.body.runner.data),
+		Err(AppError::ApiError(ErrorType::Unauthorized)) => None,
+		Err(err) => return Err(err),
+	};
 
 	let response = make_request(
 		ApiRequest::<StopDeploymentRequest>::builder()
 			.path(StopDeploymentPath {
 				workspace_id,
-				deployment_id,
+				deployment_id: deployment.id,
 			})
 			.headers(StopDeploymentRequestHeaders {
 				authorization: token.clone(),
@@ -141,10 +162,23 @@ pub async fn execute(
 	.body;
 
 	CommandOutput::builder()
-		.text(format!(
-			"Stopped deployment `{}` successfully",
-			deployment_id
-		))
+		.text(match runner {
+			Some(runner) if runner.connected => format!(
+				concat!(
+					"Stop requested. The runner \"{}\" will shut down \"{}\". ",
+					"Its volumes are kept.",
+				),
+				runner.name, deployment.name
+			),
+			Some(runner) => format!(
+				concat!(
+					"Stop requested. The runner \"{}\" is offline, so \"{}\" will ",
+					"stop once it reconnects.",
+				),
+				runner.name, deployment.name
+			),
+			None => "Stop requested.".to_string(),
+		})
 		.json(response.to_json_value())
 		.build()
 		.into_result()

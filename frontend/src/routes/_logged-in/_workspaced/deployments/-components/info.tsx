@@ -4,12 +4,15 @@ import { useNavigate } from "@tanstack/solid-router";
 import { ExposedPortType, GetDeploymentInfoResponse, UpdateDeploymentResponse } from "~/bindings";
 import {
 	Button,
+	ButtonVariant,
 	CopyableField,
 	CopyableFieldVariant,
 	Input,
 	InputType,
 	InputDropdown,
 	Label,
+	Modal,
+	ModalContainer,
 	RangeSlider,
 	ToggleSwitch,
 	UnsavedChangesGuard,
@@ -27,6 +30,7 @@ import {
 } from "~/hooks/fetch";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
+import { Color } from "~/utils/color";
 import { REGISTRY_DOMAIN } from "~/utils/env";
 import { httpRequest } from "~/utils/http-request";
 import { EventT } from "~/utils/types";
@@ -169,6 +173,8 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 	const [_, setHasUpdated] = createSignal(false);
 	const [isUpdating, setIsUpdating] = createSignal(false);
 	const [portsValid, setPortsValid] = createSignal(true);
+	// The runner picked while the move confirmation is open.
+	const [pendingRunner, setPendingRunner] = createSignal<string>();
 
 	// Whether the draft would change anything if saved. Update stays disabled
 	// until it would.
@@ -348,6 +354,11 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						isLoadingMore={() => runnersQuery.isFetchingNextPage || runnersQuery.isPlaceholderData}
 						onSearch={setRunnerSearch}
 						onSelect={(runnerId) => {
+							// Moving deletes the volumes on the old runner, so ask first.
+							if (hasVolumes() && runnerId !== deploymentQuery.data?.runner) {
+								setPendingRunner(runnerId);
+								return;
+							}
 							updateLocal((prev) => (prev ? { ...prev, runner: runnerId } : undefined));
 						}}
 					/>
@@ -472,6 +483,50 @@ const DeploymentInfoUpdate = (props: DeploymentInfoProps) => {
 						Update
 					</Button>
 				</div>
+			</Show>
+
+			{/* Mounted only while asking: the dropdown picks on mousedown, and an
+				already-mounted modal's click-outside listener would close it on that
+				same event. */}
+			<Show when={pendingRunner() !== undefined}>
+				<Modal
+					isOpen={() => pendingRunner() !== undefined}
+					setIsOpen={(v) => {
+						if (!v) setPendingRunner(undefined);
+					}}
+					renderTrigger={() => null}
+					renderModalContent={(close) => (
+						<ModalContainer closeFn={() => close(false)} class="w-full">
+							<h2 class="text-md text-primary font-semibold mb-4">Change the runner?</h2>
+							<p class="mb-6 text-sm text-white">
+								Once you save, this deployment's volumes and the data in them are deleted from its
+								current runner. It starts on the new runner with empty volumes.
+							</p>
+							<div class="flex w-full justify-end items-center gap-4">
+								<Button
+									variant={ButtonVariant.Plain}
+									class="cursor-pointer"
+									onClick={() => close(false)}
+								>
+									Cancel
+								</Button>
+								<Button
+									variant={ButtonVariant.Outlined}
+									color={Color.Error}
+									onClick={() => {
+										const runnerId = pendingRunner();
+										if (runnerId) {
+											updateLocal((prev) => (prev ? { ...prev, runner: runnerId } : undefined));
+										}
+										close(false);
+									}}
+								>
+									Change runner
+								</Button>
+							</div>
+						</ModalContainer>
+					)}
+				/>
 			</Show>
 
 			<UnsavedChangesGuard

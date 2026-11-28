@@ -1,5 +1,3 @@
-use models::api::workspace::deployment::DeploymentStatus;
-
 use crate::{
 	prelude::*,
 	utils::{build_forwarded_headers, serve_error_page},
@@ -35,9 +33,9 @@ pub async fn handle_request(req: Request, env: Env, _ctx: Context, host: &str) -
 		InternalKVData::Deployment {
 			ports,
 			runner_id,
-			status,
+			should_run,
 		} => {
-			if !matches!(status, DeploymentStatus::Running) {
+			if !should_run {
 				return serve_error_page("deployment-stopped", 503).await;
 			}
 

@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT managed_url.sub_domain, managed_url.domain_id, managed_url.path, managed_url.deployment_id AS \"deployment_id!\", managed_url.port AS \"port!\", managed_url_custom_hostname.is_active FROM managed_url INNER JOIN managed_url_custom_hostname ON managed_url.sub_domain = managed_url_custom_hostname.sub_domain AND managed_url.domain_id = managed_url_custom_hostname.domain_id INNER JOIN deployment ON deployment.id = managed_url.deployment_id WHERE managed_url.id = $1 AND managed_url.workspace_id = $2 AND managed_url.deleted IS NULL AND managed_url.url_type = 'proxy_to_deployment' AND deployment.runner = $3 AND deployment.deleted IS NULL;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sub_domain",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "sub_domain"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "domain_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "domain_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "path",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "path"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "deployment_id!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "deployment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "port!",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "managed_url",
+            "name": "port"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "is_active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "managed_url_custom_hostname",
+            "name": "is_active"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "470024a3647226b55c33b0f6bce2f5c6c8c56be6bd7b9f26348fbc5f1f57203d"
+}

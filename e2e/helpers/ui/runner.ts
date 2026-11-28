@@ -117,9 +117,8 @@ export async function openRunnerDetail(page: Page, id: string, tab?: string): Pr
 	await page.goto(`/runners/${id}${suffix}`, { waitUntil: 'domcontentloaded' });
 }
 
-// The detail page renders a StatusChip, which prints its raw lowercase status
-// ("connected", "unreachable" or "not set up") and relies on CSS `capitalize`
-// for display, so match case-insensitively on what's actually in the DOM.
+// The detail page renders a StatusChip, which prints "Connected",
+// "Unreachable" or "Not set up".
 // Anchored: the Info tab's "This runner hasn't connected yet." callout would
 // match an unanchored /connected/i ahead of the chip.
 export function statusBadge(page: Page, state: 'Connected' | 'Unreachable' | 'Not set up') {

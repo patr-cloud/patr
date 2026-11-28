@@ -3,19 +3,12 @@
 //! This handler uploads a new manifest to the registry, validates it,
 //! stores it in S3, and creates/updates tags as needed.
 
-use std::{collections::BTreeMap, str::FromStr};
+use std::str::FromStr;
 
 use aws_sdk_s3::primitives::ByteStream;
 use axum::body::Body;
 use headers::ContentType;
-use models::{
-	api::workspace::{
-		container_registry::ManifestKind,
-		deployment::*,
-		runner::StreamRunnerDataForWorkspaceServerMsg,
-	},
-	utils::{Base64String, StringifiedU16},
-};
+use models::{api::workspace::container_registry::ManifestKind, rbac::ResourceType};
 use oci_spec::image::{
 	Descriptor,
 	Digest,
@@ -24,11 +17,16 @@ use oci_spec::image::{
 	ImageIndex,
 	ImageManifest,
 };
-use rustis::commands::{GenericCommands, PubSubCommands};
+use rustis::commands::GenericCommands;
 use sha2::{Digest as _, Sha256, Sha512};
 use time::OffsetDateTime;
 
-use crate::{models::permissions, redis::keys, routes::registry_patr_cloud::prelude::*};
+use crate::{
+	models::permissions,
+	redis::keys,
+	redis_publisher::{self, DirtyResource},
+	routes::registry_patr_cloud::prelude::*,
+};
 
 macros::declare_registry_endpoint!(
 	/// PUT manifest endpoint.
@@ -661,7 +659,6 @@ pub async fn upload_manifest(
 		// have opted in via deploy_on_push = true.
 		if let Err(err) = auto_deploy_on_push(
 			&mut *database,
-			&mut *redis,
 			repository_id,
 			&reference,
 			&digest,
@@ -694,7 +691,6 @@ pub async fn upload_manifest(
 /// repository and tag with `deploy_on_push` enabled.
 async fn auto_deploy_on_push(
 	database: &mut DatabaseTransaction,
-	redis: &mut rustis::client::Client,
 	repository_id: Uuid,
 	tag: &str,
 	digest: &str,
@@ -707,31 +703,14 @@ async fn auto_deploy_on_push(
 		r#"
 		SELECT
 			id,
-			name,
-			registry,
-			image_name,
-			image_tag,
-			runner,
-			status,
-			repository_id,
-			min_horizontal_scale,
-			max_horizontal_scale,
-			machine_type,
-			deploy_on_push,
-			startup_probe_port,
-			startup_probe_path,
-			startup_probe_port_type AS "startup_probe_port_type?",
-			liveness_probe_port,
-			liveness_probe_path,
-			liveness_probe_port_type AS "liveness_probe_port_type?",
-			current_live_digest
+			runner
 		FROM
 			deployment
 		WHERE
 			repository_id = $1 AND
 			image_tag = $2 AND
 			deploy_on_push = TRUE AND
-			status NOT IN ('stopped', 'errored') AND
+			should_run = TRUE AND
 			deleted IS NULL;
 		"#,
 		repository_id,
@@ -742,7 +721,6 @@ async fn auto_deploy_on_push(
 
 	for deployment in deployments {
 		let deployment_id = deployment.id;
-		let runner = deployment.runner;
 
 		info!(
 			"Auto-deploying deployment `{}` due to push of tag `{}` on repository `{}`",
@@ -773,175 +751,32 @@ async fn auto_deploy_on_push(
 		.execute(&mut **database)
 		.await?;
 
-		// Update the deployment's live digest and set status to deploying
+		// Update the deployment's live digest
 		query!(
 			r#"
 			UPDATE
 				deployment
 			SET
-				current_live_digest = $1,
-				status = $2
+				current_live_digest = $1
 			WHERE
-				id = $3;
+				id = $2;
 			"#,
 			digest,
-			DeploymentStatus::Deploying,
 			deployment_id,
 		)
 		.execute(&mut **database)
 		.await?;
 
-		// Fetch deployment details needed by the runner
-		let ports = query!(
-			r#"
-			SELECT
-				port,
-				port_type
-			FROM
-				deployment_exposed_port
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id
+		redis_publisher::mark_dirty(
+			database,
+			DirtyResource {
+				workspace_id,
+				runner_id: deployment.runner,
+				resource_type: ResourceType::Deployment,
+				resource_id: deployment_id,
+			},
 		)
-		.fetch_all(&mut **database)
-		.await?
-		.into_iter()
-		.map(|row| (StringifiedU16::new(row.port as u16), row.port_type))
-		.collect::<BTreeMap<_, _>>();
-
-		let environment_variables = query!(
-			r#"
-			SELECT
-				name,
-				value,
-				secret_id
-			FROM
-				deployment_environment_variable
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id
-		)
-		.fetch_all(&mut **database)
-		.await?
-		.into_iter()
-		.filter_map(|env| {
-			let value = match (env.value.clone(), env.secret_id) {
-				(Some(val), None) => Some(EnvironmentVariableValue::String(val)),
-				(None, Some(from_secret)) => Some(EnvironmentVariableValue::Secret { from_secret }),
-				_ => {
-					warn!(
-						concat!(
-							"corrupted deployment, cannot find environment variable value. ",
-							"deployment_id: {}, env name: `{}`, value: {:?}`, secret_id: {:?}"
-						),
-						deployment_id, env.name, env.value, env.secret_id
-					);
-					None
-				}
-			};
-			value.map(|v| (env.name, v))
-		})
-		.collect::<BTreeMap<_, _>>();
-
-		let config_mounts = query!(
-			r#"
-			SELECT
-				path,
-				file
-			FROM
-				deployment_config_mounts
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id
-		)
-		.fetch_all(&mut **database)
-		.await?
-		.into_iter()
-		.map(|row| (row.path, Base64String::from(row.file)))
-		.collect::<BTreeMap<_, _>>();
-
-		let volumes = query!(
-			r#"
-			SELECT
-				path
-			FROM
-				deployment_volume
-			WHERE
-				deployment_id = $1;
-			"#,
-			deployment_id
-		)
-		.fetch_all(&mut **database)
-		.await?
-		.into_iter()
-		.map(|row| (row.path, VolumeConfig {}))
-		.collect::<BTreeMap<_, _>>();
-
-		let startup_probe = deployment
-			.startup_probe_port
-			.zip(deployment.startup_probe_path)
-			.map(|(port, path)| DeploymentProbe {
-				port: port as u16,
-				path,
-			});
-
-		let liveness_probe = deployment
-			.liveness_probe_port
-			.zip(deployment.liveness_probe_path)
-			.map(|(port, path)| DeploymentProbe {
-				port: port as u16,
-				path,
-			});
-
-		let registry = if deployment.registry == PatrRegistry.to_string() {
-			DeploymentRegistry::PatrRegistry {
-				registry: PatrRegistry,
-				repository_id: deployment.repository_id.unwrap_or(repository_id),
-			}
-		} else {
-			DeploymentRegistry::ExternalRegistry {
-				registry: deployment.registry,
-				image_name: deployment.image_name.unwrap_or_default(),
-			}
-		};
-
-		// Notify the runner via Redis pubsub
-		redis
-			.publish(
-				format!("{workspace_id}/runner/{runner}/stream"),
-				serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::DeploymentUpdated {
-					deployment: WithId::new(
-						deployment_id,
-						Deployment {
-							name: deployment.name,
-							registry,
-							image_tag: deployment.image_tag,
-							runner,
-							status: DeploymentStatus::Deploying,
-							current_live_digest: Some(digest.to_string()),
-							machine_type: deployment.machine_type,
-						},
-					),
-					running_details: DeploymentRunningDetails {
-						deploy_on_push: deployment.deploy_on_push,
-						min_horizontal_scale: deployment.min_horizontal_scale as u16,
-						max_horizontal_scale: deployment.max_horizontal_scale as u16,
-						ports,
-						environment_variables,
-						startup_probe,
-						liveness_probe,
-						config_mounts,
-						volumes,
-					},
-				})
-				.map_err(|err| {
-					ErrorType::server_error(format!("Failed to serialize deployment update: {err}"))
-				})?,
-			)
-			.await?;
+		.await?;
 
 		info!("Successfully triggered auto-deploy for deployment `{deployment_id}`");
 	}

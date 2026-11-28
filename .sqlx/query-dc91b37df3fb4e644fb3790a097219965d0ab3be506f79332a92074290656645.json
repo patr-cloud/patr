@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "CREATE FUNCTION IS_RUNNER_ONLINE(is_connected BOOLEAN, last_seen TIMESTAMPTZ) RETURNS BOOLEAN AS $$ SELECT is_connected AND COALESCE(last_seen > NOW() - INTERVAL '120 seconds', FALSE); $$ LANGUAGE SQL STABLE;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "dc91b37df3fb4e644fb3790a097219965d0ab3be506f79332a92074290656645"
+}

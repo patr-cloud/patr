@@ -19,7 +19,7 @@ import {
 import { createAuthenticatedAction } from "~/hooks";
 import useIsAllowed, { useGetPermissions } from "~/hooks/is-allowed";
 import { useLastWorkspaceId } from "~/hooks/state-hooks";
-import { useDeploymentInfoQuery } from "~/hooks/fetch";
+import { useDeploymentInfoQuery, useRunnerInfoQuery } from "~/hooks/fetch";
 import { deploymentKeys } from "~/hooks/query-keys";
 import { useQueryClient } from "@tanstack/solid-query";
 import { httpRequest } from "~/utils/http-request";
@@ -47,6 +47,12 @@ const DeploymentInfo = () => {
 	const deploymentQuery = useDeploymentInfoQuery(() => params().id);
 
 	const deploymentData = () => deploymentQuery.data;
+
+	// For the start/stop toasts. Only fetched with permission to view the runner,
+	// so members without it don't get an error toast.
+	const runnerPermissions = useGetPermissions("runner", () => deploymentData()?.runner ?? "");
+	const runnerQuery = useRunnerInfoQuery(() => (runnerPermissions().view ? (deploymentData()?.runner ?? "") : ""));
+	const runner = () => (runnerQuery.isSuccess ? runnerQuery.data?.runner : undefined);
 
 	const refetchDeployment = () => {
 		const wsId = workspaceId();
@@ -79,7 +85,17 @@ const DeploymentInfo = () => {
 				return;
 			}
 
-			toast("Deployment started successfully", "success");
+			const startRunner = runner();
+			if (!startRunner) {
+				toast("Start requested.", "success");
+			} else if (startRunner.connected) {
+				toast(`Start requested. The runner "${startRunner.name}" will deploy "${deployment.name}".`, "success");
+			} else {
+				toast(
+					`Start requested. The runner "${startRunner.name}" is offline, so "${deployment.name}" will start once it reconnects.`,
+					"warn"
+				);
+			}
 			refetchDeployment();
 		}
 	);
@@ -108,7 +124,20 @@ const DeploymentInfo = () => {
 				return;
 			}
 
-			toast("Deployment stopped successfully", "success");
+			const stopRunner = runner();
+			if (!stopRunner) {
+				toast("Stop requested.", "success");
+			} else if (stopRunner.connected) {
+				toast(
+					`Stop requested. The runner "${stopRunner.name}" will shut down "${deployment.name}". Its volumes are kept.`,
+					"success"
+				);
+			} else {
+				toast(
+					`Stop requested. The runner "${stopRunner.name}" is offline, so "${deployment.name}" will stop once it reconnects.`,
+					"warn"
+				);
+			}
 			refetchDeployment();
 		}
 	);
@@ -188,18 +217,19 @@ const DeploymentInfo = () => {
 								actions={() => (
 									<div class="flex items-center justify-end gap-4">
 										<Show when={deploymentData()?.status}>
-											<StatusChip status={deploymentData()!.status} size="md" />
+											<StatusChip
+												status={deploymentData()!.status}
+												size="md"
+												resourceType="deployment"
+											/>
 										</Show>
-										<Show
-											when={
-												deploymentData()?.status !== "stopped" && deploymentPermissions().stop
-											}
-										>
+										<Show when={deploymentData()?.shouldRun && deploymentPermissions().stop}>
 											<Button
 												onClick={(e) => {
 													e.preventDefault();
 													stopDeployment();
 												}}
+												aria-label="Stop deployment"
 												class="w-10 h-10"
 												variant={ButtonVariant.Outlined}
 												color={Color.Error}
@@ -211,10 +241,11 @@ const DeploymentInfo = () => {
 										</Show>
 										<Show
 											when={
-												deploymentData()?.status === "stopped" && deploymentPermissions().start
+												deploymentData()?.shouldRun === false && deploymentPermissions().start
 											}
 										>
 											<Button
+												aria-label="Start deployment"
 												class="w-10 h-10"
 												variant={ButtonVariant.Contained}
 												loading={isStartingDeployment()}
@@ -234,6 +265,11 @@ const DeploymentInfo = () => {
 												<DeleteModal
 													isLoading={isDeletingDeployment()}
 													title="Do You Really Want to Delete This Deployment?"
+													message={
+														Object.keys(deploymentData()?.volumes ?? {}).length > 0
+															? "Its volumes and the data in them will be deleted too. This action cannot be undone."
+															: undefined
+													}
 													resourceName={deploymentData()?.name || ""}
 													isOpen={isDeleteModalOpen}
 													setIsOpen={setIsDeleteModalOpen}

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use bollard::{
 	auth::DockerCredentials,
@@ -6,80 +6,184 @@ use bollard::{
 		HealthConfig,
 		Mount,
 		MountType,
-		MountVolumeOptions,
 		NetworkAttachmentConfig,
+		Platform,
 		ServiceSpec,
 		ServiceSpecMode,
 		ServiceSpecModeReplicated,
 		ServiceSpecUpdateConfig,
+		ServiceSpecUpdateConfigFailureActionEnum,
 		ServiceSpecUpdateConfigOrderEnum,
+		ServiceUpdateStatusStateEnum,
 		TaskSpec,
 		TaskSpecContainerSpec,
 		TaskSpecContainerSpecConfigs,
 		TaskSpecContainerSpecFile1,
-		VolumeCreateRequest,
+		TaskSpecPlacement,
+		TaskState,
 	},
-	query_parameters::{
-		ListConfigsOptions,
-		ListServicesOptions,
-		ListServicesOptionsBuilder,
-		ListVolumesOptions,
-		RemoveVolumeOptions,
-		UpdateServiceOptionsBuilder,
-	},
+	query_parameters::{ListContainersOptions, ListServicesOptions, ListTasksOptions},
 };
-use futures::{Stream, StreamExt, TryStreamExt};
 use models::api::workspace::{container_registry::*, deployment::*};
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	runner::{DeploymentService, DockerObjectId, DockerSpec, EnvValue, ServiceTemplate},
+};
 
-/// Upsert (create or update) a deployment. This will create the service if
-/// it does not exist, or update the service if it does exist.
-pub(crate) async fn upsert(
-	DockerRunner {
-		docker, settings, ..
-	}: &DockerRunner,
-	WithId {
-		id,
-		data:
-			Deployment {
-				name,
-				registry,
-				image_tag,
-				status: _,       // TODO handle paused deployments
-				machine_type: _, // TODO
-				runner: _,
-				current_live_digest,
+/// The objects a deployment expects: its volumes and its default-URL routes
+/// always, and while it should run, its config mounts and the service that
+/// mounts them. A stopped deployment keeps its volumes; its routes answer 503.
+pub(crate) fn expected(
+	runner: &DockerRunner,
+	deployment_id: Uuid,
+	local: &LocalState,
+) -> ExpectedGraph<DockerObjectId, DockerSpec> {
+	let mut graph = ExpectedGraph::new(Owner::Deployment(deployment_id));
+	let Some((deployment, running_details)) = local.deployments.get(&deployment_id) else {
+		return graph;
+	};
+
+	let volume_mounts = running_details
+		.volumes
+		.keys()
+		.map(|path| {
+			let volume = DockerObjectId::Volume(utils::deployment_volume_name(deployment_id, path));
+			(path.clone(), graph.add(volume, DockerSpec::Volume, []))
+		})
+		.collect::<BTreeMap<_, _>>();
+
+	if let Some((id, data)) = routes(runner, deployment_id, deployment, running_details) {
+		graph.add(id, DockerSpec::Config { data }, []);
+	}
+
+	if !deployment.should_run {
+		return graph;
+	}
+
+	let config_mounts = running_details
+		.config_mounts
+		.iter()
+		.map(|(path, content)| {
+			let data = content.as_slice().to_vec();
+			let config = DockerObjectId::Config(utils::config_name(
+				&format!("patr-config-{deployment_id}"),
+				&data,
+			));
+			(
+				path.clone(),
+				graph.add(config, DockerSpec::Config { data }, []),
+			)
+		})
+		.collect::<BTreeMap<_, _>>();
+
+	let env = running_details
+		.environment_variables
+		.iter()
+		.map(|(name, value)| {
+			let value = match value {
+				EnvironmentVariableValue::String(value) => EnvValue::Plain(value.clone()),
+				EnvironmentVariableValue::Secret { from_secret } => EnvValue::Secret {
+					secret_id: *from_secret,
+					last_updated: local.secrets.get(from_secret).copied(),
+				},
+			};
+			(name.clone(), value)
+		})
+		.collect();
+
+	let depends_on = config_mounts
+		.values()
+		.chain(volume_mounts.values())
+		.cloned()
+		.collect::<Vec<_>>();
+	graph.add(
+		DockerObjectId::Service(format!("patr-{deployment_id}")),
+		DockerSpec::Service(Box::new(ServiceTemplate::Deployment(DeploymentService {
+			deployment_id,
+			registry: deployment.registry.clone(),
+			image_tag: deployment.image_tag.clone(),
+			current_live_digest: deployment.current_live_digest.clone(),
+			env,
+			replicas: running_details.min_horizontal_scale,
+			startup_probe: running_details.startup_probe.clone(),
+			liveness_probe: running_details.liveness_probe.clone(),
+			// A deployment with volumes must be `stop-first`: the old task has
+			// to release its volumes before the new one mounts them, or both
+			// write the same directory at once.
+			update_order: if volume_mounts.is_empty() {
+				ServiceSpecUpdateConfigOrderEnum::START_FIRST
+			} else {
+				ServiceSpecUpdateConfigOrderEnum::STOP_FIRST
 			},
-	}: WithId<Deployment>,
-	DeploymentRunningDetails {
-		deploy_on_push: _,
-		min_horizontal_scale,
-		max_horizontal_scale,
-		ports,
-		environment_variables,
-		startup_probe,
-		liveness_probe,
-		config_mounts,
-		volumes,
-	}: DeploymentRunningDetails,
+			config_mounts,
+			volume_mounts,
+		}))),
+		depends_on,
+	);
+
+	graph
+}
+
+/// The config holding a deployment's default-URL routes, one per HTTP port,
+/// or `None` if it exposes no HTTP port (Docker rejects an empty config). A
+/// stopped deployment's routes answer 503.
+pub(crate) fn routes(
+	runner: &DockerRunner,
+	deployment_id: Uuid,
+	deployment: &Deployment,
+	running_details: &DeploymentRunningDetails,
+) -> Option<(DockerObjectId, Vec<u8>)> {
+	let data = running_details
+		.ports
+		.iter()
+		.filter(|(_, port_type)| matches!(port_type, ExposedPortType::Http))
+		.map(|(port, _)| {
+			ingress::generate_config_for_deployment(
+				deployment_id,
+				port.value(),
+				deployment.should_run,
+				runner.settings.data.runner_exposure_type.is_private(),
+			)
+		})
+		.collect::<String>();
+	if data.is_empty() {
+		return None;
+	}
+	Some((
+		DockerObjectId::Config(utils::config_name(
+			&format!("patr-ingress-{deployment_id}"),
+			&data,
+		)),
+		data.into_bytes(),
+	))
+}
+
+/// Creates or updates a deployment's service, resolving the image, the secret
+/// values and the IDs of its config mounts.
+pub(crate) async fn apply(
+	runner: &DockerRunner,
+	owner: Owner,
+	name: &str,
+	service: &DeploymentService,
+	hash: &str,
 ) -> Result<(), RunnerError> {
-	let service_name = format!("patr-{}", id);
+	let DockerRunner {
+		docker, settings, ..
+	} = runner;
+	let RunnerSettings {
+		workspace_id,
+		runner_id,
+		api_token,
+		user_agent,
+		..
+	} = settings;
+	let deployment_id = service.deployment_id;
 
-	// Check if the service exists
-	let existing_service = docker.inspect_service(&service_name, None).await.ok();
-
-	// Resolve the image path. PatrRegistry deployments only carry a
-	// `repository_id` locally — look up the repo name via the API to build the
-	// `{workspace_id}/{repo_name}` path the registry expects.
-	let image_path = match &registry {
+	// Patr-registry deployments only carry a `repository_id` locally, so the
+	// repository's name comes from the API.
+	let image_path = match &service.registry {
 		DeploymentRegistry::PatrRegistry { repository_id, .. } => {
-			let RunnerSettings {
-				workspace_id,
-				api_token,
-				user_agent,
-				..
-			} = settings;
 			let repository = client::make_request(
 				ApiRequest::<GetContainerRepositoryInfoRequest>::builder()
 					.path(GetContainerRepositoryInfoPath {
@@ -100,43 +204,110 @@ pub(crate) async fn upsert(
 			.repository;
 			format!(
 				"{}/{}/{}",
-				registry.registry_url(),
+				service.registry.registry_url(),
 				workspace_id,
 				repository.name
 			)
 		}
 		DeploymentRegistry::ExternalRegistry {
-			registry: reg,
+			registry,
 			image_name,
-		} => format!("{}/{}", reg, image_name),
+		} => format!("{registry}/{image_name}"),
+	};
+	let image = match &service.current_live_digest {
+		Some(digest) => format!("{image_path}@{digest}"),
+		None => format!("{image_path}:{}", service.image_tag),
 	};
 
-	let image = if let Some(digest) = &current_live_digest {
-		format!("{}@{}", image_path, digest)
-	} else {
-		format!("{}:{}", image_path, image_tag)
-	};
-
-	// Build registry credentials for both image pull and Swarm task scheduling.
-	// Patr registry images need managed-mode auth; external registries are
-	// pulled anonymously here.
-	let registry_auth = if registry.is_patr_registry() {
-		Some(DockerCredentials {
+	// Patr's credentials only ever go to Patr's registry. External images are
+	// pulled anonymously.
+	let registry_auth = match &service.registry {
+		DeploymentRegistry::PatrRegistry { .. } => Some(DockerCredentials {
 			username: Some("patr".to_string()),
-			password: Some(settings.api_token.0.token().to_string()),
-			serveraddress: Some(registry.registry_url()),
+			password: Some(api_token.0.token().to_string()),
+			serveraddress: Some(service.registry.registry_url()),
 			..Default::default()
-		})
-	} else {
-		None
+		}),
+		DeploymentRegistry::ExternalRegistry { .. } => None,
 	};
 
-	// Build health check from probes. Docker Swarm only supports a single
-	// healthcheck, so we prefer liveness_probe over startup_probe if both are
-	// provided. The health check will be used for container health monitoring.
-	let health_check = liveness_probe
+	// The platforms the image supports, so Swarm only schedules it on a node
+	// that can run it. A lookup that fails or finds nothing sets no
+	// constraint, and Swarm reports what happens.
+	let platforms = match &service.registry {
+		DeploymentRegistry::PatrRegistry { repository_id, .. } => client::make_request(
+			ApiRequest::<GetContainerRepositoryManifestDetailsRequest>::builder()
+				.path(GetContainerRepositoryManifestDetailsPath {
+					workspace_id: *workspace_id,
+					repository_id: *repository_id,
+					digest_or_tag: service
+						.current_live_digest
+						.clone()
+						.unwrap_or_else(|| service.image_tag.clone()),
+				})
+				.headers(GetContainerRepositoryManifestDetailsRequestHeaders {
+					authorization: api_token.clone(),
+					user_agent: user_agent.clone(),
+				})
+				.query(())
+				.body(GetContainerRepositoryManifestDetailsRequest)
+				.build(),
+		)
+		.await
+		.map(|response| {
+			response
+				.body
+				.manifest_details
+				.platforms
+				.into_iter()
+				.filter(|platform| platform.os != "unknown")
+				.map(|platform| Platform {
+					architecture: Some(platform.architecture),
+					os: Some(platform.os),
+				})
+				.collect::<Vec<_>>()
+		})
+		.unwrap_or_default(),
+		DeploymentRegistry::ExternalRegistry { .. } => {
+			let cached = runner
+				.platforms
+				.lock()
+				.ok()
+				.and_then(|platforms| platforms.get(&image).cloned());
+			match cached {
+				Some(platforms) => platforms,
+				None => {
+					let platforms = docker
+						.inspect_registry_image(&image, None)
+						.await
+						.map(|inspect| {
+							inspect
+								.platforms
+								.into_iter()
+								.map(|platform| Platform {
+									architecture: platform.architecture,
+									os: platform.os,
+								})
+								.collect::<Vec<_>>()
+						})
+						.unwrap_or_default();
+					if service.current_live_digest.is_some() &&
+						let Ok(mut cache) = runner.platforms.lock()
+					{
+						cache.insert(image.clone(), platforms.clone());
+					}
+					platforms
+				}
+			}
+		}
+	};
+
+	// Swarm supports a single healthcheck, so the liveness probe wins over the
+	// startup probe.
+	let health_check = service
+		.liveness_probe
 		.as_ref()
-		.or(startup_probe.as_ref())
+		.or(service.startup_probe.as_ref())
 		.map(|probe| HealthConfig {
 			test: Some(vec![
 				String::from("CMD-SHELL"),
@@ -145,18 +316,13 @@ pub(crate) async fn upsert(
 					probe.port, probe.path
 				),
 			]),
-			// Default interval of 30 seconds
-			interval: Some(30_000_000_000), // 30s in nanoseconds
-			// Default timeout of 10 seconds
-			timeout: Some(10_000_000_000), // 10s in nanoseconds
-			// 3 retries before marking unhealthy
+			interval: Some(30_000_000_000),
+			timeout: Some(10_000_000_000),
 			retries: Some(3),
-			// Start period - give container time to start before health checks begin
-			// Use startup_probe interval if available, otherwise default to 60s
-			start_period: if startup_probe.is_some() {
-				Some(60_000_000_000) // 60s in nanoseconds
+			start_period: if service.startup_probe.is_some() {
+				Some(60_000_000_000)
 			} else {
-				Some(10_000_000_000) // 10s in nanoseconds
+				Some(10_000_000_000)
 			},
 			..Default::default()
 		});
@@ -171,524 +337,217 @@ pub(crate) async fn upsert(
 		.and_then(|config| config.gateway)
 		.unwrap_or_else(|| String::from("172.17.0.1"));
 
-	// Materialize config mounts as Docker Swarm configs and attach them to the
-	// container spec. Each mount gets its own config with base_name
-	// `config-{id}-{N}` where N is the ordinal after sorting the mounts by path
-	// — explicit sort keeps the ordinal stable regardless of map type.
-	// Per-ordinal base_name means update_config's cleanup is scoped to this
-	// mount only (so siblings survive) and same-content-at-different-paths
-	// never clashes on the final Docker config name.
-	let mount_count = config_mounts.len();
-	let mut sorted_mounts = config_mounts.iter().collect::<Vec<_>>();
-	sorted_mounts.sort_by(|(a, _), (b, _)| a.cmp(b));
-	let mut mount_configs = Vec::with_capacity(mount_count);
-	for (ordinal, (path, content)) in sorted_mounts.into_iter().enumerate() {
-		let (config_id, config_name) = crate::utils::update_config(
-			docker,
-			&format!("config-{}-{}", id, ordinal),
-			HashMap::from([
-				(String::from("managed-by"), String::from("patr")),
-				(String::from("patr.deploymentId"), id.to_string()),
-			]),
-			content.as_slice(),
-		)
-		.await?;
-
-		mount_configs.push(TaskSpecContainerSpecConfigs {
+	let mut configs = Vec::with_capacity(service.config_mounts.len());
+	for (path, config) in &service.config_mounts {
+		let DockerObjectId::Config(config_name) = config else {
+			continue;
+		};
+		let config_id = docker
+			.inspect_config(config_name)
+			.await
+			.map_err(RunnerError::host)?
+			.id;
+		configs.push(TaskSpecContainerSpecConfigs {
 			file: Some(TaskSpecContainerSpecFile1 {
 				name: Some(path.clone()),
 				mode: Some(0o444),
 				uid: Some(String::from("0")),
 				gid: Some(String::from("0")),
 			}),
-			config_id: Some(config_id),
-			config_name: Some(config_name),
+			config_id,
+			config_name: Some(config_name.clone()),
 			runtime: None,
 		});
 	}
 
-	// Volumes: one named Docker volume per path, mounted read-write. The name
-	// is derived from the path, so removing a path and re-adding it later
-	// finds the same data — detaching never deletes a volume; only
-	// `delete()` does.
-	//
-	// Volumes are created explicitly (rather than by the daemon on first
-	// mount) so they carry the labels `delete()` sweeps on. The same labels go
-	// on the mount too, for the case where the daemon creates one anyway.
-	let volume_labels = HashMap::from([
-		(String::from("managed-by"), String::from("patr")),
-		(
-			String::from("patr.version"),
-			String::from(constants::PATR_VERSION),
-		),
-		(String::from("patr.deploymentId"), id.to_string()),
-	]);
-	let mut volume_mounts = Vec::with_capacity(volumes.len());
-	for path in volumes.keys() {
-		let volume_name = crate::utils::deployment_volume_name(id, path);
-		let exists = match docker.inspect_volume(&volume_name).await {
-			Ok(_) => true,
-			Err(bollard::errors::Error::DockerResponseServerError {
-				status_code: 404, ..
-			}) => false,
-			Err(err) => {
-				error!("Error inspecting volume `{}`: {:?}", volume_name, err);
-				return Err(RunnerError::host(err));
+	let mounts = service
+		.volume_mounts
+		.iter()
+		.filter_map(|(path, volume)| {
+			let DockerObjectId::Volume(volume_name) = volume else {
+				return None;
+			};
+			Some(Mount {
+				target: Some(path.clone()),
+				source: Some(volume_name.clone()),
+				typ: Some(MountType::VOLUME),
+				read_only: Some(false),
+				..Default::default()
+			})
+		})
+		.collect::<Vec<_>>();
+
+	let mut env = Vec::with_capacity(service.env.len());
+	for (key, value) in &service.env {
+		let value = match value {
+			EnvValue::Plain(value) => value.clone(),
+			EnvValue::Secret { secret_id, .. } => {
+				secrets::get_secret_value(*runner_id, api_token, *workspace_id, *secret_id).await?
 			}
 		};
-		if !exists {
-			docker
-				.create_volume(VolumeCreateRequest {
-					name: Some(volume_name.clone()),
-					labels: Some(volume_labels.clone()),
-					..Default::default()
-				})
-				.await
-				.map_err(|err| {
-					error!(
-						"Error creating volume `{}` for `{}`: {:?}",
-						volume_name, path, err
-					);
-					RunnerError::host(err)
-				})?;
-		}
-
-		volume_mounts.push(Mount {
-			target: Some(path.clone()),
-			source: Some(volume_name),
-			typ: Some(MountType::VOLUME),
-			read_only: Some(false),
-			volume_options: Some(MountVolumeOptions {
-				labels: Some(volume_labels.clone()),
-				..Default::default()
-			}),
-			..Default::default()
-		});
+		env.push(format!("{key}={value}"));
 	}
 
-	// Build the service spec
-	let networks = Some(vec![NetworkAttachmentConfig {
-		target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
-		aliases: Some(vec![format!("{}.onpatr.local", id)]),
-		driver_opts: None,
-	}]);
+	let mut labels = utils::object_labels(owner, hash);
+	labels.insert(String::from("patr.deploymentId"), deployment_id.to_string());
 
-	let service_spec = ServiceSpec {
-		name: Some(service_name.clone()),
-		labels: Some(HashMap::from([
-			(String::from("managed-by"), String::from("patr")),
-			(
-				String::from("patr.version"),
-				String::from(constants::PATR_VERSION),
-			),
-			(String::from("patr.deploymentId"), id.to_string()),
-			(String::from("patr.deploymentName"), name.clone()),
-			(
-				String::from("patr.minHorizontalScale"),
-				min_horizontal_scale.to_string(),
-			),
-			(
-				String::from("patr.maxHorizontalScale"),
-				max_horizontal_scale.to_string(),
-			),
-		])),
+	let spec = ServiceSpec {
+		name: Some(String::from(name)),
+		labels: Some(labels),
 		task_template: Some(TaskSpec {
 			container_spec: Some(TaskSpecContainerSpec {
-				image: Some(image.clone()),
-				hostname: Some(format!("{}.onpatr.cloud", id)),
-				env: Some(
-					futures::stream::iter(environment_variables)
-						.then(|(key, value)| async move {
-							let value = match value {
-								EnvironmentVariableValue::String(value) => value,
-								EnvironmentVariableValue::Secret { from_secret } => {
-									let RunnerSettings {
-										workspace_id,
-										runner_id,
-										api_token,
-										..
-									} = settings;
-									secrets::get_secret_value(
-										*runner_id,
-										api_token,
-										*workspace_id,
-										from_secret,
-									)
-									.await?
-								}
-							};
-
-							Ok::<_, RunnerError>(format!("{}={}", key, value))
-						})
-						.try_collect::<Vec<_>>()
-						.await?,
-				),
+				image: Some(image),
+				hostname: Some(format!("{deployment_id}.onpatr.cloud")),
+				env: Some(env),
+				// Containers only carry what Alloy, cAdvisor and `observe`
+				// read: anything else here would restart every task when it
+				// changes.
 				labels: Some(HashMap::from([
 					(String::from("managed-by"), String::from("patr")),
-					(
-						String::from("patr.version"),
-						String::from(constants::PATR_VERSION),
-					),
-					(String::from("patr.deploymentId"), id.to_string()),
-					(String::from("patr.deploymentName"), name.clone()),
+					(String::from("patr.deploymentId"), deployment_id.to_string()),
 				])),
 				health_check,
 				hosts: Some(vec![format!("{host_ip} host.docker.internal")]),
-				mounts: if volume_mounts.is_empty() {
-					None
-				} else {
-					Some(volume_mounts)
-				},
-				configs: if mount_configs.is_empty() {
-					None
-				} else {
-					Some(mount_configs)
-				},
+				mounts: (!mounts.is_empty()).then_some(mounts),
+				configs: (!configs.is_empty()).then_some(configs),
 				..Default::default()
 			}),
-			networks,
+			networks: Some(vec![NetworkAttachmentConfig {
+				target: Some(String::from(constants::INGRESS_NETWORK_NAME)),
+				aliases: Some(vec![format!("{deployment_id}.onpatr.local")]),
+				driver_opts: None,
+			}]),
+			placement: (!platforms.is_empty()).then(|| TaskSpecPlacement {
+				platforms: Some(platforms),
+				..Default::default()
+			}),
 			..Default::default()
 		}),
 		mode: Some(ServiceSpecMode {
 			replicated: Some(ServiceSpecModeReplicated {
-				// Use min_horizontal_scale as the initial replica count
-				// Autoscaling between min and max would require external tools
-				replicas: Some(min_horizontal_scale as i64),
+				replicas: Some(service.replicas.into()),
 			}),
 			..Default::default()
 		}),
 		update_config: Some(ServiceSpecUpdateConfig {
-			// Zero-downtime deploys for stateless deployments: start the new
-			// task, then stop the old one. Traffic reaches the service through
-			// the ingress network alias, not a published host port, so both
-			// tasks can coexist briefly.
-			//
-			// A deployment with volumes must be `stop-first`: the old task has
-			// to release its volumes before the new one mounts them, or both
-			// write the same directory at once.
-			order: Some(
-				if volumes.is_empty() {
-					ServiceSpecUpdateConfigOrderEnum::START_FIRST
-				} else {
-					ServiceSpecUpdateConfigOrderEnum::STOP_FIRST
-				},
-			),
+			order: Some(service.update_order),
+			failure_action: Some(ServiceSpecUpdateConfigFailureActionEnum::PAUSE),
 			..Default::default()
 		}),
 		..Default::default()
 	};
 
-	if let Some(service) = existing_service {
-		// Update existing service
-		let version = service.version.as_ref().and_then(|v| v.index).unwrap_or(0);
-
-		let options = UpdateServiceOptionsBuilder::default()
-			.version(version as i32)
-			.build();
-
-		docker
-			.update_service(&service_name, service_spec, options, registry_auth.clone())
-			.await
-			.map_err(|err| {
-				error!("Error updating service: {:?}", err);
-				RunnerError::host(err)
-			})?;
-		info!("Service updated");
-	} else {
-		// Create new service
-		docker
-			.create_service(service_spec, registry_auth)
-			.await
-			.map_err(|err| {
-				error!("Error creating service: {:?}", err);
-				RunnerError::host(err)
-			})?;
-		info!("Service created");
-	}
-
-	// Clean up configs whose mount ordinal is past the current mount count
-	// (i.e. a mount was removed from this deployment). `update_config`'s own
-	// cleanup is scoped per base_name, so it only handles content churn within
-	// an ordinal — not a whole ordinal going away.
-	//
-	// There is deliberately no volume analogue of this sweep. A volume whose
-	// path was removed from the deployment must survive, so re-adding the path
-	// gets the data back. Volumes are only reclaimed by `delete()`.
-	let base_name_prefix = format!("config-{}-", id);
-	let existing_mount_configs = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.deploymentId={}", id)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?;
-
-	for config in existing_mount_configs {
-		let Some(base) = config
-			.spec
-			.as_ref()
-			.and_then(|spec| spec.labels.as_ref())
-			.and_then(|labels| labels.get("patr.configBaseName"))
-		else {
-			continue;
-		};
-		let Some(ordinal_str) = base.strip_prefix(&base_name_prefix) else {
-			continue;
-		};
-		let Ok(ordinal) = ordinal_str.parse::<usize>() else {
-			continue;
-		};
-		if ordinal < mount_count {
-			continue;
-		}
-
-		if let Some(config_id) = config.id.as_ref() &&
-			let Err(err) = docker.delete_config(config_id).await
-		{
-			warn!(
-				"Failed to clean up orphaned mount config {} (base={}): {}",
-				config_id, base, err
-			);
-		}
-	}
-
-	info!("Updating ingress config for deployment: {}", id);
-
-	let mut config = String::new();
-	for (port, _) in ports
-		.into_iter()
-		.filter(|(_, r#type)| matches!(r#type, ExposedPortType::Http))
-	{
-		config.push_str(&ingress::generate_config_for_deployment(
-			id,
-			port.value(),
-			settings.data.runner_exposure_type.is_private(),
-		));
-	}
-
-	// Only create/update the ingress config if there are HTTP ports.
-	// Docker rejects configs with 0 bytes of data.
-	if !config.is_empty() {
-		crate::utils::update_config(
-			docker,
-			&format!("ingress-{}", id),
-			HashMap::from([
-				(String::from("managed-by"), String::from("patr")),
-				(String::from("patr.deploymentId"), id.to_string()),
-			]),
-			config,
-		)
-		.await?;
-	}
-
-	Ok(())
+	utils::upsert_service(docker, spec, registry_auth).await
 }
 
-/// List all running deployments. This will return a stream of deployment IDs.
-/// The stream will yield deployment IDs as they are found. If no deployments
-/// are found, the stream will be empty.
-pub(crate) async fn list_running<'a>(
-	DockerRunner { docker, .. }: &DockerRunner,
-) -> impl Stream<Item = Uuid> + 'a {
-	let Ok(mut services) = docker
-		.list_services(Some(
-			ListServicesOptionsBuilder::new()
-				.filters(&HashMap::from([("label", vec!["patr.deploymentId"])]))
-				.build(),
-		))
-		.await
-	else {
-		return futures::stream::empty().boxed();
-	};
-
-	services.sort_by(|a, b| {
-		let a = a
-			.spec
-			.as_ref()
-			.and_then(|spec| spec.labels.as_ref())
-			.and_then(|labels| labels.get("patr.deploymentId"))
-			.and_then(|value| Uuid::parse_str(value).ok());
-		let b = b
-			.spec
-			.as_ref()
-			.and_then(|spec| spec.labels.as_ref())
-			.and_then(|labels| labels.get("patr.deploymentId"))
-			.and_then(|value| Uuid::parse_str(value).ok());
-
-		a.cmp(&b)
-	});
-
-	futures::stream::iter(services.into_iter().filter_map(|service| {
-		service
-			.spec
-			.and_then(|spec| spec.labels)
-			.unwrap_or_default()
-			.get("patr.deploymentId")
-			.and_then(|value| Uuid::parse_str(value).ok())
-	}))
-	.boxed()
-}
-
-/// Stop the deployment with the given ID: remove the service and its configs
-/// but keep its volumes, so a later [`upsert`] finds the data where it left
-/// it.
-///
-/// The deployment's ingress config is not deleted here — it must be removed
-/// via [`ingress::delete_deployment_config`] which first unmounts it from
-/// Caddy.
-pub(crate) async fn stop(
-	DockerRunner { docker, .. }: &DockerRunner,
-	id: Uuid,
-) -> Result<(), RunnerError> {
-	let service_name = format!("patr-{}", id);
-
-	// Check if the service exists
-	let service = docker
-		.list_services(Some(
-			ListServicesOptionsBuilder::new()
-				.filters(&HashMap::from([("name", vec![service_name.as_str()])]))
-				.build(),
-		))
-		.await
-		.map_err(|err| {
-			error!("Error listing services: {:?}", err);
-			RunnerError::host(err)
-		})?
-		.into_iter()
-		.find(|s| {
-			s.spec
-				.as_ref()
-				.and_then(|spec| spec.name.as_ref())
-				.is_some_and(|name| *name == service_name)
-		});
-
-	if service.is_some() {
-		docker.delete_service(&service_name).await.map_err(|err| {
-			error!("Error removing service: {:?}", err);
-			RunnerError::host(err)
-		})?;
-	}
-
-	// Clean up mount configs owned by this deployment. Safe now that the
-	// service is gone — no running task references them.
-	let mount_configs = docker
-		.list_configs(Some(ListConfigsOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.deploymentId={}", id)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?;
-
-	for config in mount_configs {
-		if let Some(config_id) = config.id.as_ref() &&
-			let Err(err) = docker.delete_config(config_id).await
-		{
-			warn!(
-				"Failed to clean up mount config {} for deleted deployment {}: {}",
-				config_id, id, err
-			);
-		}
-	}
-
-	Ok(())
-}
-
-/// Delete the deployment with the given ID: everything [`stop`] does, then
-/// reclaim its volumes. Irreversible — use [`stop`] for a deployment that
-/// will be started again.
-pub(crate) async fn delete(runner: &DockerRunner, id: Uuid) -> Result<(), RunnerError> {
-	stop(runner, id).await?;
-
-	let DockerRunner { docker, .. } = runner;
-
-	// `delete_service` returns before Swarm's task reaper has removed the
-	// exited task containers, and a stopped-but-not-yet-removed container
-	// still holds its volumes, so the first attempts get
-	// `409 Conflict: volume is in use`. Retry rather than passing `force` —
-	// `force` doesn't override an in-use volume, it only corrupts the
-	// daemon's refcount when it fails.
-	//
-	// The wait is bounded by the task's shutdown: SIGTERM, then
-	// `StopGracePeriod` (Docker's default 10s — this runner doesn't set it),
-	// then SIGKILL and container removal, plus a flush of the volume's dirty
-	// pages on unmount. The ceiling has to stay above that sum; if a grace
-	// period is ever configured here, raise it to match.
-	let volumes = docker
-		.list_volumes(Some(ListVolumesOptions {
-			filters: Some(HashMap::from([(
-				String::from("label"),
-				vec![format!("patr.deploymentId={}", id)],
-			)])),
-		}))
-		.await
-		.map_err(RunnerError::host)?
-		.volumes
-		.unwrap_or_default();
-
-	for volume in volumes {
-		let mut attempts = 0u32;
-		loop {
-			match docker
-				.remove_volume(&volume.name, None::<RemoveVolumeOptions>)
-				.await
-			{
-				Ok(()) => break,
-				Err(err) if attempts < 40 => {
-					attempts += 1;
-					trace!("Volume {} still in use, retrying: {}", volume.name, err);
-					tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-				}
-				Err(err) => {
-					warn!(
-						"Failed to reclaim volume {} for deleted deployment {}: {}",
-						volume.name, id, err
-					);
-					break;
-				}
-			}
-		}
-	}
-
-	Ok(())
-}
-
-/// Get the status of the deployment with the given ID.
-pub(crate) async fn get_status(
+/// A deployment's observed status, from its service, or `Stopped` if it has
+/// none. The first rule that matches wins: an image that can't run on any
+/// node, an image that couldn't be pulled, an unhealthy container, a crash
+/// loop, an update in progress, and otherwise running.
+pub(crate) async fn observe(
 	DockerRunner { docker, .. }: &DockerRunner,
 	deployment_id: Uuid,
-) -> Result<DeploymentStatus, RunnerError> {
-	let status = docker
+) -> Result<ObservedDeploymentStatus, RunnerError> {
+	let Some(service) = docker
 		.list_services(Some(ListServicesOptions {
 			filters: Some(HashMap::from([(
 				String::from("label"),
-				vec![format!("patr.deploymentId={}", deployment_id)],
+				vec![
+					String::from("managed-by=patr"),
+					format!("patr.deploymentId={deployment_id}"),
+				],
 			)])),
 			status: Some(true),
 		}))
 		.await
-		.ok()
-		.and_then(|services| services.into_iter().next())
-		.and_then(|service| service.service_status)
-		.map(|status| {
-			// If the running tasks are less than the desired tasks, consider it as
-			// deploying. If they are equal and greater than zero, consider it running.
-			if let (Some(running), Some(desired)) = (status.running_tasks, status.desired_tasks) {
-				if running == desired {
-					DeploymentStatus::Running
-				} else if running < desired {
-					DeploymentStatus::Deploying
-				} else {
-					DeploymentStatus::Stopped
-				}
-			} else {
-				DeploymentStatus::Stopped
-			}
+		.map_err(RunnerError::host)?
+		.into_iter()
+		.next()
+	else {
+		return Ok(ObservedDeploymentStatus::Stopped);
+	};
+
+	let tasks = docker
+		.list_tasks(Some(ListTasksOptions {
+			filters: Some(HashMap::from([(
+				String::from("service"),
+				vec![format!("patr-{deployment_id}")],
+			)])),
+		}))
+		.await
+		.map_err(RunnerError::host)?;
+
+	let unhealthy = !docker
+		.list_containers(Some(ListContainersOptions {
+			filters: Some(HashMap::from([
+				(String::from("health"), vec![String::from("unhealthy")]),
+				(
+					String::from("label"),
+					vec![format!("patr.deploymentId={deployment_id}")],
+				),
+			])),
+			..Default::default()
+		}))
+		.await
+		.map_err(RunnerError::host)?
+		.is_empty();
+
+	// Tasks created since the service was last updated run its current
+	// spec. Older ones are history from earlier versions.
+	let current_tasks = tasks
+		.iter()
+		.filter(|task| task.service_id.is_some() && task.service_id == service.id)
+		.filter(|task| {
+			task.created_at
+				.zip(service.updated_at)
+				.is_none_or(|(created, updated)| created >= updated)
 		})
-		.unwrap_or(DeploymentStatus::Stopped);
+		.filter_map(|task| task.status.as_ref())
+		.collect::<Vec<_>>();
+	let has_task = |state: TaskState, text: &str| {
+		current_tasks.iter().any(|status| {
+			status.state == Some(state) &&
+				[&status.err, &status.message]
+					.into_iter()
+					.flatten()
+					.any(|message| message.contains(text))
+		})
+	};
+
+	let running = service
+		.service_status
+		.as_ref()
+		.and_then(|status| status.running_tasks)
+		.unwrap_or(0);
+	let desired = service
+		.service_status
+		.as_ref()
+		.and_then(|status| status.desired_tasks)
+		.unwrap_or(0);
+	let updating = service
+		.update_status
+		.as_ref()
+		.and_then(|status| status.state)
+		.is_some_and(|state| state == ServiceUpdateStatusStateEnum::UPDATING);
+
+	let status = if has_task(TaskState::PENDING, "unsupported platform") {
+		ObservedDeploymentStatus::InvalidArchitecture
+	} else if has_task(TaskState::REJECTED, "No such image") {
+		ObservedDeploymentStatus::ImagePullFailed
+	} else if unhealthy || has_task(TaskState::FAILED, "unhealthy") {
+		ObservedDeploymentStatus::HealthCheckFailing
+	} else if current_tasks
+		.iter()
+		.filter(|status| matches!(status.state, Some(TaskState::FAILED | TaskState::REJECTED)))
+		.count() >=
+		2
+	{
+		ObservedDeploymentStatus::Crashing
+	} else if running < desired || updating {
+		ObservedDeploymentStatus::Deploying
+	} else {
+		ObservedDeploymentStatus::Running
+	};
 
 	Ok(status)
 }

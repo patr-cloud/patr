@@ -6,3 +6,4 @@ mod m003_named_constraints_cleanup;
 mod m004_managed_url_table;
 mod m005_secret_table;
 mod m006_deployment_volumes;
+mod m007_local_state_rework;

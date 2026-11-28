@@ -47,7 +47,8 @@ pub async fn initialize_deployment_tables(
 			image_name TEXT,
 			repository_id TEXT,
 			image_tag TEXT NOT NULL,
-			status TEXT NOT NULL,
+			should_run BOOLEAN NOT NULL,
+			observed_status TEXT,
 			min_horizontal_scale INTEGER NOT NULL,
 			max_horizontal_scale INTEGER NOT NULL,
 			machine_type TEXT NOT NULL,
@@ -77,15 +78,16 @@ pub async fn initialize_deployment_tables(
 				)
 			),
 
-			CONSTRAINT deployment_chk_status_enum CHECK(
-				status IN (
-					'created',
-					'pushed',
+			CONSTRAINT deployment_chk_observed_status_enum CHECK(
+				observed_status IN (
 					'deploying',
 					'running',
-					'stopped',
+					'crashing',
+					'health_check_failing',
+					'image_pull_failed',
+					'invalid_architecture',
 					'errored',
-					'deleted'
+					'stopped'
 				)
 			),
 

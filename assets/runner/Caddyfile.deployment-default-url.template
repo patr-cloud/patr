@@ -1,4 +1,5 @@
 
 {scheme}{port}-{deployment_id}.onpatr.cloud {{
-	reverse_proxy {deployment_id}.onpatr.local:{port}
+	import patr_errors
+	{handler}
 }}

@@ -1,5 +1,6 @@
 use std::{
 	collections::BTreeSet,
+	io::IsTerminal,
 	iter,
 	net::IpAddr,
 	path::{Path, PathBuf},
@@ -8,7 +9,7 @@ use std::{
 use clap::{Args as ClapArgs, Subcommand};
 use common::prelude::{DatabaseConfig, RunnerSettings};
 use docker::prelude::DockerSettings;
-use inquire::{CustomType, MultiSelect, Select, Text};
+use inquire::{Confirm, CustomType, MultiSelect, Select, Text};
 use models::api::workspace::runner::*;
 use serde::Serialize;
 
@@ -75,7 +76,10 @@ pub async fn execute(
 			.prompt()
 			.expect_tty("Failed to read setup action");
 		if selection == NEW {
-			SetupAction::New(new::Args { name: None })
+			SetupAction::New(new::Args {
+				name: None,
+				yes: false,
+			})
 		} else {
 			SetupAction::Reconnect(reconnect::Args {
 				runner_id: None,
@@ -137,17 +141,45 @@ async fn another_runners_config(config_path: &Path, user_token: Option<&BearerTo
 	AppError::RunnerError(match runner {
 		Some(runner) => format!(
 			"This machine already runs runner `{runner}`.\n\
-			 Switching runners removes its deployments from this machine, volumes included.\n\
+			 Once the new runner starts, it takes over this host and removes everything `{runner}` \
+			 deployed here, including its volumes.\n\
 			 Pass `--force` (`-f`) to switch anyway."
 		),
 		None => format!(
 			"This machine already has a runner config at {}.\n\
-			 Switching runners removes the old runner's deployments from this machine, volumes \
-			 included.\n\
+			 Once the new runner starts, it takes over this host and removes everything the \
+			 previous runner deployed here, including their volumes.\n\
 			 Pass `--force` (`-f`) to switch anyway.",
 			config_path.display()
 		),
 	})
+}
+
+/// Warns that the new runner takes over this host and removes what the runner
+/// it replaces deployed here, then asks to go ahead unless `yes`. Runs once
+/// `--force` lets setup replace another runner's config.
+fn confirm_takeover(yes: bool) -> Result<(), AppError> {
+	eprintln!(
+		"This replaces the runner configured on this host. Once the new runner starts, it takes \
+		 over this host and removes everything the previous runner deployed here, including \
+		 their volumes."
+	);
+	if yes {
+		return Ok(());
+	}
+	if !std::io::stdin().is_terminal() {
+		return Err(AppError::RunnerError(
+			"Running in non-TTY mode. Pass `-y` to confirm.".to_string(),
+		));
+	}
+	let confirmed = Confirm::new("Continue?")
+		.with_default(false)
+		.prompt()
+		.expect_tty("Failed to read replace confirmation");
+	if !confirmed {
+		return Err(AppError::RunnerError("Aborted.".to_string()));
+	}
+	Ok(())
 }
 
 /// Asks the Docker questions for a fresh runner config.

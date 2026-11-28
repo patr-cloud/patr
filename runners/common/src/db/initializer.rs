@@ -6,12 +6,13 @@ use sqlx::Pool;
 use crate::prelude::*;
 
 /// Initializes the database, and performs migrations if necessary. The
-/// migrations get the runner's config.
+/// migrations get the runner's config. Returns whether the database was
+/// created fresh.
 #[instrument(skip_all)]
 pub async fn initialize(
 	database: &Pool<DatabaseType>,
 	config: &RunnerSettings<()>,
-) -> Result<(), sqlx::Error> {
+) -> Result<bool, sqlx::Error> {
 	info!("Initializing database");
 
 	let tables = query!(
@@ -29,7 +30,7 @@ pub async fn initialize(
 
 	let mut connection = database.acquire().await?;
 
-	if tables.is_empty() {
+	let fresh_database = if tables.is_empty() {
 		warn!("No tables exist. Creating fresh");
 
 		// Create all tables
@@ -45,6 +46,8 @@ pub async fn initialize(
 		crate::migrations::mark_all_applied(&mut connection).await?;
 
 		info!("Database created fresh");
+
+		true
 	} else {
 		let rows = query!(
 			r#"
@@ -94,7 +97,9 @@ pub async fn initialize(
 				crate::migrations::run_migrations(&mut connection, &version, config).await?;
 			}
 		}
-	}
+
+		false
+	};
 
 	// Set the database schema version
 	query!(
@@ -113,5 +118,5 @@ pub async fn initialize(
 	.execute(&mut *connection)
 	.await?;
 
-	Ok(())
+	Ok(fresh_database)
 }

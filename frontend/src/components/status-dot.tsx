@@ -14,9 +14,15 @@ const StatusDot = (props: StatusDotProps) => {
 			case "verified":
 				return "bg-success shadow-[0_0_6px_rgba(71,201,108,0.5)]";
 			case "errored":
+			case "crashing":
+			case "healthCheckFailing":
+			case "imagePullFailed":
+			case "invalidArchitecture":
 				return "bg-error shadow-[0_0_6px_rgba(214,43,54,0.5)]";
 			case "stopped":
+			case "stopping":
 			case "unreachable":
+			case "unknown":
 			case "not verified":
 				return "bg-grey opacity-50";
 			default:
@@ -25,10 +31,13 @@ const StatusDot = (props: StatusDotProps) => {
 	};
 
 	const animation = () => {
-		if (props.status === "deploying") {
-			return { animation: "pulse-dot 1.5s ease-in-out infinite" };
+		switch (props.status) {
+			case "deploying":
+			case "stopping":
+				return { animation: "pulse-dot 1.5s ease-in-out infinite" };
+			default:
+				return undefined;
 		}
-		return undefined;
 	};
 
 	const size = () => (props.size === "md" ? "w-1.75 h-1.75" : "w-1.5 h-1.5");

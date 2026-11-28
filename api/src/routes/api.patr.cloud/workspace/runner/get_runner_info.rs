@@ -1,6 +1,5 @@
 use axum::http::StatusCode;
 use models::api::workspace::runner::*;
-use rustis::commands::StringCommands;
 use semver::Version;
 
 use crate::prelude::*;
@@ -22,7 +21,7 @@ pub async fn get_runner_info(
 				body: GetRunnerInfoRequestProcessed,
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		actor_data: _,
 		state: _,
@@ -34,6 +33,7 @@ pub async fn get_runner_info(
 		r#"
 		SELECT
 			name,
+			IS_RUNNER_ONLINE(is_connected, last_seen) AS "connected!",
 			last_seen,
 			version
 		FROM
@@ -50,18 +50,13 @@ pub async fn get_runner_info(
 	.await?
 	.ok_or(ErrorType::ResourceDoesNotExist)?;
 
-	let connected = redis
-		.get::<Option<String>>(redis::keys::runner_connection_lock(&runner_id))
-		.await?
-		.is_some();
-
 	AppResponse::builder()
 		.body(GetRunnerInfoResponse {
 			runner: WithId::new(
 				runner_id,
 				Runner {
 					name: runner.name,
-					connected,
+					connected: runner.connected,
 					last_seen: runner.last_seen,
 					version: runner
 						.version

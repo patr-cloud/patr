@@ -8,13 +8,16 @@ use cloudflare::{
 		client::{ClientConfig, async_api::Client as CloudflareClient},
 	},
 };
-use models::api::workspace::{deployment::*, runner::StreamRunnerDataForWorkspaceServerMsg};
 #[cfg(feature = "cloud")]
 use models::cloudflare::kv::*;
-use rustis::commands::PubSubCommands;
+use models::{api::workspace::deployment::*, rbac::ResourceType};
 use time::OffsetDateTime;
 
-use crate::{models::permissions, prelude::*};
+use crate::{
+	models::permissions,
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 
 /// The handler to create a deployment in the workspace. This will create a new
 /// deployment in the workspace, and return the ID of the deployment.
@@ -52,7 +55,7 @@ pub async fn create_deployment(
 					},
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		actor_data,
 		state,
@@ -123,7 +126,7 @@ pub async fn create_deployment(
 				repository_id,
 				image_name,
 				image_tag,
-				status,
+				should_run,
 				workspace_id,
 				runner,
 				min_horizontal_scale,
@@ -166,11 +169,7 @@ pub async fn create_deployment(
 		registry.repository_id(),
 		registry.image_name(),
 		image_tag.as_ref(),
-		if deploy_on_create {
-			DeploymentStatus::Deploying
-		} else {
-			DeploymentStatus::Stopped
-		},
+		deploy_on_create,
 		workspace_id,
 		runner,
 		min_horizontal_scale as i32,
@@ -441,7 +440,7 @@ pub async fn create_deployment(
 					&InternalKVData::Deployment {
 						ports: ports.keys().map(|port| port.value()).collect(),
 						runner_id: runner,
-						status: DeploymentStatus::Deploying,
+						should_run: deploy_on_create,
 					},
 				)?),
 			})
@@ -451,38 +450,16 @@ pub async fn create_deployment(
 		}
 	}
 
-	// TODO Temporary workaround until audit logs and triggers are implemented
-	redis
-		.publish(
-			format!("{}/runner/{}/stream", workspace_id, runner),
-			serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::DeploymentCreated {
-				deployment: WithId::new(
-					deployment_id,
-					Deployment {
-						name: name.to_string(),
-						registry,
-						image_tag: image_tag.to_string(),
-						runner,
-						status: DeploymentStatus::Deploying,
-						current_live_digest: None,
-						machine_type,
-					},
-				),
-				running_details: DeploymentRunningDetails {
-					deploy_on_push,
-					min_horizontal_scale,
-					max_horizontal_scale,
-					ports,
-					environment_variables,
-					startup_probe,
-					liveness_probe,
-					config_mounts,
-					volumes,
-				},
-			})
-			.unwrap(),
-		)
-		.await?;
+	redis_publisher::mark_dirty(
+		database,
+		DirtyResource {
+			workspace_id,
+			runner_id: runner,
+			resource_type: ResourceType::Deployment,
+			resource_id: deployment_id,
+		},
+	)
+	.await?;
 
 	AppResponse::builder()
 		.body(CreateDeploymentResponse {

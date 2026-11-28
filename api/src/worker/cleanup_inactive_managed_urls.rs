@@ -9,8 +9,12 @@ use cloudflare::{
 		response::ApiFailure,
 	},
 };
+use models::rbac::ResourceType;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 
 /// The cron job that cleans up managed URLs whose FQDN custom hostname has
 /// been inactive for more than 7 days. If a custom hostname stays inactive
@@ -70,6 +74,7 @@ pub async fn cleanup_inactive_managed_urls(
 			r#"
 			SELECT
 				managed_url.id,
+				managed_url.workspace_id,
 				deployment.runner AS "runner?"
 			FROM
 				managed_url
@@ -117,6 +122,26 @@ pub async fn cleanup_inactive_managed_urls(
 			.execute(&data.database)
 			.await
 			.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
+
+			// Tell the runner that served the URL to drop it
+			if let Some(runner_id) = url.runner {
+				let mut conn = data
+					.database
+					.acquire()
+					.await
+					.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
+				redis_publisher::mark_dirty(
+					&mut conn,
+					DirtyResource {
+						workspace_id: url.workspace_id,
+						runner_id,
+						resource_type: ResourceType::ManagedURL,
+						resource_id: url.id,
+					},
+				)
+				.await
+				.map_err(|err| WorkerStateError::InvalidState(err.to_string()))?;
+			}
 		}
 
 		// Delete the custom hostname row

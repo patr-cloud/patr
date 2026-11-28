@@ -12,7 +12,7 @@ use docker::prelude::DockerSettings;
 use inquire::{Confirm, Password, PasswordDisplayMode, Select, Text};
 use models::api::{user::*, workspace::runner::*};
 
-use super::{SetupOutput, another_runners_config, prompt_settings};
+use super::{SetupOutput, another_runners_config, confirm_takeover, prompt_settings};
 use crate::prelude::*;
 
 /// Args for `patr runner setup reconnect`.
@@ -29,7 +29,8 @@ pub struct Args {
 		hide_env_values = true
 	)]
 	pub runner_token: Option<String>,
-	/// Regenerate the runner's token without asking for confirmation
+	/// Regenerate the runner's token, or replace another runner's config with
+	/// `--force`, without asking
 	#[arg(short = 'y', long = "yes")]
 	pub yes: bool,
 }
@@ -174,8 +175,11 @@ pub(super) async fn execute(
 	// Another runner's config is replaced only with `--force`. This same
 	// runner's is kept, and only gets the new token.
 	let existing = existing.filter(|_| configured_runner_id == Some(runner_id));
-	if existing.is_none() && config_path.exists() && !force {
-		return Err(another_runners_config(&config_path, user_token.as_ref()).await);
+	if existing.is_none() && config_path.exists() {
+		if !force {
+			return Err(another_runners_config(&config_path, user_token.as_ref()).await);
+		}
+		confirm_takeover(args.yes)?;
 	}
 
 	// Without a token, a logged-in CLI regenerates it below, and a logged-out

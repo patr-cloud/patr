@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE object_finalizer SET state = 'pending' WHERE state = 'running';",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "7cf98d16cb53d5693a11594bfc2bef0790b1ec3e6feb64ef27cc6f39de80227e"
+}

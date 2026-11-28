@@ -101,5 +101,18 @@ pub async fn initialize_runner_constraints(
 	.execute(&mut *connection)
 	.await?;
 
+	query!(
+		r#"
+		CREATE FUNCTION IS_RUNNER_ONLINE(
+			is_connected BOOLEAN,
+			last_seen TIMESTAMPTZ
+		) RETURNS BOOLEAN AS $$
+			SELECT is_connected AND COALESCE(last_seen > NOW() - INTERVAL '120 seconds', FALSE);
+		$$ LANGUAGE SQL STABLE;
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
 	Ok(())
 }

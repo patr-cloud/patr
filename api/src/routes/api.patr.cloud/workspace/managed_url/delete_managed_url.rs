@@ -9,13 +9,12 @@ use cloudflare::{
 		response::ApiFailure,
 	},
 };
-use models::{
-	api::workspace::{managed_url::*, runner::StreamRunnerDataForWorkspaceServerMsg},
-	prelude::*,
-};
-use rustis::commands::PubSubCommands;
+use models::{api::workspace::managed_url::*, prelude::*, rbac::ResourceType};
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 
 /// The handler to delete a managed URL in a workspace. This will delete the
 /// managed URL and remove it from the workspace. The managed URL must be owned
@@ -37,7 +36,7 @@ pub async fn delete_managed_url(
 				body: DeleteManagedURLRequestProcessed,
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		actor_data: _,
 		state,
@@ -198,15 +197,16 @@ pub async fn delete_managed_url(
 	// If the URL pointed at a deployment, tell that deployment's runner to
 	// drop the corresponding Caddy config.
 	if let Some(runner_id) = managed_url.connected_deployment_runner {
-		redis
-			.publish(
-				format!("{}/runner/{}/stream", workspace_id, runner_id),
-				serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::ManagedUrlDeleted {
-					id: managed_url_id,
-				})
-				.unwrap(),
-			)
-			.await?;
+		redis_publisher::mark_dirty(
+			database,
+			DirtyResource {
+				workspace_id,
+				runner_id,
+				resource_type: ResourceType::ManagedURL,
+				resource_id: managed_url_id,
+			},
+		)
+		.await?;
 	}
 
 	AppResponse::builder()

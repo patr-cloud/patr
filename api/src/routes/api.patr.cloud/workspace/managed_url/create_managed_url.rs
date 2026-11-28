@@ -8,13 +8,12 @@ use cloudflare::{
 		client::{ClientConfig, async_api::Client as CloudflareClient},
 	},
 };
-use models::{
-	api::workspace::{managed_url::*, runner::StreamRunnerDataForWorkspaceServerMsg},
-	prelude::*,
-};
-use rustis::commands::PubSubCommands;
+use models::{api::workspace::managed_url::*, prelude::*, rbac::ResourceType};
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 
 /// The handler to create a new managed URL in a workspace. This will create a
 /// new managed URL with the provided subdomain, domain, and path. The URL type
@@ -41,7 +40,7 @@ pub async fn create_managed_url(
 					},
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		actor_data: _,
 		state,
@@ -343,34 +342,24 @@ pub async fn create_managed_url(
 				&state.config,
 			)
 			.await?;
-			let is_active = false;
 		} else {
-			let _ = (database, &state, &domain);
-			let is_active = true;
+			let _ = (&state, &domain);
 		}
 	}
 
 	// Notify the runner that owns the target deployment, if this URL targets
 	// one. Other URL types stay Cloudflare-only for now.
 	if let Some(runner_id) = deployment_runner {
-		redis
-			.publish(
-				format!("{}/runner/{}/stream", workspace_id, runner_id),
-				serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::ManagedUrlCreated {
-					managed_url: WithId::new(
-						id,
-						ManagedUrl {
-							sub_domain: sub_domain.to_string(),
-							domain_id,
-							path: path.clone(),
-							url_type: url_type.clone(),
-							is_active,
-						},
-					),
-				})
-				.unwrap(),
-			)
-			.await?;
+		redis_publisher::mark_dirty(
+			database,
+			DirtyResource {
+				workspace_id,
+				runner_id,
+				resource_type: ResourceType::ManagedURL,
+				resource_id: id,
+			},
+		)
+		.await?;
 	}
 
 	AppResponse::builder()

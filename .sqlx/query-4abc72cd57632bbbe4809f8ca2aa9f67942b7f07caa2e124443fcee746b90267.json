@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE deployment SET current_live_digest = $1 WHERE id = $2 RETURNING runner;",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "runner",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "deployment",
+            "name": "runner"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4abc72cd57632bbbe4809f8ca2aa9f67942b7f07caa2e124443fcee746b90267"
+}

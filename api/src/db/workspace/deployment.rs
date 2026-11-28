@@ -8,14 +8,34 @@ pub async fn initialize_deployment_tables(
 	info!("Setting up deployment tables");
 	query!(
 		r#"
+		CREATE TYPE OBSERVED_DEPLOYMENT_STATUS AS ENUM(
+			'deploying',
+			'running',
+			'crashing',
+			'health_check_failing',
+			'image_pull_failed',
+			'invalid_architecture',
+			'errored',
+			'stopped'
+		);
+		"#
+	)
+	.execute(&mut *connection)
+	.await?;
+
+	query!(
+		r#"
 		CREATE TYPE DEPLOYMENT_STATUS AS ENUM(
-			'created', /* Created, but nothing pushed to it yet */
-			'pushed', /* Something is pushed, but the system has not deployed it yet */
-			'deploying', /* Something is pushed, and the system is currently deploying it */
-			'running', /* Deployment is running successfully */
-			'stopped', /* Deployment is stopped by the user */
-			'errored', /* Deployment is stopped because of too many errors */
-			'deleted' /* Deployment is deleted by the user */
+			'deploying',
+			'running',
+			'crashing',
+			'health_check_failing',
+			'image_pull_failed',
+			'invalid_architecture',
+			'errored',
+			'stopped',
+			'stopping',
+			'unreachable'
 		);
 		"#
 	)
@@ -53,7 +73,6 @@ pub async fn initialize_deployment_tables(
 			repository_id UUID,
 			image_name VARCHAR(512),
 			image_tag VARCHAR(255) NOT NULL,
-			status DEPLOYMENT_STATUS NOT NULL DEFAULT 'created',
 			workspace_id UUID NOT NULL,
 			runner UUID NOT NULL,
 			min_horizontal_scale SMALLINT NOT NULL DEFAULT 1,
@@ -67,7 +86,29 @@ pub async fn initialize_deployment_tables(
 			liveness_probe_path VARCHAR(255),
 			liveness_probe_port_type EXPOSED_PORT_TYPE,
 			current_live_digest TEXT,
-			deleted TIMESTAMPTZ
+			deleted TIMESTAMPTZ,
+			should_run BOOLEAN NOT NULL,
+			observed_status OBSERVED_DEPLOYMENT_STATUS,
+			status DEPLOYMENT_STATUS NOT NULL GENERATED ALWAYS AS (
+				CASE
+					WHEN NOT should_run AND (
+						observed_status IS NULL OR
+						observed_status = 'stopped'
+					) THEN 'stopped'::DEPLOYMENT_STATUS
+					WHEN NOT should_run THEN 'stopping'::DEPLOYMENT_STATUS
+					WHEN (
+						observed_status IS NULL OR
+						observed_status = 'stopped'
+					) THEN 'deploying'::DEPLOYMENT_STATUS
+					WHEN observed_status = 'deploying' THEN 'deploying'::DEPLOYMENT_STATUS
+					WHEN observed_status = 'running' THEN 'running'::DEPLOYMENT_STATUS
+					WHEN observed_status = 'crashing' THEN 'crashing'::DEPLOYMENT_STATUS
+					WHEN observed_status = 'health_check_failing' THEN 'health_check_failing'::DEPLOYMENT_STATUS
+					WHEN observed_status = 'image_pull_failed' THEN 'image_pull_failed'::DEPLOYMENT_STATUS
+					WHEN observed_status = 'invalid_architecture' THEN 'invalid_architecture'::DEPLOYMENT_STATUS
+					WHEN observed_status = 'errored' THEN 'errored'::DEPLOYMENT_STATUS
+				END
+			) STORED
 		);
 		"#
 	)

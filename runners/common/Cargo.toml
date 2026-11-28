@@ -25,16 +25,14 @@ opentelemetry-appender-tracing = { workspace = true, features = ["default"] }
 opentelemetry-otlp             = { workspace = true, features = ["default", "http-json", "reqwest-rustls", "tls-webpki-roots"] }
 opentelemetry_sdk              = { workspace = true, features = ["default", "rt-tokio"] }
 preprocess                     = { workspace = true, features = [] }
-ractor                         = { workspace = true, features = ["tokio_runtime"] }
-ractor_actors                  = { workspace = true, features = ["streams"] }
 reqwest                        = { workspace = true, features = ["json", "rustls", "stream"] }
 rustls                         = { workspace = true, features = ["ring"] }
 semver                         = { workspace = true, features = ["default"] }
 serde                          = { workspace = true, features = ["derive"] }
 serde_json                     = { workspace = true, features = [] }
 serde_qs                       = { workspace = true, features = [] }
+sha2                           = { workspace = true, features = [] }
 sqlx                           = { workspace = true, features = ["macros", "runtime-tokio", "sqlite", "sqlx-toml", "time", "tls-rustls", "uuid"] }
-tempfile                       = { workspace = true, features = ["default"] }
 thiserror                      = { workspace = true, features = [] }
 time                           = { workspace = true, features = ["default", "serde-human-readable"] }
 tokio                          = { workspace = true, features = ["full"] }
@@ -46,6 +44,7 @@ tracing-subscriber             = { workspace = true, features = ["default"] }
 [dev-dependencies]
 axum       = { workspace = true, features = ["default", "ws"] }
 axum-extra = { workspace = true, features = ["default", "typed-header", "typed-routing"] }
+tempfile   = { workspace = true, features = ["default"] }
 wiremock   = { workspace = true, features = [] }
 
 [[test]]

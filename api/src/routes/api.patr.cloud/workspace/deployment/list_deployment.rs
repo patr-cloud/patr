@@ -20,6 +20,7 @@ pub async fn list_deployment(
 								registry: registry_filter,
 								image_tag: image_tag_filter,
 								status: status_filter,
+								should_run: should_run_filter,
 								runner: runner_filter,
 								current_live_digest: current_live_digest_filter,
 							},
@@ -48,13 +49,17 @@ pub async fn list_deployment(
 		r#"
 		SELECT
 			deployment.id,
-			name,
+			deployment.name,
 			registry,
 			repository_id,
 			image_name,
 			image_tag,
-			status,
-			runner,
+			CASE
+				WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable'
+				ELSE deployment.status
+			END AS "status!",
+			should_run,
+			deployment.runner,
 			machine_type,
 			current_live_digest,
 			COUNT(*) OVER() AS "total_count!"
@@ -64,6 +69,10 @@ pub async fn list_deployment(
 			RESOURCES_WITH_PERMISSION_FOR_LOGIN_ID($2, $3) AS resource
 		ON
 			deployment.id = resource.id
+		INNER JOIN
+			runner
+		ON
+			runner.id = deployment.runner
 		WHERE
 			deployment.workspace_id = $1 AND
 			deployment.deleted IS NULL AND
@@ -71,23 +80,35 @@ pub async fn list_deployment(
 			($5::TEXT IS NULL OR deployment.image_tag = $5) AND
 			(
 				$6::DEPLOYMENT_STATUS[] IS NULL OR
-				deployment.status = ANY($6)
+				CASE
+					WHEN NOT IS_RUNNER_ONLINE(runner.is_connected, runner.last_seen) THEN 'unreachable'
+					ELSE deployment.status
+				END = ANY($6)
 			) AND
 			($7::UUID IS NULL OR deployment.runner = $7) AND
-			($8::TEXT IS NULL OR deployment.current_live_digest = $8)
+			($8::TEXT IS NULL OR deployment.current_live_digest = $8) AND
+			($9::BOOLEAN IS NULL OR deployment.should_run = $9)
 		ORDER BY
 			resource.created DESC
-		LIMIT $9
-		OFFSET $10;
+		LIMIT $10
+		OFFSET $11;
 		"#,
 		workspace_id,
 		actor_data.login_id,
 		Permission::Deployment(DeploymentPermission::View) as _,
 		name_filter,
 		image_tag_filter,
-		status_filter as _,
+		status_filter.map(|statuses| {
+			statuses
+				.into_iter()
+				.filter(|status| {
+					*status != DeploymentStatus::Observed(ObservedDeploymentStatus::Unknown)
+				})
+				.collect::<Vec<_>>()
+		}) as _,
 		runner_filter as _,
 		current_live_digest_filter,
+		should_run_filter,
 		count as i32,
 		(count * page) as i32,
 	)
@@ -113,6 +134,7 @@ pub async fn list_deployment(
 				},
 				image_tag: row.image_tag,
 				status: row.status,
+				should_run: row.should_run,
 				runner: row.runner,
 				machine_type: row.machine_type,
 				current_live_digest: row.current_live_digest,

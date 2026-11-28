@@ -6,7 +6,7 @@ exclude              = ["runners/kubernetes"]
 package.authors      = ["Rakshith Ravi <rakshith.ravi@patr.cloud>"]
 package.description  = "Patr API and all it's dependencies"
 package.edition      = "2024"
-package.rust-version = "1.94"
+package.rust-version = "1.100"
 package.version      = "0.18.0"
 resolver             = "3"
 
@@ -47,12 +47,10 @@ comfy-table                    = { default-features = false, version = "8" }
 common                         = { default-features = false, path = "runners/common" }
 config                         = { default-features = false, version = "0.15" }
 console-subscriber             = { default-features = false, version = "0.5" }
-console_error_panic_hook       = { default-features = false, version = "0.1" }
 convert_case                   = { default-features = false, version = "0.12" }
 crc32fast                      = { default-features = false, version = "1" }
 cron                           = { default-features = false, version = "0.17" }
 crossterm                      = { default-features = false, version = "0.29" }
-dashmap                        = { default-features = false, version = "6" }
 derive_more                    = { default-features = false, version = "2" }
 dirs                           = { default-features = false, version = "7" }
 docker                         = { default-features = false, path = "runners/docker" }
@@ -65,8 +63,6 @@ hex                            = { default-features = false, version = "0.4" }
 hickory-resolver               = { default-features = false, version = "0.26" }
 http                           = { default-features = false, version = "1" }
 http-body                      = { default-features = false, version = "1" }
-httparse                       = { default-features = false, version = "1" }
-hyper                          = { default-features = false, version = "1" }
 if-addrs                       = { default-features = false, version = "0.15" }
 inquire                        = { default-features = false, version = "0.9" }
 inventory                      = { default-features = false, version = "0.3" }
@@ -77,9 +73,7 @@ lettre                         = { default-features = false, version = "0.11" }
 macros                         = { default-features = false, path = "macros" }
 mime_guess                     = { default-features = false, version = "2" }
 models                         = { default-features = false, path = "models" }
-monostate                      = { default-features = false, version = "1" }
 mrml                           = { default-features = false, version = "6" }
-nix                            = { default-features = false, version = "0.31" }
 oci-spec                       = { default-features = false, version = "0.10" }
 open                           = { default-features = false, version = "5" }
 opentelemetry                  = { default-features = false, version = "0.33" }
@@ -94,13 +88,10 @@ prost                          = { default-features = false, version = "0.14" }
 prost-types                    = { default-features = false, version = "0.14" }
 psl                            = { default-features = false, version = "2" }
 quote                          = { default-features = false, version = "1" }
-ractor                         = { default-features = false, version = "0.16" }
-ractor_actors                  = { default-features = false, version = "0.7" }
 rand                           = { default-features = false, version = "0.10" }
 regex                          = { default-features = false, version = "1" }
 reqwest                        = { default-features = false, version = "0.13" }
 rust-embed                     = { default-features = false, version = "8" }
-rust-s3                        = { default-features = false, version = "0.38" }
 rustis                         = { default-features = false, version = "0.27" }
 rustls                         = { default-features = false, version = "0.23" }
 schemars                       = { default-features = false, version = "1" }

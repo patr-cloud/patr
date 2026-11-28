@@ -213,11 +213,23 @@ pub(super) async fn execute(
 			image_name,
 			runner_name,
 			match deployment.status {
-				DeploymentStatus::Running => "✅ Running",
-				DeploymentStatus::Deploying => "🟡 Deploying",
-				DeploymentStatus::Stopped => "🟧 Stopped",
-				DeploymentStatus::Errored => "❌ Errored",
-				DeploymentStatus::Unreachable => "❓ Unreachable",
+				DeploymentStatus::Observed(ObservedDeploymentStatus::Running) => "✅ Running",
+				DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying) => "🟡 Deploying",
+				DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped) => "🟧 Stopped",
+				DeploymentStatus::Observed(ObservedDeploymentStatus::Errored) => "❌ Errored",
+				DeploymentStatus::Unreachable => "❓ Runner offline",
+				DeploymentStatus::Observed(ObservedDeploymentStatus::Crashing) => "💥 Crashing",
+				DeploymentStatus::Observed(ObservedDeploymentStatus::HealthCheckFailing) => {
+					"🩺 Health check failing"
+				}
+				DeploymentStatus::Observed(ObservedDeploymentStatus::ImagePullFailed) => {
+					"📦 Image pull failed"
+				}
+				DeploymentStatus::Observed(ObservedDeploymentStatus::InvalidArchitecture) => {
+					"🧩 Invalid architecture"
+				}
+				DeploymentStatus::Stopping => "🟠 Stopping",
+				DeploymentStatus::Observed(ObservedDeploymentStatus::Unknown) => "❔ Unknown",
 			}
 			.to_owned(),
 			deployment

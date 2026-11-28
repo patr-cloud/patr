@@ -44,7 +44,7 @@ pub async fn list_runners_for_workspace(
 		SELECT
 			runner.id,
 			name,
-			is_connected,
+			IS_RUNNER_ONLINE(is_connected, last_seen) AS "connected!",
 			last_seen,
 			version,
 			COUNT(*) OVER() AS "total_count!"
@@ -58,7 +58,7 @@ pub async fn list_runners_for_workspace(
 			runner.workspace_id = $1 AND
 			runner.deleted IS NULL AND
 			($4::TEXT IS NULL OR name ILIKE '%' || $4 || '%') AND
-			($5::BOOLEAN IS NULL OR is_connected = $5) AND
+			($5::BOOLEAN IS NULL OR IS_RUNNER_ONLINE(is_connected, last_seen) = $5) AND
 			($6::TIMESTAMPTZ IS NULL OR last_seen >= $6) AND
 			($7::TIMESTAMPTZ IS NULL OR last_seen <= $7)
 		ORDER BY
@@ -85,7 +85,7 @@ pub async fn list_runners_for_workspace(
 			row.id,
 			Runner {
 				name: row.name,
-				connected: row.is_connected,
+				connected: row.connected,
 				last_seen: row.last_seen,
 				version: row
 					.version

@@ -923,13 +923,13 @@ async fn runner_unauthorized() {
 	);
 }
 
-/// Read a deployment's status through the API.
-async fn deployment_status(
+/// Read a deployment through the API.
+async fn deployment_info(
 	setup: &TestSetup,
 	token: &BearerToken,
 	workspace_id: Uuid,
 	deployment_id: Uuid,
-) -> DeploymentStatus {
+) -> GetDeploymentInfoResponse {
 	setup
 		.make_web_dashboard_call(
 			ApiRequest::<GetDeploymentInfoRequest>::builder()
@@ -946,9 +946,58 @@ async fn deployment_status(
 		.await
 		.json::<ApiSuccessResponseBody<GetDeploymentInfoResponse>>()
 		.response
+}
+
+/// Read a deployment's status through the API.
+async fn deployment_status(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+) -> DeploymentStatus {
+	deployment_info(setup, token, workspace_id, deployment_id)
+		.await
 		.deployment
 		.status
-		.clone()
+}
+
+/// Wait for a deployment to show a status, returning the last one read. The
+/// stream handles a runner's messages in order, so once a report shows up,
+/// every report sent before it has been handled too.
+async fn wait_for_deployment_status(
+	setup: &TestSetup,
+	token: &BearerToken,
+	workspace_id: Uuid,
+	deployment_id: Uuid,
+	expected: DeploymentStatus,
+) -> DeploymentStatus {
+	let mut status = deployment_status(setup, token, workspace_id, deployment_id).await;
+	for _ in 0..50 {
+		if status == expected {
+			break;
+		}
+		tokio::time::sleep(Duration::from_millis(100)).await;
+		status = deployment_status(setup, token, workspace_id, deployment_id).await;
+	}
+	status
+}
+
+/// Report a deployment's status over a runner's stream.
+async fn report_status(
+	stream: &mut WebSocketStream<MaybeTlsStream<TcpStream>>,
+	id: Uuid,
+	status: ObservedDeploymentStatus,
+) {
+	stream
+		.send(Message::Text(
+			serde_json::to_string(
+				&StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated { id, status },
+			)
+			.unwrap()
+			.into(),
+		))
+		.await
+		.unwrap();
 }
 
 #[tokio::test]
@@ -963,6 +1012,7 @@ async fn runner_cannot_update_status_of_another_workspaces_deployment() {
 	let victim_deployment = setup
 		.create_test_deployment(&victim.access_token, victim_workspace.id, victim_runner.id)
 		.await;
+	setup.mark_test_runner_online(victim_runner.id).await;
 
 	let attacker = setup.create_test_user().await;
 	let attacker_workspace = setup.create_test_workspace(&attacker.access_token).await;
@@ -977,17 +1027,11 @@ async fn runner_cannot_update_status_of_another_workspaces_deployment() {
 		)
 		.await;
 
-	// `deploying` → `running` is an allowed transition, so only the runner and
-	// workspace checks stand between the attacker and the victim's deployment.
-	setup
-		.execute_sql(&format!(
-			"UPDATE deployment SET status = 'deploying' WHERE id IN ('{}', '{}');",
-			victim_deployment.id, attacker_deployment.id
-		))
-		.await;
-
 	let victim_kv_writes = setup
 		.cloudflare_kv_writes(&victim_deployment.id.to_string())
+		.await;
+	let attacker_kv_writes = setup
+		.cloudflare_kv_writes(&attacker_deployment.id.to_string())
 		.await;
 
 	let mut runner_stream = connect_runner(
@@ -998,43 +1042,30 @@ async fn runner_cannot_update_status_of_another_workspaces_deployment() {
 	)
 	.await;
 
-	// Messages are handled in order, so once the attacker's own deployment is
-	// `running`, the update for the victim's has been handled too.
-	let messages = [
-		StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
-			id: victim_deployment.id,
-			status: DeploymentStatus::Running,
-		},
-		StreamRunnerDataForWorkspaceClientMsg::DeploymentStatusUpdated {
-			id: attacker_deployment.id,
-			status: DeploymentStatus::Running,
-		},
-	];
-	for message in messages {
-		runner_stream
-			.send(Message::Text(
-				serde_json::to_string(&message).unwrap().into(),
-			))
-			.await
-			.unwrap();
-	}
-	let mut attacker_status = DeploymentStatus::Deploying;
-	for _ in 0..50 {
-		attacker_status = deployment_status(
+	report_status(
+		&mut runner_stream,
+		victim_deployment.id,
+		ObservedDeploymentStatus::Running,
+	)
+	.await;
+	report_status(
+		&mut runner_stream,
+		attacker_deployment.id,
+		ObservedDeploymentStatus::Running,
+	)
+	.await;
+	// The attacker's deployment isn't meant to run, so a `running` report
+	// shows as stopping.
+	assert_eq!(
+		wait_for_deployment_status(
 			&setup,
 			&attacker.access_token,
 			attacker_workspace.id,
 			attacker_deployment.id,
+			DeploymentStatus::Stopping,
 		)
-		.await;
-		if attacker_status == DeploymentStatus::Running {
-			break;
-		}
-		tokio::time::sleep(Duration::from_millis(100)).await;
-	}
-	assert_eq!(
-		attacker_status,
-		DeploymentStatus::Running,
+		.await,
+		DeploymentStatus::Stopping,
 		"the runner's own deployment should be updated"
 	);
 
@@ -1046,7 +1077,7 @@ async fn runner_cannot_update_status_of_another_workspaces_deployment() {
 			victim_deployment.id,
 		)
 		.await,
-		DeploymentStatus::Deploying,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped),
 		"another workspace's runner must not change the deployment's status"
 	);
 	assert_eq!(
@@ -1054,8 +1085,368 @@ async fn runner_cannot_update_status_of_another_workspaces_deployment() {
 			.cloudflare_kv_writes(&victim_deployment.id.to_string())
 			.await,
 		victim_kv_writes,
-		"another workspace's runner must not rewrite the deployment's KV entry"
+		"a status report must not write the KV entry"
 	);
+	assert_eq!(
+		setup
+			.cloudflare_kv_writes(&attacker_deployment.id.to_string())
+			.await,
+		attacker_kv_writes,
+		"a status report must not write the KV entry"
+	);
+}
+
+#[tokio::test]
+async fn runner_cannot_update_status_of_another_runners_deployment() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let own_deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let other_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let other_deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, other_runner.id)
+		.await;
+	setup.mark_test_runner_online(other_runner.id).await;
+	let other_kv_writes = setup
+		.cloudflare_kv_writes(&other_deployment.id.to_string())
+		.await;
+
+	let mut runner_stream = connect_runner(&setup, workspace.id, runner.id, &runner.token).await;
+
+	report_status(
+		&mut runner_stream,
+		other_deployment.id,
+		ObservedDeploymentStatus::Running,
+	)
+	.await;
+	report_status(
+		&mut runner_stream,
+		own_deployment.id,
+		ObservedDeploymentStatus::Running,
+	)
+	.await;
+	assert_eq!(
+		wait_for_deployment_status(
+			&setup,
+			&user.access_token,
+			workspace.id,
+			own_deployment.id,
+			DeploymentStatus::Stopping,
+		)
+		.await,
+		DeploymentStatus::Stopping,
+		"the runner's own deployment should be updated"
+	);
+
+	assert_eq!(
+		deployment_status(
+			&setup,
+			&user.access_token,
+			workspace.id,
+			other_deployment.id
+		)
+		.await,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Stopped),
+		"a runner must not change the status of another runner's deployment"
+	);
+	assert_eq!(
+		setup
+			.cloudflare_kv_writes(&other_deployment.id.to_string())
+			.await,
+		other_kv_writes,
+		"a status report must not write the KV entry"
+	);
+}
+
+/// After a move, the old runner may still report the deployment before it
+/// hears about the move. That report must not land on the new runner's view.
+#[tokio::test]
+async fn late_report_from_old_runner_after_move_is_ignored() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let old_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let new_runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	setup.mark_test_runner_online(new_runner.id).await;
+	let deployment = setup
+		.create_test_deployment(&user.access_token, workspace.id, old_runner.id)
+		.await;
+	let sentinel = setup
+		.create_test_deployment(&user.access_token, workspace.id, old_runner.id)
+		.await;
+
+	let mut runner_stream =
+		connect_runner(&setup, workspace.id, old_runner.id, &old_runner.token).await;
+
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<StartDeploymentRequest>::builder()
+				.path(StartDeploymentPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+				})
+				.query(StartDeploymentQuery {
+					force_restart: false,
+				})
+				.headers(StartDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.build(),
+		)
+		.await
+		.assert_status_success();
+	let info = deployment_info(&setup, &user.access_token, workspace.id, deployment.id).await;
+	setup
+		.make_web_dashboard_call(
+			ApiRequest::<UpdateDeploymentRequest>::builder()
+				.path(UpdateDeploymentPath {
+					workspace_id: workspace.id,
+					deployment_id: deployment.id,
+				})
+				.headers(UpdateDeploymentRequestHeaders {
+					authorization: user.access_token.clone(),
+					user_agent: TEST_USER_AGENT,
+				})
+				.body(UpdateDeploymentRequest {
+					name: info.deployment.name.clone(),
+					image_tag: info.deployment.image_tag.clone(),
+					runner: new_runner.id,
+					machine_type: info.deployment.machine_type,
+					running_details: info.running_details.clone(),
+				})
+				.build(),
+		)
+		.await
+		.assert_status_success();
+
+	report_status(
+		&mut runner_stream,
+		deployment.id,
+		ObservedDeploymentStatus::Running,
+	)
+	.await;
+	report_status(
+		&mut runner_stream,
+		sentinel.id,
+		ObservedDeploymentStatus::Running,
+	)
+	.await;
+	assert_eq!(
+		wait_for_deployment_status(
+			&setup,
+			&user.access_token,
+			workspace.id,
+			sentinel.id,
+			DeploymentStatus::Stopping,
+		)
+		.await,
+		DeploymentStatus::Stopping,
+		"the old runner's own deployment should be updated"
+	);
+
+	assert_eq!(
+		deployment_status(&setup, &user.access_token, workspace.id, deployment.id).await,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Deploying),
+		"the old runner's report must not count for the new runner"
+	);
+}
+
+/// A report only records what the runner saw. It doesn't touch the intent,
+/// isn't checked against the current status, and doesn't write the KV entry.
+#[tokio::test]
+async fn runner_reports_write_observed_status_only() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let runner = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let stopped = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	let running = setup
+		.create_test_deployment(&user.access_token, workspace.id, runner.id)
+		.await;
+	setup
+		.execute_sql(&format!(
+			"UPDATE deployment SET should_run = TRUE WHERE id = '{}'",
+			running.id
+		))
+		.await;
+	let stopped_kv_writes = setup.cloudflare_kv_writes(&stopped.id.to_string()).await;
+	let running_kv_writes = setup.cloudflare_kv_writes(&running.id.to_string()).await;
+
+	let mut runner_stream = connect_runner(&setup, workspace.id, runner.id, &runner.token).await;
+
+	// The old transition rules refused `stopped` → `running`.
+	report_status(
+		&mut runner_stream,
+		stopped.id,
+		ObservedDeploymentStatus::Running,
+	)
+	.await;
+	assert_eq!(
+		wait_for_deployment_status(
+			&setup,
+			&user.access_token,
+			workspace.id,
+			stopped.id,
+			DeploymentStatus::Stopping,
+		)
+		.await,
+		DeploymentStatus::Stopping
+	);
+	assert!(
+		!deployment_info(&setup, &user.access_token, workspace.id, stopped.id)
+			.await
+			.deployment
+			.should_run,
+		"a report must not change the intent"
+	);
+
+	// A status this version doesn't know is dropped, and the stream carries on.
+	runner_stream
+		.send(Message::Text(
+			format!(
+				r#"{{"type":"DeploymentStatusUpdated","id":"{}","status":"somethingNew"}}"#,
+				running.id
+			)
+			.into(),
+		))
+		.await
+		.unwrap();
+	report_status(
+		&mut runner_stream,
+		running.id,
+		ObservedDeploymentStatus::Crashing,
+	)
+	.await;
+	assert_eq!(
+		wait_for_deployment_status(
+			&setup,
+			&user.access_token,
+			workspace.id,
+			running.id,
+			DeploymentStatus::Observed(ObservedDeploymentStatus::Crashing),
+		)
+		.await,
+		DeploymentStatus::Observed(ObservedDeploymentStatus::Crashing)
+	);
+
+	assert_eq!(
+		setup.cloudflare_kv_writes(&stopped.id.to_string()).await,
+		stopped_kv_writes,
+		"a status report must not write the KV entry"
+	);
+	assert_eq!(
+		setup.cloudflare_kv_writes(&running.id.to_string()).await,
+		running_kv_writes,
+		"a status report must not write the KV entry"
+	);
+}
+
+/// A runner is online while it's connected and was seen in the last two
+/// minutes. A runner left marked connected by an API crash goes offline once
+/// that runs out.
+#[tokio::test]
+async fn runner_connected_follows_last_seen() {
+	let setup = setup().await.expect("failed to setup test server");
+	let user = setup.create_test_user().await;
+	let workspace = setup.create_test_workspace(&user.access_token).await;
+	let online = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	setup.mark_test_runner_online(online.id).await;
+	let never_connected = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	let stale = setup
+		.create_test_runner(&user.access_token, workspace.id)
+		.await;
+	setup
+		.execute_sql(&format!(
+			"UPDATE runner SET is_connected = TRUE, last_seen = NOW() - INTERVAL '1 hour' WHERE id = '{}'",
+			stale.id
+		))
+		.await;
+
+	for (runner_id, expected) in [
+		(online.id, true),
+		(never_connected.id, false),
+		(stale.id, false),
+	] {
+		let runner = setup
+			.make_web_dashboard_call(
+				ApiRequest::<GetRunnerInfoRequest>::builder()
+					.path(GetRunnerInfoPath {
+						workspace_id: workspace.id,
+						runner_id,
+					})
+					.headers(GetRunnerInfoRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await
+			.json::<ApiSuccessResponseBody<GetRunnerInfoResponse>>()
+			.response
+			.runner;
+		assert_eq!(runner.connected, expected, "runner {runner_id}");
+	}
+
+	let mut offline = vec![never_connected.id, stale.id];
+	offline.sort();
+	for (connected, expected) in [(true, vec![online.id]), (false, offline)] {
+		let response = setup
+			.make_web_dashboard_call(
+				ApiRequest::<ListRunnersForWorkspaceRequest>::builder()
+					.path(ListRunnersForWorkspacePath {
+						workspace_id: workspace.id,
+					})
+					.query(ListResourceQuery {
+						sort: None,
+						search: RunnerSearchParams {
+							connected: Some(connected),
+							..Default::default()
+						},
+						count: 10,
+						page: 0,
+						additional_query: (),
+					})
+					.headers(ListRunnersForWorkspaceRequestHeaders {
+						authorization: user.access_token.clone(),
+						user_agent: TEST_USER_AGENT,
+					})
+					.build(),
+			)
+			.await;
+		assert_eq!(expected.len().to_string(), response.header("x-total-count"));
+		let mut listed = response
+			.json::<ApiSuccessResponseBody<ListRunnersForWorkspaceResponse>>()
+			.response
+			.runners
+			.into_iter()
+			.map(|runner| {
+				assert_eq!(runner.connected, connected);
+				runner.id
+			})
+			.collect::<Vec<_>>();
+		listed.sort();
+		assert_eq!(listed, expected, "connected = {connected}");
+	}
 }
 
 /// Renaming a runner reaches its cached auth data on the runner's next request,
@@ -1602,7 +1993,7 @@ async fn is_connected(setup: &TestSetup, runner_id: Uuid) -> bool {
 
 /// Connect the runner to its data stream with `token`, hand shake as a private
 /// runner, and wait until the API shows it connected.
-async fn connect_runner(
+pub(super) async fn connect_runner(
 	setup: &TestSetup,
 	workspace_id: Uuid,
 	runner_id: Uuid,

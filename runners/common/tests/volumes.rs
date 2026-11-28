@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use common::actors::db_helpers;
+use common::runner::db_helpers;
 
 use crate::prelude::*;
 
@@ -33,7 +33,8 @@ fn test_deployment() -> Deployment {
 			image_name: "nginx".to_string(),
 		},
 		image_tag: "latest".to_string(),
-		status: DeploymentStatus::Running,
+		status: DeploymentStatus::Observed(ObservedDeploymentStatus::Running),
+		should_run: true,
 		runner: Uuid::nil(),
 		current_live_digest: None,
 		machine_type: Uuid::parse_str("b3cf3771fa394281bfdfeb2e65a061b6").unwrap(),

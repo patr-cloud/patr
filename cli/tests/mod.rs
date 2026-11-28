@@ -11,6 +11,8 @@ pub mod setup;
 
 /// Tests for `patr apply`.
 pub mod apply;
+/// Tests for `patr deployment`.
+pub mod deployment;
 /// Tests for `patr login`.
 pub mod login;
 /// Tests for `patr runner`.

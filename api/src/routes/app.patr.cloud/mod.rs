@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::{sync::OnceLock, time::Duration};
 
 #[cfg(feature = "cloud")]
 use axum::Router;
@@ -47,7 +47,15 @@ pub async fn setup_routes(state: &AppState) -> Router {
 #[axum::debug_handler]
 pub async fn proxy(req: Request<Body>) -> Response {
 	let Ok(response) = CLIENT
-		.get_or_init(reqwest::Client::new)
+		.get_or_init(|| {
+			// Node closes a keep-alive connection after 5 idle seconds. Dropping
+			// ours sooner keeps a request from going out on a connection Node has
+			// just closed, which fails it with a 502.
+			reqwest::Client::builder()
+				.pool_idle_timeout(Duration::from_secs(4))
+				.build()
+				.expect("failed to build the frontend proxy client")
+		})
 		.request(
 			req.method().clone(),
 			format!(

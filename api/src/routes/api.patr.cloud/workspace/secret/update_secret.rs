@@ -1,10 +1,12 @@
 use axum::http::StatusCode;
-use models::api::workspace::{runner::StreamRunnerDataForWorkspaceServerMsg, secret::*};
-use rustis::commands::PubSubCommands;
+use models::{api::workspace::secret::*, rbac::ResourceType};
 use time::OffsetDateTime;
 use zeroize::Zeroize;
 
-use crate::prelude::*;
+use crate::{
+	prelude::*,
+	redis_publisher::{self, DirtyResource},
+};
 
 /// Updates a secret: renames the metadata row and, when a new value is provided,
 /// overwrites the value in OpenBao and tells the runners using it. An omitted
@@ -24,7 +26,7 @@ pub async fn update_secret(
 				body: UpdateSecretRequestProcessed { name, value },
 			},
 		database,
-		redis,
+		redis: _,
 		client_ip: _,
 		actor_data: _,
 		state,
@@ -32,7 +34,7 @@ pub async fn update_secret(
 ) -> Result<AppResponse<UpdateSecretRequest>, ErrorType> {
 	trace!("Updating secret ID: `{secret_id}`");
 
-	let last_updated = query!(
+	query!(
 		r#"
 		UPDATE
 			secret
@@ -54,8 +56,7 @@ pub async fn update_secret(
 		sqlx::Error::Database(dbe) if dbe.is_unique_violation() => ErrorType::ResourceAlreadyExists,
 		sqlx::Error::RowNotFound => ErrorType::ResourceDoesNotExist,
 		other => other.into(),
-	})?
-	.last_updated;
+	})?;
 
 	// Only touch OpenBao when a new value was supplied; otherwise the existing
 	// value is kept. Zeroize the plaintext regardless of the outcome.
@@ -75,7 +76,6 @@ pub async fn update_secret(
 		value.zeroize();
 		write.map_err(|err| ErrorType::server_error(err))?;
 
-		// TODO Temporary workaround until audit logs and triggers are implemented
 		let runners = query!(
 			r#"
 			SELECT DISTINCT
@@ -96,16 +96,16 @@ pub async fn update_secret(
 		.await?;
 
 		for row in runners {
-			redis
-				.publish(
-					format!("{}/runner/{}/stream", workspace_id, row.runner),
-					serde_json::to_string(&StreamRunnerDataForWorkspaceServerMsg::SecretUpdated {
-						id: secret_id,
-						last_updated,
-					})
-					.unwrap(),
-				)
-				.await?;
+			redis_publisher::mark_dirty(
+				database,
+				DirtyResource {
+					workspace_id,
+					runner_id: row.runner,
+					resource_type: ResourceType::Secret,
+					resource_id: secret_id,
+				},
+			)
+			.await?;
 		}
 	}
 

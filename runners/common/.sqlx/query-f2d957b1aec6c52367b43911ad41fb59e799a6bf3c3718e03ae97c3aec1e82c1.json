@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM object_finalizer WHERE object_id = $1;",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f2d957b1aec6c52367b43911ad41fb59e799a6bf3c3718e03ae97c3aec1e82c1"
+}

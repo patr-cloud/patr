@@ -83,6 +83,9 @@ pub struct Deployment {
 	/// The status of the deployment
 	#[search(ty = "enum", name = "DeploymentStatus")]
 	pub status: DeploymentStatus,
+	/// Whether the deployment should be running. Only creating, starting and
+	/// stopping the deployment change it
+	pub should_run: bool,
 	/// The runner the deployment is running on
 	#[search(ty = "resource", resource = "Runner")]
 	pub runner: Uuid,
@@ -371,53 +374,113 @@ impl DeploymentRegistry {
 }
 
 /// All the possible deployment status a deployment can be
-/// in during its life cycle
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, JsonSchema, TS)]
+/// in during its life cycle: the status its runner observed it in, or one the
+/// API derives from the deployment's `should_run` and its runner's connection
+#[derive(
+	Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, JsonSchema, strum::Display, TS,
+)]
 #[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "snake_case")]
+pub enum DeploymentStatus {
+	/// Deployment has been asked to stop, and is still running
+	Stopping,
+	/// The deployment's runner is not reachable
+	Unreachable,
+	/// The status the deployment's runner observed it in
+	#[serde(untagged)]
+	#[strum(transparent)]
+	Observed(ObservedDeploymentStatus),
+}
+
+impl FromStr for DeploymentStatus {
+	type Err = strum::ParseError;
+
+	fn from_str(value: &str) -> Result<Self, Self::Err> {
+		if value.eq_ignore_ascii_case("stopping") {
+			Ok(Self::Stopping)
+		} else if value.eq_ignore_ascii_case("unreachable") {
+			Ok(Self::Unreachable)
+		} else {
+			value.parse().map(Self::Observed)
+		}
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl sqlx::Type<sqlx::Postgres> for DeploymentStatus {
+	fn type_info() -> sqlx::postgres::PgTypeInfo {
+		sqlx::postgres::PgTypeInfo::with_name("DEPLOYMENT_STATUS")
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl sqlx::postgres::PgHasArrayType for DeploymentStatus {
+	fn array_type_info() -> sqlx::postgres::PgTypeInfo {
+		sqlx::postgres::PgTypeInfo::array_of("DEPLOYMENT_STATUS")
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl sqlx::Encode<'_, sqlx::Postgres> for DeploymentStatus {
+	fn encode_by_ref(
+		&self,
+		buf: &mut sqlx::postgres::PgArgumentBuffer,
+	) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+		<&str as sqlx::Encode<sqlx::Postgres>>::encode(self.to_string().as_str(), buf)
+	}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<'r> sqlx::Decode<'r, sqlx::Postgres> for DeploymentStatus {
+	fn decode(value: sqlx::postgres::PgValueRef<'r>) -> Result<Self, sqlx::error::BoxDynError> {
+		Ok(<&str as sqlx::Decode<sqlx::Postgres>>::decode(value)?.parse()?)
+	}
+}
+
+/// The status a runner observes a deployment in, and reports upstream. The
+/// public [`DeploymentStatus`] is derived from this and the deployment's
+/// `should_run`
+#[derive(
+	Debug,
+	Clone,
+	Copy,
+	Serialize,
+	Deserialize,
+	PartialEq,
+	Eq,
+	Hash,
+	JsonSchema,
+	strum::Display,
+	strum::EnumString,
+	TS,
+)]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "snake_case", ascii_case_insensitive)]
 #[cfg_attr(
 	not(target_arch = "wasm32"),
 	derive(sqlx::Type),
-	sqlx(type_name = "DEPLOYMENT_STATUS", rename_all = "lowercase")
+	sqlx(type_name = "OBSERVED_DEPLOYMENT_STATUS", rename_all = "snake_case")
 )]
-pub enum DeploymentStatus {
+pub enum ObservedDeploymentStatus {
 	/// Deployment is deploying
 	Deploying,
 	/// Deployment is running
 	Running,
+	/// The deployment's containers keep exiting
+	Crashing,
+	/// The deployment's health check is failing
+	HealthCheckFailing,
+	/// The runner couldn't pull the deployment's image
+	ImagePullFailed,
+	/// The deployment's image has no build for the runner's platform
+	InvalidArchitecture,
+	/// The runner failed to apply the deployment
+	Errored,
 	/// Deployment has stopped
 	Stopped,
-	/// Deployment has errored and stopped
-	Errored,
-	/// The deployment's runner is not reachable
-	Unreachable,
-}
-
-impl Display for DeploymentStatus {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Self::Deploying => write!(f, "deploying"),
-			Self::Running => write!(f, "running"),
-			Self::Stopped => write!(f, "stopped"),
-			Self::Errored => write!(f, "errored"),
-			Self::Unreachable => write!(f, "unreachable"),
-		}
-	}
-}
-
-impl FromStr for DeploymentStatus {
-	type Err = String;
-
-	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		let s = s.to_lowercase();
-		match s.as_str() {
-			"deploying" => Ok(Self::Deploying),
-			"running" => Ok(Self::Running),
-			"stopped" => Ok(Self::Stopped),
-			"errored" => Ok(Self::Errored),
-			"unreachable" => Ok(Self::Unreachable),
-			_ => Err(s),
-		}
-	}
+	/// A status this version doesn't know about. Never stored
+	#[serde(other)]
+	Unknown,
 }
 
 /// The set of available per-deployment metric names. Used as a path parameter
